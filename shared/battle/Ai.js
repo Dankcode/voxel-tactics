@@ -1,0 +1,238 @@
+// Tactical AI shared by enemies, the player-side autopilot and the balance sim.
+// It scores reachable tiles by cover against known threats, flanking chances, range and hazards, then
+// shoots (expected damage from the same ballistic estimate the HUD uses), throws, overwatches or reloads.
+import { WEAPONS, THROWABLES } from '../content/weapons.js';
+import { coverAgainst, COVER } from '../voxel/Cover.js';
+import { estimateShot } from './Ballistics.js';
+import { alive, partArmor } from './Units.js';
+import { nodeKey, pathTo } from '../world/PathSearch.js';
+
+export const DEFAULT_POLICY = Object.freeze({ formations: false, breach: true, grenadeMinTargets: 2, shootThreshold: 0.9, samples: 24 });
+
+/** Play every unit of `side`, then end the turn. Returns the events produced. */
+export function runAiSide(battle, side, policy = DEFAULT_POLICY, { maxActions = 80 } = {}) {
+    const start = battle.log.length;
+    policy = { ...DEFAULT_POLICY, ...policy };
+    if (policy.formations) tryFormations(battle, side);
+    let actions = 0;
+    for (const u of battle.unitsOf(side)) {
+        let guard = 0;
+        while (alive(u) && !battle.outcome && guard++ < 6 && actions < maxActions) {
+            const intent = decide(battle, u, policy);
+            if (!intent) break;
+            const r = battle.apply(intent);
+            actions++;
+            if (!r.ok) break;
+        }
+        if (battle.outcome) break;
+    }
+    if (!battle.outcome && battle.activeSide === side) battle.apply({ type: 'endTurn', side });
+    return battle.log.slice(start);
+}
+
+function knownEnemies(battle, u) {
+    const seen = battle.visibleTo(u.side);
+    const known = battle.enemiesOf(u).filter(e => seen.has(e.id));
+    return known;
+}
+
+export function decide(battle, u, policy = DEFAULT_POLICY) {
+    if (u.side === 'enemy' && !u.alerted) return null;
+    if (u.ap <= 0 && u.moveOnlyAp <= 0) return null;
+    const known = knownEnemies(battle, u);
+    const ranged = u.weapons.map(id => WEAPONS[id]).find(w => w.kind === 'ballistic');
+    const melee = u.weapons.map(id => WEAPONS[id]).find(w => w.kind === 'melee');
+
+    // Melee specialists close in and strike.
+    if (!ranged && melee) {
+        const adj = known.find(e => Math.max(Math.abs(e.x - u.x), Math.abs(e.y - u.y)) <= 1 && Math.abs(e.z - u.z) <= 1);
+        if (adj && u.ap >= melee.ap) return { type: 'melee', unitId: u.id, weaponId: melee.id, targetId: adj.id, part: 'torso' };
+        const target = nearest(u, known.length ? known : battle.enemiesOf(u));
+        if (!target) return null;
+        const step = approach(battle, u, target, Math.max(0, u.ap - melee.ap));
+        return step ? { type: 'move', unitId: u.id, to: step } : null;
+    }
+    if (!ranged) return null;
+
+    // Breach a closed door to an unexplored room next to us (player autopilot / sim).
+    if (policy.breach && u.side === 'player' && u.ap >= 2) {
+        const bp = battle.breachPoints(u).find(p => !battle.revealedRooms.has(p.roomId));
+        if (bp) {
+            const squad = battle.unitsOf(u.side).filter(o => o.ap >= 1 && Math.max(Math.abs(o.x - bp.x), Math.abs(o.y - bp.y)) <= 2 && Math.abs(o.z - bp.z) <= 1);
+            const entry = squad.some(o => o.items.breach_charge > 0) && known.length === 0 ? 'charge' : 'door';
+            return { type: 'breach', unitId: u.id, unitIds: squad.map(o => o.id), door: bp, entry };
+        }
+    }
+
+    const ammoOk = (u.ammo[ranged.id] ?? 0) >= (ranged.perShot || 1);
+    if (!ammoOk && u.ap >= ranged.reloadAp) return { type: 'reload', unitId: u.id, weaponId: ranged.id };
+    if (u.weapon !== ranged.id) return { type: 'switchWeapon', unitId: u.id, weaponId: ranged.id };
+    const shotAp = battle.shotAp(u, ranged);
+
+    // Grenades and flasks on clusters or dug-in targets.
+    for (const [id, n] of Object.entries(u.items)) {
+        const t = THROWABLES[id];
+        if (!n || !t || t.placed || !t.damage || u.ap < t.ap) continue;
+        let best = null;
+        for (const e of known) {
+            if (Math.hypot(e.x - u.x, e.y - u.y) > t.range) continue;
+            const hits = known.filter(o => Math.hypot(o.x - e.x, o.y - e.y) <= t.radius).length;
+            const friendly = battle.unitsOf(u.side).filter(o => Math.hypot(o.x - e.x, o.y - e.y) <= t.radius + 0.5).length;
+            const dug = coverAgainst(battle.store, e.x, e.y, e.z, u.x, u.y) === COVER.FULL ? 1 : 0;
+            const score = hits + dug * 0.6 - friendly * 3;
+            if (score >= policy.grenadeMinTargets - 0.5 && (!best || score > best.score)) best = { e, score };
+        }
+        if (best) return { type: 'throw', unitId: u.id, itemId: id, to: { x: best.e.x, y: best.e.y, z: best.e.z } };
+    }
+
+    // Shoot now if there is a good shot and we would not gain by moving first.
+    const shot = ammoOk && u.ap >= shotAp ? bestShot(battle, u, ranged, known, policy) : null;
+    const canMoveAndShoot = u.ap + u.moveOnlyAp - shotAp >= 1;
+    if (shot && (!canMoveAndShoot || shot.value >= policy.shootThreshold * 2 || u.movedThisTurn)) return shot.intent;
+
+    // Formation members hold their slots; the leader moves the whole formation (group move).
+    const formation = battle.formations.of(u);
+    const holdSlot = formation && formation.template !== 'crossfire' && formation.leaderId !== u.id;
+    const group = !!formation && formation.leaderId === u.id;
+    if (holdSlot) {
+        if (shot) return shot.intent;
+        if (ammoOk && u.ap >= ranged.ap && known.length) { const t = nearest(u, known); return { type: 'overwatch', unitId: u.id, weaponId: ranged.id, toward: { x: t.x, y: t.y } }; }
+        return null;
+    }
+
+    // Nothing in sight: advance on the nearest hostile (patrol / search), favouring cover on the way.
+    if (!known.length) {
+        if (u.movedThisTurn >= 1 && u.ap < 2) return null;
+        const target = nearest(u, battle.enemiesOf(u));
+        if (!target || u.movedThisTurn > 12) return null;
+        const step = advance(battle, u, target);
+        return step ? { type: 'move', unitId: u.id, to: step, group } : null;
+    }
+
+    // Move to a better tile, keeping enough AP to shoot.
+    if (u.ap + u.moveOnlyAp > (ammoOk ? shotAp : 0) && !u.movedThisTurn) {
+        const budgetAp = Math.max(1, u.ap + u.moveOnlyAp - (ammoOk ? shotAp : 0));
+        const tile = bestTile(battle, u, ranged, known.length ? known : battle.enemiesOf(u), budgetAp);
+        if (tile && (tile.x !== u.x || tile.y !== u.y || tile.z !== u.z)) return { type: 'move', unitId: u.id, to: tile, group };
+    }
+    if (shot) return shot.intent;
+    if (ammoOk && u.ap >= ranged.ap) {
+        const t = nearest(u, known.length ? known : battle.enemiesOf(u));
+        if (t) return { type: 'overwatch', unitId: u.id, weaponId: ranged.id, toward: { x: t.x, y: t.y } };
+    }
+    if (!ammoOk && u.ap >= ranged.reloadAp) return { type: 'reload', unitId: u.id, weaponId: ranged.id };
+    return null;
+}
+
+function bestShot(battle, u, w, known, policy) {
+    let best = null;
+    for (const e of known) {
+        if (Math.hypot(e.x - u.x, e.y - u.y) > w.maxRange) continue;
+        for (const part of ['torso', 'head']) {
+            const aim = { unitId: e.id, part };
+            const { spread } = battle.spreadFor(u, w, { x: e.x + 0.5, y: e.y + 0.5, h: e.z + 2 }, { target: e });
+            const est = estimateShot(battle, u, aim, { weapon: w, spread, samples: policy.samples });
+            const perHit = Math.max(0, w.damage - Math.max(0, partArmor(e, part) - w.pierce));
+            let value = est.hit * w.projectiles * perHit / Math.max(1, w.ap) - est.friendly * 10;
+            if (value * Math.max(1, w.ap) >= e.hp) value *= 1.5;                    // likely kill
+            if (!best || value > best.value) best = { value, intent: { type: 'shoot', unitId: u.id, weaponId: w.id, aim } };
+        }
+    }
+    return best && best.value > 0.05 ? best : null;
+}
+
+function bestTile(battle, u, w, threats, budgetAp) {
+    const search = battle.reach(u, budgetAp * battle.mobility(u));
+    const nodes = [...search.nodes.values()];
+    if (!nodes.length) return null;
+    const stride = Math.max(1, Math.floor(nodes.length / 260));
+    const allies = battle.unitsOf(u.side).filter(o => o.id !== u.id);
+    const scored = [];
+    for (let i = 0; i < nodes.length; i += stride) {
+        const n = nodes[i];
+        if (battle.occupant(n.x, n.y, n.z) && !(n.x === u.x && n.y === u.y && n.z === u.z)) continue;
+        let s = 0;
+        for (const e of threats) {
+            const d = Math.hypot(e.x - n.x, e.y - n.y);
+            if (d > 30) continue;
+            const c = coverAgainst(battle.store, n.x, n.y, n.z, e.x, e.y);
+            s += c === COVER.FULL ? 14 : c === COVER.HALF ? 8 : -9;
+            if (d <= w.range && coverAgainst(battle.store, e.x, e.y, e.z, n.x, n.y) === COVER.NONE) s += 10;  // flanks it
+        }
+        const nearestD = Math.min(...threats.map(e => Math.hypot(e.x - n.x, e.y - n.y)), 99);
+        s -= Math.abs(nearestD - w.range * 0.7) * 0.7;
+        const surf = battle.field.surfaceAt(n.x, n.y, n.z);
+        if (surf === 'burning' || battle.field.isBurning(n.x, n.y, n.z)) s -= 40;
+        s -= allies.filter(o => Math.max(Math.abs(o.x - n.x), Math.abs(o.y - n.y)) <= 2).length * 4;
+        if (threats.length) s += Math.max(0, n.z - Math.min(...threats.map(e => e.z))) * 2;
+        scored.push({ n, s });
+    }
+    scored.sort((a, b) => b.s - a.s);
+    // Prefer tiles that can actually see a threat.
+    for (const c of scored.slice(0, 12)) {
+        const eye = { x: c.n.x + 0.5, y: c.n.y + 0.5, h: c.n.z + 2.4 };
+        if (threats.some(e => Math.hypot(e.x - c.n.x, e.y - c.n.y) <= w.maxRange && battle.sightLine(eye, battle.chest(e)))) c.s += 16;
+    }
+    scored.sort((a, b) => b.s - a.s);
+    return scored[0]?.n || null;
+}
+
+function advance(battle, u, target) {
+    // Follow the real path (stairs, doors) toward the target as far as this turn's budget allows.
+    const budget = Math.max(1, u.ap + u.moveOnlyAp - 1) * battle.mobility(u);
+    const full = battle.reach(u, Infinity);
+    let goal = null, gd = Infinity;
+    for (const n of full.nodes.values()) {
+        const d = Math.hypot(n.x - target.x, n.y - target.y) + Math.abs(n.z - target.z) * 1.5;
+        if (d < gd && !(battle.occupant(n.x, n.y, n.z) && battle.occupant(n.x, n.y, n.z) !== u)) { gd = d; goal = n; }
+    }
+    if (!goal) return null;
+    const path = pathTo(full, nodeKey(goal));
+    let best = null;
+    for (const p of path) {
+        const c = full.costs.get(nodeKey(p));
+        if (c > budget) break;
+        if (!battle.occupant(p.x, p.y, p.z)) best = p;
+    }
+    return best && (best.x !== u.x || best.y !== u.y || best.z !== u.z) ? best : null;
+}
+
+function nearest(u, list) { let b = null, bd = Infinity; for (const e of list) { const d = Math.hypot(e.x - u.x, e.y - u.y); if (d < bd) { bd = d; b = e; } } return b; }
+
+function approach(battle, u, target, keepAp) {
+    const budget = Math.max(1, u.ap + u.moveOnlyAp - keepAp) * battle.mobility(u);
+    const search = battle.reach(u, budget);
+    let best = null, bd = Infinity;
+    for (const n of search.nodes.values()) {
+        if (battle.occupant(n.x, n.y, n.z) && n !== search.nodes.get(nodeKey(u))) continue;
+        const d = Math.hypot(n.x - target.x, n.y - target.y) + Math.abs(n.z - target.z);
+        if (d < bd) { bd = d; best = n; }
+    }
+    return best && (best.x !== u.x || best.y !== u.y) ? best : null;
+}
+
+/**
+ * Sim/autopilot formation policy. Form a Shield Line only when enemies are known and the leader and its
+ * slots already have cover toward them; break formations when nothing is in sight (to advance freely).
+ */
+function tryFormations(battle, side) {
+    const known = [...battle.visibleTo(side)].map(id => battle.unit(id)).filter(Boolean);
+    for (const f of battle.formations.snapshot().filter(f => f.side === side)) {
+        if (!known.length && f.template === 'shield_line') battle.apply({ type: 'formation_break', unitId: f.leaderId, formationId: f.id });
+    }
+    if (!known.length) return;
+    const units = battle.unitsOf(side).filter(u => !u.formationId && u.ap >= 2);
+    const cx = known.reduce((s, e) => s + e.x, 0) / known.length, cy = known.reduce((s, e) => s + e.y, 0) / known.length;
+    for (const leader of units) {
+        if (coverAgainst(battle.store, leader.x, leader.y, leader.z, Math.round(cx), Math.round(cy)) === COVER.NONE) continue;
+        const dx = cx - leader.x, dy = cy - leader.y;
+        const facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : (dy > 0 ? 's' : 'n');
+        const mates = units.filter(o => o !== leader && !o.formationId && Math.max(Math.abs(o.x - leader.x), Math.abs(o.y - leader.y)) <= 3).slice(0, 2);
+        if (mates.length < 1) continue;
+        const intent = { type: 'formation', template: 'shield_line', unitId: leader.id, leaderId: leader.id, memberIds: [leader.id, ...mates.map(m => m.id)], facing };
+        const f = { template: 'shield_line', facing, members: intent.memberIds, leaderId: leader.id };
+        const slots = battle.formations.slotsFor(f, leader);
+        if (!slots || slots.some(sl => coverAgainst(battle.store, sl.x, sl.y, sl.z, Math.round(cx), Math.round(cy)) === COVER.NONE)) continue;
+        if (battle.apply(intent).ok) return;
+    }
+}

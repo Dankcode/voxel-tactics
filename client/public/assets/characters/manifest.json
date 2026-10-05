@@ -1,0 +1,68 @@
+{
+ "version": "characters-v1",
+ "characters": {
+  "vanguard": {
+   "field": "vanguard/field.json",
+   "cutin": "vanguard/cutin.json",
+   "portrait": "vanguard/portrait.png",
+   "team": "player",
+   "placeholder": true
+  },
+  "grenadier": {
+   "field": "grenadier/field.json",
+   "cutin": "grenadier/cutin.json",
+   "portrait": "grenadier/portrait.png",
+   "team": "player",
+   "placeholder": true
+  },
+  "marksman": {
+   "field": "marksman/field.json",
+   "cutin": "marksman/cutin.json",
+   "portrait": "marksman/portrait.png",
+   "team": "player",
+   "placeholder": true
+  },
+  "warden": {
+   "field": "warden/field.json",
+   "cutin": "warden/cutin.json",
+   "portrait": "warden/portrait.png",
+   "team": "player",
+   "placeholder": true
+  },
+  "cultist": {
+   "field": "cultist/field.json",
+   "cutin": "cultist/cutin.json",
+   "portrait": "cultist/portrait.png",
+   "team": "enemy",
+   "placeholder": true
+  },
+  "archer": {
+   "field": "archer/field.json",
+   "cutin": "archer/cutin.json",
+   "portrait": "archer/portrait.png",
+   "team": "enemy",
+   "placeholder": true
+  },
+  "pyromancer": {
+   "field": "pyromancer/field.json",
+   "cutin": "pyromancer/cutin.json",
+   "portrait": "pyromancer/portrait.png",
+   "team": "enemy",
+   "placeholder": true
+  },
+  "brute": {
+   "field": "brute/field.json",
+   "cutin": "brute/cutin.json",
+   "portrait": "brute/portrait.png",
+   "team": "enemy",
+   "placeholder": true
+  },
+  "guard": {
+   "field": "guard/field.json",
+   "cutin": "guard/cutin.json",
+   "portrait": "guard/portrait.png",
+   "team": "enemy",
+   "placeholder": true
+  }
+ }
+}

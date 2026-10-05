@@ -1,0 +1,31 @@
+{
+  "name": "voxel-tactics",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "XCOM 2 / Phoenix Point-style co-op voxel tactics built on vibe-game's world, voxel and noise generation.",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=client",
+    "dev:all": "concurrently --kill-others-on-fail --names client,server \"npm run dev --workspace=client\" \"npm start --workspace=server\"",
+    "server": "npm start --workspace=server",
+    "build": "npm run build --workspace=client",
+    "test": "node --test shared/voxel/*.test.js shared/elements/*.test.js shared/battle/*.test.js shared/mission/*.test.js shared/worldgen/*.test.js server/test/*.test.js",
+    "test:fast": "node --test shared/voxel/*.test.js shared/elements/*.test.js shared/battle/*.test.js shared/mission/*.test.js",
+    "sim": "node tools/sim/battle_sim.mjs --seeds 24",
+    "sim:formations": "node tools/sim/battle_sim.mjs --seeds 100 --formations-compare --gate",
+    "worldgen:bake": "node tools/worldgen/bake_sites.mjs",
+    "art:placeholders": "python3 tools/art/make_placeholders.py",
+    "mission:report": "node tools/mission/report.mjs",
+    "sim:world": "node tools/sim/battle_sim.mjs --seeds 4 --scenario all-world"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

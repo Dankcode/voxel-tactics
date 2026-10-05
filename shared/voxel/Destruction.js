@@ -1,0 +1,130 @@
+// Voxel damage, explosions and structural collapse. Pure and deterministic (no RNG).
+import { MATERIALS, MAT, AIR, materialById } from './Materials.js';
+
+/** Structural damage multipliers by element against material families (GEO concussion cracks stone). */
+const ELEMENT_VS_FAMILY = {
+    geo: { stone: 2, metal: 1.5, wood: 1.2, glass: 2, earth: 1.5 },
+    pyro: { wood: 1.5, plant: 3, ice: 3 },
+    cryo: { glass: 1.5, ice: 0 },
+    hydro: { plant: 0, wood: 0, stone: 0, metal: 0, earth: 0.3, glass: 0, ice: 0.5 },
+    anemo: { plant: 1.5, glass: 1.5 }
+};
+
+export function voxelDamageMultiplier(material, element) {
+    if (!element) return 1;
+    const row = ELEMENT_VS_FAMILY[element];
+    return row?.[material.family] ?? 1;
+}
+
+/**
+ * Damage one voxel. Destroyed voxels become debris or air, explosive ones queue an explosion.
+ * @returns {{ destroyed: boolean, material, explosion?: {x,y,h,...} }}
+ */
+export function damageVoxel(store, x, y, z, amount, { element = null } = {}) {
+    const id = store.get(x, y, z);
+    const m = materialById(id);
+    if (id === AIR || m.liquid || m.hp === Infinity || amount <= 0) return { destroyed: false, material: m };
+    const dmg = Math.round(amount * voxelDamageMultiplier(m, element));
+    if (dmg <= 0) return { destroyed: false, material: m };
+    const hp = store.hpAt(x, y, z) - dmg;
+    if (hp > 0) { store.hp[store.index(x, y, z)] = hp; return { destroyed: false, material: m, hp }; }
+    destroyVoxel(store, x, y, z);
+    const result = { destroyed: true, material: m };
+    if (m.explosive) result.explosion = { x: x + 0.5, y: y + 0.5, h: z + 0.5, ...m.explosive, source: m.key };
+    return result;
+}
+
+/** Remove a voxel, leaving rubble where a structural voxel rested on solid ground (alternating, so walls leave low cover). */
+export function destroyVoxel(store, x, y, z) {
+    const m = materialById(store.get(x, y, z));
+    const below = materialById(store.get(x, y, z - 1));
+    const leavesRubble = m.debris && below.solid && !below.liquid && ((x * 7 + y * 13 + z) % 3 !== 0);
+    store.set(x, y, z, leavesRubble ? MAT[m.debris] : AIR);
+}
+
+/**
+ * Explosion: every voxel within `radius` of the centre takes power × falloff damage.
+ * Powder kegs caught in the blast chain into further explosions (breadth-first, capped).
+ * @returns {{ destroyed: [x,y,z,matKey][], explosions: object[] }}
+ */
+export function explodeVoxels(store, blast, { maxChain = 8, maxVoxels = 900 } = {}) {
+    const queue = [blast], explosions = [], destroyed = [];
+    let chain = 0;
+    while (queue.length && chain <= maxChain) {
+        const b = queue.shift(); chain++;
+        explosions.push(b);
+        const r = b.radius, r2 = r * r;
+        const x0 = Math.floor(b.x - r), x1 = Math.floor(b.x + r), y0 = Math.floor(b.y - r), y1 = Math.floor(b.y + r);
+        const z0 = Math.floor(b.h - r), z1 = Math.floor(b.h + r);
+        const cells = [];
+        for (let z = z0; z <= z1; z++) for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+            const d2 = (x + 0.5 - b.x) ** 2 + (y + 0.5 - b.y) ** 2 + (z + 0.5 - b.h) ** 2;
+            if (d2 <= r2 && store.get(x, y, z) !== AIR) cells.push([x, y, z, Math.sqrt(d2)]);
+        }
+        cells.sort((a, c) => a[3] - c[3] || a[2] - c[2] || a[1] - c[1] || a[0] - c[0]);
+        for (const [x, y, z, d] of cells) {
+            if (destroyed.length >= maxVoxels) break;
+            const falloff = 1 - d / (r + 0.5);
+            const before = materialById(store.get(x, y, z));
+            const res = damageVoxel(store, x, y, z, b.power * falloff, { element: b.element });
+            if (res.destroyed) {
+                destroyed.push([x, y, z, before.key]);
+                if (res.explosion) queue.push(res.explosion);
+            }
+        }
+    }
+    return { destroyed, explosions };
+}
+
+/**
+ * Structural support: every non-liquid, non-air voxel must connect (6-neighbour) to the bedrock layer.
+ * Unsupported pieces fall straight down and settle as rubble (structural) or vanish (glass, leaves, doors).
+ * @returns {{ fallen: {x,y,from,to,material}[], removed: number }}
+ */
+export function settleUnsupported(store, { maxRubble = 600 } = {}) {
+    const { width: W, depth: D, height: H } = store;
+    const seen = new Uint8Array(W * D * H);
+    const stack = [];
+    const attached = id => id !== AIR && !MATERIALS[id].liquid;
+    for (let y = 0; y < D; y++) for (let x = 0; x < W; x++) {
+        const i = store.index(x, y, 0);
+        if (attached(store.mat[i])) { seen[i] = 1; stack.push(i); }
+    }
+    const WD = W * D;
+    while (stack.length) {
+        const i = stack.pop();
+        const z = Math.floor(i / WD), rem = i - z * WD, y = Math.floor(rem / W), x = rem - y * W;
+        if (x > 0) push(i - 1); if (x < W - 1) push(i + 1);
+        if (y > 0) push(i - W); if (y < D - 1) push(i + W);
+        if (z > 0) push(i - WD); if (z < H - 1) push(i + WD);
+    }
+    function push(j) { if (!seen[j] && attached(store.mat[j])) { seen[j] = 1; stack.push(j); } }
+
+    const loose = [];
+    for (let i = 0; i < store.mat.length; i++) if (!seen[i] && attached(store.mat[i])) loose.push(i);
+    if (!loose.length) return { fallen: [], removed: 0 };
+    // Remove every loose voxel, then drop a rubble pile per column onto the ground below.
+    const columns = new Map();
+    for (const i of loose) {
+        const z = Math.floor(i / WD), rem = i - z * WD, y = Math.floor(rem / W), x = rem - y * W;
+        const m = MATERIALS[store.mat[i]];
+        store.set(x, y, z, AIR);
+        if (m.structural && m.family !== 'glass') {
+            const key = x + y * W;
+            const c = columns.get(key) || { x, y, count: 0, top: 0, material: m.key };
+            c.count++; c.top = Math.max(c.top, z); columns.set(key, c);
+        }
+    }
+    const fallen = [];
+    let rubble = 0;
+    for (const c of [...columns.values()].sort((a, b) => a.y - b.y || a.x - b.x)) {
+        let floor = c.top; while (floor >= 0 && !store.isSolid(c.x, c.y, floor)) floor--;
+        const pile = Math.min(2, Math.ceil(c.count / 3));
+        for (let k = 1; k <= pile && rubble < maxRubble; k++) {
+            if (floor + k >= store.height || store.isSolid(c.x, c.y, floor + k)) break;
+            store.set(c.x, c.y, floor + k, MAT.rubble); rubble++;
+        }
+        fallen.push({ x: c.x, y: c.y, from: c.top, to: floor + 1, material: c.material });
+    }
+    return { fallen, removed: loose.length };
+}

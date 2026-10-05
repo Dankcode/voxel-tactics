@@ -1,0 +1,832 @@
+// The deterministic battle engine (PLAN-01 rev 2 §9–§14).
+//
+// Pure shared code: no DOM, no THREE, no Math.random, no Date.now. The client previews with it, the
+// server (lockstep room) orders intents, every peer applies the same intents in the same order and
+// reaches the same state hash. AI, the balance sim and tests drive the same `apply()`.
+//
+// Phoenix Point: 4 AP, free aim at body parts, ballistic projectiles, part damage and disabling, Will.
+// XCOM 2: side phases, cover readout, flanking, overwatch, grenades, concealed pods.
+// Chaos Zero Nightmare: Stress and Breakdown, and the "back shot" cut-in event on every committed action.
+import { createRng, hashString } from '../util/Rng.js';
+import { reachable, pathTo, nodeKey } from '../world/PathSearch.js';
+import { AGENT_PROFILES } from '../world/TraversalRules.js';
+import { MAT, AIR, materialById } from '../voxel/Materials.js';
+import { castRay, fitArc, blocksSight } from '../voxel/Raycast.js';
+import { damageVoxel, explodeVoxels, settleUnsupported } from '../voxel/Destruction.js';
+import { coverAgainst, COVER } from '../voxel/Cover.js';
+import { ElementField, elementStatusesFor, STATUS_DEFS } from '../elements/Elements.js';
+import { WEAPONS, THROWABLES } from '../content/weapons.js';
+import { ABILITIES } from '../content/units.js';
+import { B } from '../content/balance.js';
+import { createUnit, alive, hasStatus, addStatus, removeStatus, accuracyMult, mobilityPerAp, partArmor, facingToward, FACING_VEC, EYE, CHEST } from './Units.js';
+import { estimateShot, chooseMuzzle, sampleCone, traceProjectile, aimPointOf, partCentre } from './Ballistics.js';
+import { Formations } from './Formations.js';
+
+export const REJECT = Object.freeze(['not_your_turn', 'not_your_unit', 'unit_down', 'no_ap', 'unreachable', 'occupied', 'no_ammo', 'out_of_range',
+    'no_item', 'no_target', 'bad_intent', 'no_will', 'battle_over', 'no_door', 'not_adjacent', 'formation_invalid']);
+
+const PROFILE = AGENT_PROFILES.player;
+
+export class Battle {
+    /**
+     * @param {{ mission, squad: {type, owner?, name?}[], seed, controllers? }} o
+     * mission: { store, rooms, buildings, spawns: { player: pos[], enemy: {pos, type, group}[] }, name, id }
+     */
+    constructor({ mission, squad, seed = 1, controllers = { player: 'human', enemy: 'ai' }, enemies = null }) {
+        this.mission = mission;
+        this.store = mission.store;
+        this.field = new ElementField(this.store);
+        this.seed = seed;
+        this.rng = createRng(hashString(`battle:${seed}:${mission.id || mission.name || ''}`));
+        this.controllers = { ...controllers };
+        this.units = [];
+        this.round = 1;
+        this.activeSide = 'player';
+        this.seq = 0;
+        this.log = [];
+        this.outcome = null;
+        this.revealedRooms = new Set();
+        this.formations = new Formations(this);
+        this.stats = { weapons: {}, throwables: {}, voxelsDestroyed: 0, fires: 0, breaches: 0, reactions: 0, formations: {} };
+        const ps = mission.spawns.player;
+        squad.forEach((s, i) => {
+            const pos = ps[i % ps.length];
+            this.units.push(createUnit(s.type, 'player', pos, `p${i}`, { owner: s.owner || 'player', name: s.name }));
+        });
+        (enemies || mission.spawns.enemy).forEach((e, i) => {
+            this.units.push(createUnit(e.type, 'enemy', e.pos, `e${i}`, { group: e.group ?? 0, facing: e.facing || 's' }));
+        });
+        this.startSide('player', true);
+        this.updateVisibility();
+    }
+
+    // ---------------------------------------------------------------- queries
+    unit(id) { return this.units.find(u => u.id === id) || null; }
+    unitsOf(side) { return this.units.filter(u => u.side === side && alive(u)); }
+    enemiesOf(u) { return this.units.filter(o => o.side !== u.side && alive(o)); }
+    occupant(x, y, z) { return this.units.find(u => alive(u) && u.x === x && u.y === y && u.z === z) || null; }
+    eye(u) { return { x: u.x + 0.5, y: u.y + 0.5, h: u.z + 1 + EYE }; }
+    chest(u) { return { x: u.x + 0.5, y: u.y + 0.5, h: u.z + 1 + CHEST }; }
+    roomOf(u) { return this.store.roomAt(u.x, u.y, u.z + 1); }
+    distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y, (a.z - b.z) * 0.8); }
+
+    /** Line of sight for spotting: opaque voxels and smoke block. */
+    sightLine(from, to) {
+        const r = castRay(this.store, from, to, { blocks: (s, x, y, z) => blocksSight(s, x, y, z) || this.field.isSmoke(x, y, z) });
+        return !r.hit;
+    }
+    sees(a, b) {
+        if (this.distance(a, b) > B.sightRange) return false;
+        const e = this.eye(a);
+        return this.sightLine(e, { x: b.x + 0.5, y: b.y + 0.5, h: b.z + 1 + 1.5 }) || this.sightLine(e, this.chest(b));
+    }
+    visibleEnemies(u) { return this.enemiesOf(u).filter(o => this.sees(u, o)); }
+    /** Enemies of `side` that any unit of `side` can see (fog of war). */
+    visibleTo(side) {
+        const out = new Set();
+        for (const u of this.unitsOf(side)) for (const o of this.enemiesOf(u)) if (!out.has(o.id) && this.sees(u, o)) out.add(o.id);
+        return out;
+    }
+
+    moveBudget(u) { return (u.ap + u.moveOnlyAp) * this.mobility(u); }
+    mobility(u) { return mobilityPerAp(u, this.formations.mobilityPenalty(u)); }
+    reach(u, budget = this.moveBudget(u)) {
+        return reachable(this.store, { x: u.x, y: u.y, z: u.z }, budget, PROFILE, {
+            blocked: to => { const o = this.occupant(to.x, to.y, to.z); return o && o.id !== u.id; }
+        });
+    }
+    apForCost(u, cost) { return cost <= 0 ? 0 : Math.ceil(cost / this.mobility(u) - 1e-9); }
+
+    /** Spread in degrees for a shot, with every modifier listed for the HUD. */
+    spreadFor(shooter, weapon, aimPoint, { reaction = false, breach = false, target = null } = {}) {
+        const mods = [];
+        let s = weapon.spread / Math.max(0.2, accuracyMult(shooter));
+        mods.push(['accuracy', +(1 / Math.max(0.2, accuracyMult(shooter))).toFixed(2)]);
+        const dist = Math.hypot(aimPoint.x - (shooter.x + 0.5), aimPoint.y - (shooter.y + 0.5));
+        if (dist > weapon.range) { const k = 1 + (dist - weapon.range) / weapon.range * B.rangeFalloff; s *= k; mods.push(['range', +k.toFixed(2)]); }
+        if (reaction) { const k = this.formations.reactionSpreadMult(shooter) ?? B.reactionSpreadMult; s *= k; mods.push(['reaction', k]); }
+        if (breach) { const k = 1 / (B.breachAccuracyMult * this.formations.breachAccuracyMult(shooter)); s *= k; mods.push(['breach', +k.toFixed(2)]); }
+        if (shooter.buffs.deadeye) { s *= 0.5; mods.push(['deadeye', 0.5]); }
+        if (target) {
+            if (shooter.z - target.z >= 2) { s *= B.heightAccuracyBonus; mods.push(['height', B.heightAccuracyBonus]); }
+            const room = this.roomOf(target), rec = this.mission.rooms?.[room];
+            if (room >= 0 && rec && !rec.lit && this.roomOf(shooter) !== room) { s *= B.dimRoomSpreadMult; mods.push(['dim room', B.dimRoomSpreadMult]); }
+            const k = this.formations.defenseSpreadMult(target, shooter);
+            if (k !== 1) { s *= k; mods.push(['formation', +k.toFixed(2)]); }
+            if (this.field.isSmoke(target.x, target.y, target.z + 1) || this.field.isSmoke(target.x, target.y, target.z + 2)) { s *= B.smokeSpreadMult; mods.push(['smoke', B.smokeSpreadMult]); }
+        }
+        return { spread: s, mods };
+    }
+
+    // ---------------------------------------------------------------- preview (no side effects)
+    preview(intent) {
+        const u = this.unit(intent.unitId);
+        const why = this.validate(intent);
+        if (why) return { ok: false, reason: why };
+        switch (intent.type) {
+            case 'move': {
+                const search = this.reach(u);
+                const k = nodeKey(intent.to);
+                const cost = search.costs.get(k);
+                return { ok: true, path: pathTo(search, k), cost, ap: this.apForCost(u, cost), cover: coverAgainstAll(this, intent.to, u) };
+            }
+            case 'shoot': {
+                const w = WEAPONS[intent.weaponId || u.weapon];
+                const target = intent.aim.unitId ? this.unit(intent.aim.unitId) : null;
+                const aimPoint = aimPointOf(this, intent.aim);
+                const { spread, mods } = this.spreadFor(u, w, aimPoint, { target });
+                const est = estimateShot(this, u, intent.aim, { weapon: w, spread, samples: B.estimateSamples });
+                const cover = target ? coverAgainst(this.store, target.x, target.y, target.z, u.x, u.y) : null;
+                return { ok: true, ap: this.shotAp(u, w), estimate: est, mods, cover, flanked: target ? cover === COVER.NONE : false };
+            }
+            case 'throw': {
+                const t = THROWABLES[intent.itemId];
+                const arc = this.throwArc(u, intent.to);
+                return { ok: true, ap: t.ap, arc, radius: t.radius };
+            }
+            default: return { ok: true };
+        }
+    }
+    shotAp(u, w) { return Math.max(1, w.ap - (u.buffs.quickAim ? 1 : 0)); }
+
+    validate(intent) {
+        if (this.outcome) return 'battle_over';
+        if (intent.type === 'endTurn') return intent.side === this.activeSide ? null : 'not_your_turn';
+        if (intent.type === 'owners') return intent.owners && typeof intent.owners === 'object' ? null : 'bad_intent';
+        const u = this.unit(intent.unitId);
+        if (!u) return intent.type === 'formation_break' ? null : 'bad_intent';
+        if (!alive(u)) return 'unit_down';
+        if (u.side !== this.activeSide) return 'not_your_turn';
+        if (intent.by && intent.by !== '*' && u.owner !== intent.by) return 'not_your_unit';
+        switch (intent.type) {
+            case 'move': {
+                const t = intent.to; if (!t) return 'bad_intent';
+                const o = this.occupant(t.x, t.y, t.z); if (o && o.id !== u.id) return 'occupied';
+                const cost = this.reach(u).costs.get(nodeKey(t));
+                if (cost == null) return this.reach(u, this.moveBudget(u) * 4 + 8).costs.has(nodeKey(t)) ? 'no_ap' : 'unreachable';
+                if (this.apForCost(u, cost) > u.ap + u.moveOnlyAp) return 'no_ap';
+                return null;
+            }
+            case 'shoot': {
+                const w = WEAPONS[intent.weaponId || u.weapon];
+                if (!w || !u.weapons.includes(w.id) || w.kind !== 'ballistic') return 'bad_intent';
+                if (u.ap < this.shotAp(u, w)) return 'no_ap';
+                if ((u.ammo[w.id] ?? 0) < (w.perShot || 1)) return 'no_ammo';
+                if (!intent.aim || (!intent.aim.point && !this.unit(intent.aim.unitId))) return 'no_target';
+                const p = aimPointOf(this, intent.aim);
+                if (Math.hypot(p.x - u.x - 0.5, p.y - u.y - 0.5) > w.maxRange) return 'out_of_range';
+                return null;
+            }
+            case 'melee': {
+                const w = WEAPONS[intent.weaponId || u.weapons.find(id => WEAPONS[id].kind === 'melee')];
+                if (!w || w.kind !== 'melee' || !u.weapons.includes(w.id)) return 'bad_intent';
+                if (u.ap < w.ap) return 'no_ap';
+                const t = this.unit(intent.targetId); if (!t || !alive(t)) return 'no_target';
+                if (Math.max(Math.abs(t.x - u.x), Math.abs(t.y - u.y)) > 1 || Math.abs(t.z - u.z) > 1) return 'not_adjacent';
+                return null;
+            }
+            case 'throw': {
+                const t = THROWABLES[intent.itemId];
+                if (!t || !(u.items[t.id] > 0)) return 'no_item';
+                if (u.ap < t.ap) return 'no_ap';
+                const to = intent.to; if (!to) return 'bad_intent';
+                if (Math.hypot(to.x - u.x, to.y - u.y) > t.range + 0.01) return 'out_of_range';
+                return null;
+            }
+            case 'overwatch': {
+                const w = WEAPONS[intent.weaponId || u.weapon];
+                if (!w || w.kind !== 'ballistic') return 'bad_intent';
+                if (u.ap < w.ap) return 'no_ap';
+                if ((u.ammo[w.id] ?? 0) < (w.perShot || 1)) return 'no_ammo';
+                return null;
+            }
+            case 'reload': { const w = WEAPONS[intent.weaponId || u.weapon]; if (!w?.ammo) return 'bad_intent'; return u.ap < w.reloadAp ? 'no_ap' : null; }
+            case 'switchWeapon': return u.weapons.includes(intent.weaponId) ? null : 'bad_intent';
+            case 'ability': {
+                const a = ABILITIES[intent.abilityId];
+                if (!a || !u.abilities.includes(a.id)) return 'bad_intent';
+                if (u.will < a.wp) return 'no_will';
+                if (u.ap < a.ap) return 'no_ap';
+                if (hasStatus(u, 'panicked')) return 'no_will';
+                return null;
+            }
+            case 'door': {
+                const d = intent.door; if (!d) return 'no_door';
+                const id = this.store.get(d.x, d.y, d.z + 1);
+                if (id !== MAT.door && id !== MAT.door_open) return 'no_door';
+                if (Math.max(Math.abs(d.x - u.x), Math.abs(d.y - u.y)) > 1) return 'not_adjacent';
+                return null;
+            }
+            case 'breach': return this.validateBreach(intent);
+            case 'formation': return this.formations.validate(intent);
+            case 'formation_break': return null;
+            case 'face': return null;
+            default: return 'bad_intent';
+        }
+    }
+
+    // ---------------------------------------------------------------- apply
+    /** Apply one intent. Returns { ok, reason?, events }. */
+    apply(intent) {
+        const why = this.validate(intent);
+        if (why) return { ok: false, reason: why, events: [] };
+        const start = this.log.length;
+        const u = this.unit(intent.unitId);
+        switch (intent.type) {
+            case 'endTurn': this.endTurn(intent.side); break;
+            case 'owners': for (const [id, owner] of Object.entries(intent.owners)) { const x = this.unit(id); if (x && x.side === 'player') x.owner = owner; } this.emit({ t: 'owners', owners: intent.owners }); break;
+            case 'move': this.doMove(u, intent.to); if (intent.group) this.formations.follow(u); break;
+            case 'shoot': this.doShoot(u, intent); break;
+            case 'melee': this.doMelee(u, intent); break;
+            case 'throw': this.doThrow(u, intent); break;
+            case 'overwatch': this.doOverwatch(u, intent); break;
+            case 'reload': { const w = WEAPONS[intent.weaponId || u.weapon]; u.ap -= w.reloadAp; u.ammo[w.id] = w.ammo; this.emit({ t: 'reload', unitId: u.id, weaponId: w.id }); break; }
+            case 'switchWeapon': u.weapon = intent.weaponId; this.emit({ t: 'weapon', unitId: u.id, weaponId: u.weapon }); break;
+            case 'ability': this.doAbility(u, intent); break;
+            case 'door': this.doDoor(u, intent.door); break;
+            case 'breach': this.doBreach(intent); break;
+            case 'formation': this.formations.declare(intent); break;
+            case 'formation_break': this.formations.dissolve(intent.formationId, 'ordered'); break;
+            case 'face': u.facing = intent.facing; this.emit({ t: 'face', unitId: u.id, facing: u.facing }); break;
+        }
+        this.afterAction();
+        return { ok: true, events: this.log.slice(start) };
+    }
+
+    emit(e) { e.seq = ++this.seq; e.round = this.round; this.log.push(e); return e; }
+
+    afterAction() {
+        this.updateVisibility();
+        this.checkOutcome();
+    }
+
+    // ---------------------------------------------------------------- turn flow
+    startSide(side, first = false) {
+        this.activeSide = side;
+        for (const u of this.unitsOf(side)) {
+            // Start-of-turn statuses (burning and bleeding deal damage, durations tick).
+            for (const s of [...u.statuses]) {
+                const def = STATUS_DEFS[s.id];
+                if (def?.dotPerRound) this.dealDamage(u, 'torso', s.id === 'burning' ? B.burningDamage : def.dotPerRound, { pierce: 99, element: s.id === 'burning' ? 'pyro' : null, source: s.id });
+            }
+            if (!alive(u)) continue;
+            let ap = u.maxAp;
+            const chill = u.statuses.find(s => s.id === 'chilled');
+            if (chill) ap += STATUS_DEFS.chilled.apPerStack * (chill.stacks || 1);
+            if (hasStatus(u, 'stunned')) ap += STATUS_DEFS.stunned.apPenalty;
+            if (hasStatus(u, 'surprised')) ap += STATUS_DEFS.surprised.apPenalty;
+            if (hasStatus(u, 'panicked')) ap = Math.ceil(ap / 2);
+            u.ap = first ? u.maxAp : Math.max(0, ap);
+            u.moveOnlyAp = 0;
+            u.reactionsLeft = 1;
+            u.overwatch = null;
+            u.buffs = {};
+            if (!first) u.will = Math.min(u.maxWill, u.will + B.willRegen);
+            u.movedThisTurn = 0;
+            for (const s of u.statuses) s.rounds--;
+            u.statuses = u.statuses.filter(s => s.rounds > 0);
+        }
+        this.formations.onSideStart(side);
+        this.emit({ t: 'turn', side, round: this.round });
+    }
+
+    endTurn(side) {
+        if (side === 'player') {
+            this.formations.onSideEnd('player');
+            this.startSide('enemy');
+        } else {
+            this.formations.onSideEnd('enemy');
+            this.roundEnd();
+            if (!this.outcome) { this.round++; this.startSide('player'); }
+        }
+    }
+
+    roundEnd() {
+        const before = this.store.version;
+        const changes = this.store.record(() => {
+            const { changes: ec, burnedOut } = this.field.tick(this.rng, { spreadChance: B.fireSpreadChance });
+            if (ec.length) this.emit({ t: 'elements', changes: ec });
+            if (burnedOut.length) { this.stats.voxelsDestroyed += burnedOut.length; this.settle(); }
+        });
+        if (changes.length) this.emit({ t: 'voxels', changes });
+        // Units standing in fire catch it.
+        for (const u of this.units.filter(alive)) {
+            if (this.field.surfaceAt(u.x, u.y, u.z) === 'burning' || this.field.isBurning(u.x, u.y, u.z)) this.giveStatus(u, 'burning');
+        }
+        if (this.store.version !== before) this.checkFalls();
+    }
+
+    checkOutcome() {
+        if (this.outcome) return;
+        const p = this.unitsOf('player').length, e = this.unitsOf('enemy').length;
+        if (!e) this.outcome = { winner: 'player', round: this.round };
+        else if (!p) this.outcome = { winner: 'enemy', round: this.round };
+        if (this.outcome) this.emit({ t: 'outcome', ...this.outcome });
+    }
+
+    // ---------------------------------------------------------------- movement
+    doMove(u, to) {
+        const search = this.reach(u);
+        const k = nodeKey(to);
+        const cost = search.costs.get(k);
+        const path = pathTo(search, k);
+        let ap = this.apForCost(u, cost);
+        const fromMoveOnly = Math.min(u.moveOnlyAp, ap);
+        u.moveOnlyAp -= fromMoveOnly; ap -= fromMoveOnly;
+        u.ap -= ap;
+        const walked = [path[0]];
+        for (let i = 1; i < path.length; i++) {
+            const p = path[i];
+            this.openDoorsOnStep(u, path[i - 1], p);
+            u.facing = facingToward(p.x - u.x, p.y - u.y);
+            u.x = p.x; u.y = p.y; u.z = p.z;
+            walked.push(p);
+            u.movedThisTurn = (u.movedThisTurn || 0) + 1;
+            this.revealRoomOf(u);
+            // Spotting: a unit that steps into view of an unalerted pod alerts it.
+            this.updateVisibility();
+            const before = alive(u);
+            this.checkReactions(u, walked);
+            if (before && !alive(u)) break;
+            if (u.statuses.some(s => s.id === 'frozen')) break;
+        }
+        this.emit({ t: 'move', unitId: u.id, path: walked, ap: ap + fromMoveOnly });
+        if (alive(u)) {
+            const surf = this.field.surfaceAt(u.x, u.y, u.z);
+            if (surf === 'burning') this.giveStatus(u, 'burning');
+            if (surf === 'wet') this.giveStatus(u, 'wet');
+        }
+        this.formations.onMoved(u);
+        this.noise(u.x, u.y, u.z, 3, u);
+    }
+
+    openDoorsOnStep(u, from, to) {
+        for (let h = 1; h <= 2; h++) {
+            if (this.store.get(to.x, to.y, to.z + h) === MAT.door) {
+                const changes = this.store.record(() => { for (let k = 1; k <= 2; k++) if (this.store.get(to.x, to.y, to.z + k) === MAT.door) this.store.set(to.x, to.y, to.z + k, MAT.door_open); });
+                this.emit({ t: 'door', x: to.x, y: to.y, z: to.z, open: true, unitId: u.id });
+                this.emit({ t: 'voxels', changes });
+                // The room on the far side is revealed.
+                const nx = to.x + Math.sign(to.x - from.x), ny = to.y + Math.sign(to.y - from.y);
+                this.revealRoom(this.store.roomAt(nx, ny, to.z + 1), u);
+                break;
+            }
+        }
+    }
+    doDoor(u, d) {
+        const open = this.store.get(d.x, d.y, d.z + 1) === MAT.door;
+        if (!open) u.ap = Math.max(0, u.ap - 1);
+        const changes = this.store.record(() => { for (let k = 1; k <= 2; k++) { const id = this.store.get(d.x, d.y, d.z + k); if (id === MAT.door || id === MAT.door_open) this.store.set(d.x, d.y, d.z + k, open ? MAT.door_open : MAT.door); } });
+        this.emit({ t: 'door', ...d, open, unitId: u.id });
+        this.emit({ t: 'voxels', changes });
+        if (open) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) this.revealRoom(this.store.roomAt(d.x + dx, d.y + dy, d.z + 1), u);
+    }
+    revealRoomOf(u) { if (u.side === 'player') this.revealRoom(this.roomOf(u), u); }
+    revealRoom(id, by) {
+        if (id == null || id < 0 || !by || by.side !== 'player' || this.revealedRooms.has(id)) return;
+        this.revealedRooms.add(id);
+        this.emit({ t: 'reveal', roomId: id });
+    }
+
+    /** Overwatch: enemies of the mover whose cone contains its new position and who can see it shoot. */
+    checkReactions(mover, walked) {
+        for (const w of this.enemiesOf(mover)) {
+            if (!alive(mover)) return;
+            if (!w.overwatch || w.reactionsLeft <= 0 || hasStatus(w, 'surprised')) continue;
+            const ow = w.overwatch;
+            const dx = mover.x - w.x, dy = mover.y - w.y, d = Math.hypot(dx, dy);
+            if (d > ow.range || d < 0.5) continue;
+            const cos = (dx * ow.dx + dy * ow.dy) / d;
+            if (cos < Math.cos(ow.halfAngle)) continue;
+            if (!this.sees(w, mover)) continue;
+            w.reactionsLeft--;
+            this.stats.reactions++;
+            this.emit({ t: 'reaction', watcherId: w.id, targetId: mover.id });
+            this.fireWeapon(w, WEAPONS[ow.weaponId], { unitId: mover.id, part: 'torso' }, { reaction: true });
+            if (w.reactionsLeft <= 0) w.overwatch = null;
+        }
+    }
+
+    // ---------------------------------------------------------------- shooting
+    doShoot(u, intent) {
+        const w = WEAPONS[intent.weaponId || u.weapon];
+        u.ap -= this.shotAp(u, w);
+        u.buffs.quickAim = false;
+        const targetIds = intent.aim.unitId ? [intent.aim.unitId] : [];
+        this.emit({ t: 'cutin', unitId: u.id, kind: w.cutIn || 'shot', weaponId: w.id, targetIds });
+        this.fireWeapon(u, w, intent.aim, {});
+        if (intent.suppress && intent.aim.unitId) { const t = this.unit(intent.aim.unitId); if (t && alive(t)) this.giveStatus(t, 'suppressed', 2); }
+        u.buffs.deadeye = false;
+    }
+
+    /** Fire one shot of `w` at `aim`, resolving every projectile with the battle RNG. */
+    fireWeapon(u, w, aim, { reaction = false, breach = false } = {}) {
+        if ((u.ammo[w.id] ?? 0) < (w.perShot || 1)) return;
+        u.ammo[w.id] -= w.perShot || 1;
+        const target = aim.unitId ? this.unit(aim.unitId) : null;
+        const aimPoint = aimPointOf(this, aim);
+        u.facing = facingToward(aimPoint.x - u.x - 0.5, aimPoint.y - u.y - 0.5);
+        const { spread } = this.spreadFor(u, w, aimPoint, { reaction, breach, target });
+        const muzzle = chooseMuzzle(this.store, u, aimPoint);
+        const dv = [aimPoint.x - muzzle.x, aimPoint.y - muzzle.y, aimPoint.h - muzzle.h];
+        const dist = Math.hypot(...dv);
+        const dir = dv.map(c => c / dist);
+        const maxDist = Math.min(w.maxRange, Math.max(dist + 10, dist * 1.6));
+        const projectiles = [];
+        const ws = this.weaponStats(w.id);
+        ws.shots++; ws.projectiles += w.projectiles; ws.ap += reaction ? 0 : this.shotAp(u, w);
+        u.stats.shots++;
+        let targetHit = false;
+        const changes = this.store.record(() => {
+            for (let i = 0; i < w.projectiles; i++) {
+                const d = sampleCone(dir, spread, this.rng);
+                const res = traceProjectile(this, muzzle, d, maxDist, { ignore: u.id });
+                for (const [gx, gy, gz] of res.glass) if (this.store.get(gx, gy, gz) === MAT.glass) { this.store.set(gx, gy, gz, AIR); this.stats.voxelsDestroyed++; }
+                const p = { to: res.point, kind: res.kind };
+                if (res.kind === 'unit') {
+                    p.unitId = res.unit.id; p.part = res.part;
+                    const dealt = this.dealDamage(res.unit, res.part, w.damage, { pierce: w.pierce, shred: w.shred, element: w.element, source: u.id });
+                    p.damage = dealt;
+                    ws.hits++; ws.damage += dealt; u.stats.hits++; u.stats.damage += dealt;
+                    if (target && res.unit.id === target.id) targetHit = true;
+                    if (w.element) this.elementImpact(w.element, res.point, 0.6);
+                } else if (res.kind === 'voxel') {
+                    const v = res.voxel;
+                    p.voxel = v;
+                    const mult = u.buffs.demolish ? 2 : 1;
+                    const r = damageVoxel(this.store, v.x, v.y, v.z, (w.voxel || 0) * mult, { element: w.element });
+                    if (r.destroyed) { this.stats.voxelsDestroyed++; ws.voxels = (ws.voxels || 0) + 1; p.destroyed = true; }
+                    if (r.explosion) this.explode({ ...r.explosion, by: u.id });
+                    if (w.element) this.elementImpact(w.element, res.point, 0.8);
+                }
+                projectiles.push(p);
+            }
+        });
+        u.buffs.demolish = false;
+        this.emit({ t: 'shot', unitId: u.id, weaponId: w.id, muzzle, aim: aimPoint, projectiles, reaction, breach });
+        if (changes.length) this.emit({ t: 'voxels', changes });
+        if (target && alive(target) && !targetHit) this.addStress(target, B.stressOnNearMiss, 'near miss');
+        this.noise(u.x, u.y, u.z, w.noise ?? 12, u);
+        if (changes.some(c => materialById(c[3]).structural)) this.settle();
+        this.checkFalls();
+    }
+
+    doMelee(u, intent) {
+        const w = WEAPONS[intent.weaponId || u.weapons.find(id => WEAPONS[id].kind === 'melee')];
+        const t = this.unit(intent.targetId);
+        u.ap -= w.ap;
+        u.facing = facingToward(t.x - u.x, t.y - u.y);
+        this.emit({ t: 'cutin', unitId: u.id, kind: 'melee', weaponId: w.id, targetIds: [t.id] });
+        const part = intent.part || 'torso';
+        const dealt = this.dealDamage(t, part, w.damage, { pierce: w.pierce, shred: w.shred, source: u.id });
+        const ws = this.weaponStats(w.id); ws.shots++; ws.hits++; ws.damage += dealt; ws.ap += w.ap; ws.projectiles++;
+        this.emit({ t: 'melee', unitId: u.id, targetId: t.id, part, damage: dealt, weaponId: w.id });
+        if (w.knockback && alive(t)) this.knockback(t, t.x - u.x, t.y - u.y, w.knockback);
+        this.noise(u.x, u.y, u.z, w.noise ?? 4, u);
+    }
+
+    // ---------------------------------------------------------------- damage
+    dealDamage(t, part, amount, { pierce = 0, shred = 0, element = null, source = null } = {}) {
+        if (!alive(t)) return 0;
+        const p = t.parts[part] || t.parts.torso;
+        const armor = Math.max(0, partArmor(t, part) - pierce);
+        let dmg = Math.max(0, Math.round(amount) - armor);
+        if (element === 'pyro' && hasStatus(t, 'wet')) dmg = Math.max(0, dmg - 1);
+        if (shred) p.armor = Math.max(0, p.armor - shred);
+        if (dmg > 0) {
+            p.hp = Math.max(0, p.hp - dmg);
+            t.hp -= dmg;
+            if (part === 'torso') t.parts.torso.hp = Math.max(0, t.hp);
+            if (p.hp <= 0 && !p.disabled && part !== 'torso') {
+                p.disabled = true;
+                this.emit({ t: 'disabled', unitId: t.id, part });
+                if (part === 'head') { t.maxWill = Math.max(1, t.maxWill - 2); t.will = Math.min(t.will, t.maxWill); }
+            }
+        }
+        this.emit({ t: 'damage', unitId: t.id, part, amount: dmg, element, source, armor: p.armor });
+        if (element) for (const s of elementStatusesFor(element, t)) this.giveStatus(t, s);
+        if (dmg > 0) this.addStress(t, B.stressOnWound, 'wounded');
+        if (t.hp <= 0) this.kill(t, source);
+        return dmg;
+    }
+    kill(t, source) {
+        t.hp = 0; t.dead = true; t.overwatch = null;
+        this.emit({ t: 'death', unitId: t.id, source });
+        this.formations.onUnitLost(t);
+        const killer = this.unit(source);
+        if (killer && killer.side !== t.side) { killer.stats.kills++; this.addStress(killer, -B.stressRelieveOnKill, 'kill'); const ws = this.weaponStats(killer.weapon); ws.kills++; }
+        for (const ally of this.unitsOf(t.side)) if (this.distance(ally, t) <= 8 && this.sees(ally, t)) this.addStress(ally, B.stressOnAllyDown, 'ally down');
+        this.checkOutcome();
+    }
+    giveStatus(u, id, rounds) {
+        const s = addStatus(u, id, rounds);
+        if (s) this.emit({ t: 'status', unitId: u.id, statusId: id, rounds: s.rounds });
+    }
+    addStress(u, amount, why) {
+        if (!alive(u) || !amount) return;
+        u.stress = Math.max(0, Math.min(B.breakdownAt, u.stress + amount));
+        let breakdown = false;
+        if (u.stress >= B.breakdownAt) {
+            breakdown = true; u.stress = 60;
+            u.statuses = u.statuses.filter(s => s.id !== 'panicked');
+            u.statuses.push({ id: 'panicked', rounds: 1, stacks: 1 });
+            u.overwatch = null;
+            this.formations.onUnitLost(u);
+        }
+        this.emit({ t: 'stress', unitId: u.id, stress: u.stress, delta: amount, why, breakdown });
+    }
+
+    // ---------------------------------------------------------------- explosions, throws, elements
+    throwArc(u, to) {
+        const hand = { x: u.x + 0.5, y: u.y + 0.5, h: u.z + 1 + 1.6 };
+        const surf = this.store.surfaceNear(to.x, to.y, to.z ?? Infinity);
+        const land = { x: to.x + 0.5, y: to.y + 0.5, h: (surf ? surf.z + 1 : (to.z ?? 0) + 1) + 0.15 };
+        return { hand, land, ...fitArc(this.store, hand, land, 2.8) };
+    }
+    doThrow(u, intent) {
+        const t = THROWABLES[intent.itemId];
+        u.ap -= t.ap;
+        u.items[t.id]--;
+        const ts = this.stats.throwables[t.id] ||= { thrown: 0, unitDamage: 0, voxels: 0 };
+        ts.thrown++;
+        this.emit({ t: 'cutin', unitId: u.id, kind: t.cutIn || 'throw', itemId: t.id, targetIds: [] });
+        let centre;
+        if (t.placed) {
+            centre = { x: intent.to.x + 0.5, y: intent.to.y + 0.5, h: (intent.to.z ?? u.z) + 1.5 };
+            this.emit({ t: 'throw', unitId: u.id, itemId: t.id, points: [this.chest(u), centre] });
+        } else {
+            // Scatter grows with distance and shrinks with accuracy.
+            const dist = Math.hypot(intent.to.x - u.x, intent.to.y - u.y);
+            const scatter = dist * Math.tan(3.2 * Math.PI / 180) / Math.max(0.3, accuracyMult(u));
+            const a = this.rng.next() * Math.PI * 2, r = Math.sqrt(this.rng.next()) * scatter;
+            const tx = Math.round(intent.to.x + Math.cos(a) * r), ty = Math.round(intent.to.y + Math.sin(a) * r);
+            const arc = this.throwArc(u, { x: tx, y: ty, z: intent.to.z });
+            const pts = arc.blockedAt ? arc.points : arc.points;
+            centre = arc.ok ? arc.land : (arc.blockedAt || arc.land);
+            this.emit({ t: 'throw', unitId: u.id, itemId: t.id, points: pts, scatter: +r.toFixed(2) });
+        }
+        this.detonate(t, centre, u);
+    }
+    detonate(t, centre, by) {
+        if (t.smoke) {
+            const cells = this.field.addSmoke(centre.x - 0.5, centre.y - 0.5, Math.floor(centre.h - 0.5), t.radius, t.smoke);
+            this.emit({ t: 'smoke', x: centre.x, y: centre.y, h: centre.h, radius: t.radius, cells });
+            return;
+        }
+        this.explode({ x: centre.x, y: centre.y, h: centre.h, radius: t.radius, power: (t.power || 0) * (by?.buffs.demolish ? 2 : 1), damage: t.damage, element: t.element, shred: t.shred, knockback: t.knockback, by: by?.id, item: t.id });
+        if (by) by.buffs.demolish = false;
+        this.noise(Math.floor(centre.x), Math.floor(centre.y), Math.floor(centre.h), t.noise ?? 14, by);
+    }
+    explode(b) {
+        const changes = this.store.record(() => {
+            const { destroyed, explosions } = b.power > 0 ? explodeVoxels(this.store, b) : { destroyed: [], explosions: [b] };
+            this.stats.voxelsDestroyed += destroyed.length;
+            if (b.item && this.stats.throwables[b.item]) this.stats.throwables[b.item].voxels += destroyed.length;
+            for (const e of explosions) {
+                this.emit({ t: 'explosion', x: e.x, y: e.y, h: e.h, radius: e.radius, element: e.element || null, source: e.source || b.item || null });
+                this.blastUnits(e, b.by, b.item);
+                if (e.element) this.elementImpact(e.element, e, e.radius);
+            }
+            if (destroyed.length) this.settle();
+        });
+        if (changes.length) this.emit({ t: 'voxels', changes });
+        this.checkFalls();
+    }
+    blastUnits(e, by, item = null) {
+        for (const u of this.units.filter(alive)) {
+            const c = this.chest(u);
+            const clustered = this.formations.isClustered(u);
+            const r = e.radius + (clustered ? B.clusteredRadiusBonus : 0);
+            const d = Math.hypot(c.x - e.x, c.y - e.y, (c.h - e.h) * 0.8);
+            if (d > r + 0.5) continue;
+            const shielded = castRay(this.store, { x: e.x, y: e.y, h: e.h + 0.2 }, c, { blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile === 'block' }).hit;
+            let dmg = (e.damage || 0) * Math.max(0.25, 1 - d / (r + 0.5)) * (clustered ? B.clusteredDamageMult : 1) * (shielded ? 0.5 : 1);
+            dmg = Math.round(dmg);
+            if (dmg > 0) {
+                const dealt = this.dealDamage(u, 'torso', dmg, { pierce: Math.ceil(partArmor(u, 'torso') / 2), shred: e.shred || 0, element: e.element, source: by });
+                if (item && this.stats.throwables[item]) this.stats.throwables[item].unitDamage += dealt;
+            } else if (e.element) for (const s of elementStatusesFor(e.element, u)) this.giveStatus(u, s);
+            if (e.knockback && alive(u)) this.knockback(u, u.x + 0.5 - e.x, u.y + 0.5 - e.y, e.knockback);
+        }
+    }
+    elementImpact(element, p, radius) {
+        const changes = this.store.record(() => {
+            const ec = this.field.applyArea(element, p.x, p.y, p.h, radius);
+            if (ec.length) {
+                if (ec.some(c => c.t === 'ignite')) this.stats.fires += ec.filter(c => c.t === 'ignite').length;
+                this.emit({ t: 'elements', element, changes: ec });
+            }
+        });
+        if (changes.length) this.emit({ t: 'voxels', changes });
+    }
+    knockback(u, dx, dy, tiles) {
+        const len = Math.hypot(dx, dy) || 1, sx = Math.round(dx / len), sy = Math.round(dy / len);
+        const path = [{ x: u.x, y: u.y, z: u.z }];
+        for (let i = 0; i < tiles; i++) {
+            const nx = u.x + sx, ny = u.y + sy;
+            if (this.store.isSolid(nx, ny, u.z + 1) || this.store.isSolid(nx, ny, u.z + 2) || this.occupant(nx, ny, u.z)) { this.dealDamage(u, 'torso', 1, { pierce: 99, source: 'impact' }); break; }
+            const below = this.store.surfaces(nx, ny).filter(s => s.z <= u.z && s.headroom >= 2).at(-1);
+            if (!below) break;
+            u.x = nx; u.y = ny;
+            const drop = u.z - below.z; u.z = below.z;
+            path.push({ x: u.x, y: u.y, z: u.z });
+            if (drop > 1) { this.dealDamage(u, 'legs', (drop - 1) * B.fallDamagePerLevel, { pierce: 99, source: 'fall' }); break; }
+        }
+        if (path.length > 1) this.emit({ t: 'knockback', unitId: u.id, path });
+    }
+
+    /** Structural support after destruction; units on vanished floors fall. */
+    settle() {
+        const { fallen, removed } = settleUnsupported(this.store);
+        if (removed) { this.stats.voxelsDestroyed += removed; this.emit({ t: 'collapse', fallen, removed }); }
+    }
+    checkFalls() {
+        for (const u of this.units.filter(alive)) {
+            const here = this.store.surfaces(u.x, u.y).find(s => s.z === u.z);
+            if (here && here.headroom >= 2) continue;
+            const below = this.store.surfaces(u.x, u.y).filter(s => s.z < u.z && s.headroom >= 2).at(-1);
+            const above = this.store.surfaces(u.x, u.y).filter(s => s.z > u.z && s.z <= u.z + 2 && s.headroom >= 2)[0];
+            const from = u.z;
+            if (!here && below) {
+                u.z = below.z;
+                const levels = from - u.z;
+                this.emit({ t: 'fall', unitId: u.id, from, to: u.z });
+                if (levels > 1) this.dealDamage(u, 'legs', (levels - 1) * B.fallDamagePerLevel, { pierce: 99, source: 'fall' });
+                this.addStress(u, 8, 'fell');
+            } else if (above) {
+                u.z = above.z;                         // rubble piled on them: climb out, bruised
+                this.emit({ t: 'fall', unitId: u.id, from, to: u.z });
+                this.dealDamage(u, 'torso', 3, { pierce: 99, source: 'crushed' });
+            } else if (!here) {
+                this.emit({ t: 'fall', unitId: u.id, from, to: -1 });
+                this.kill(u, 'fall');
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- overwatch, abilities
+    doOverwatch(u, intent) {
+        const w = WEAPONS[intent.weaponId || u.weapon];
+        const t = intent.toward || { x: u.x + (FACING_VEC[u.facing]?.[0] ?? 0) * 5, y: u.y + (FACING_VEC[u.facing]?.[1] ?? 1) * 5 };
+        const dx = t.x - u.x, dy = t.y - u.y, d = Math.hypot(dx, dy) || 1;
+        u.overwatch = { weaponId: w.id, dx: dx / d, dy: dy / d, halfAngle: (intent.halfAngleDeg ?? 50) * Math.PI / 180, range: w.range * 1.25 };
+        u.facing = facingToward(dx, dy);
+        u.ap = 0; u.moveOnlyAp = 0;
+        this.emit({ t: 'overwatch', unitId: u.id, ...u.overwatch });
+        this.formations.onOverwatch(u);
+    }
+    doAbility(u, intent) {
+        const a = ABILITIES[intent.abilityId];
+        u.will -= a.wp; u.ap -= a.ap;
+        this.emit({ t: 'ability', unitId: u.id, abilityId: a.id });
+        switch (a.id) {
+            case 'dash': u.moveOnlyAp += 1; break;
+            case 'quick_aim': u.buffs.quickAim = true; break;
+            case 'deadeye': u.buffs.deadeye = true; break;
+            case 'demolish': u.buffs.demolish = true; break;
+            case 'brace': this.giveStatus(u, 'braced', 1); break;
+            case 'rally':
+                for (const ally of this.unitsOf(u.side)) if (this.distance(ally, u) <= a.radius) { this.addStress(ally, -25, 'rally'); ally.will = Math.min(ally.maxWill, ally.will + 1); }
+                break;
+            case 'suppress': {
+                const target = this.unit(intent.targetId);
+                if (target && alive(target) && u.weapons.includes('repeater')) {
+                    this.emit({ t: 'cutin', unitId: u.id, kind: 'burst', weaponId: 'repeater', targetIds: [target.id] });
+                    this.fireWeapon(u, WEAPONS.repeater, { unitId: target.id, part: 'torso' }, {});
+                    if (alive(target)) this.giveStatus(target, 'suppressed', 2);
+                }
+                break;
+            }
+        }
+    }
+
+    // ---------------------------------------------------------------- breach (PLAN-01 rev 2 §12.5)
+    /** Breach points for a unit: closed doors (and, with a charge, walls) of rooms it is not in. */
+    breachPoints(u) {
+        const out = [];
+        for (const r of this.mission.buildings || []) for (const d of r.doors) {
+            const id = this.store.get(d.x, d.y, d.z + 1);
+            if (id !== MAT.door) continue;
+            if (Math.max(Math.abs(d.x - u.x), Math.abs(d.y - u.y)) > 2 || Math.abs(d.z - u.z) > 1) continue;
+            const room = this.roomBeyond(d, u);
+            if (room >= 0) out.push({ x: d.x, y: d.y, z: d.z, roomId: room, entry: 'door' });
+        }
+        return out;
+    }
+    roomBeyond(d, u) {
+        const mine = this.roomOf(u);
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+            const r = this.store.roomAt(d.x + dx, d.y + dy, d.z + 1);
+            if (r >= 0 && r !== mine) return r;
+        }
+        return -1;
+    }
+    validateBreach(intent) {
+        const d = intent.door; if (!d) return 'no_door';
+        const ids = intent.unitIds?.length ? intent.unitIds : [intent.unitId];
+        const units = ids.map(id => this.unit(id));
+        if (units.some(u => !u || !alive(u) || u.side !== this.activeSide || u.ap < 1)) return 'no_ap';
+        const doorId = this.store.get(d.x, d.y, d.z + 1);
+        if (intent.entry === 'charge') {
+            if (!units.some(u => u.items.breach_charge > 0)) return 'no_item';
+            if (doorId === AIR) return 'no_door';
+        } else if (doorId !== MAT.door) return 'no_door';
+        if (units.some(u => Math.max(Math.abs(d.x - u.x), Math.abs(d.y - u.y)) > 2 || Math.abs(d.z - u.z) > 1)) return 'not_adjacent';
+        if (this.roomBeyond(d, units[0]) < 0) return 'no_door';
+        return null;
+    }
+    doBreach(intent) {
+        const d = intent.door;
+        const ids = intent.unitIds?.length ? intent.unitIds : [intent.unitId];
+        const units = ids.map(id => this.unit(id));
+        const roomId = this.roomBeyond(d, units[0]);
+        const room = this.mission.rooms[roomId];
+        this.stats.breaches++;
+        this.emit({ t: 'cutin', unitId: units[0].id, kind: 'breach', group: units.map(u => u.id), targetIds: [] });
+        const formationBonus = this.formations.breachNoiseMult(units[0]);
+        if (intent.entry === 'charge') {
+            const carrier = units.find(u => u.items.breach_charge > 0);
+            carrier.items.breach_charge--;
+            this.detonate(THROWABLES.breach_charge, { x: d.x + 0.5, y: d.y + 0.5, h: d.z + 1.5 }, carrier);
+        } else {
+            const changes = this.store.record(() => { for (let k = 1; k <= 2; k++) if (this.store.get(d.x, d.y, d.z + k) === MAT.door) this.store.set(d.x, d.y, d.z + k, MAT.door_open); });
+            this.emit({ t: 'door', x: d.x, y: d.y, z: d.z, open: true, unitId: units[0].id });
+            this.emit({ t: 'voxels', changes });
+            this.noise(d.x, d.y, d.z, 12 * formationBonus, units[0]);
+        }
+        this.revealRoom(roomId, units[0]);
+        // Defenders: unalerted ones are surprised.
+        const defenders = this.units.filter(e => alive(e) && e.side !== units[0].side && this.roomOf(e) === roomId);
+        for (const e of defenders) {
+            if (!e.alerted) { this.giveStatus(e, 'surprised', 1); e.overwatch = null; }
+        }
+        this.alertGroup(defenders.map(e => e.group), 'breach');
+        this.emit({ t: 'breach', door: d, roomId, unitIds: units.map(u => u.id), entry: intent.entry || 'door', defenders: defenders.map(e => e.id) });
+        // Entrants move to the nearest free cells inside, then take one breach shot each.
+        const cells = (room?.cells || []).map(([x, y]) => ({ x, y, z: room.floorZ }))
+            .sort((a, b) => Math.hypot(a.x - d.x, a.y - d.y) - Math.hypot(b.x - d.x, b.y - d.y));
+        for (const u of units) {
+            if (!alive(u)) continue;
+            u.ap -= 1;
+            const search = this.reach(u, 12);
+            const cell = cells.find(c => search.costs.has(nodeKey(c)) && !this.occupant(c.x, c.y, c.z));
+            if (cell) {
+                const path = pathTo(search, nodeKey(cell));
+                const walked = [path[0]];
+                for (let i = 1; i < path.length && alive(u); i++) { this.openDoorsOnStep(u, path[i - 1], path[i]); Object.assign(u, path[i]); walked.push(path[i]); this.checkReactions(u, walked); }
+                this.emit({ t: 'move', unitId: u.id, path: walked, ap: 1, breach: true });
+            }
+            if (!alive(u)) continue;
+            const targets = defenders.filter(e => alive(e) && this.sees(u, e)).sort((a, b) => a.hp - b.hp);
+            const w = WEAPONS[u.weapon];
+            if (targets.length && w.kind === 'ballistic' && (u.ammo[w.id] ?? 0) >= (w.perShot || 1)) {
+                this.fireWeapon(u, w, { unitId: targets[0].id, part: 'torso' }, { breach: true });
+            }
+        }
+        this.formations.onBreach(units);
+    }
+
+    // ---------------------------------------------------------------- awareness
+    noise(x, y, z, radius, by) {
+        if (!radius) return;
+        const groups = [];
+        for (const e of this.units) {
+            if (!alive(e) || e.alerted || (by && e.side === by.side)) continue;
+            let r = radius;
+            const room = this.store.roomAt(e.x, e.y, e.z + 1);
+            if (room >= 0 && room !== this.store.roomAt(x, y, z + 1)) r *= 0.6;   // walls muffle
+            if (Math.hypot(e.x - x, e.y - y, e.z - z) <= r) groups.push(e.group);
+        }
+        if (groups.length) this.alertGroup(groups, 'noise');
+    }
+    alertGroup(groups, why) {
+        const set = new Set(groups);
+        const woke = [];
+        for (const e of this.units) if (alive(e) && !e.alerted && set.has(e.group) && e.side === 'enemy') { e.alerted = true; woke.push(e.id); }
+        if (woke.length) this.emit({ t: 'alert', unitIds: woke, why });
+    }
+    updateVisibility() {
+        const seen = this.visibleTo('player');
+        const groups = [];
+        for (const id of seen) { const e = this.unit(id); if (e && !e.alerted) groups.push(e.group); }
+        // Enemies who see a player unit wake their pod too.
+        for (const e of this.unitsOf('enemy')) if (!e.alerted && this.unitsOf('player').some(p => this.sees(e, p))) groups.push(e.group);
+        if (groups.length) this.alertGroup(groups, 'spotted');
+        for (const id of seen) { const e = this.unit(id); const r = this.roomOf(e); if (r >= 0 && !this.revealedRooms.has(r)) { this.revealedRooms.add(r); this.emit({ t: 'reveal', roomId: r }); } }
+        this.visible = seen;
+    }
+
+    weaponStats(id) { return this.stats.weapons[id] ||= { shots: 0, projectiles: 0, hits: 0, damage: 0, kills: 0, ap: 0, voxels: 0 }; }
+
+    /** Hash of everything that matters for lockstep: map, units, field. */
+    hash() {
+        const units = this.units.map(u => [u.id, u.x, u.y, u.z, u.hp, u.ap, u.dead ? 1 : 0, u.stress, u.facing, Object.values(u.parts).map(p => p.hp + ':' + p.armor).join(',')].join('|')).join(';');
+        return `${this.store.hash()}:${hashString(units).toString(16)}:${hashString(JSON.stringify(this.field.snapshot())).toString(16)}:${this.seq}`;
+    }
+}
+
+function coverAgainstAll(battle, to, u) {
+    let worst = 2;
+    for (const e of battle.enemiesOf(u)) if (battle.visible?.has(e.id) || u.side !== 'player') worst = Math.min(worst, coverAgainst(battle.store, to.x, to.y, to.z, e.x, e.y));
+    return worst;
+}

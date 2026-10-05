@@ -1,0 +1,39 @@
+
+== proving-grounds (formations on) — 100 battles
+player win   76% · draws    2% · avg rounds 19.9 · survivors 1.45 · 1608 ms/battle
+per battle: voxels 18.9 · fires 2.8 · breaches 4.35 · reactions 0.6
+weapon            shots  proj-hit  dmg/shot  dmg/AP  kills/shot  voxels
+Cult Musket         777    87%      5.55    2.82      0.183       7
+Crossbow            743    82%      5.46    2.76      0.315       6
+Repeater Rifle      706    55%      7.09    3.57      0.333      24
+Shortbow            485    81%      4.59    2.34      0.144       0
+Long Rifle          415    90%     10.78    3.69      0.578       3
+Blunderbuss         300    38%      6.27    3.28      0.400      66
+Siege Maul           83   100%      8.86    4.43      0.229       0
+Fire Lance           12    28%      2.75    1.38      0.167       1
+Powder Bomb      thrown 48 · unit dmg/throw 6.25 · voxels/throw 17.0
+Frost Flask      thrown 53 · unit dmg/throw 0.79 · voxels/throw 0.5
+Fire Flask       thrown 68 · unit dmg/throw 2.19 · voxels/throw 2.0
+Gale Flask       thrown 7 · unit dmg/throw 0.43 · voxels/throw 2.4
+formation shield_line: declared 106 · phases active 285 · dissolved 104 · breaches 0
+
+== proving-grounds (formations off) — 100 battles
+player win   74% · draws    3% · avg rounds 20.6 · survivors 1.41 · 1640 ms/battle
+per battle: voxels 18.7 · fires 2.9 · breaches 4.30 · reactions 0.6
+weapon            shots  proj-hit  dmg/shot  dmg/AP  kills/shot  voxels
+Cult Musket         839    87%      5.57    2.82      0.184      13
+Crossbow            808    81%      5.35    2.72      0.293       5
+Repeater Rifle      746    52%      6.82    3.45      0.334      28
+Shortbow            543    72%      3.98    2.03      0.133       0
+Long Rifle          409    88%     10.47    3.54      0.567       4
+Blunderbuss         299    41%      6.57    3.42      0.415      66
+Siege Maul           76   100%      8.87    4.43      0.066       0
+Fire Lance           14    29%      1.36    0.73      0.143       2
+Powder Bomb      thrown 45 · unit dmg/throw 6.36 · voxels/throw 15.9
+Frost Flask      thrown 57 · unit dmg/throw 0.84 · voxels/throw 0.5
+Fire Flask       thrown 60 · unit dmg/throw 2.13 · voxels/throw 1.5
+Gale Flask       thrown 6 · unit dmg/throw 0.50 · voxels/throw 1.8
+
+formation win-rate delta: 2.0 pts (gate: +2 … +8 pooled, never > +12 per scenario, never < −3)
+
+wrote /tmp/claude-0/-home-claude/2f0c0bde-c612-589b-8442-6d548a6945ad/scratchpad/sim100.json
