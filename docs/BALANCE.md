@@ -45,3 +45,10 @@ Hit rates look high because the AI only shoots when its estimate is good; the hu
 - Re-run after the fire lance change; check the long rifle (3 AP) against the repeater.
 - Run `npm run sim:world` across all ten burgs (denser maps, more indoor fights).
 - Human check (PLAN-01 §15.5): play 6 missions, compare with the bot numbers.
+
+## Generated burgs (3 seeds each, standard squad vs 10 hostiles, formations on)
+
+Player win rate is about **35 %** across the ten burgs (0–67 % per burg; 9–24 rounds). Dense towns (Bois,
+Morokov) are hardest: short sightlines, two pods indoors, and more hostiles than the Proving Grounds. Before
+tuning world missions, decide the target (PLAN-01 §15.3: starter kit wins 55–75 %) and either cut a pod or add a
+fifth soldier — `chooseSpawns()` in `shared/mission/WorldMission.js` controls pod count.
