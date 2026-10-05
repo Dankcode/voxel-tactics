@@ -4,6 +4,7 @@
 // SKELETON: one rig (offset back/up/right, dolly forward). TODO(animation): per-kind rigs (low angle
 // for heavy weapons, tracking for throws), depth of field, collision against walls behind the unit.
 import * as THREE from 'three';
+import { castRay } from '../../../shared/voxel/Raycast.js';
 
 export class CameraDirector {
     constructor(scene) {
@@ -18,8 +19,16 @@ export class CameraDirector {
         if (dir.lengthSq() < 1e-6) dir.set(0, 0, 1);
         dir.normalize();
         const right = new THREE.Vector3(-dir.z, 0, dir.x);
-        this.from.copy(shooter).addScaledVector(dir, -4.2).addScaledVector(right, 1.4).add(new THREE.Vector3(0, 2.9, 0));
-        this.to.copy(shooter).addScaledVector(dir, -3.1).addScaledVector(right, 1.1).add(new THREE.Vector3(0, 2.4, 0));
+        // Pull the rig in until nothing solid sits between the shoulder and the lens (no cameras inside walls).
+        const store = this.store;
+        const head = { x: shooter.x, y: shooter.z, h: shooter.y + 1.7 };
+        const clear = v => !store || (!store.isSolid(Math.floor(v.x), Math.floor(v.z), Math.floor(v.y)) &&
+            !castRay(store, head, { x: v.x, y: v.z, h: v.y }, { blocks: (s, x, y, z) => s.isSolid(x, y, z) }).hit);
+        let back = 4.2;
+        const at = (b, side, up) => shooter.clone().addScaledVector(dir, -b).addScaledVector(right, side).add(new THREE.Vector3(0, up, 0));
+        while (back > 0.9 && !clear(at(back, 1.4 * back / 4.2, 2.9))) back -= 0.3;
+        this.from.copy(at(back, 1.4 * back / 4.2, 2.9));
+        this.to.copy(at(back * 0.74, 1.1 * back / 4.2, 2.4));
         this.look.copy(target).add(new THREE.Vector3(0, 1.1, 0));
         this.cam.aspect = window.innerWidth / window.innerHeight;
         this.cam.updateProjectionMatrix();

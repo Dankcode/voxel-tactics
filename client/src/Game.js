@@ -57,6 +57,7 @@ export class Game {
             return r >= 0 && this.fog && !this.battle.revealedRooms.has(r) ? [0.5, 0.5, 0.62] : null;
         };
         this.voxelView.rebuildAll();
+        this.cameraDirector.store = store;
         await Promise.all(this.battle.units.map(async u => this.views.set(u.id, new UnitView(this.scene, u, await loadCharacterArt(u.art)))));
         const first = this.battle.unitsOf('player')[0];
         this.scene.focus(store.width / 2, 2, store.depth / 2);
