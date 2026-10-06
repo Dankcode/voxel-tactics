@@ -6,6 +6,7 @@ import { ABILITIES, CLASSES, ENEMIES } from '../../../shared/content/units.js';
 import { FORMATIONS } from '../../../shared/content/formations.js';
 import { alive } from '../../../shared/battle/Units.js';
 import { ICONS } from './Icons.js';
+import { TERRAIN_CUES } from '../render/MaterialLibrary.js';
 
 const PARTS = [['head', 'Head', 'Z'], ['torso', 'Torso', 'X'], ['armL', 'L Arm', 'C'], ['armR', 'R Arm', 'V'], ['legs', 'Legs', 'G']];
 const pct = v => `${Math.round(v * 100)}%`;
@@ -61,6 +62,8 @@ export class Hud {
             case 'options': this.toggleOptions(); break;
             case 'opt': g.options[arg] = !g.options[arg]; this.renderOptions(); break;
             case 'lighting': g.scene.setLighting(arg); this.renderOptions(); break;
+            case 'ao': g.scene.setAO(!g.scene.ao); this.renderOptions(); break;
+            case 'cue': TERRAIN_CUES[arg].value = TERRAIN_CUES[arg].value ? 0 : 1; this.renderOptions(); break;
             case 'menu': g.exitToMenu(); break;
             case 'select': g.select(arg); break;
             case 'slot': this.runSlot(+arg); break;
@@ -83,6 +86,7 @@ export class Hud {
         if (el.classList.contains('hidden')) return;
         const row = (k, label) => `<button data-act="opt" data-arg="${k}" class="${o[k] ? 'on' : ''}">${o[k] ? '☑' : '☐'} ${label}</button>`;
         el.innerHTML = `<h4>Options</h4>${row('autoEndTurn', 'Auto end turn when the squad is spent')}${row('autoNext', 'Auto-select the next ready soldier')}${row('followCamera', 'Camera follows actions')}
+            <h4>Readability</h4><button data-act="cue" data-arg="uGrid" class="${TERRAIN_CUES.uGrid.value ? 'on' : ''}">${TERRAIN_CUES.uGrid.value ? '☑' : '☐'} Tile grid on walkable ground</button><button data-act="cue" data-arg="uRim" class="${TERRAIN_CUES.uRim.value ? 'on' : ''}">${TERRAIN_CUES.uRim.value ? '☑' : '☐'} Ledge rims (orange = 2+ drop)</button><button data-act="ao" class="${g.scene.ao ? 'on' : ''}">${g.scene.ao ? '☑' : '☐'} Ambient occlusion</button>
             <h4>Lighting</h4><div class="row">${['day', 'dusk', 'night'].map(l => `<button data-act="lighting" data-arg="${l}" class="${g.scene.lightingName === l ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     }
     log(text, cls = '') {

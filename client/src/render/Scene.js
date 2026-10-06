@@ -2,6 +2,10 @@
 // image-based reflections), tone mapping and the storey cutaway plane.
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 
 const PITCH = Math.atan2(28, Math.hypot(20, 26));          // vibe-game CameraView direction's elevation
 
@@ -37,7 +41,11 @@ export class Scene {
         this.sun.shadow.bias = -0.0004;
         this.sun.shadow.normalBias = 0.04;
         this.sun.shadow.radius = 3;
-        this.scene.add(this.hemi, this.sun, this.sun.target);
+        // A cool back light (no shadows) separates silhouettes and makes vertical faces facing away from the sun read
+        // as walls rather than voids.
+        this.back = new THREE.DirectionalLight(0x9fb8ff, 0.55);
+        this.scene.add(this.hemi, this.sun, this.sun.target, this.back, this.back.target);
+        this.ao = true;
         const pmrem = new THREE.PMREMGenerator(this.renderer);
         this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
         this.setBounds(60, 46, 16);
@@ -55,6 +63,7 @@ export class Scene {
         this.scene.background = gradientTexture(L.bgTop, L.bgBottom);
         this.scene.fog = new THREE.Fog(L.fog, 160, 320);
         this.sunDir = new THREE.Vector3(...L.sunDir).normalize();
+        this.back.intensity = (L.backI ?? 0.55);
         this.placeSun();
     }
     /** Fit the sun's shadow camera to the battlefield. */
@@ -72,10 +81,37 @@ export class Scene {
         this.sun.target.position.copy(c);
         this.sun.position.copy(c).addScaledVector(this.sunDir, r * 1.5);
         this.sun.target.updateMatrixWorld();
+        this.back.target.position.copy(c);
+        this.back.position.copy(c).add(new THREE.Vector3(-this.sunDir.x, 0.6, -this.sunDir.z).normalize().multiplyScalar(r));
+        this.back.target.updateMatrixWorld();
+    }
+    /** Ambient occlusion (GTAO) through an EffectComposer; overlays, sprites and transparent things are left out. */
+    setAO(on) { this.ao = on; if (on && !this.composer) this.makeComposer(); }
+    makeComposer() {
+        const w = window.innerWidth, h = window.innerHeight;
+        this.composer = new EffectComposer(this.renderer);
+        this.composer.addPass(new RenderPass(this.scene, this.camera));
+        const gtao = new GTAOPass(this.scene, this.camera, w, h, undefined, { radius: 0.9, distanceExponent: 1.4, thickness: 1.2, scale: 1.1, samples: 12 });
+        gtao.blendIntensity = 0.85;
+        const base = gtao._overrideVisibility.bind(gtao);
+        gtao._overrideVisibility = () => {
+            base();
+            this.scene.traverse(o => {
+                if (!o.visible) return;
+                const m = o.material;
+                if (o.userData.noAO || o.isSprite || (m && !Array.isArray(m) && m.transparent)) { o.visible = false; gtao._visibilityCache.push(o); }
+            });
+        };
+        this.gtao = gtao;
+        this.composer.addPass(gtao);
+        this.composer.addPass(new OutputPass());
+        this.composer.setSize(w, h);
+        this.composer.setPixelRatio(this.renderer.getPixelRatio());
     }
     resize() {
         const w = window.innerWidth, h = window.innerHeight;
         this.renderer.setSize(w, h, false);
+        this.composer?.setSize(w, h);
         this.aspect = w / h;
         this.updateCamera();
     }
@@ -116,7 +152,8 @@ export class Scene {
     render(dt) {
         this.shake = Math.max(0, this.shake - dt * 3);
         this.updateCamera(dt);
-        this.renderer.render(this.scene, this.camera);
+        if (this.ao) { if (!this.composer) this.makeComposer(); this.composer.render(dt); }
+        else this.renderer.render(this.scene, this.camera);
     }
     /** Ray from the camera through a screen pixel, in world coordinates (three space). */
     rayAt(px, py) {

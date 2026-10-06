@@ -353,7 +353,7 @@ function furnish(store, plan, rooms, fz, reserved, rng, anchor, obstacles = new 
 function buildRoof(store, spec, top, wallKey) {
     const { x0, y0, w, d } = spec;
     const style = spec.roof || 'flat';
-    const slab = wallKey === 'timber' ? 'plank' : wallKey === 'stone' ? 'stone_floor' : 'plaster';
+    const slab = wallKey === 'timber' ? 'plank' : 'stone_floor';          // never the wall material: the tile set draws walls as panels
     for (let y = y0; y < y0 + d; y++) for (let x = x0; x < x0 + w; x++) store.set(x, y, top, MAT[style === 'flat' || style === 'terrace' ? slab : 'roof']);
     if (style === 'flat' || style === 'terrace') {
         for (let y = y0; y < y0 + d; y++) for (let x = x0; x < x0 + w; x++) {

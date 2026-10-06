@@ -42,7 +42,8 @@ def('plaster', { label: 'Plaster wall', element: ELEMENTS.STRUCTURE, color: 0xe8
 def('timber', { label: 'Timber wall', element: ELEMENTS.STRUCTURE, color: 0x9a6a43, hp: 4, flammable: true, burnTo: 'ash', family: 'wood' });
 def('plank', { label: 'Wood floor', element: ELEMENTS.STRUCTURE, color: 0xb0814f, hp: 4, flammable: true, burnTo: 'ash', family: 'wood' });
 def('stone_floor', { label: 'Stone floor', element: ELEMENTS.STRUCTURE, color: 0xb9b2a6, hp: 8, family: 'stone' });
-def('roof', { label: 'Roof tiles', element: ELEMENTS.STRUCTURE, color: 0xb4553f, hp: 3, family: 'wood', flammable: true, burnTo: 'ash' });
+// Pitched roofs are not walkable (XCOM rule: flat roofs are terrain, pitched roofs are scenery you can shoot through).
+def('roof', { label: 'Roof tiles', element: ELEMENTS.STRUCTURE, color: 0xb4553f, hp: 3, family: 'wood', flammable: true, burnTo: 'ash', walkable: false });
 def('glass', { label: 'Window', element: ELEMENTS.STRUCTURE, color: 0xbfe6f2, hp: 1, opaque: false, projectile: 'shatter', render: 'glass', family: 'glass', structural: false });
 def('door', { label: 'Door', element: ELEMENTS.STRUCTURE, color: 0x6f4526, hp: 4, solid: false, opaque: true, projectile: 'block', render: 'solid', flammable: true, part: 2, family: 'wood', structural: false, walkable: false });
 def('door_open', { label: 'Open door', element: ELEMENTS.STRUCTURE, color: 0x6f4526, hp: 4, solid: false, opaque: false, projectile: 'pass', render: 'none', part: 2, family: 'wood', structural: false, walkable: false });
@@ -71,6 +72,12 @@ def('cloth', { label: 'Awning', element: ELEMENTS.STRUCTURE, color: 0xd9a441, hp
 def('lantern', { label: 'Lantern', element: ELEMENTS.PYRO, color: 0xffd36b, hp: 1, light: 3, family: 'metal', structural: false,
     explosive: { radius: 1.4, power: 1, damage: 1, element: 'pyro' } });
 def('hay', { label: 'Hay bale', element: ELEMENTS.ANEMO, color: 0xd8b860, hp: 3, flammable: true, burnTo: 'ash', family: 'plant', structural: false });
+// Cover props (shared/mission/PropCatalog.js): each one is a real object with a gameplay job.
+def('drystone', { label: 'Dry-stone wall', color: 0x9a9384, hp: 8, family: 'stone', debris: 'rubble', structural: false });
+def('fence', { label: 'Plank fence', element: ELEMENTS.STRUCTURE, color: 0x8a6440, hp: 3, flammable: true, burnTo: 'ash', family: 'wood', structural: false });
+def('rock', { label: 'Boulder', color: 0x8c877d, hp: 14, family: 'stone', debris: 'rubble', structural: false });
+def('cart', { label: 'Cart', element: ELEMENTS.STRUCTURE, color: 0x8a6238, hp: 4, flammable: true, burnTo: 'ash', family: 'wood', structural: false });
+def('stall', { label: 'Market stall', element: ELEMENTS.STRUCTURE, color: 0xa47a4a, hp: 3, flammable: true, burnTo: 'ash', family: 'wood', structural: false });
 
 export const MATERIALS = Object.freeze(M);
 export const MAT = Object.freeze(Object.fromEntries(M.map(m => [m.key, m.id])));

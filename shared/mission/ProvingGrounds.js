@@ -26,16 +26,17 @@ export function buildProvingGrounds({ seed = 1 } = {}) {
     // Hill with a ramp on its east side (stone cap = sniper nest).
     for (let y = 28; y <= 36; y++) for (let x = 3; x <= 11; x++) for (let z = 2; z <= 4; z++) store.set(x, y, z, z === 4 ? MAT.grass : MAT.soil);
     for (let i = 0; i < 3; i++) for (let y = 31; y <= 33; y++) for (let z = 2; z <= 3 - i + 1 && z <= 4; z++) store.set(12 + i, y, z, z === 4 - i ? MAT.grass : MAT.soil);
-    placeProp(store, 'low_wall', 4, 28, 4, 6, true, 'sandbag');
+    placeProp(store, 'sandbags', 4, 28, 4, 6, true);
     placeProp(store, 'tree', 9, 35, 4);
 
     // Firing range: rows of each cover material across the lane.
     placeProp(store, 'hedge_row', 3, 8, G, 7, true);
     placeProp(store, 'crates', 4, 12, G); placeProp(store, 'crate', 9, 12, G); placeProp(store, 'keg', 12, 12, G);
+    // Range targets: a section of each building wall type (stone, timber, plaster with a window) to shoot through.
     placeProp(store, 'wall', 2, 15, G, 4, true, 'stone', 2);
     placeProp(store, 'wall', 6, 15, G, 3, true, 'timber', 2);
     placeProp(store, 'wall', 9, 15, G, 3, true, 'plaster', 2);
-    for (let x = 9; x < 12; x++) store.set(x, 15, G + 2, MAT.glass);
+    store.set(10, 15, G + 2, MAT.glass);
     placeProp(store, 'sandbags', 13, 15, G, 4, true);
     placeProp(store, 'tree', 15, 6, G);
 
@@ -65,7 +66,7 @@ export function buildProvingGrounds({ seed = 1 } = {}) {
     placeProp(store, 'stall', 30, 19, G); placeProp(store, 'cart', 35, 25, G); placeProp(store, 'crates', 41, 20, G);
     placeProp(store, 'keg', 38, 19, G); placeProp(store, 'water_barrel', 39, 19, G);
     placeProp(store, 'boulder', 16, 26, G); placeProp(store, 'tree', 34, 39, G); placeProp(store, 'tree', 54, 43, G);
-    placeProp(store, 'hedge_row', 14, 40, G, 6, true); placeProp(store, 'low_wall', 33, 32, G, 4, false, 'stone');
+    placeProp(store, 'hedge_row', 14, 40, G, 6, true); placeProp(store, 'low_wall', 33, 32, G, 4, false);
     placeProp(store, 'lantern_cluster', 22, 25, G); placeProp(store, 'fountain', 14, 20, G);
 
     // Outdoor cover pass on the open ground (keeps the firing range lane, the pond and the spawn clear).

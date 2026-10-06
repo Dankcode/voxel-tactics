@@ -53,6 +53,15 @@ export class UnitView {
         this.bar = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.barTex, depthTest: false, transparent: true, toneMapped: false }));
         this.bar.scale.set(1.15, 0.234, 1); this.bar.position.y = h + 0.25; this.bar.renderOrder = 10;
         this.group.add(this.bar);
+        // Height cue (PLAN 22 D7): a drop line and a ring on the ground below a unit standing on a roof or an upper
+        // floor, so its elevation reads at a glance.
+        const lineMat = new THREE.LineDashedMaterial({ color: unit.side === 'player' ? 0x4fd3ff : 0xff5a4a, dashSize: 0.18, gapSize: 0.12, transparent: true, opacity: 0.85, depthTest: false, toneMapped: false });
+        this.dropLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, -1, 0)]), lineMat);
+        this.dropRing = new THREE.Mesh(new THREE.RingGeometry(0.22, 0.3, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: lineMat.color, transparent: true, opacity: 0.8, depthTest: false, side: THREE.DoubleSide, toneMapped: false }));
+        this.dropLine.renderOrder = this.dropRing.renderOrder = 9;
+        this.dropLine.visible = this.dropRing.visible = false;
+        this.group.add(this.dropLine, this.dropRing);
+        this.dropHeight = 0;
         this.animator = new SpriteAnimator(m, this.texture, this);
         this.pos = new THREE.Vector3();
         this.facingVec = [...(FACING_VEC[unit.facing] || [0, 1])];
@@ -83,6 +92,17 @@ export class UnitView {
         this.animator.setScreenAngle(Math.atan2(this.facingVec[0], this.facingVec[1]) - yaw);
         this.animator.update(dt);
         this.bar.visible = !this.unit.dead;
+    }
+    /** groundY: height of the lowest walkable surface under the unit. */
+    updateDrop(groundY) {
+        const h = this.pos.y - groundY;
+        const show = h >= 1.9 && !this.unit.dead && this.group.visible;
+        this.dropLine.visible = this.dropRing.visible = show;
+        if (!show || Math.abs(h - this.dropHeight) < 1e-3) return;
+        this.dropHeight = h;
+        this.dropLine.geometry.setFromPoints([new THREE.Vector3(0, 0.02, 0), new THREE.Vector3(0, -h + 0.03, 0)]);
+        this.dropLine.computeLineDistances();
+        this.dropRing.position.y = -h + 0.03;
     }
     setSelected(on) { this.selRing.visible = on; }
     setVisible(on) { this.group.visible = on; }

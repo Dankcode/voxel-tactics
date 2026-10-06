@@ -7,16 +7,17 @@ back shot**: the character's large back-view illustration over an over-the-shoul
 
 > Test build. Character art is **placeholder** (smooth, shaded vector placeholders from
 > `tools/art/make_placeholders.py`), and the animation code is a skeleton with marked TODOs. The battle rules,
-> maps, destruction, elements, formations, AI, balance sim and online co-op work. Voxels render with real
-> textures (PBR albedo + normal maps, sun shadows, tone mapping). See `docs/RENDERING.md`,
-> `docs/ANIMATION-AUDIT.md` and `docs/BALANCE.md`.
+> maps, destruction, elements, formations, AI, balance sim and online co-op work. Buildings and cover render
+> with a pre-baked modular tile set (thin walls, framed windows and doors, sloped tiled roofs, real-object cover)
+> on top of the voxel grid, with textures, sun shadows, ambient occlusion, lantern light and height cues.
+> See `docs/TILESET.md`, `docs/RENDERING.md`, `docs/ANIMATION-AUDIT.md` and `docs/BALANCE.md`.
 
 ## Quick start
 
 ```bash
 npm install
 npm run dev            # http://localhost:5173  → menu
-npm test               # 36 tests: voxels, elements, ballistics, battle, debug ops, buildings, cover pass, worldgen parity, co-op room
+npm test               # 42 tests: voxels, elements, ballistics, battle, debug ops, buildings, cover pass, tile set, worldgen parity, co-op room
 ```
 
 Deep links for testing:
@@ -83,9 +84,13 @@ the battle was created in debug mode (online rooms only when the host ticked deb
 
 - **Generated maps**: ten burgs from vibe-game's world (baked to `client/public/missions/sites/`), upscaled ×2,
   every building rebuilt hollow and multi-storey with rooms, **corridors**, doors, windows, stairs and roof access.
-- **Outdoor cover**: a cover pass (`shared/mission/CoverScatter.js`) scatters low walls, sandbags, crates, carts,
-  barrels, rocks, fences, hay bales and wall ruins over open ground until no outdoor tile is more than ~4 moves
-  from cover, without ever sealing a street or doorway. Map metrics now report `outdoorCover` and `coverGap`.
+- **Outdoor cover**: a cover pass (`shared/mission/CoverScatter.js`) places real objects from the prop catalogue
+  (`shared/mission/PropCatalog.js`: sandbag lines, dry-stone field walls, plank fences, hay bales, crates, crate
+  stacks, barrels, carts, market stalls, boulders), chosen by the ground they stand on, until no outdoor tile is
+  more than ~4 moves from cover, without ever sealing a street or doorway. Map metrics report `outdoorCover` and
+  `coverGap`.
+- **Buildings**: walls 0.4 voxel thick, framed windows and doors, stairs, sloped hipped roofs with eaves (not
+  walkable) or flat walkable roofs with parapets; all destructible voxel by voxel.
 - **Targeting** (Phoenix Point): each shot fires real rays inside an accuracy cone; hit % per body part is a
   deterministic Monte-Carlo of the same tracer. Disabled arms cost accuracy, legs cost movement, head costs Will.
 - **Cover**: physical — walls stop the rays that hit them; XCOM shields on the HUD read the voxels. Units lean
@@ -128,12 +133,15 @@ npm run mission:report          # map-design metrics and gates for every mission
 npm run worldgen:bake           # re-bake sites from the vibe-game generator (3–8 s each)
 npm run art:placeholders        # regenerate placeholder characters (python3 + Pillow + numpy + scipy)
 npm run art:textures            # regenerate the voxel textures (python3 + Pillow + numpy + scipy)
+npm run kit:bake                # re-bake the building / cover tile set (assets/kit/tileset.glb + tileset.json)
 ```
 
 ## Status and known limits
 
 - Character art is placeholder; animation is frame-based with stubs (see `docs/ANIMATION-AUDIT.md`).
 - The storey cutaway rebuilds every chunk when the level changes (~40–150 ms on a big burg).
+- Tile-set pieces are procedural placeholders; drop real art into `assets/kit/tileset-art.glb` (see `docs/TILESET.md`).
+- City walls and terrain are still voxel cubes.
 - Online co-op is lockstep: every peer runs the battle, so it is not cheat-proof and fog of war is client-side.
   PvP needs server-filtered state (PLAN-01 M13).
 - Map gates are reported, not yet enforced with a repair pass (PLAN-01 §13.4).

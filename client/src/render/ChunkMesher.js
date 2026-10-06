@@ -42,20 +42,22 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
     const out = new Map();
     const bufFor = (key, r) => {
         let b = out.get(key);
-        if (!b) out.set(key, b = { key, group: KIND_GROUP[r.kind || 'opaque'], positions: [], normals: [], uvs: [], colors: [], indices: [] });
+        if (!b) out.set(key, b = { key, group: KIND_GROUP[r.kind || 'opaque'], positions: [], normals: [], uvs: [], colors: [], rims: [], grids: [], indices: [] });
         return b;
     };
     const x0 = cx * CHUNK, y0 = cy * CHUNK, z0 = cz * CHUNK;
     const tint = options.tint || null;
     const cut = options.cutZ ?? Infinity;          // storey cutaway: voxels at z >= cut are not drawn
+    const kit = options.kit || (() => null);      // voxels the tile set draws (thin walls, props …) are skipped
     const opaque = (x, y, z) => z < cut && opaqueAt(store, x, y, z);
+    const hides = (x, y, z) => opaque(x, y, z) && !kit(store, x, y, z);   // only full cubes hide a neighbour's face
     for (let z = z0; z < Math.min(z0 + CHUNK, store.height, cut); z++)
         for (let y = y0; y < Math.min(y0 + CHUNK, store.depth); y++)
             for (let x = x0; x < Math.min(x0 + CHUNK, store.width); x++) {
                 const id = store.get(x, y, z);
                 if (id === AIR) continue;
                 const m = MATERIALS[id];
-                if (m.render === 'none') continue;
+                if (m.render === 'none' || kit(store, x, y, z, id)) continue;
                 const base = renderFor(m.key);
                 const g = KIND_GROUP[base.kind || 'opaque'];
                 const jitter = 0.94 + hash3(x, y, z) * 0.12;
@@ -65,10 +67,10 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
                     const face = FACES[f];
                     const nx = x + face.n[0], ny = y + face.n[1], nz = z + face.n[2];
                     const nid = nz >= cut ? AIR : store.get(nx, ny, nz);
-                    if (g === 0) { if (opaque(nx, ny, nz)) continue; }
-                    else if (nid === id || opaque(nx, ny, nz)) continue;
+                    if (g === 0) { if (hides(nx, ny, nz)) continue; }
+                    else if (nid === id || hides(nx, ny, nz)) continue;
                     // A top face exposed only by the cutaway is a section cap: drawn dark, like XCOM's cut walls.
-                    const capped = face.top && nz >= cut && store.get(nx, ny, nz) !== AIR && opaqueAt(store, nx, ny, nz);
+                    const capped = face.top && nz >= cut && store.get(nx, ny, nz) !== AIR && opaqueAt(store, nx, ny, nz) && !kit(store, nx, ny, nz);
                     if (m.liquid && f !== 0 && nid !== AIR) continue;
                     // Side faces of grass under open sky get the fringe texture; buried grass sides are soil.
                     let key = m.key, r = base;
@@ -78,6 +80,19 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
                     }
                     const buf = bufFor(key, r);
                     const faceUv = r.uv === 'face', scale = r.scale || 1;
+                    // Height readability (PLAN 22 cues): walkable tops get the tile grid; their edges get a rim where
+                    // the ground drops (0 none, 1–4 voxels); higher ground is a touch brighter; cliff faces darken
+                    // toward the bottom of each voxel row so every step reads as a step.
+                    let grid = 0, rim = [0, 0, 0, 0], elev = 1;
+                    if (face.top && g === 0 && !capped) {
+                        grid = m.walkable && !(z + 1 < cut && store.isSolid(x, y, z + 1)) ? 1 : 0;
+                        if (grid) rim = [[0, -1], [1, 0], [0, 1], [-1, 0]].map(([dx, dy]) => {
+                            if (store.isSolid(x + dx, y + dy, z)) return 0;
+                            let d = 1; while (d < 4 && z - d >= 0 && !store.isSolid(x + dx, y + dy, z - d)) d++;
+                            return d;
+                        });
+                        elev = 1 + Math.min(0.24, 0.03 * Math.max(0, z - 1));
+                    }
                     const start = buf.positions.length / 3;
                     const ao = [];
                     for (const [dx, dy, dz] of face.c) {
@@ -91,7 +106,8 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
                                 if (opaque(cxw + ddx, cyw + ddy, czw + ddz)) occ++;
                             }
                         }
-                        const k = jitter * macro * (1 - Math.min(3, Math.max(0, occ - 1)) * 0.2) * (capped ? 0.55 : 1);
+                        const seam = f >= 2 && g === 0 && dz === 0 ? 0.84 : 1;
+                        const k = jitter * macro * elev * seam * (1 - Math.min(3, Math.max(0, occ - 1)) * 0.2) * (capped ? 0.55 : 1);
                         ao.push(k);
                         buf.positions.push(x + dx, z + dz, y + dy);
                         buf.normals.push(face.n[0], face.n[2], face.n[1]);
@@ -100,6 +116,7 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
                         if (face.flipU) u = faceUv ? 1 - u : -u;
                         buf.uvs.push(u, v);
                         buf.colors.push(k * (t ? t[0] : 1), k * (t ? t[1] : 1), k * (t ? t[2] : 1));
+                        buf.rims.push(...rim); buf.grids.push(grid);
                     }
                     // Flip the quad's diagonal toward the brighter pair (avoids AO creases).
                     if (ao[0] + ao[2] >= ao[1] + ao[3]) buf.indices.push(start, start + 2, start + 1, start, start + 3, start + 2);

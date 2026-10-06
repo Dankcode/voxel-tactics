@@ -35,7 +35,7 @@ export class Overlays {
     constructor(scene) {
         this.scene = scene;
         const clip = scene.clipping;
-        this.group = new THREE.Group(); scene.scene.add(this.group);
+        this.group = new THREE.Group(); this.group.userData.noAO = true; scene.scene.add(this.group);
         this.rangeGroup = new THREE.Group(); this.group.add(this.rangeGroup);
         this.pathGroup = new THREE.Group(); this.group.add(this.pathGroup);
         this.shields = new THREE.Group(); this.group.add(this.shields);
@@ -64,6 +64,8 @@ export class Overlays {
         return g;
     }
     clearRange() { for (const c of [...this.rangeGroup.children]) { this.rangeGroup.remove(c); c.geometry.dispose(); } }
+    /** Mark every overlay mesh so the AO pass skips it (they are added and removed all the time). */
+    static flag(o) { o.traverse?.(c => { c.userData.noAO = true; }); return o; }
     /**
      * zones: Map nodeKey → 'blue' | 'yellow'; nodes: Map nodeKey → {x,y,z}.
      * Outlines are drawn where a zone meets a cell outside it (different zone, unreachable or a level change).

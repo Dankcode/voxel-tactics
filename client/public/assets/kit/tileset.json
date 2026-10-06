@@ -1,0 +1,947 @@
+{
+ "version": "tileset-v1",
+ "generated": "2026-10-06",
+ "cell": {
+  "size": 1,
+  "height": 1,
+  "wallThickness": 0.4
+ },
+ "source": "tools/kit/bake_tileset.mjs (procedural placeholders)",
+ "pieces": {
+  "wall_core": {
+   "slots": [
+    "self"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "wall",
+   "text": "Wall post / junction"
+  },
+  "wall_arm": {
+   "slots": [
+    "self"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "wall",
+   "text": "Wall run from the post to the cell edge (+X)"
+  },
+  "wall_beam": {
+   "slots": [
+    "trim"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     0,
+     0.855,
+     -0.23
+    ],
+    [
+     0.5,
+     0.985,
+     0.23
+    ]
+   ],
+   "group": "wall",
+   "text": "Timber storey beam on a wall run"
+  },
+  "wall_beam_core": {
+   "slots": [
+    "trim"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.23,
+     0.855,
+     -0.23
+    ],
+    [
+     0.23,
+     0.985,
+     0.23
+    ]
+   ],
+   "group": "wall"
+  },
+  "wall_post": {
+   "slots": [
+    "trim"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.24,
+     0,
+     -0.24
+    ],
+    [
+     0.24,
+     0.99,
+     0.24
+    ]
+   ],
+   "group": "wall",
+   "text": "Corner timber post"
+  },
+  "wall_quoin": {
+   "slots": [
+    "quoin"
+   ],
+   "tris": 24,
+   "bounds": [
+    [
+     -0.23,
+     0.02,
+     -0.23
+    ],
+    [
+     0.23,
+     0.97,
+     0.23
+    ]
+   ],
+   "group": "wall",
+   "text": "Dressed corner stones"
+  },
+  "wall_brace": {
+   "slots": [
+    "trim"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.483,
+     0.036,
+     -0.225
+    ],
+    [
+     0.483,
+     0.964,
+     0.225
+    ]
+   ],
+   "group": "wall",
+   "text": "Diagonal timber brace"
+  },
+  "coping_core": {
+   "slots": [
+    "quoin"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.26,
+     1,
+     -0.26
+    ],
+    [
+     0.26,
+     1.08,
+     0.26
+    ]
+   ],
+   "group": "wall",
+   "text": "Coping on an exposed wall top"
+  },
+  "coping_arm": {
+   "slots": [
+    "quoin"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     0.2,
+     1,
+     -0.26
+    ],
+    [
+     0.5,
+     1.08,
+     0.26
+    ]
+   ],
+   "group": "wall"
+  },
+  "cap_core": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.25,
+     1.001,
+     -0.25
+    ],
+    [
+     0.25,
+     1.026,
+     0.25
+    ]
+   ],
+   "group": "cutaway",
+   "text": "Section cap where the storey cutaway slices a wall"
+  },
+  "cap_arm": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     0.2,
+     1.001,
+     -0.25
+    ],
+    [
+     0.5,
+     1.026,
+     0.25
+    ]
+   ],
+   "group": "cutaway"
+  },
+  "window": {
+   "slots": [
+    "self",
+    "trim",
+    "glass",
+    "quoin"
+   ],
+   "tris": 120,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.3
+    ],
+    [
+     0.5,
+     1,
+     0.3
+    ]
+   ],
+   "group": "opening",
+   "text": "Window in a wall run (+X): piers, lintel, frame, pane, sill"
+  },
+  "door_lower": {
+   "slots": [
+    "trim",
+    "door",
+    "iron"
+   ],
+   "tris": 72,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.22
+    ],
+    [
+     0.5,
+     1,
+     0.22
+    ]
+   ],
+   "group": "opening",
+   "text": "Closed door, lower voxel (+X run)"
+  },
+  "door_upper": {
+   "slots": [
+    "trim",
+    "door",
+    "iron"
+   ],
+   "tris": 60,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.23
+    ],
+    [
+     0.5,
+     1,
+     0.23
+    ]
+   ],
+   "group": "opening",
+   "text": "Closed door, upper voxel with lintel"
+  },
+  "door_open_lower": {
+   "slots": [
+    "trim",
+    "door"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.22
+    ],
+    [
+     0.5,
+     1,
+     0.82
+    ]
+   ],
+   "group": "opening",
+   "text": "Open door: frame and the leaf swung in (hinge at −X)"
+  },
+  "door_open_upper": {
+   "slots": [
+    "trim",
+    "door"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.23
+    ],
+    [
+     0.5,
+     1,
+     0.82
+    ]
+   ],
+   "group": "opening"
+  },
+  "sconce": {
+   "slots": [
+    "iron",
+    "glow"
+   ],
+   "tris": 60,
+   "bounds": [
+    [
+     -0.06,
+     0.42,
+     -0.42
+    ],
+    [
+     0.06,
+     0.67,
+     0.42
+    ]
+   ],
+   "group": "light",
+   "text": "Wall lantern (both faces of a wall run)"
+  },
+  "stair_block": {
+   "slots": [
+    "self"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "stairs",
+   "text": "Solid stringer under a stair tread"
+  },
+  "stair_step": {
+   "slots": [
+    "self"
+   ],
+   "tris": 24,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "stairs",
+   "text": "Two treads in one voxel, rising toward +X"
+  },
+  "stair_rail": {
+   "slots": [
+    "trim"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.523,
+     0.3,
+     0.41
+    ],
+    [
+     0.523,
+     1.8,
+     0.47
+    ]
+   ],
+   "group": "stairs",
+   "text": "Handrail on the open side (+Z)"
+  },
+  "crate": {
+   "slots": [
+    "crate"
+   ],
+   "tris": 108,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.43
+    ],
+    [
+     0.43,
+     0.86,
+     0.43
+    ]
+   ],
+   "group": "cover",
+   "text": "Wooden crate"
+  },
+  "barrel": {
+   "slots": [
+    "barrel"
+   ],
+   "tris": 420,
+   "bounds": [
+    [
+     -0.36,
+     0,
+     -0.36
+    ],
+    [
+     0.36,
+     0.92,
+     0.36
+    ]
+   ],
+   "group": "cover",
+   "text": "Barrel (powder or water by material)"
+  },
+  "sandbags": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 756,
+   "bounds": [
+    [
+     -0.498,
+     0,
+     -0.308
+    ],
+    [
+     0.498,
+     0.84,
+     0.308
+    ]
+   ],
+   "group": "cover",
+   "text": "Sandbag course (+X run), three rows"
+  },
+  "drystone": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 276,
+   "bounds": [
+    [
+     -0.512,
+     0,
+     -0.329
+    ],
+    [
+     0.509,
+     0.963,
+     0.326
+    ]
+   ],
+   "group": "cover",
+   "text": "Dry-stone field wall (+X run), coursed rubble with capstones"
+  },
+  "fence": {
+   "slots": [
+    "trim",
+    "wood"
+   ],
+   "tris": 132,
+   "bounds": [
+    [
+     -0.505,
+     0,
+     -0.06
+    ],
+    [
+     0.505,
+     0.98,
+     0.065
+    ]
+   ],
+   "group": "cover",
+   "text": "Plank fence (+X run): posts, rails, boards"
+  },
+  "hay": {
+   "slots": [
+    "hay"
+   ],
+   "tris": 384,
+   "bounds": [
+    [
+     -0.46,
+     0,
+     -0.33
+    ],
+    [
+     0.46,
+     0.86,
+     0.33
+    ]
+   ],
+   "group": "cover",
+   "text": "Hay bale"
+  },
+  "rock#0": {
+   "slots": [
+    "rock"
+   ],
+   "tris": 80,
+   "bounds": [
+    [
+     -0.715,
+     -0.183,
+     -0.871
+    ],
+    [
+     0.809,
+     0.975,
+     0.839
+    ]
+   ],
+   "group": "cover",
+   "text": "Boulder (3 variants by hash)",
+   "variants": 3
+  },
+  "rock#1": {
+   "slots": [
+    "rock"
+   ],
+   "tris": 80,
+   "bounds": [
+    [
+     -0.733,
+     -0.137,
+     -0.822
+    ],
+    [
+     0.918,
+     0.987,
+     0.967
+    ]
+   ],
+   "group": "cover",
+   "text": "Boulder (3 variants by hash)",
+   "variants": 3
+  },
+  "rock#2": {
+   "slots": [
+    "rock"
+   ],
+   "tris": 80,
+   "bounds": [
+    [
+     -0.763,
+     -0.14,
+     -0.706
+    ],
+    [
+     0.713,
+     1.012,
+     0.877
+    ]
+   ],
+   "group": "cover",
+   "text": "Boulder (3 variants by hash)",
+   "variants": 3
+  },
+  "rock_top": {
+   "slots": [
+    "rock"
+   ],
+   "tris": 80,
+   "bounds": [
+    [
+     -0.681,
+     -0.32,
+     -0.821
+    ],
+    [
+     0.632,
+     0.86,
+     0.592
+    ]
+   ],
+   "group": "cover",
+   "text": "Upper part of a tall boulder"
+  },
+  "cart_body": {
+   "slots": [
+    "wood",
+    "trim"
+   ],
+   "tris": 72,
+   "bounds": [
+    [
+     -0.5,
+     0.3,
+     -0.48
+    ],
+    [
+     0.5,
+     0.94,
+     0.48
+    ]
+   ],
+   "group": "cover",
+   "text": "Cart bed and sides (+X run), one cell"
+  },
+  "cart_end": {
+   "slots": [
+    "wood"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     0.44,
+     0.52,
+     -0.43
+    ],
+    [
+     0.5,
+     0.88,
+     0.43
+    ]
+   ],
+   "group": "cover",
+   "text": "Cart tailboard at a free end (+X)"
+  },
+  "cart_wheels": {
+   "slots": [
+    "trim",
+    "iron"
+   ],
+   "tris": 176,
+   "bounds": [
+    [
+     -0.322,
+     0,
+     -0.59
+    ],
+    [
+     0.322,
+     0.66,
+     0.59
+    ]
+   ],
+   "group": "cover",
+   "text": "Wheel pair"
+  },
+  "cart_shaft": {
+   "slots": [
+    "trim"
+   ],
+   "tris": 24,
+   "bounds": [
+    [
+     0.45,
+     0.36,
+     -0.33
+    ],
+    [
+     1.35,
+     0.42,
+     0.33
+    ]
+   ],
+   "group": "cover",
+   "text": "Draught shafts at the front end (+X), reach into the next cell"
+  },
+  "stall": {
+   "slots": [
+    "wood",
+    "trim",
+    "cloth"
+   ],
+   "tris": 72,
+   "bounds": [
+    [
+     -0.51,
+     0,
+     -0.614
+    ],
+    [
+     0.51,
+     2.121,
+     0.454
+    ]
+   ],
+   "group": "cover",
+   "text": "Market stall counter (+X run, customers on −Z) with posts and striped awning"
+  },
+  "hedge": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 160,
+   "bounds": [
+    [
+     -0.515,
+     0.102,
+     -0.522
+    ],
+    [
+     0.545,
+     1.052,
+     0.459
+    ]
+   ],
+   "group": "foliage",
+   "text": "Hedge bush (concealment, bullets pass)"
+  },
+  "foliage": {
+   "slots": [
+    "leaves"
+   ],
+   "tris": 80,
+   "bounds": [
+    [
+     -0.78,
+     -0.171,
+     -0.714
+    ],
+    [
+     0.728,
+     1.123,
+     0.789
+    ]
+   ],
+   "group": "foliage",
+   "text": "Tree canopy blob (overlaps neighbours)"
+  },
+  "trunk": {
+   "slots": [
+    "bark"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.197,
+     0,
+     -0.188
+    ],
+    [
+     0.197,
+     1,
+     0.2
+    ]
+   ],
+   "group": "foliage",
+   "text": "Tree trunk segment"
+  },
+  "trunk_base": {
+   "slots": [
+    "bark"
+   ],
+   "tris": 72,
+   "bounds": [
+    [
+     -0.414,
+     0,
+     -0.395
+    ],
+    [
+     0.414,
+     1,
+     0.42
+    ]
+   ],
+   "group": "foliage",
+   "text": "Trunk with root flare"
+  },
+  "lamp_post": {
+   "slots": [
+    "iron"
+   ],
+   "tris": 32,
+   "bounds": [
+    [
+     -0.07,
+     0,
+     -0.07
+    ],
+    [
+     0.07,
+     1,
+     0.07
+    ]
+   ],
+   "group": "light",
+   "text": "Iron post segment"
+  },
+  "lamp_base": {
+   "slots": [
+    "iron"
+   ],
+   "tris": 64,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "light"
+  },
+  "lantern": {
+   "slots": [
+    "iron",
+    "glow"
+   ],
+   "tris": 92,
+   "bounds": [
+    [
+     -0.16,
+     0.1,
+     -0.16
+    ],
+    [
+     0.16,
+     0.7,
+     0.16
+    ]
+   ],
+   "group": "light",
+   "text": "Lantern head"
+  },
+  "table": {
+   "slots": [
+    "wood"
+   ],
+   "tris": 60,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.45
+    ],
+    [
+     0.5,
+     0.74,
+     0.45
+    ]
+   ],
+   "group": "interior",
+   "text": "Table / bench / bed frame (joins neighbours)"
+  },
+  "shelf": {
+   "slots": [
+    "wood",
+    "crate"
+   ],
+   "tris": 96,
+   "bounds": [
+    [
+     -0.33,
+     0,
+     -0.45
+    ],
+    [
+     0.33,
+     1,
+     0.45
+    ]
+   ],
+   "group": "interior",
+   "text": "Shelf / rack (+X faces the room)"
+  },
+  "banner": {
+   "slots": [
+    "cloth"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.45,
+     0.02,
+     -0.02
+    ],
+    [
+     0.45,
+     0.97,
+     0.02
+    ]
+   ],
+   "group": "decor",
+   "text": "Hanging cloth panel"
+  },
+  "crystal": {
+   "slots": [
+    "crystal"
+   ],
+   "tris": 40,
+   "bounds": [
+    [
+     -0.298,
+     0.149,
+     -0.313
+    ],
+    [
+     0.296,
+     1.091,
+     0.264
+    ]
+   ],
+   "group": "decor",
+   "text": "Crystal cluster"
+  }
+ }
+}

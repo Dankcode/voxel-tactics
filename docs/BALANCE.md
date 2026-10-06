@@ -57,6 +57,12 @@ closer to the plan's target band:
 Still inside PLAN-01 §15.3 (starter kit wins 55–75 %). Re-run `npm run sim:formations`: the formation delta
 was measured before the cover pass.
 
+## Real-object cover, non-walkable pitched roofs (2026-10-07, 30 seeds)
+
+The cover pass now places only catalogue objects (`PropCatalog.js`), and pitched roofs can't be stood on.
+Player win rate 57 % (+3 % draws), 20.3 rounds, Long Rifle 3.46 dmg/AP, Repeater 3.65. That is at the low edge
+of the 55–75 % band. If it drifts below, lower `targetShare` in the cover pass or cut a pod.
+
 ## Next
 
 - Re-run after the fire lance change; check the long rifle (3 AP) against the repeater.

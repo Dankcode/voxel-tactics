@@ -1,5 +1,5 @@
-// Outdoor cover pass (PLAN-01 §13.3, "no killing fields"): scatters low walls, sandbags, crates, carts, barrels,
-// rocks, fences, hay bales and ruined wall stubs over open ground until every outdoor tile is within a short
+// Outdoor cover pass (PLAN-01 §13.3, "no killing fields"): places real objects from the prop catalogue
+// (PropCatalog.js: sandbag lines, field walls, fences, hay, crates, barrels, carts, stalls, boulders) over open ground until every outdoor tile is within a short
 // move of cover and a target share of outdoor tiles is covered.
 //
 // Rules that keep the map playable:
@@ -11,27 +11,17 @@
 // prop goes next to the tile currently farthest from cover, so cover spreads evenly instead of clumping.
 import { MAT, AIR, materialById } from '../voxel/Materials.js';
 import { coverAt, COVER } from '../voxel/Cover.js';
+import { PROP_CATALOG, pickProp } from './PropCatalog.js';
 
-/** Prop recipes: cells along a line perpendicular to the side they protect. h = voxel height per cell. */
-export const COVER_PROPS = {
-    low_wall: { len: [2, 4], h: 1, mat: 'stone', cover: 'half', w: 3 },
-    sandbags: { len: [2, 3], h: 1, mat: 'sandbag', cover: 'half', w: 3 },
-    fence: { len: [3, 4], h: 1, mat: 'timber', cover: 'half', w: 2, ground: ['grass', 'forest_floor', 'soil'] },
-    hay: { len: [2, 2], h: 1, mat: 'hay', cover: 'half', w: 2, ground: ['grass', 'forest_floor', 'soil', 'road'] },
-    crates: { len: [1, 2], h: 2, mat: 'crate', cover: 'full', w: 2, top: 'crate', ground: ['road', 'cobble', 'stone_floor', 'grass', 'sand'] },
-    cart: { len: [3, 3], h: 1, mat: 'furniture', cover: 'half', w: 2, ends: 'crate', ground: ['road', 'cobble', 'grass'] },
-    barrels: { len: [2, 3], h: 1, mat: 'barrel_water', cover: 'half', w: 1, mix: 'barrel_powder', ground: ['road', 'cobble', 'stone_floor', 'grass'] },
-    rocks: { len: [1, 2], h: 2, mat: 'stone', cover: 'full', w: 1.5, ground: ['grass', 'forest_floor', 'sand', 'snow', 'soil'] },
-    ruin: { len: [2, 3], h: 2, mat: 'stone', cover: 'full', w: 1.2, broken: true }
-};
+export { PROP_CATALOG };
 
 /**
  * @param store VoxelStore
- * @param opts { rng, blocked(x, y) → bool, maxGap = 4, targetShare = 0.3, budget, margin = 2, props = COVER_PROPS }
+ * @param opts { rng, blocked(x, y) → bool, maxGap = 4, targetShare = 0.3, budget, margin = 1, props = PROP_CATALOG }
  * @returns { placed: [{type, x, y, z, cells}], metrics: { outdoor, covered, share, maxGap } }
  */
 export function scatterCover(store, opts = {}) {
-    const { rng, blocked = () => false, maxGap = 4, targetShare = 0.3, margin = 1, props = COVER_PROPS } = opts;
+    const { rng, blocked = () => false, maxGap = 4, targetShare = 0.3, margin = 1, props = PROP_CATALOG } = opts;
     const W = store.width, D = store.depth;
     const budget = opts.budget ?? Math.round(W * D / 32);
     const top = (x, y) => store.surfaces(x, y).at(-1) || null;
@@ -85,13 +75,11 @@ export function scatterCover(store, opts = {}) {
 
     const tryPlace = (target, type) => {
         const p = props[type];
-        const groundKey = materialById(store.get(target.x, target.y, target.z)).key;
-        if (p.ground && !p.ground.includes(groundKey) && rng.next() < 0.85) return null;
         const sides = rng.shuffle([[0, -1], [1, 0], [0, 1], [-1, 0]]);
         for (const [sx, sy] of sides) {
-            const len = p.len[0] + Math.floor(rng.next() * (p.len[1] - p.len[0] + 1));
+            const len = p.layout === 'single' ? 1 : p.len[0] + Math.floor(rng.next() * (p.len[1] - p.len[0] + 1));
             const px = -sy, py = sx;                    // along the prop (perpendicular to the protected side)
-            const start = -Math.floor((len - 1) / 2) - (len > 1 && rng.next() < 0.5 ? 0 : 0);
+            const start = -Math.floor((len - 1) / 2);
             const cells = [];
             for (let i = 0; i < len; i++) cells.push([target.x + sx + px * (start + i), target.y + sy + py * (start + i)]);
             const own = new Set(cells.map(([x, y]) => `${x},${y}`));
@@ -103,28 +91,16 @@ export function scatterCover(store, opts = {}) {
             if (!ok) continue;
             const out = [];
             cells.forEach(([x, y], i) => {
-                let h = p.h, mat = p.mat;
-                if (p.broken) h = rng.next() < 0.4 ? 1 : 2;
-                if (p.ends && (i === 0 || i === cells.length - 1)) mat = p.ends;
-                if (p.mix && rng.next() < 0.25) mat = p.mix;
-                if (type === 'rocks' && i > 0) h = 1;
-                for (let k = 1; k <= h; k++) {
-                    const m = k === h && p.top ? p.top : mat;
-                    store.set(x, y, target.z + k, MAT[m]);
-                }
-                out.push([x, y, h, mat]);
+                const stack = p.stack(i, cells.length, rng);
+                stack.forEach((m, k) => store.set(x, y, target.z + 1 + k, MAT[m]));
+                out.push([x, y, stack.length, stack[0]]);
             });
             return { type, x: target.x, y: target.y, z: target.z, cells: out };
         }
         return null;
     };
 
-    const weights = Object.entries(props).map(([k, p]) => [k, p.w]);
-    const pick = () => {
-        let t = rng.next() * weights.reduce((s, [, w]) => s + w, 0);
-        for (const [k, w] of weights) { t -= w; if (t <= 0) return k; }
-        return weights[0][0];
-    };
+    const pick = (target) => pickProp(rng, materialById(store.get(target.x, target.y, target.z)).key, props);
 
     let m = measure();
     for (let n = 0; n < budget; n++) {
@@ -135,7 +111,7 @@ export function scatterCover(store, opts = {}) {
         far.sort((a, b) => (m.dist.get(b.x + b.y * W) ?? 99) - (m.dist.get(a.x + a.y * W) ?? 99));
         const pool = far.slice(0, Math.max(6, Math.floor(far.length * 0.08)));
         let done = null;
-        for (let tries = 0; tries < 12 && !done; tries++) done = tryPlace(pool[Math.floor(rng.next() * pool.length)], pick());
+        for (let tries = 0; tries < 12 && !done; tries++) { const t = pool[Math.floor(rng.next() * pool.length)]; done = tryPlace(t, pick(t)); }
         if (!done) { // nothing fits around the far tiles; mark one so the loop moves on
             const s = pool[0]; m.dist.set(s.x + s.y * W, 0); continue;
         }

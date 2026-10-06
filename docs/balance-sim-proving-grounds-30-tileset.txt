@@ -1,0 +1,18 @@
+
+== proving-grounds (formations on) — 30 battles
+player win   57% · draws    3% · avg rounds 20.3 · survivors 1.17 · 5417 ms/battle
+per battle: voxels 18.6 · fires 2.3 · breaches 3.93 · reactions 0.7
+weapon            shots  proj-hit  dmg/shot  dmg/AP  kills/shot  voxels
+Cult Musket         261    81%      5.24    2.67      0.172       2
+Crossbow            240    73%      4.89    2.50      0.308       1
+Repeater Rifle      225    58%      7.14    3.65      0.311       8
+Shortbow            163    71%      3.83    1.94      0.135       0
+Long Rifle          115    86%     10.30    3.46      0.478       4
+Blunderbuss         104    34%      5.32    2.74      0.365      20
+Siege Maul           15   100%      8.80    4.40      0.333       0
+Fire Lance            8    45%      2.63    1.31      0.000       1
+Frost Flask      thrown 16 · unit dmg/throw 0.63 · voxels/throw 0.6
+Fire Flask       thrown 28 · unit dmg/throw 1.75 · voxels/throw 0.4
+Powder Bomb      thrown 13 · unit dmg/throw 7.08 · voxels/throw 15.8
+Gale Flask       thrown 1 · unit dmg/throw 0.00 · voxels/throw 0.0
+formation shield_line: declared 39 · phases active 100 · dissolved 39 · breaches 0

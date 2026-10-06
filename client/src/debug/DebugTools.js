@@ -26,7 +26,7 @@ const TOOLS = [
     ['explode', 'Explode', 'F6'], ['pyro', 'Ignite (pyro)', 'F7'], ['cryo', 'Freeze (cryo)', 'F8'], ['hydro', 'Soak (hydro)', ''], ['anemo', 'Gust (anemo)', ''],
     ['geo', 'Quake (geo)', ''], ['smoke', 'Smoke', ''], ['spawn', 'Spawn unit', '']
 ];
-const PLACEABLE = ['stone', 'sandbag', 'crate', 'timber', 'plaster', 'hedge', 'metal', 'barrel_powder', 'barrel_water', 'glass', 'water', 'ice', 'rubble', 'roof', 'plank'];
+const PLACEABLE = ['sandbag', 'drystone', 'fence', 'hay', 'crate', 'barrel_powder', 'barrel_water', 'cart', 'stall', 'rock', 'hedge', 'stone', 'timber', 'plaster', 'glass', 'water', 'ice', 'rubble', 'plank'];
 const OVERLAYS = [['cover', 'Cover map'], ['los', 'Line of sight'], ['rooms', 'Rooms'], ['reach', 'Reach cost'], ['elements', 'Element field']];
 
 export class DebugTools {
