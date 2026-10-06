@@ -1,8 +1,8 @@
 {
  "placeholder": true,
  "image": "field.png",
- "frameWidth": 64,
- "frameHeight": 96,
+ "frameWidth": 128,
+ "frameHeight": 192,
  "columns": 15,
  "rows": 8,
  "facings": [
@@ -18,9 +18,9 @@
  "mirror": {},
  "anchor": [
   0.5,
-  0.06
+  0.052083333333333336
  ],
- "worldHeight": 2.05,
+ "worldHeight": 2.15,
  "clips": {
   "idle": {
    "column": 0,

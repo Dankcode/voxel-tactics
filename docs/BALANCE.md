@@ -40,6 +40,23 @@ clustered soldiers in the open for the grenades.
 
 Hit rates look high because the AI only shoots when its estimate is good; the human-side numbers will be lower.
 
+## Outdoor cover pass (2026-10-06, 40 seeds, Proving Grounds)
+
+`shared/mission/CoverScatter.js` now adds ~60 props to the Proving Grounds and ~90–130 to each burg. The largest
+open square shrank from 12 to 7 tiles (Proving Grounds) and from 8–12 to 4–10 (burgs). Fights got slower and
+closer to the plan's target band:
+
+| | before (100 seeds) | after (40 seeds) |
+|---|---|---|
+| player win | 76 % | 63 % (+5 % draws) |
+| avg rounds | 19.9 | 21.0 |
+| Cult Musket hit | 87 % | 75 % |
+| Repeater hit | 55 % | 48 % |
+| Long Rifle dmg/AP | 3.69 | 3.61 |
+
+Still inside PLAN-01 §15.3 (starter kit wins 55–75 %). Re-run `npm run sim:formations`: the formation delta
+was measured before the cover pass.
+
 ## Next
 
 - Re-run after the fire lance change; check the long rifle (3 AP) against the repeater.

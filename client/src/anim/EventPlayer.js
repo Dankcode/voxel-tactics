@@ -62,7 +62,7 @@ export class EventPlayer {
                     }
                 }
                 v.animator.play('idle');
-                if (e.unitId && g.selected === e.unitId) g.focusUnit(g.battle.unit(e.unitId), true);
+                if (e.unitId && g.selected === e.unitId) g.focusUnit(g.battle.unit(e.unitId));
                 break;
             }
             case 'shot': {
@@ -129,6 +129,8 @@ export class EventPlayer {
             }
             case 'turn': g.onTurn(e); await this.d(0.35); break;
             case 'outcome': g.onOutcome(e); break;
+            case 'spawn': await g.onSpawn(e); { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition(), 'SPAWNED', '#b388ff', 16); } break;
+            case 'debug': { const v = this.view(e.unitId); if (v) { v.snap(); v.drawBar(); if (e.op === 'heal' && !v.unit.dead) v.animator.play('idle'); } break; }
             case 'reload': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition(), 'RELOAD', '#b0bec5', 14); break; }
         }
         if (clip && e.t !== 'move' && e.t !== 'shot' && e.t !== 'damage' && e.t !== 'death') void clip;

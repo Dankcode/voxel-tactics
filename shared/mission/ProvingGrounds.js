@@ -7,6 +7,7 @@ import { MAT } from '../voxel/Materials.js';
 import { createRng, hashString } from '../util/Rng.js';
 import { buildBuilding } from './BuildingBuilder.js';
 import { placeProp } from './Props.js';
+import { scatterCover } from './CoverScatter.js';
 import { finalizeMission } from './MissionCommon.js';
 
 export const PROVING_GROUNDS_ID = 'proving-grounds';
@@ -67,6 +68,13 @@ export function buildProvingGrounds({ seed = 1 } = {}) {
     placeProp(store, 'hedge_row', 14, 40, G, 6, true); placeProp(store, 'low_wall', 33, 32, G, 4, false, 'stone');
     placeProp(store, 'lantern_cluster', 22, 25, G); placeProp(store, 'fountain', 14, 20, G);
 
+    // Outdoor cover pass on the open ground (keeps the firing range lane, the pond and the spawn clear).
+    const doorFronts = new Set();
+    for (const b of buildings) for (const d of b.doors) for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) doorFronts.add(`${d.x + dx},${d.y + dy}`);
+    const inBuilding = (x, y) => buildings.some(b => x >= b.x0 - 1 && y >= b.y0 - 1 && x <= b.x0 + b.w && y <= b.y0 + b.d);
+    const reserved = (x, y) => inBuilding(x, y) || doorFronts.has(`${x},${y}`) || (y >= 41 && x >= 21 && x <= 28) || (x <= 16 && y >= 7 && y <= 16);
+    const cover = scatterCover(store, { rng, blocked: reserved, maxGap: 4, targetShare: 0.3 });
+
     const spawns = {
         player: [{ x: 22, y: 42 }, { x: 24, y: 42 }, { x: 26, y: 42 }, { x: 23, y: 44 }, { x: 25, y: 44 }, { x: 27, y: 44 }].map(p => ({ ...p, z: G })),
         enemy: [
@@ -81,5 +89,5 @@ export function buildProvingGrounds({ seed = 1 } = {}) {
         ]
     };
     return finalizeMission({ id: PROVING_GROUNDS_ID, name: 'Proving Grounds', store, rooms: ctx.rooms, buildings, spawns, rng,
-        objective: { kind: 'eliminate', text: 'Eliminate all hostiles.' }, meta: { kind: 'proving-grounds', seed } });
+        objective: { kind: 'eliminate', text: 'Eliminate all hostiles.' }, meta: { kind: 'proving-grounds', seed, coverProps: cover.placed.length } });
 }

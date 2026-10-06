@@ -21,6 +21,7 @@ import { B } from '../content/balance.js';
 import { createUnit, alive, hasStatus, addStatus, removeStatus, accuracyMult, mobilityPerAp, partArmor, facingToward, FACING_VEC, EYE, CHEST } from './Units.js';
 import { estimateShot, chooseMuzzle, sampleCone, traceProjectile, aimPointOf, partCentre } from './Ballistics.js';
 import { Formations } from './Formations.js';
+import { validateDebug, applyDebug } from './DebugOps.js';
 
 export const REJECT = Object.freeze(['not_your_turn', 'not_your_unit', 'unit_down', 'no_ap', 'unreachable', 'occupied', 'no_ammo', 'out_of_range',
     'no_item', 'no_target', 'bad_intent', 'no_will', 'battle_over', 'no_door', 'not_adjacent', 'formation_invalid']);
@@ -32,8 +33,9 @@ export class Battle {
      * @param {{ mission, squad: {type, owner?, name?}[], seed, controllers? }} o
      * mission: { store, rooms, buildings, spawns: { player: pos[], enemy: {pos, type, group}[] }, name, id }
      */
-    constructor({ mission, squad, seed = 1, controllers = { player: 'human', enemy: 'ai' }, enemies = null }) {
+    constructor({ mission, squad, seed = 1, controllers = { player: 'human', enemy: 'ai' }, enemies = null, debug = false }) {
         this.mission = mission;
+        this.debugEnabled = !!debug;
         this.store = mission.store;
         this.field = new ElementField(this.store);
         this.seed = seed;
@@ -153,6 +155,7 @@ export class Battle {
         if (this.outcome) return 'battle_over';
         if (intent.type === 'endTurn') return intent.side === this.activeSide ? null : 'not_your_turn';
         if (intent.type === 'owners') return intent.owners && typeof intent.owners === 'object' ? null : 'bad_intent';
+        if (intent.type === 'debug') return validateDebug(this, intent);
         const u = this.unit(intent.unitId);
         if (!u) return intent.type === 'formation_break' ? null : 'bad_intent';
         if (!alive(u)) return 'unit_down';
@@ -234,6 +237,7 @@ export class Battle {
         const u = this.unit(intent.unitId);
         switch (intent.type) {
             case 'endTurn': this.endTurn(intent.side); break;
+            case 'debug': applyDebug(this, intent); break;
             case 'owners': for (const [id, owner] of Object.entries(intent.owners)) { const x = this.unit(id); if (x && x.side === 'player') x.owner = owner; } this.emit({ t: 'owners', owners: intent.owners }); break;
             case 'move': this.doMove(u, intent.to); if (intent.group) this.formations.follow(u); break;
             case 'shoot': this.doShoot(u, intent); break;
@@ -488,6 +492,7 @@ export class Battle {
     // ---------------------------------------------------------------- damage
     dealDamage(t, part, amount, { pierce = 0, shred = 0, element = null, source = null } = {}) {
         if (!alive(t)) return 0;
+        if (t.god) amount = 0;
         const p = t.parts[part] || t.parts.torso;
         const armor = Math.max(0, partArmor(t, part) - pierce);
         let dmg = Math.max(0, Math.round(amount) - armor);

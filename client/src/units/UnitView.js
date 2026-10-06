@@ -13,7 +13,7 @@ export async function loadCharacterArt(art) {
         const [field, cutin] = await Promise.all([fetch(base + 'field.json').then(r => r.json()), fetch(base + 'cutin.json').then(r => r.json())]);
         const image = await new Promise((res, rej) => loader.load(base + field.image, res, undefined, rej));
         image.colorSpace = THREE.SRGBColorSpace;
-        image.magFilter = THREE.NearestFilter; image.minFilter = THREE.LinearFilter; image.generateMipmaps = false;
+        image.magFilter = THREE.LinearFilter; image.minFilter = THREE.LinearMipmapLinearFilter; image.generateMipmaps = true; image.anisotropy = 4;
         return { field, cutin, image, base };
     })();
     atlasCache.set(art, p);
@@ -33,18 +33,25 @@ export class UnitView {
         this.material = new THREE.MeshBasicMaterial({ map: this.texture, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide, clippingPlanes: scene.clipping });
         this.sprite = new THREE.Mesh(geo, this.material);
         this.sprite.userData.unitId = unit.id;
+        // The billboard casts a sun shadow through its alpha (same animated texture as the colour pass).
+        this.sprite.castShadow = true;
+        this.sprite.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: this.texture, alphaTest: 0.5, side: THREE.DoubleSide });
         this.group.add(this.sprite);
-        const ringColor = unit.side === 'player' ? 0x3fe0e6 : 0xf04646;
-        this.ring = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.44, 24), new THREE.MeshBasicMaterial({ color: ringColor, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false, clippingPlanes: scene.clipping }));
+        this.blob = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false, opacity: 0.55, clippingPlanes: scene.clipping }));
+        this.blob.rotation.x = -Math.PI / 2; this.blob.position.y = 0.02;
+        this.group.add(this.blob);
+        const ringColor = unit.side === 'player' ? 0x4fd3ff : 0xff5a4a;
+        this.ring = new THREE.Mesh(new THREE.RingGeometry(0.36, 0.42, 32), new THREE.MeshBasicMaterial({ color: ringColor, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false, clippingPlanes: scene.clipping, toneMapped: false }));
         this.ring.rotation.x = -Math.PI / 2; this.ring.position.y = 0.03;
         this.group.add(this.ring);
-        this.selRing = new THREE.Mesh(new THREE.RingGeometry(0.48, 0.58, 32), new THREE.MeshBasicMaterial({ color: 0xffe066, side: THREE.DoubleSide, depthWrite: false }));
+        this.selRing = new THREE.Mesh(new THREE.RingGeometry(0.47, 0.55, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false, toneMapped: false }));
         this.selRing.rotation.x = -Math.PI / 2; this.selRing.position.y = 0.04; this.selRing.visible = false;
         this.group.add(this.selRing);
-        this.barCanvas = document.createElement('canvas'); this.barCanvas.width = 64; this.barCanvas.height = 12;
+        this.barCanvas = document.createElement('canvas'); this.barCanvas.width = 128; this.barCanvas.height = 26;
         this.barTex = new THREE.CanvasTexture(this.barCanvas);
-        this.bar = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.barTex, depthTest: false, transparent: true }));
-        this.bar.scale.set(1.1, 0.2, 1); this.bar.position.y = h + 0.25; this.bar.renderOrder = 10;
+        this.barTex.colorSpace = THREE.SRGBColorSpace;
+        this.bar = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.barTex, depthTest: false, transparent: true, toneMapped: false }));
+        this.bar.scale.set(1.15, 0.234, 1); this.bar.position.y = h + 0.25; this.bar.renderOrder = 10;
         this.group.add(this.bar);
         this.animator = new SpriteAnimator(m, this.texture, this);
         this.pos = new THREE.Vector3();
@@ -60,15 +67,15 @@ export class UnitView {
     face(dx, dy) { if (dx || dy) this.facingVec = [dx, dy]; }
     worldPosition() { return this.pos.clone(); }
     drawBar() {
-        const u = this.unit, c = this.barCanvas.getContext('2d');
-        c.clearRect(0, 0, 64, 12);
-        c.fillStyle = 'rgba(0,0,0,0.6)'; c.fillRect(0, 0, 64, 12);
-        c.fillStyle = u.side === 'player' ? '#58e08a' : '#ff6060';
-        c.fillRect(1, 1, Math.max(0, 62 * u.hp / u.maxHp), 6);
-        c.fillStyle = '#ffd34d';
-        for (let i = 0; i < u.maxAp; i++) if (i < u.ap) c.fillRect(1 + i * 9, 8, 7, 3);
-        c.fillStyle = '#c38bff';
-        c.fillRect(64 - 2 - Math.round(20 * u.stress / 100), 8, Math.round(20 * u.stress / 100), 3);
+        // XCOM-style overhead: segmented health pips, AP ticks underneath, a thin stress line.
+        const u = this.unit, c = this.barCanvas.getContext('2d'), W = this.barCanvas.width, H = this.barCanvas.height;
+        c.clearRect(0, 0, W, H);
+        const n = Math.min(u.maxHp, 30), gap = 2, pw = (W - 4 - gap * (n - 1)) / n, per = u.maxHp / n;
+        const on = u.side === 'player' ? '#5ff2a0' : '#ff5a4a', off = 'rgba(20,20,24,0.75)';
+        c.fillStyle = 'rgba(4,10,16,0.75)'; c.fillRect(0, 0, W, 16);
+        for (let i = 0; i < n; i++) { c.fillStyle = u.hp > i * per + per / 2 - 1e-6 ? on : off; c.fillRect(2 + i * (pw + gap), 2, pw, 12); }
+        for (let i = 0; i < u.maxAp; i++) { c.fillStyle = i < u.ap ? '#ffc845' : 'rgba(30,30,36,0.7)'; c.fillRect(2 + i * 18, 19, 15, 5); }
+        if (u.stress > 0) { c.fillStyle = '#b58cff'; c.fillRect(W - 2 - Math.round(40 * u.stress / 100), 19, Math.round(40 * u.stress / 100), 5); }
         this.barTex.needsUpdate = true;
     }
     update(dt, yaw) {
@@ -79,5 +86,17 @@ export class UnitView {
     }
     setSelected(on) { this.selRing.visible = on; }
     setVisible(on) { this.group.visible = on; }
-    dispose() { this.scene.scene.remove(this.group); this.texture.dispose(); this.material.dispose(); this.barTex.dispose(); }
+    dispose() {
+        this.sprite.customDepthMaterial?.dispose(); this.scene.scene.remove(this.group); this.texture.dispose(); this.material.dispose(); this.barTex.dispose(); }
+}
+
+let blobTex = null;
+function blobTexture() {
+    if (blobTex) return blobTex;
+    const c = document.createElement('canvas'); c.width = c.height = 64;
+    const g = c.getContext('2d'), grad = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(0,0,0,0.85)'); grad.addColorStop(0.6, 'rgba(0,0,0,0.35)'); grad.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+    blobTex = new THREE.CanvasTexture(c);
+    return blobTex;
 }

@@ -1,64 +1,127 @@
-// Tactical overlays: AP-coloured move range (Phoenix Point rings), hovered tile, path line, cover
-// shields, aim cone, blast radius, throw arc, overwatch cones, room / element debug tints.
+// Tactical overlays in the XCOM idiom: blue (move and still act) and yellow (dash) zones drawn as glowing
+// outlines with a faint fill, a path ribbon to the hovered tile with a destination marker, cover shields on the
+// destination's faces, aim cone, blast radius, throw arc, overwatch cones, plus debug layers.
 import * as THREE from 'three';
 import { coverAt } from '../../../shared/voxel/Cover.js';
 
-const AP_COLORS = [0x3fd0ff, 0x3fd0ff, 0x4f8dff, 0xf2c94c, 0xf2994a, 0xeb5757];
+export const ZONE = { blue: 0x46c8ff, yellow: 0xffc845, red: 0xff5a4a, white: 0xffffff, teal: 0x5ff2d6 };
+const DIRS = [[0, -1, 'n'], [1, 0, 'e'], [0, 1, 's'], [-1, 0, 'w']];
+
+function glowMaterial(color, opacity = 0.95, clipping = null) {
+    const m = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, toneMapped: false });
+    if (clipping) m.clippingPlanes = clipping;
+    return m;
+}
+
+/** Canvas-drawn XCOM-style shield icon: full (solid) or half (lower half filled). */
+function shieldTexture(kind) {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 72;
+    const g = c.getContext('2d');
+    const path = () => { g.beginPath(); g.moveTo(32, 4); g.lineTo(58, 14); g.lineTo(56, 40); g.quadraticCurveTo(50, 60, 32, 68); g.quadraticCurveTo(14, 60, 8, 40); g.lineTo(6, 14); g.closePath(); };
+    const col = kind === 'flank' ? '#ff5a4a' : '#46c8ff';
+    g.lineWidth = 5; g.strokeStyle = '#0b1622'; path(); g.stroke();
+    g.lineWidth = 3; g.strokeStyle = col; path(); g.stroke();
+    g.save(); path(); g.clip();
+    g.fillStyle = col;
+    if (kind === 'full' || kind === 'flank') g.fillRect(0, 0, 64, 72);
+    else g.fillRect(0, 38, 64, 40);
+    g.restore();
+    if (kind === 'flank') { g.fillStyle = '#0b1622'; g.font = 'bold 38px sans-serif'; g.textAlign = 'center'; g.fillText('!', 32, 52); }
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+}
 
 export class Overlays {
     constructor(scene) {
         this.scene = scene;
+        const clip = scene.clipping;
         this.group = new THREE.Group(); scene.scene.add(this.group);
         this.rangeGroup = new THREE.Group(); this.group.add(this.rangeGroup);
-        this.tileGeo = new THREE.PlaneGeometry(0.9, 0.9); this.tileGeo.rotateX(-Math.PI / 2);
-        this.tileMats = AP_COLORS.map(c => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.32, depthWrite: false, clippingPlanes: scene.clipping }));
-        this.hover = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, depthWrite: false }));
-        this.hover.visible = false; this.group.add(this.hover);
-        this.pathLine = null; this.shields = new THREE.Group(); this.group.add(this.shields);
+        this.pathGroup = new THREE.Group(); this.group.add(this.pathGroup);
+        this.shields = new THREE.Group(); this.group.add(this.shields);
         this.aim = new THREE.Group(); this.group.add(this.aim);
         this.debug = new THREE.Group(); this.group.add(this.debug);
-        this.shieldGeo = new THREE.BoxGeometry(0.5, 0.42, 0.06);
-        this.shieldMats = [null, new THREE.MeshBasicMaterial({ color: 0x9fd3ff, transparent: true, opacity: 0.85 }), new THREE.MeshBasicMaterial({ color: 0x2f80ed, transparent: true, opacity: 0.9 })];
+        this.debugLayer = new THREE.Group(); this.group.add(this.debugLayer);
+        this.mats = {
+            blueLine: glowMaterial(ZONE.blue, 0.95, clip), yellowLine: glowMaterial(ZONE.yellow, 0.95, clip),
+            blueFill: new THREE.MeshBasicMaterial({ color: ZONE.blue, transparent: true, opacity: 0.1, depthWrite: false, clippingPlanes: clip, toneMapped: false }),
+            yellowFill: new THREE.MeshBasicMaterial({ color: ZONE.yellow, transparent: true, opacity: 0.08, depthWrite: false, clippingPlanes: clip, toneMapped: false }),
+            path: glowMaterial(ZONE.blue, 0.9, clip), pathDash: glowMaterial(ZONE.yellow, 0.9, clip),
+            hover: glowMaterial(0xffffff, 0.55, clip)
+        };
+        this.hover = new THREE.Mesh(frameGeometry(0.06), this.mats.hover);
+        this.hover.visible = false; this.group.add(this.hover);
+        this.shieldTex = { half: shieldTexture('half'), full: shieldTexture('full'), flank: shieldTexture('flank') };
+        this.marker = this.makeMarker(); this.marker.visible = false; this.group.add(this.marker);
     }
-    clearRange() { for (const c of [...this.rangeGroup.children]) this.rangeGroup.remove(c); }
-    /** costs: Map nodeKey → path cost; apOf(cost) → AP needed. */
-    showRange(nodes, costs, apOf, maxAp) {
+    makeMarker() {
+        const g = new THREE.Group();
+        const ring = new THREE.Mesh(new THREE.RingGeometry(0.3, 0.4, 32).rotateX(-Math.PI / 2), glowMaterial(ZONE.blue, 0.95, this.scene.clipping));
+        const inner = new THREE.Mesh(new THREE.CircleGeometry(0.3, 32).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: ZONE.blue, transparent: true, opacity: 0.18, depthWrite: false, toneMapped: false }));
+        const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 1.8, 6).translate(0, 0.9, 0), glowMaterial(ZONE.blue, 0.45, this.scene.clipping));
+        g.add(ring, inner, beam);
+        g.userData = { ring, inner, beam };
+        return g;
+    }
+    clearRange() { for (const c of [...this.rangeGroup.children]) { this.rangeGroup.remove(c); c.geometry.dispose(); } }
+    /**
+     * zones: Map nodeKey → 'blue' | 'yellow'; nodes: Map nodeKey → {x,y,z}.
+     * Outlines are drawn where a zone meets a cell outside it (different zone, unreachable or a level change).
+     */
+    showZones(nodes, zones) {
         this.clearRange();
-        const byAp = new Map();
-        for (const [k, n] of nodes) {
-            const ap = apOf(costs.get(k));
-            if (ap < 1 || ap > maxAp) continue;
-            (byAp.get(ap) || byAp.set(ap, []).get(ap)).push(n);
+        const lines = { blue: [], yellow: [] }, fills = { blue: [], yellow: [] };
+        const key = (x, y, z) => `${x},${y},${z}`;
+        const zoneAt = (x, y, z) => zones.get(key(x, y, z));
+        for (const [k, zone] of zones) {
+            const n = nodes.get(k); if (!n) continue;
+            fills[zone].push(n);
+            for (const [dx, dy] of DIRS) {
+                // Same-height neighbour in the same zone (or a stair step within one level) → interior edge.
+                const nb = [0, 1, -1].map(dz => zoneAt(n.x + dx, n.y + dy, n.z + dz)).find(Boolean);
+                if (nb === zone || (zone === 'yellow' && nb === 'blue')) continue;
+                lines[zone].push([n, dx, dy]);
+            }
         }
-        for (const [ap, list] of byAp) {
-            const mesh = new THREE.InstancedMesh(this.tileGeo, this.tileMats[Math.min(ap, 5)], list.length);
-            const m = new THREE.Matrix4();
-            list.forEach((n, i) => { m.makeTranslation(n.x + 0.5, n.z + 1.03, n.y + 0.5); mesh.setMatrixAt(i, m); });
-            this.rangeGroup.add(mesh);
+        for (const zone of ['blue', 'yellow']) {
+            if (fills[zone].length) this.rangeGroup.add(tileMesh(fills[zone], zone === 'blue' ? this.mats.blueFill : this.mats.yellowFill));
+            if (lines[zone].length) this.rangeGroup.add(edgeMesh(lines[zone], zone === 'blue' ? this.mats.blueLine : this.mats.yellowLine));
         }
+    }
+    clearPath() { for (const c of [...this.pathGroup.children]) { this.pathGroup.remove(c); c.geometry?.dispose(); } this.marker.visible = false; }
+    /** Path ribbon + destination marker; dash = destination is in the yellow zone. */
+    showPath(path, dash = false) {
+        this.clearPath();
+        if (!path || path.length < 2) return;
+        const pts = path.map(p => new THREE.Vector3(p.x + 0.5, p.z + 1.06, p.y + 0.5));
+        this.pathGroup.add(new THREE.Mesh(ribbonGeometry(pts, 0.09), dash ? this.mats.pathDash : this.mats.path));
+        const end = path[path.length - 1];
+        this.marker.visible = true;
+        this.marker.position.set(end.x + 0.5, end.z + 1.03, end.y + 0.5);
+        const col = dash ? ZONE.yellow : ZONE.blue;
+        for (const m of Object.values(this.marker.userData)) m.material.color.setHex(col);
     }
     setHover(cell) {
         if (!cell) { this.hover.visible = false; return; }
-        this.hover.visible = true; this.hover.position.set(cell.x + 0.5, cell.z + 1.04, cell.y + 0.5);
+        this.hover.visible = true; this.hover.position.set(cell.x + 0.5, cell.z + 1.03, cell.y + 0.5);
     }
-    showPath(path) {
-        if (this.pathLine) { this.group.remove(this.pathLine); this.pathLine.geometry.dispose(); this.pathLine = null; }
-        if (!path || path.length < 2) return;
-        const pts = path.map(p => new THREE.Vector3(p.x + 0.5, p.z + 1.15, p.y + 0.5));
-        this.pathLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xffffff }));
-        this.group.add(this.pathLine);
-    }
-    /** XCOM shield icons on the four faces of a standing position. */
-    showCover(store, cell) {
-        for (const c of [...this.shields.children]) this.shields.remove(c);
+    /** XCOM shield icons on the four faces of a standing position; flankedBy: list of {dx, dy} threats. */
+    showCover(store, cell, { flanked = false } = {}) {
+        for (const c of [...this.shields.children]) { this.shields.remove(c); c.material.dispose(); }
         if (!cell) return;
         const cov = coverAt(store, cell.x, cell.y, cell.z);
-        for (const [dir, dx, dy] of [['n', 0, -1], ['e', 1, 0], ['s', 0, 1], ['w', -1, 0]]) {
+        for (const [dx, dy, dir] of DIRS) {
             if (!cov[dir]) continue;
-            const m = new THREE.Mesh(this.shieldGeo, this.shieldMats[cov[dir]]);
-            m.position.set(cell.x + 0.5 + dx * 0.42, cell.z + 1.4, cell.y + 0.5 + dy * 0.42);
-            m.rotation.y = dx ? Math.PI / 2 : 0;
-            this.shields.add(m);
+            const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: cov[dir] === 2 ? this.shieldTex.full : this.shieldTex.half, depthTest: false, transparent: true, toneMapped: false }));
+            s.scale.set(0.42, 0.47, 1);
+            s.position.set(cell.x + 0.5 + dx * 0.5, cell.z + 1.55, cell.y + 0.5 + dy * 0.5);
+            s.renderOrder = 30;
+            this.shields.add(s);
+        }
+        if (flanked) {
+            const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.shieldTex.flank, depthTest: false, transparent: true, toneMapped: false }));
+            s.scale.set(0.5, 0.56, 1); s.position.set(cell.x + 0.5, cell.z + 2.75, cell.y + 0.5); s.renderOrder = 31;
+            this.shields.add(s);
         }
     }
     clearAim() { for (const c of [...this.aim.children]) { this.aim.remove(c); c.geometry?.dispose?.(); } }
@@ -71,33 +134,117 @@ export class Overlays {
         const up = Math.abs(dir.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
         const u = new THREE.Vector3().crossVectors(dir, up).normalize(), v = new THREE.Vector3().crossVectors(dir, u).normalize();
         const ring = [];
-        for (let i = 0; i <= 32; i++) { const t = i / 32 * Math.PI * 2; ring.push(b.clone().addScaledVector(u, Math.cos(t) * r).addScaledVector(v, Math.sin(t) * r)); }
-        const mat = new THREE.LineBasicMaterial({ color: 0xff6b6b, transparent: true, opacity: 0.9, depthTest: false });
+        for (let i = 0; i <= 48; i++) { const t = i / 48 * Math.PI * 2; ring.push(b.clone().addScaledVector(u, Math.cos(t) * r).addScaledVector(v, Math.sin(t) * r)); }
+        const mat = new THREE.LineBasicMaterial({ color: 0xff6b5a, transparent: true, opacity: 0.95, depthTest: false, toneMapped: false });
         const ringLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring), mat); ringLine.renderOrder = 20;
         const inner = ring.map(p => b.clone().lerp(p, 0.5));
         const innerLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(inner), mat); innerLine.renderOrder = 20;
-        const spokes = [0, 8, 16, 24].map(i => new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, ring[i]]), new THREE.LineBasicMaterial({ color: 0xff6b6b, transparent: true, opacity: 0.35, depthTest: false })));
-        this.aim.add(ringLine, innerLine, ...spokes);
+        const spokes = [0, 12, 24, 36].map(i => new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, ring[i]]), new THREE.LineBasicMaterial({ color: 0xff6b5a, transparent: true, opacity: 0.35, depthTest: false, toneMapped: false })));
+        const shot = new THREE.Mesh(ribbonGeometry([a, b], 0.03, true), glowMaterial(0xff6b5a, 0.6));
+        shot.material.depthTest = false; shot.renderOrder = 19;
+        this.aim.add(ringLine, innerLine, shot, ...spokes);
     }
     showArc(points, radius, land) {
         this.clearAim();
-        if (points?.length) this.aim.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(points.map(p => new THREE.Vector3(p.x, p.h, p.y))), new THREE.LineBasicMaterial({ color: 0xffb347, depthTest: false })));
+        if (points?.length) {
+            const pts = points.map(p => new THREE.Vector3(p.x, p.h, p.y));
+            const m = new THREE.Mesh(ribbonGeometry(pts, 0.05, true), glowMaterial(0xffb347, 0.9));
+            m.material.depthTest = false; m.renderOrder = 20; this.aim.add(m);
+        }
         if (land) {
-            const ring = new THREE.Mesh(new THREE.RingGeometry(radius - 0.08, radius, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff8a3d, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthTest: false }));
-            ring.position.set(land.x, land.h + 0.05, land.y); this.aim.add(ring);
+            const ring = new THREE.Mesh(new THREE.RingGeometry(radius - 0.1, radius, 48).rotateX(-Math.PI / 2), glowMaterial(0xff8a3d, 0.9));
+            ring.material.depthTest = false; ring.renderOrder = 20;
+            ring.position.set(land.x, land.h + 0.05, land.y);
+            const disc = new THREE.Mesh(new THREE.CircleGeometry(radius, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff8a3d, transparent: true, opacity: 0.14, depthWrite: false, toneMapped: false }));
+            disc.position.copy(ring.position);
+            this.aim.add(ring, disc);
         }
     }
-    /** Overwatch cones of units (thin wedges on the ground). */
+    /** Overwatch cones of units (wedges on the ground). */
     showOverwatch(units) {
-        for (const c of [...this.debug.children].filter(c => c.userData.ow)) this.debug.remove(c);
+        for (const c of [...this.debug.children].filter(c => c.userData.ow)) { this.debug.remove(c); c.geometry.dispose(); }
         for (const u of units) {
             if (!u.overwatch) continue;
             const ow = u.overwatch, a0 = Math.atan2(ow.dy, ow.dx) - ow.halfAngle, a1 = Math.atan2(ow.dy, ow.dx) + ow.halfAngle;
-            const pts = [new THREE.Vector3(u.x + 0.5, u.z + 1.08, u.y + 0.5)];
-            for (let i = 0; i <= 16; i++) { const a = a0 + (a1 - a0) * i / 16; pts.push(new THREE.Vector3(u.x + 0.5 + Math.cos(a) * ow.range, u.z + 1.08, u.y + 0.5 + Math.sin(a) * ow.range)); }
-            pts.push(pts[0]);
-            const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: u.side === 'player' ? 0x56ccf2 : 0xff7070, transparent: true, opacity: 0.7 }));
-            line.userData.ow = true; this.debug.add(line);
+            const shape = new THREE.Shape();
+            shape.moveTo(0, 0);
+            for (let i = 0; i <= 24; i++) { const a = a0 + (a1 - a0) * i / 24; shape.lineTo(Math.cos(a) * ow.range, Math.sin(a) * ow.range); }
+            shape.lineTo(0, 0);
+            const geo = new THREE.ShapeGeometry(shape); geo.rotateX(Math.PI / 2);
+            const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: u.side === 'player' ? ZONE.blue : ZONE.red, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
+            m.position.set(u.x + 0.5, u.z + 1.05, u.y + 0.5);
+            m.userData.ow = true; this.debug.add(m);
         }
     }
+    // ------------------------------------------------------------------ debug layers
+    clearDebugLayer() { for (const c of [...this.debugLayer.children]) { this.debugLayer.remove(c); c.geometry?.dispose(); c.material?.dispose?.(); } }
+    /** Coloured tiles: cells = [{x, y, z, color}]. */
+    showDebugTiles(cells, opacity = 0.35) {
+        const byColor = new Map();
+        for (const c of cells) (byColor.get(c.color) || byColor.set(c.color, []).get(c.color)).push(c);
+        for (const [color, list] of byColor) this.debugLayer.add(tileMesh(list, new THREE.MeshBasicMaterial({ color, transparent: true, opacity, depthWrite: false, toneMapped: false, clippingPlanes: this.scene.clipping })));
+    }
+    showDebugLines(segments, color = 0xff00ff) {
+        const pts = [];
+        for (const [a, b] of segments) pts.push(new THREE.Vector3(a.x, a.h, a.y), new THREE.Vector3(b.x, b.h, b.y));
+        const line = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.8, depthTest: false, toneMapped: false }));
+        line.renderOrder = 25; this.debugLayer.add(line);
+    }
+}
+
+function frameGeometry(w) {
+    // Square outline on a tile top (four thin quads).
+    const pos = [], idx = [];
+    const quad = (x0, z0, x1, z1) => { const b = pos.length / 3; pos.push(x0, 0, z0, x1, 0, z0, x1, 0, z1, x0, 0, z1); idx.push(b, b + 2, b + 1, b, b + 3, b + 2); };
+    const h = 0.48;
+    quad(-h, -h, h, -h + w); quad(-h, h - w, h, h); quad(-h, -h, -h + w, h); quad(h - w, -h, h, h);
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+    return g;
+}
+
+function tileMesh(cells, material) {
+    const pos = [], idx = [];
+    for (const n of cells) {
+        const b = pos.length / 3, y = n.z + 1.02;
+        pos.push(n.x + 0.04, y, n.y + 0.04, n.x + 0.96, y, n.y + 0.04, n.x + 0.96, y, n.y + 0.96, n.x + 0.04, y, n.y + 0.96);
+        idx.push(b, b + 2, b + 1, b, b + 3, b + 2);
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+    const m = new THREE.Mesh(g, material); m.renderOrder = 5;
+    return m;
+}
+
+/** Edge strips just inside a cell's border, on the tile top. edges: [node, dx, dy]. */
+function edgeMesh(edges, material) {
+    const pos = [], idx = [], w = 0.09, y0 = 0.035;
+    for (const [n, dx, dy] of edges) {
+        const y = n.z + 1 + y0, x0 = n.x, z0 = n.y;
+        let a, b, c, d;
+        if (dy === -1) { a = [x0, z0]; b = [x0 + 1, z0]; c = [x0 + 1, z0 + w]; d = [x0, z0 + w]; }
+        else if (dy === 1) { a = [x0, z0 + 1 - w]; b = [x0 + 1, z0 + 1 - w]; c = [x0 + 1, z0 + 1]; d = [x0, z0 + 1]; }
+        else if (dx === -1) { a = [x0, z0]; b = [x0 + w, z0]; c = [x0 + w, z0 + 1]; d = [x0, z0 + 1]; }
+        else { a = [x0 + 1 - w, z0]; b = [x0 + 1, z0]; c = [x0 + 1, z0 + 1]; d = [x0 + 1 - w, z0 + 1]; }
+        const base = pos.length / 3;
+        for (const p of [a, b, c, d]) pos.push(p[0], y, p[1]);
+        idx.push(base, base + 2, base + 1, base, base + 3, base + 2);
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+    const m = new THREE.Mesh(g, material); m.renderOrder = 6;
+    return m;
+}
+
+/** Flat ribbon along points (horizontal unless `vertical` — then it is billboarded around the travel axis). */
+function ribbonGeometry(pts, width, vertical = false) {
+    const pos = [], idx = [];
+    for (let i = 0; i < pts.length; i++) {
+        const p = pts[i], prev = pts[Math.max(0, i - 1)], next = pts[Math.min(pts.length - 1, i + 1)];
+        const dir = next.clone().sub(prev); if (dir.lengthSq() < 1e-9) dir.set(1, 0, 0);
+        dir.normalize();
+        const side = vertical ? new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize().add(new THREE.Vector3(0, 0.6, 0)).normalize() : new THREE.Vector3(-dir.z, 0, dir.x).normalize();
+        if (side.lengthSq() < 1e-9) side.set(1, 0, 0);
+        pos.push(p.x + side.x * width, p.y + side.y * width, p.z + side.z * width, p.x - side.x * width, p.y - side.y * width, p.z - side.z * width);
+        if (i > 0) { const b = (i - 1) * 2; idx.push(b, b + 1, b + 2, b + 1, b + 3, b + 2); }
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+    return g;
 }

@@ -4,6 +4,7 @@ import { OnlineSession } from './net/OnlineSession.js';
 import { SQUADS } from '../../shared/content/units.js';
 
 const $ = s => document.querySelector(s);
+const params = new URLSearchParams(location.search);
 const menu = $('#menu');
 let game = null;
 
@@ -15,7 +16,7 @@ async function showMenu() {
     menu.innerHTML = `
       <div class="menu-card">
         <h1>VOXEL TACTICS</h1>
-        <p class="tag">XCOM 2 × Phoenix Point on vibe-game's voxel world — test build (placeholder art)</p>
+        <p class="tag">XCOM 2 × Phoenix Point on vibe-game's voxel world — test build (placeholder characters)</p>
         <label>Battlefield
           <select id="m-scenario">
             <option value="proving-grounds">Proving Grounds — every system in one map</option>
@@ -25,6 +26,7 @@ async function showMenu() {
           <label>Seed <input id="m-seed" type="number" value="1" min="1"></label>
           <label>Squad <select id="m-squad">${Object.keys(SQUADS).map(k => `<option>${k}</option>`).join('')}</select></label>
         </div>
+        <label class="check"><input id="m-debug" type="checkbox" ${params.get('debug') ? 'checked' : ''}> Debug mode (F1 in battle: spawn, teleport, destroy, elements, overlays, AI stepping)</label>
         <div class="row buttons">
           <button id="m-local" class="primary">Play vs AI</button>
           <button id="m-host">Host online co-op</button>
@@ -40,7 +42,7 @@ async function showMenu() {
     const desc = () => {
         const v = $('#m-scenario').value;
         const [scenario, siteId] = v.startsWith('world:') ? ['world', v.slice(6)] : [v, null];
-        return { scenario, siteId, seed: Number($('#m-seed').value) || 1, squad: $('#m-squad').value };
+        return { scenario, siteId, seed: Number($('#m-seed').value) || 1, squad: $('#m-squad').value, debug: $('#m-debug').checked };
     };
     const status = t => { $('#m-status').textContent = t; };
     const launch = async make => {
@@ -50,6 +52,8 @@ async function showMenu() {
             menu.classList.add('hidden');
             if (!game) game = new Game({ canvas: $('#view'), hudRoot: $('#hud'), cutinRoot: $('#cutin-layer'), floatRoot: $('#float-layer'), onExit: () => { session.leave?.(); showMenu(); } });
             await game.start(session);
+            if (desc().debug && !game.debug.enabled) game.debug.enable(true);
+            window.__game = game;
             if (session.roomId) game.hud.log(`Room code: ${session.roomId} — share it with your squadmates`);
         } catch (err) { console.error(err); status(`Failed: ${err.message}`); }
     };
@@ -58,12 +62,11 @@ async function showMenu() {
     $('#m-join').onclick = () => launch(() => OnlineSession.connect({ url: $('#m-server').value, roomId: $('#m-room').value.trim() }));
 }
 
-// Deep link for quick testing: ?play=proving-grounds or ?play=world:burg-10&seed=3
-const params = new URLSearchParams(location.search);
+// Deep link for quick testing: ?play=proving-grounds or ?play=world:burg-10&seed=3 (&debug=1 &auto=1 &cutins=off)
 if (params.get('play')) {
     const v = params.get('play');
     const [scenario, siteId] = v.startsWith('world:') ? ['world', v.slice(6)] : [v, null];
-    LocalSession.create({ scenario, siteId, seed: Number(params.get('seed')) || 1, squad: params.get('squad') || 'standard' }).then(async session => {
+    LocalSession.create({ scenario, siteId, seed: Number(params.get('seed')) || 1, squad: params.get('squad') || 'standard', debug: !!params.get('debug') }).then(async session => {
         menu.classList.add('hidden');
         game = new Game({ canvas: $('#view'), hudRoot: $('#hud'), cutinRoot: $('#cutin-layer'), floatRoot: $('#float-layer'), onExit: showMenu });
         await game.start(session);

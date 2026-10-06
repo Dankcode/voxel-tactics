@@ -70,6 +70,7 @@ def('crystal', { label: 'Crystal node', element: ELEMENTS.CRYO, color: 0x8fd8ff,
 def('cloth', { label: 'Awning', element: ELEMENTS.STRUCTURE, color: 0xd9a441, hp: 1, solid: true, opaque: true, projectile: 'pass', flammable: true, burnTo: null, family: 'plant', structural: false });
 def('lantern', { label: 'Lantern', element: ELEMENTS.PYRO, color: 0xffd36b, hp: 1, light: 3, family: 'metal', structural: false,
     explosive: { radius: 1.4, power: 1, damage: 1, element: 'pyro' } });
+def('hay', { label: 'Hay bale', element: ELEMENTS.ANEMO, color: 0xd8b860, hp: 3, flammable: true, burnTo: 'ash', family: 'plant', structural: false });
 
 export const MATERIALS = Object.freeze(M);
 export const MAT = Object.freeze(Object.fromEntries(M.map(m => [m.key, m.id])));

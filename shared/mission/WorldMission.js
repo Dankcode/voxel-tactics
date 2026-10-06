@@ -6,6 +6,7 @@ import { MAT } from '../voxel/Materials.js';
 import { createRng, hashString } from '../util/Rng.js';
 import { buildBuilding, roleFor, wallMaterialFor } from './BuildingBuilder.js';
 import { placeProp } from './Props.js';
+import { scatterCover } from './CoverScatter.js';
 import { finalizeMission } from './MissionCommon.js';
 import { ENEMY_PODS } from '../content/units.js';
 
@@ -84,25 +85,17 @@ export function buildWorldMission(site, { seed = 1, scale = TACTICAL_SCALE } = {
         if (z == null || store.material(x, y, z).liquid) continue;
         placeProp(store, type, x, y, z);
     }
-    // Clutter pass (§13.3): street cover until the target count is reached.
-    const clutter = ['crates', 'crate', 'cart', 'sandbags', 'keg', 'water_barrel', 'low_wall', 'hedge_row'];
-    const target = Math.round(W * D / 110);
-    for (let placed = 0, tries = 0; placed < target && tries < target * 30; tries++) {
-        const x = 2 + Math.floor(rng.next() * (W - 6)), y = 2 + Math.floor(rng.next() * (D - 6));
-        if (inBuilding(x, y) || inBuilding(x + 2, y)) continue;
-        const z = groundZ(x, y);
-        if (z == null || store.material(x, y, z).liquid || store.isSolid(x, y, z + 1)) continue;
-        let clear = true;
-        for (let dy = -2; dy <= 2 && clear; dy++) for (let dx = -2; dx <= 3 && clear; dx++) if (store.isSolid(x + dx, y + dy, z + 1) || store.isSolid(x + dx, y + dy, z + 2)) clear = false;
-        if (!clear) continue;
-        const type = clutter[Math.floor(rng.next() * clutter.length)];
-        placeProp(store, type, x, y, z, 3, rng.next() < 0.5);
-        placed++;
-    }
+    // Outdoor cover pass (§13.3): props on open ground until no outdoor tile is far from cover.
+    const doorFronts = new Set();
+    for (const b of buildings) for (const d of b.doors) for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) doorFronts.add(`${d.x + dx},${d.y + dy}`);
+    const preSpawns = chooseSpawns(store, buildings, createRng(hashString(`spawns:${site.id}:${seed}`)), W, D);
+    const nearSpawn = (x, y) => preSpawns.player.some(p => Math.abs(p.x - x) <= 2 && Math.abs(p.y - y) <= 2);
+    const cover = scatterCover(store, { rng, blocked: (x, y) => inBuilding(x, y) || doorFronts.has(`${x},${y}`) || nearSpawn(x, y), maxGap: 4, targetShare: 0.32 });
     const spawns = chooseSpawns(store, buildings, rng, W, D);
+    spawns.player = preSpawns.player;            // the cover pass kept these clear
     return finalizeMission({ id: `${site.id}:${seed}`, name: site.name, store, rooms: ctx.rooms, buildings, spawns, rng,
         objective: { kind: 'eliminate', text: `Clear ${site.name} of hostiles.` },
-        meta: { kind: 'world', siteId: site.id, seed, scale, biome: site.biome, architectureThemeId: site.architectureThemeId, generationVersion: site.generationVersion } });
+        meta: { kind: 'world', siteId: site.id, seed, scale, coverProps: cover.placed.length, biome: site.biome, architectureThemeId: site.architectureThemeId, generationVersion: site.generationVersion } });
 }
 
 function chooseSpawns(store, buildings, rng, W, D) {

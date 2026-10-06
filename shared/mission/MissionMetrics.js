@@ -6,7 +6,7 @@ import { castRay, blocksSight } from '../voxel/Raycast.js';
 import { materialById, coverWeight } from '../voxel/Materials.js';
 
 export const DEFAULT_GATES = Object.freeze({
-    coverDensity: [0.18, 0.6], fullCoverShare: [0.05, 1], killingField: [0, 14], sightlineMedian: [5, 22],
+    coverDensity: [0.18, 0.6], outdoorCover: [0.2, 1], coverGap: [0, 6], fullCoverShare: [0.05, 1], killingField: [0, 14], sightlineMedian: [5, 22],
     lanes: [2, 99], breachability: [0.5, 1], destructibleCover: [0.4, 1], spawnSafe: [1, 1]
 });
 
@@ -29,6 +29,21 @@ export function measureMission(mission, { search = null, gates = DEFAULT_GATES }
             if (coverWeight(m) >= 1) { coverVoxels++; if (m.hp !== Infinity && m.hp <= 9) destructible++; }
         }
     }
+    // Outdoor cover: share of outdoor tiles with cover, and the farthest any outdoor tile is from a covered one.
+    const outdoorNodes = nodes.filter(n => store.roomAt(n.x, n.y, n.z + 1) < 0);
+    const covKey = n => `${n.x},${n.y},${n.z}`;
+    const gap = new Map(), queue = [];
+    for (const n of outdoorNodes) { const c = coverAt(store, n.x, n.y, n.z); if (Math.max(c.n, c.e, c.s, c.w) >= COVER.HALF) { gap.set(covKey(n), 0); queue.push(n); } }
+    const outdoorSet = new Map(outdoorNodes.map(n => [covKey(n), n]));
+    for (let i = 0; i < queue.length; i++) {
+        const n = queue[i], d = gap.get(covKey(n));
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) for (const dz of [0, 1, -1]) {
+            const k = `${n.x + dx},${n.y + dy},${n.z + dz}`, m = outdoorSet.get(k);
+            if (m && !gap.has(k)) { gap.set(k, d + 1); queue.push(m); }
+        }
+    }
+    let coverGap = 0, outdoorCovered = 0;
+    for (const n of outdoorNodes) { const d = gap.get(covKey(n)); if (d === 0) outdoorCovered++; coverGap = Math.max(coverGap, d ?? 99); }
     // Largest open square (no cover, outdoors).
     let killingField = 0;
     const dp = new Map();
@@ -86,7 +101,7 @@ export function measureMission(mission, { search = null, gates = DEFAULT_GATES }
     }
     const n = Math.max(1, nodes.length);
     const metrics = {
-        reachableTiles: nodes.length, coverDensity: covered / n, fullCoverShare: full / n, interiorShare: indoor / n, killingField,
+        reachableTiles: nodes.length, coverDensity: covered / n, outdoorCover: outdoorNodes.length ? outdoorCovered / outdoorNodes.length : 1, coverGap, fullCoverShare: full / n, interiorShare: indoor / n, killingField,
         sightlineMedian, lanes, breachability, destructibleCover: coverVoxels ? destructible / coverVoxels : 0, spawnSafe, firstContact,
         rooms: rooms.length, buildings: (mission.buildings || []).length
     };

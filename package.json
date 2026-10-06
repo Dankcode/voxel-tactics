@@ -19,6 +19,7 @@
     "sim:formations": "node tools/sim/battle_sim.mjs --seeds 100 --formations-compare --gate",
     "worldgen:bake": "node tools/worldgen/bake_sites.mjs",
     "art:placeholders": "python3 tools/art/make_placeholders.py",
+    "art:textures": "python3 tools/art/make_textures.py",
     "mission:report": "node tools/mission/report.mjs",
     "sim:world": "node tools/sim/battle_sim.mjs --seeds 4 --scenario all-world"
   },

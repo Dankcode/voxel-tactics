@@ -26,5 +26,5 @@ export function squadFor(desc) {
 
 export function createBattle(desc, site = null) {
     const mission = buildMission(desc, site);
-    return new Battle({ mission, squad: squadFor(desc), seed: desc.seed ?? 1 });
+    return new Battle({ mission, squad: squadFor(desc), seed: desc.seed ?? 1, debug: !!desc.debug });
 }
