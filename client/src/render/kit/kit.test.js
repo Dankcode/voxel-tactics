@@ -49,8 +49,10 @@ test('every piece builds within its cell (except the documented overhangs)', () 
 
 test('the training facility draws walls, glazing, doors, stairs, roofs, furniture, vehicles and cover with tile-set pieces', () => {
     const { byPiece, roofs } = buildAll();
-    for (const id of ['wall_core', 'wall_arm', 'plinth_core', 'mcap_core', 'glaze', 'glaze_head', 'mdoor_lower', 'mdoor_upper', 'stair_step', 'crate', 'barrel', 'sandbags', 'hedge', 'car', 'tree_round', 'jersey', 'column'].filter(id => id !== 'column'))
+    for (const id of ['joined_wall_5', 'joined_wall_10', 'glaze', 'glaze_head', 'mdoor_lower', 'mdoor_upper', 'stair_step', 'crate', 'barrel', 'car', 'tree_round', 'jersey', 'column'].filter(id => id !== 'column'))
         assert.ok((byPiece.get(id) || 0) > 0, `no ${id} instances`);
+    for (const family of ['sandbag', 'hedge'])
+        assert.ok([...byPiece].some(([id, n]) => id?.startsWith(`joined_${family}_`) && n > 0), `no connected ${family} modules`);
     assert.ok(roofs > 0, 'the fuel store has a pitched roof surface');
 });
 
@@ -99,7 +101,7 @@ test('the storey cutaway drops roofs and caps cut walls', () => {
     const house = mission.buildings.find(b => b.id === 'house');
     const cut = house.baseZ + 3;
     const { byPiece, roofs } = buildAll(cut);
-    assert.ok((byPiece.get('cap_core') || 0) > 0, 'cut walls get section caps');
+    assert.ok([...byPiece].some(([id, count]) => id.startsWith('joined_cap_') && count > 0), 'cut walls get connected section caps');
     const full = buildAll();
     assert.ok(roofs <= full.roofs);
 });

@@ -10,4 +10,6 @@ export function surfaceY(x, y, z) {
     if (!store) return zi + 1;
     return z + 1 - groundDrop(store, Math.round(x), Math.round(y), zi);
 }
-export const dropAt = (x, y, z) => (store ? groundDrop(store, Math.round(x), Math.round(y), Math.round(z)) : 0);
+export const dropAt = (x, y, z, max = Infinity) => (store ? Math.min(max, groundDrop(store, Math.round(x), Math.round(y), Math.round(z))) : 0);
+/** Move zones, the path ribbon and markers follow kerbs and recessed roads, but float on the water surface. */
+export const overlayDropAt = (x, y, z) => dropAt(x, y, z, 0.18);

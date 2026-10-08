@@ -1,5 +1,6 @@
 // XCOM-style cover readout derived from the voxels themselves (Phoenix Point-style ballistics do the
 // real work; this is what the HUD shields and the AI's tile scoring read).
+import { collisionFootprint, intersectCellShape } from './ConnectedShapes.js';
 import { materialById, coverWeight } from './Materials.js';
 
 export const DIRS4 = Object.freeze([
@@ -8,13 +9,13 @@ export const DIRS4 = Object.freeze([
 export const COVER = Object.freeze({ NONE: 0, HALF: 1, FULL: 2 });
 
 /** Cover a unit standing on surface (x, y, z) gets from the neighbour in direction d. */
-export function coverToward(store, x, y, z, d) {
+export function coverToward(store, x, y, z, d, travel = null) {
     const nx = x + d.dx, ny = y + d.dy;
-    const low = coverWeight(materialById(store.get(nx, ny, z + 1)));
-    const high = coverWeight(materialById(store.get(nx, ny, z + 2)));
-    if (low >= 1 && high >= 1) return COVER.FULL;
-    if (low >= 1) return COVER.HALF;
-    if (high >= 1) return COVER.HALF;          // window gap / overhang still hides the upper body
+    const low = travel ? protectionAlong(store, x, y, nx, ny, z + 1, travel) : protection(store, nx, ny, z + 1, d);
+    const high = travel ? protectionAlong(store, x, y, nx, ny, z + 2, travel) : protection(store, nx, ny, z + 2, d);
+    if (low >= 0.8 && high >= 0.8) return COVER.FULL;
+    if (low >= 0.4) return COVER.HALF;
+    if (high >= 0.4) return COVER.HALF;          // window gap / overhang still hides the upper body
     return COVER.NONE;
 }
 
@@ -35,7 +36,9 @@ export function coverAgainst(store, x, y, z, sx, sy) {
         // A face counts when the shooter is within ~60° of it.
         const len = Math.hypot(dx, dy) || 1;
         if (dot / len < 0.5) continue;
-        best = Math.max(best, coverToward(store, x, y, z, d));
+        // Sample along the actual line of fire, so an oblique shot that comes round a wall end or corner post is
+        // rated by what it would really cross (the HUD shields per face still use the straight-on rating).
+        best = Math.max(best, coverToward(store, x, y, z, d, [-dx / len, -dy / len]));
     }
     return best;
 }
@@ -43,4 +46,44 @@ export function coverAgainst(store, x, y, z, sx, sy) {
 /** True when no face toward the attacker has cover (XCOM "flanked"). */
 export function isFlanked(store, x, y, z, sx, sy) {
     return coverAgainst(store, x, y, z, sx, sy) === COVER.NONE;
+}
+
+// Sample a body-width band through the actual footprint. A narrow end post cannot claim full cover.
+function protection(store, x, y, z, d) {
+    const weight = coverWeight(materialById(store.get(x,y,z)));
+    if (weight < 1) return 0; // concealment, open doors and water are not ballistic cover
+    if (!collisionFootprint(store,x,y,z)) return weight;
+    let hits = 0;
+    for (const offset of [-0.38,-0.19,0,0.19,0.38]) {
+        const origin = [x+0.5-d.dx*0.5+d.dy*offset, y+0.5-d.dy*0.5-d.dx*offset, z+0.5];
+        if (intersectCellShape(store,x,y,z,origin,[d.dx,d.dy,0],0,1)) hits++;
+    }
+    return hits/5;
+}
+
+/**
+ * Protection a face-neighbour cell gives against fire travelling along `travel` (unit vector, shooter → unit): five
+ * rays across a 0.76-cell body band aimed at the unit's cell, counting those that meet the neighbour's real shape
+ * while crossing that cell.
+ */
+function protectionAlong(store, ux, uy, x, y, z, travel) {
+    const weight = coverWeight(materialById(store.get(x, y, z)));
+    if (weight < 1) return 0;
+    const [tx, ty] = travel, px = -ty, py = tx;
+    let hits = 0;
+    for (const offset of [-0.38, -0.19, 0, 0.19, 0.38]) {
+        const ox = ux + 0.5 + px * offset - tx * 2.5, oy = uy + 0.5 + py * offset - ty * 2.5;
+        // Interval of the ray inside the neighbour cell (2D slab test).
+        let t0 = 0, t1 = 2.5, ok = true;
+        for (const [o, d, lo] of [[ox, tx, x], [oy, ty, y]]) {
+            if (Math.abs(d) < 1e-9) { if (o < lo || o > lo + 1) ok = false; continue; }
+            let a = (lo - o) / d, b = (lo + 1 - o) / d;
+            if (a > b) [a, b] = [b, a];
+            t0 = Math.max(t0, a); t1 = Math.min(t1, b);
+        }
+        if (!ok || t0 > t1) continue;
+        if (!collisionFootprint(store, x, y, z)) { hits++; continue; }
+        if (intersectCellShape(store, x, y, z, [ox, oy, z + 0.5], [tx, ty, 0], t0, t1)) hits++;
+    }
+    return hits / 5 * Math.min(1, weight);
 }

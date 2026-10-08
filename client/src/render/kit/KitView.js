@@ -16,6 +16,7 @@
 import * as THREE from 'three';
 import { MATERIALS, MAT, AIR } from '../../../../shared/voxel/Materials.js';
 import { CHUNK } from '../../../../shared/voxel/VoxelStore.js';
+import { wallMask, openingAxis, bandMask, BANDS } from '../../../../shared/voxel/ConnectedShapes.js';
 import { buildRoofGeometry } from './RoofBuilder.js';
 
 export const MODERN_WALLS = new Set(['stucco', 'brick', 'concrete_wall', 'siding']);
@@ -107,7 +108,7 @@ export class KitView {
             q.setFromAxisAngle(up, yaw); s.set(scale * sx, scale, scale * sz); p.set(x + 0.5 + dx, z + dz, y + 0.5 + dy);
             m4.compose(p, q, s);
             const fog = opts.tint?.(Math.round(x), Math.round(y), z) || null;
-            const shade = 0.94 + hash(x, y, z) * 0.1;
+            const shade = WALLS.has(selfKey) || ['glass', 'door', 'door_open'].includes(selfKey) ? 1 : 0.97 + hash(x, y, z) * 0.04;
             parts.forEach((part, i) => {
                 const k = `${piece}|${i}|${part.slot === 'self' || part.slot === 'barrel' ? selfKey : ''}`;
                 let e = inst.get(k);
@@ -185,36 +186,20 @@ export class KitView {
             return hash(x, y, 7) < 0.5 ? 0 : -Math.PI / 2;
         };
         const sameKey = (ax, ay) => keyOf(get(ax, ay, z)) === k;
-        const wallAxis = () => lineYaw((ax, ay) => wallLike(ax, ay, z));
+        const wallAxis = () => openingAxis(store, x, y, z) === 'x' ? 0 : -Math.PI / 2;
         const hint = this.hints[`${x},${y},${z}`];
+        // Grouped cover: one connected module per cell, chosen from the family's face neighbours (same rule as collision).
+        const grouped = () => {
+            const m2 = bandMask(store, x, y, z, BANDS[k].family);
+            const full = keyOf(get(x, y, z + 1)) === k;
+            add(`joined_${k}_${m2}_${full ? 'full' : 'top'}`, x, y, z, 0, k);
+        };
         switch (h) {
             case 'wall': {
-                const modern = MODERN_WALLS.has(k);
-                add('wall_core', x, y, z, 0, k);
-                mask.forEach((on, i) => { if (on) add('wall_arm', x, y, z, DIRS[i][2], k); });
-                const above = get(x, y, z + 1), aboveKey = keyOf(above);
-                const corner = (mask[0] || mask[2]) && (mask[1] || mask[3]);
-                const end = mask.filter(Boolean).length === 1;
-                const topOfStorey = !WALL_LIKE.has(aboveKey);
-                if (!modern) {
-                    if (k !== 'stone' && (corner || end)) add('wall_post', x, y, z, 0, k);
-                    if (k === 'stone' && (corner || end)) add('wall_quoin', x, y, z, 0, k);
-                    if (k !== 'stone' && topOfStorey && aboveKey !== undefined && above !== AIR) {
-                        add('wall_beam_core', x, y, z, 0, k);
-                        mask.forEach((on, i) => { if (on) add('wall_beam', x, y, z, DIRS[i][2], k); });
-                    }
-                    if (k === 'timber' && !topOfStorey && !corner && mask.filter(Boolean).length === 2 && hash(x, y, z) < 0.35) add('wall_brace', x, y, z, wallAxis(), k);
-                } else if (!WALL_LIKE.has(keyOf(store.get(x, y, z - 1)))) {
-                    add('plinth_core', x, y, z, 0, k); mask.forEach((on, i) => { if (on) add('plinth_arm', x, y, z, DIRS[i][2], k); });
-                }
-                // Exposed top: coping (legacy) or a dark metal cap (modern). Cut by the storey cutaway: a section cap.
-                const realAbove = store.get(x, y, z + 1);
-                if (z + 1 >= cut && realAbove !== AIR) {
-                    add('cap_core', x, y, z, 0, k); mask.forEach((on, i) => { if (on) add('cap_arm', x, y, z, DIRS[i][2], k); });
-                } else if (realAbove === AIR) {
-                    const c = modern ? 'mcap' : 'coping';
-                    add(`${c}_core`, x, y, z, 0, k); mask.forEach((on, i) => { if (on) add(`${c}_arm`, x, y, z, DIRS[i][2], k); });
-                }
+                const connections = wallMask(store, x, y, z);
+                add(`joined_wall_${connections}`, x, y, z, 0, k);
+                const above = store.get(x, y, z + 1);
+                if (above === AIR || z + 1 >= cut) add(`joined_cap_${connections}`, x, y, z, 0, k);
                 break;
             }
             case 'window': {
@@ -280,6 +265,7 @@ export class KitView {
                     case 'bench': add('bench', x, y, z, lineYaw(sameKey) + (hash(x >> 1, y >> 1, 5) < 0.5 ? 0 : Math.PI), k); break;
                     case 'bin': add('bin', x, y, z, (hash(x, y, z) - 0.5) * 0.6 + (hash(x, y, 9) < 0.5 ? 0 : Math.PI), k); break;
                     case 'pump': add('pump', x, y, z, lineYaw(sameKey), k); break;
+                    case 'planter': grouped(); if (keyOf(get(x, y, z + 1)) !== 'planter') add('planter_plants', x, y, z, hash(x, y, z) < 0.5 ? 0 : Math.PI, k); break;
                     default: add(k, x, y, z, lineYaw(sameKey), k);
                 }
                 break;
@@ -296,8 +282,8 @@ export class KitView {
             }
             case 'crate': add('crate', x, y, z, (hash(x, y, z) - 0.5) * (keyOf(get(x, y, z - 1)) === 'crate' ? 0.5 : 0.18), k); break;
             case 'barrel': add('barrel', x, y, z, hash(x, y, z) * 6.28, k); break;
-            case 'sandbag': add('sandbags', x, y, z, lineYaw(sameKey), k); break;
-            case 'drystone': add('drystone', x, y, z, lineYaw(sameKey) + (hash(x, y, z) < 0.5 ? 0 : Math.PI), k); break;
+            case 'sandbag': grouped(); break;
+            case 'drystone': grouped(); break;
             case 'fence': add('fence', x, y, z, lineYaw(sameKey), k); break;
             case 'hay': add('hay', x, y, z, lineYaw(sameKey) + (hash(x, y, z) - 0.5) * 0.2, k); break;
             case 'stall': add('stall', x, y, z, lineYaw(sameKey) + (hash(x >> 1, y >> 1, 3) < 0.5 ? 0 : Math.PI), k); break;
@@ -314,7 +300,7 @@ export class KitView {
                 add(onRock ? 'rock_top' : `rock#${Math.floor(hash(x, y, z) * 3)}`, x, y, z, hash(x, y, z + 1) * 6.28, k, { scale: onRock ? 1 : 0.95 + hash(x, y, 2) * 0.12 });
                 break;
             }
-            case 'hedge': add('hedge', x, y, z, lineYaw(sameKey), k); break;
+            case 'hedge': grouped(); break;
             case 'foliage': {
                 if (hint?.member && intact(hint.member)) break;
                 add('foliage', x, y, z, hash(x, y, z) * 6.28, k, { scale: 0.92 + hash(z, x, y) * 0.2 });

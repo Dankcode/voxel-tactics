@@ -26,7 +26,7 @@ test('surfaces follow the vibe-game VoxelWorld contract (walkable tops with head
 
 test('copied PathSearch walks the store, climbs 1-voxel steps and wades shallow water', () => {
     const s = ground();
-    for (let x = 5; x < 8; x++) s.set(x, 5, 2, MAT.stone);   // a 1-high step
+    for (let x = 5; x < 8; x++) s.set(x, 5, 2, MAT.soil);   // a 1-high terrain step (walls are not walkable)
     s.set(10, 5, 1, MAT.water);
     const search = reachable(s, { x: 2, y: 5, z: 1 }, Infinity, AGENT_PROFILES.player);
     assert.ok(search.costs.has(nodeKey({ x: 6, y: 5, z: 2 })), 'stepped up');
@@ -76,7 +76,9 @@ test('cover readout: half behind a 1-high wall, full behind a 2-high wall, flank
     s.set(6, 4, 2, MAT.sandbag);
     assert.equal(coverAt(s, 6, 5, 1).n, COVER.HALF);
     s.set(6, 4, 3, MAT.sandbag);
-    assert.equal(coverAt(s, 6, 5, 1).n, COVER.FULL);
+    assert.equal(coverAt(s, 6, 5, 1).n, COVER.HALF, 'a lone stack is a narrow rounded post: bullets get past its sides');
+    for (const x of [5, 7]) { s.set(x, 4, 2, MAT.sandbag); s.set(x, 4, 3, MAT.sandbag); }
+    assert.equal(coverAt(s, 6, 5, 1).n, COVER.FULL, 'a joined run of sandbags is full cover');
     assert.equal(coverAgainst(s, 6, 5, 1, 6, 0), COVER.FULL);
     assert.equal(coverAgainst(s, 6, 5, 1, 12, 5), COVER.NONE);
 });

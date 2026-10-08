@@ -38,10 +38,16 @@ test('cold freezes water into walkable ice and heat melts it', () => {
     s.set(8, 8, 1, MAT.deep_water);
     assert.equal(s.surfaces(8, 8).length, 0);
     f.applyArea('cryo', 8.5, 8.5, 1.5, 1.2);
-    assert.equal(s.get(8, 8, 1), MAT.ice);
+    assert.equal(s.get(8, 8, 1), MAT.deep_ice);
     assert.equal(s.surfaces(8, 8).length, 1, 'ice bridge is walkable');
     f.applyArea('pyro', 8.5, 8.5, 1.5, 1.2);
-    assert.equal(s.get(8, 8, 1), MAT.water);
+    assert.equal(s.get(8, 8, 1), MAT.deep_water, 'ice over deep water melts back into deep water');
+    assert.equal(s.surfaces(8, 8).length, 0, 'and is impassable again');
+    s.set(9, 8, 1, MAT.water);
+    f.applyArea('cryo', 9.5, 8.5, 1.5, 0.6);
+    assert.equal(s.get(9, 8, 1), MAT.ice);
+    f.applyArea('pyro', 9.5, 8.5, 1.5, 0.6);
+    assert.equal(s.get(9, 8, 1), MAT.water, 'shallow ice melts back into shallow water');
 });
 
 test('wind clears smoke and fans flames; statuses depend on wetness', () => {

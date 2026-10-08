@@ -2,7 +2,8 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
-export const WALL_T = 0.4;            // wall thickness (a voxel is ~0.9 m; XCOM-like thin walls)
+import { WALL_THICKNESS } from '../../../../shared/voxel/ConnectedShapes.js';
+export const WALL_T = WALL_THICKNESS;            // wall thickness (a voxel is ~0.9 m; XCOM-like thin walls)
 export const ARM = 0.5 - WALL_T / 2;
 
 // ------------------------------------------------------------------------------------------- helpers

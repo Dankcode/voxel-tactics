@@ -1,5 +1,6 @@
 // Amanatides–Woo voxel traversal, ported from vibe-game shared/combat/targeting/Ray.js (PLAN 15A §6.3)
 // to this repo's corner convention (voxel x covers [x, x+1)). Points are {x, y, h}: h is height.
+import { intersectCellShape } from './ConnectedShapes.js';
 import { materialById } from './Materials.js';
 
 /** Bullets: glass and solid block; foliage and open doors pass. */
@@ -23,7 +24,14 @@ export function castRay(store, from, to, { blocks = blocksProjectile, extend = 0
     const tDelta = dir.map(c => (c === 0 ? Infinity : Math.abs(1 / c)));
     const tMax = dir.map((c, i) => (c > 0 ? (cell[i] + 1 - o[i]) / c : c < 0 ? (o[i] - cell[i]) / -c : Infinity));
     let t = 0, axis = -1;
-    if (!skipStart && blocks(store, cell[0], cell[1], cell[2])) return { hit: { x: cell[0], y: cell[1], z: cell[2] }, t: 0, point: { ...from }, normal: null, length, dir };
+    const shapeHit = (enter, fallbackNormal) => {
+        if (!blocks(store, cell[0], cell[1], cell[2])) return null;
+        const h = intersectCellShape(store, ...cell, o, dir, enter, Math.min(maxT, ...tMax));
+        if (!h) return null;
+        return { hit: { x: cell[0], y: cell[1], z: cell[2] }, t: h.t, length, dir,
+            point: { x: o[0] + dir[0]*h.t, y: o[1] + dir[1]*h.t, h: o[2] + dir[2]*h.t }, normal: h.normal || fallbackNormal };
+    };
+    if (!skipStart) { const hit = shapeHit(0, null); if (hit) return hit; }
     for (let guard = 0; guard < 4096; guard++) {
         axis = tMax[0] < tMax[1] ? (tMax[0] < tMax[2] ? 0 : 2) : (tMax[1] < tMax[2] ? 1 : 2);
         t = tMax[axis];
@@ -33,11 +41,9 @@ export function castRay(store, from, to, { blocks = blocksProjectile, extend = 0
         if (cell[2] < -1 || cell[2] > store.height + 4) break;
         if (cell[0] < -1 || cell[1] < -1 || cell[0] > store.width || cell[1] > store.depth) break;
         if (visit) visit(cell[0], cell[1], cell[2], t);
-        if (blocks(store, cell[0], cell[1], cell[2])) {
-            const normal = [0, 0, 0]; normal[axis] = -step[axis];
-            return { hit: { x: cell[0], y: cell[1], z: cell[2] }, t, length, dir,
-                point: { x: o[0] + dir[0] * t, y: o[1] + dir[1] * t, h: o[2] + dir[2] * t }, normal };
-        }
+        const normal = [0, 0, 0]; normal[axis] = -step[axis];
+        const hit = shapeHit(t, normal);
+        if (hit) return hit;
     }
     const end = Math.min(maxT, t > maxT ? maxT : t);
     return { hit: null, t: maxT, length, dir, point: { x: o[0] + dir[0] * maxT, y: o[1] + dir[1] * maxT, h: o[2] + dir[2] * maxT }, normal: null, end };
@@ -62,7 +68,10 @@ export function traceArc(store, from, to, apex) {
         const s = i / samples;
         const p = { x: from.x + (to.x - from.x) * s, y: from.y + (to.y - from.y) * s, h: from.h + (to.h - from.h) * s + 4 * k * s * (1 - s) };
         points.push(p);
-        if (i > 1 && i < samples && blocksProjectile(store, Math.floor(p.x), Math.floor(p.y), Math.floor(p.h))) return { ok: false, blockedAt: p, points: points.slice() };
+        if (i > 1 && i < samples) {
+            const hit = castRay(store, points[i-1], p, { skipStart: false });
+            if (hit.hit) return { ok: false, blockedAt: hit.point, points: points.slice() };
+        }
     }
     return { ok: true, points };
 }

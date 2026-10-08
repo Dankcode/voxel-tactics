@@ -1,6 +1,7 @@
 // Renderer, the XCOM-style tactical camera rig (perspective by default, orthographic on V; see CameraRig.js), lighting (sun with soft shadows, sky fill,
 // image-based reflections), tone mapping and the storey cutaway plane.
 import * as THREE from 'three';
+import { QUALITY } from './Quality.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
@@ -18,7 +19,7 @@ export const LIGHTING = {
 export class Scene {
     constructor(canvas) {
         this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-        this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+        this.renderer.setPixelRatio(Math.min(QUALITY.pixelRatio, window.devicePixelRatio || 1));
         this.renderer.localClippingEnabled = true;
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -31,7 +32,7 @@ export class Scene {
         this.hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
         this.sun = new THREE.DirectionalLight(0xffffff, 2);
         this.sun.castShadow = true;
-        this.sun.shadow.mapSize.set(4096, 4096);
+        this.sun.shadow.mapSize.set(QUALITY.shadowMap, QUALITY.shadowMap);
         this.sun.shadow.bias = -0.0004;
         this.sun.shadow.normalBias = 0.04;
         this.sun.shadow.radius = 3;
@@ -39,7 +40,7 @@ export class Scene {
         // as walls rather than voids.
         this.back = new THREE.DirectionalLight(0x9fb8ff, 0.55);
         this.scene.add(this.hemi, this.sun, this.sun.target, this.back, this.back.target);
-        this.ao = true;
+        this.ao = QUALITY.ao;
         const pmrem = new THREE.PMREMGenerator(this.renderer);
         this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
         this.setBounds(60, 46, 16);

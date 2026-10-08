@@ -3,7 +3,9 @@
 import * as THREE from 'three';
 import { RENDER, FALLBACK } from './RenderTable.js';
 
-const BASE = '/assets/textures/pbr/';
+import { QUALITY } from './Quality.js';
+
+const BASE = QUALITY.textures;
 const loader = new THREE.TextureLoader();
 
 export class MaterialLibrary {
@@ -11,7 +13,7 @@ export class MaterialLibrary {
         this.renderer = renderer; this.clipping = clipping;
         this.textures = new Map();
         this.materials = new Map();
-        this.aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+        this.aniso = Math.min(QUALITY.anisotropy, renderer.capabilities.getMaxAnisotropy());
         this.water = [];
     }
     /** Preload every texture the table references (resolves even if some fail: those fall back to flat colour). */
@@ -44,7 +46,7 @@ export class MaterialLibrary {
         m = new THREE.MeshStandardMaterial({
             map, normalMap, vertexColors: true,
             color: r.tint ?? 0xffffff, roughness: r.rough ?? 0.9, metalness: r.metal ?? 0,
-            normalScale: new THREE.Vector2(r.normal ?? 1, r.normal ?? 1),
+            normalScale: new THREE.Vector2((r.normal ?? 1) * QUALITY.normalScale, (r.normal ?? 1) * QUALITY.normalScale),
             emissive: r.emissive ?? 0x000000, emissiveIntensity: r.emissiveIntensity ?? 0,
             clippingPlanes: this.clipping, clipShadows: true,
             side: kind === 'opaque' ? THREE.FrontSide : THREE.DoubleSide,
@@ -67,7 +69,7 @@ export class MaterialLibrary {
 }
 
 /** Shared switches for the terrain height cues (Options / debug). */
-export const TERRAIN_CUES = { uGrid: { value: 1 }, uRim: { value: 1 } };
+export const TERRAIN_CUES = { uGrid: { value: 0 }, uRim: { value: 0 } };
 
 /**
  * Tile grid on walkable tops and bright rims on ledge edges, drawn in the fragment shader from world position, so

@@ -7,6 +7,7 @@ import { FORMATIONS } from '../../../shared/content/formations.js';
 import { alive } from '../../../shared/battle/Units.js';
 import { ICONS } from './Icons.js';
 import { TERRAIN_CUES } from '../render/MaterialLibrary.js';
+import { QUALITY, setQuality } from '../render/Quality.js';
 
 const PARTS = [['head', 'Head', 'Z'], ['torso', 'Torso', 'X'], ['armL', 'L Arm', 'C'], ['armR', 'R Arm', 'V'], ['legs', 'Legs', 'G']];
 const pct = v => `${Math.round(v * 100)}%`;
@@ -64,6 +65,7 @@ export class Hud {
             case 'lighting': g.scene.setLighting(arg); g.options.lighting = arg; this.renderOptions(); break;
             case 'ao': g.scene.setAO(!g.scene.ao); this.renderOptions(); break;
             case 'proj': g.scene.toggleProjection(); this.renderOptions(); break;
+            case 'quality': if (arg !== QUALITY.name) setQuality(arg); break;
             case 'cue': TERRAIN_CUES[arg].value = TERRAIN_CUES[arg].value ? 0 : 1; this.renderOptions(); break;
             case 'menu': g.exitToMenu(); break;
             case 'select': g.select(arg); break;
@@ -89,7 +91,8 @@ export class Hud {
         el.innerHTML = `<h4>Options</h4>${row('autoEndTurn', 'Auto end turn when the squad is spent')}${row('autoNext', 'Auto-select the next ready soldier')}${row('followCamera', 'Camera follows actions')}
             <h4>Camera</h4>${row('edgeScroll', 'Screen-edge scrolling')}<button data-act="proj" class="${g.scene.projection === 'ortho' ? 'on' : ''}">${g.scene.projection === 'ortho' ? '☑' : '☐'} Isometric (orthographic) view (V)</button>
             <div class="camhint" style="font-size:11px;opacity:.7;line-height:1.5;margin:4px 0 2px">WASD / arrows / screen edge pan · right-drag grab · middle-drag orbit · wheel zoom · Q/E rotate · H / Home centre on soldier · V isometric</div>
-            <h4>Readability</h4><button data-act="cue" data-arg="uGrid" class="${TERRAIN_CUES.uGrid.value ? 'on' : ''}">${TERRAIN_CUES.uGrid.value ? '☑' : '☐'} Tile grid on walkable ground</button><button data-act="cue" data-arg="uRim" class="${TERRAIN_CUES.uRim.value ? 'on' : ''}">${TERRAIN_CUES.uRim.value ? '☑' : '☐'} Ledge rims (orange = 2+ drop)</button><button data-act="ao" class="${g.scene.ao ? 'on' : ''}">${g.scene.ao ? '☑' : '☐'} Ambient occlusion</button>
+            <h4>Graphics</h4><button data-act="quality" data-arg="mobile" class="${QUALITY.name === 'mobile' ? 'on' : ''}">${QUALITY.name === 'mobile' ? '◉' : '○'} Mobile (light textures, fast)</button><button data-act="quality" data-arg="high" class="${QUALITY.name === 'high' ? 'on' : ''}">${QUALITY.name === 'high' ? '◉' : '○'} High (full textures, AO) — reloads</button>
+            <h4>Readability</h4><button data-act="cue" data-arg="uGrid" class="${TERRAIN_CUES.uGrid.value ? 'on' : ''}">${TERRAIN_CUES.uGrid.value ? '☑' : '☐'} Debug tile grid</button><button data-act="cue" data-arg="uRim" class="${TERRAIN_CUES.uRim.value ? 'on' : ''}">${TERRAIN_CUES.uRim.value ? '☑' : '☐'} Ledge rims (orange = 2+ drop)</button><button data-act="ao" class="${g.scene.ao ? 'on' : ''}">${g.scene.ao ? '☑' : '☐'} Ambient occlusion</button>
             <h4>Lighting</h4><div class="row">${['day', 'dusk', 'night'].map(l => `<button data-act="lighting" data-arg="${l}" class="${g.scene.lightingName === l ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     }
     log(text, cls = '') {

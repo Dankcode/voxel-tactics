@@ -73,9 +73,10 @@ export const RENDER = {
     door: { tex: 'door', scale: 2, rough: 0.8, normal: 1 },
     stairs_wood: { tex: 'stairs_wood', scale: 1.5, rough: 0.8, normal: 0.9 },
     stairs_stone: { tex: 'concrete', scale: 2, rough: 0.85, normal: 0.5, tint: 0xd8d8d4 },
-    water: { tex: 'water', scale: 4, rough: 0.06, normal: 0.6, kind: 'water', opacity: 0.78 },
+    water: { tex: 'water', scale: 4, rough: 0.06, normal: 0.6, kind: 'water', opacity: 0.78, drop: 0.45 },   // a wading unit stands knee deep
     deep_water: { tex: 'water', scale: 4, rough: 0.06, normal: 0.6, kind: 'water', opacity: 0.88, tint: 0x6f9fb2 },
-    ice: { tex: 'ice', scale: 3, rough: 0.15, normal: 0.6, kind: 'glass', opacity: 0.86 },
+    ice: { tex: 'ice', scale: 3, rough: 0.15, normal: 0.6, kind: 'glass', opacity: 0.86, drop: 0.2 },        // frozen at water level
+    deep_ice: { tex: 'ice', scale: 3, rough: 0.15, normal: 0.6, kind: 'glass', opacity: 0.9, tint: 0xd8ecf4, drop: 0.2 },
     lava: { tex: 'lava', scale: 3, rough: 0.6, normal: 0.8, kind: 'water', opacity: 1, emissive: 0xff6a1f, emissiveIntensity: 1.6 },
     hedge: { tex: 'hedge', scale: 1.5, rough: 0.9, normal: 1, brightness: 1.25 },
     leaves: { tex: 'leaves', scale: 1.5, rough: 0.9, normal: 1, brightness: 1.2 },

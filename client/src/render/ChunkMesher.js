@@ -2,6 +2,7 @@
 // normals, and vertex colours that carry corner ambient occlusion, large-scale variation and fog-of-war tint.
 // Pure (no THREE): returns typed-array-ready lists so it can move into a worker later without changes.
 // World voxel (x, y, z) → three.js (x, z, y): three's Y is up.
+import { emitConnectedWater } from './ConnectedWater.js';
 import { MATERIALS, AIR } from '../../../shared/voxel/Materials.js';
 import { CHUNK } from '../../../shared/voxel/VoxelStore.js';
 import { renderFor, KIND_GROUP } from './RenderTable.js';
@@ -77,109 +78,189 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
             buf.positions.push(p[0], p[2], p[1]);
             buf.normals.push(n[0], n[2], n[1]);
             buf.uvs.push(uvs[i][0], uvs[i][1]);
-            const k = ks[i];
+            const r = renderFor(buf.key);
+            const k = ks[i] * (r.macro ? 1 - r.macro + 2*r.macro*valueNoise(p[0]/7.3,p[1]/7.3) : 1);
             buf.colors.push(k * (t ? t[0] : 1), k * (t ? t[1] : 1), k * (t ? t[2] : 1));
             buf.rims.push(...rim); buf.grids.push(grid);
         });
-        if (flip) buf.indices.push(start, start + 2, start + 1, start, start + 3, start + 2);
-        else buf.indices.push(start, start + 1, start + 2, start, start + 2, start + 3);
+        if (flip) {
+            buf.indices.push(start, start + 2, start + 1);
+            if (pts.length === 4) buf.indices.push(start, start + 3, start + 2);
+        } else {
+            buf.indices.push(start, start + 1, start + 2);
+            if (pts.length === 4) buf.indices.push(start, start + 2, start + 3);
+        }
     };
     const dropOf = key => renderFor(key).drop || 0;
     const SIDE = [{ d: [0, -1], f: 5 }, { d: [1, 0], f: 2 }, { d: [0, 1], f: 4 }, { d: [-1, 0], f: 3 }];   // N E S W
     /**
-     * Opaque terrain / slab voxel with rounded edges: the top face is inset where the ground drops away and a 45°
-     * chamfer joins it to the side faces; materials with a `drop` (roads) sit lower than their neighbours, which then
-     * show a curb strip; faces on the map boundary are skipped when the apron continues the ground.
+     * Grid of vertices → quads with per-vertex normals (smooth fillets). pos(i, j) / nrm(i, j) give voxel-space
+     * [x, y, z]; rows × cols cells. Winding is fixed against the supplied normal.
+     */
+    const patch = (buf, rows, cols, pos, nrm, uvOf, kOf, t, rim = [0, 0, 0, 0], grid = 0) => {
+        const start = buf.positions.length / 3;
+        for (let i = 0; i <= rows; i++) for (let j = 0; j <= cols; j++) {
+            const p = pos(i, j), n = nrm(i, j), rr = renderFor(buf.key);
+            const k = kOf(i, j) * (rr.macro ? 1 - rr.macro + 2 * rr.macro * valueNoise(p[0] / 7.3, p[1] / 7.3) : 1);
+            buf.positions.push(p[0], p[2], p[1]); buf.normals.push(n[0], n[2], n[1]);
+            const uv = uvOf(p, n); buf.uvs.push(uv[0], uv[1]);
+            buf.colors.push(k * (t ? t[0] : 1), k * (t ? t[1] : 1), k * (t ? t[2] : 1));
+            buf.rims.push(...rim); buf.grids.push(grid);
+        }
+        const at = (i, j) => start + i * (cols + 1) + j;
+        // Orientation from the first cell with area.
+        const P = (i, j) => pos(i, j);
+        let flip = false;
+        {
+            const a = P(0, 0), b = P(Math.min(1, rows), 0), c = P(0, Math.min(1, cols)), n = nrm(0, 0);
+            const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+            let cr = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+            if (Math.hypot(...cr) < 1e-9) {   // degenerate first row (a sphere pole): use the far corner
+                const d = P(Math.min(1, rows), Math.min(1, cols));
+                const w = [d[0] - a[0], d[1] - a[1], d[2] - a[2]];
+                cr = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+                if (Math.hypot(...cr) < 1e-9) cr = [w[1] * v[2] - w[2] * v[1], w[2] * v[0] - w[0] * v[2], w[0] * v[1] - w[1] * v[0]];
+            }
+            // voxel space is (x, y, z) with z up; three space swaps y/z, which mirrors handedness.
+            flip = cr[0] * n[0] + cr[1] * n[1] + cr[2] * n[2] > 0;
+        }
+        for (let i = 0; i < rows; i++) for (let j = 0; j < cols; j++) {
+            const a = at(i, j), b = at(i + 1, j), c = at(i + 1, j + 1), d = at(i, j + 1);
+            if (flip) buf.indices.push(a, c, b, a, d, c); else buf.indices.push(a, b, c, a, c, d);
+        }
+    };
+    const SEG = 3;
+    const CORNERS = [[0, 0, 0, 3], [1, 0, 0, 1], [1, 1, 1, 2], [0, 1, 2, 3]];   // corner (cx, cy) and its two sides (N=0 E=1 S=2 W=3)
+    const OUT = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+    /**
+     * Opaque terrain / slab voxel drawn as part of a rounded mass: sides that face open space are pulled in and
+     * rounded — quarter-round fillets along exposed top edges, quarter-cylinders down exposed vertical corners, a
+     * sphere octant where both meet — while sides against other terrain stay flush, so touching voxels merge into one
+     * smooth shape (raised beds, berms, kerbs, pond banks). Materials with a `drop` (roads, lawns) sit lower and the
+     * higher neighbour shows a kerb. Faces on the map boundary are skipped when the apron continues the ground.
      */
     function emitRounded(x, y, z, m, base, var0, t) {
         const r0 = base;
-        const topNeighbour = z + 1 >= cut ? AIR : store.get(x, y, z + 1);
         const topDrawn = !hides(x, y, z + 1);
         const capped = topDrawn && z + 1 >= cut && store.get(x, y, z + 1) !== AIR && opaqueAt(store, x, y, z + 1) && !kit(store, x, y, z + 1);
         const live = topDrawn && !capped;
         const my = live ? dropOf(m.key) : 0;
         const T = z + 1 - my;
-        const bevel = live ? (r0.bevel ?? 0.08) : 0;
-        const e = [0, 0, 0, 0], curb = [0, 0, 0, 0];
+        const R = Math.min(0.32, r0.bevel ?? 0.16);
+        const rT = live ? R : 0;
+        const ex = [false, false, false, false], curb = [0, 0, 0, 0];
         SIDE.forEach(({ d: [dx, dy] }, i) => {
             const nx = x + dx, ny = y + dy;
-            if (!inMap(nx, ny)) { e[i] = apron ? 0 : bevel; return; }
-            const nm = MATERIALS[store.get(nx, ny, z)];
-            const nSolid = nm.solid && !nm.liquid && z < cut;
-            if (!nSolid) { e[i] = bevel; return; }
+            if (!inMap(nx, ny)) { ex[i] = !apron; return; }
+            if (!hides(nx, ny, z)) { ex[i] = true; return; }
             if (!live) return;
-            const nLive = !hides(nx, ny, z + 1) && !(z + 1 >= cut);
-            const nd = nLive && hides(nx, ny, z) ? dropOf(nm.key) : 0;
-            if (nd > my + 0.01) { curb[i] = nd - my; e[i] = Math.min(bevel, curb[i] * 0.45); }
+            const nLive = !hides(nx, ny, z + 1) && z + 1 < cut;
+            const nd = nLive ? dropOf(MATERIALS[store.get(nx, ny, z)].key) : 0;
+            if (nd > my + 0.01) curb[i] = nd - my;
         });
-        // ---- top + chamfers
+        const convex = CORNERS.map(([, , a, b]) => ex[a] && ex[b]);
+        const ins = i => (ex[i] ? rT : 0);
+        const key = m.key, scale = r0.scale || 1, faceUv = r0.uv === 'face';
+        const uvTop = p => (faceUv ? [p[0] - x, p[1] - y] : [p[0] / scale, p[1] / scale]);
+        // ---- top
+        let grid = 0, rim = [0, 0, 0, 0], elev = 1;
         if (topDrawn) {
-            const key = m.key, r = r0, buf = bufFor(key, r), scale = r.scale || 1, faceUv = r.uv === 'face';
-            let grid = 0, rim = [0, 0, 0, 0], elev = 1;
+            const buf = bufFor(key, r0);
             if (!capped) {
                 grid = m.walkable && !(z + 1 < cut && store.isSolid(x, y, z + 1)) ? 1 : 0;
                 if (grid) rim = [[0, -1], [1, 0], [0, 1], [-1, 0]].map(([dx, dy]) => {
-                    if (store.isSolid(x + dx, y + dy, z)) return 0;
-                    if (!inMap(x + dx, y + dy)) return 0;
+                    if (store.isSolid(x + dx, y + dy, z) || !inMap(x + dx, y + dy)) return 0;
                     let dd = 1; while (dd < 4 && z - dd >= 0 && !store.isSolid(x + dx, y + dy, z - dd)) dd++;
                     return dd;
                 });
-                elev = 1 + Math.min(0.24, 0.03 * Math.max(0, z - 1));
+                elev = 1 + Math.min(0.2, 0.025 * Math.max(0, z - 1));
             }
-            const uvOf = p => faceUv ? [p[0] - x, p[1] - y] : [p[0] / scale, p[1] / scale];
-            const corner = (cx2, cy2) => [x + (cx2 ? 1 - e[1] : e[3]), y + (cy2 ? 1 - e[2] : e[0]), T];
-            const cs = [[0, 0], [1, 0], [1, 1], [0, 1]];
-            const pts = cs.map(([a, b]) => corner(a, b));
-            const ks = cs.map(([a, b]) => var0 * elev * aoCorner(0, x, y, z, a, b, 1) * (capped ? 0.55 : 1));
-            quad(buf, pts, [0, 0, 1], pts.map(uvOf), ks, t, rim, grid);
-            // Chamfers: N (y = 0), E (x = 1), S (y = 1), W (x = 0).
-            const edgeCorners = [[[0, 0], [1, 0]], [[1, 0], [1, 1]], [[1, 1], [0, 1]], [[0, 1], [0, 0]]];
-            SIDE.forEach(({ d: [dx, dy] }, i) => {
-                if (!(e[i] > 0)) return;
-                const [[a0, b0], [a1, b1]] = edgeCorners[i];
-                const inner = [corner(a0, b0), corner(a1, b1)];
-                const outer = [[x + a0, y + b0, T - e[i]], [x + a1, y + b1, T - e[i]]];
-                const n = [dx * 0.7071, dy * 0.7071, 0.7071];
-                const kk = [ks[cs.findIndex(c => c[0] === a0 && c[1] === b0)], ks[cs.findIndex(c => c[0] === a1 && c[1] === b1)]];
-                const q = [inner[0], inner[1], outer[1], outer[0]];
-                quad(buf, q, n, q.map(uvOf), [kk[0], kk[1], kk[1] * 0.86, kk[0] * 0.86], t, rim, 0);
-            });
+            const x0 = x + ins(3), x1 = x + 1 - ins(1), y0 = y + ins(0), y1 = y + 1 - ins(2);
+            const kTop = var0 * elev * (capped ? 0.55 : 1);
+            const pts = [[x0, y0, T], [x1, y0, T], [x1, y1, T], [x0, y1, T]];
+            const ks = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([a, b2]) => kTop * aoCorner(0, x, y, z, a, b2, 1));
+            quad(buf, pts, [0, 0, 1], pts.map(uvTop), ks, t, rim, grid);
+            if (live && rT > 0) {
+                // Edge fillets.
+                SIDE.forEach(({ d: [dx, dy] }, i) => {
+                    if (!ex[i]) return;
+                    // Ends of the fillet along the side: inset where the corner is convex (the octant covers it).
+                    const along = dx === 0 ? [1, 0] : [0, 1];                    // axis the side runs along
+                    const cs = CORNERS.filter(([, , a, b2]) => a === i || b2 === i);   // its two corners
+                    const lo = cs.find(c => (along[0] ? c[0] : c[1]) === 0), hi = cs.find(c => (along[0] ? c[0] : c[1]) === 1);
+                    const s0 = convex[CORNERS.indexOf(lo)] ? rT : 0, s1 = 1 - (convex[CORNERS.indexOf(hi)] ? rT : 0);
+                    // Line of the inset top edge.
+                    const base0 = dx === 1 ? x + 1 - rT : dx === -1 ? x + rT : null, baseY = dy === 1 ? y + 1 - rT : dy === -1 ? y + rT : null;
+                    patch(buf, SEG, 1, (ii, jj) => {
+                        const ph = (ii / SEG) * Math.PI / 2, s2 = jj ? s1 : s0;
+                        const px = along[0] ? x + s2 : base0 + dx * rT * Math.sin(ph);
+                        const py = along[1] ? y + s2 : baseY + dy * rT * Math.sin(ph);
+                        return [px, py, T - rT + rT * Math.cos(ph)];
+                    }, (ii) => { const ph = (ii / SEG) * Math.PI / 2; return [dx * Math.sin(ph), dy * Math.sin(ph), Math.cos(ph)]; },
+                    uvTop, (ii) => kTop * (1 - 0.12 * ii / SEG), t, rim, 0);
+                });
+                // Corner octants.
+                CORNERS.forEach(([cx, cy, a, b2], c) => {
+                    if (!convex[c]) return;
+                    const ccx = cx ? x + 1 - rT : x + rT, ccy = cy ? y + 1 - rT : y + rT;
+                    const nA = OUT[a], nB = OUT[b2];
+                    patch(buf, SEG, SEG, (ii, jj) => {
+                        const ph = (ii / SEG) * Math.PI / 2, th = (jj / SEG) * Math.PI / 2;
+                        const hx = Math.cos(th) * nA[0] + Math.sin(th) * nB[0], hy = Math.cos(th) * nA[1] + Math.sin(th) * nB[1];
+                        return [ccx + rT * Math.sin(ph) * hx, ccy + rT * Math.sin(ph) * hy, T - rT + rT * Math.cos(ph)];
+                    }, (ii, jj) => {
+                        const ph = (ii / SEG) * Math.PI / 2, th = (jj / SEG) * Math.PI / 2;
+                        const hx = Math.cos(th) * nA[0] + Math.sin(th) * nB[0], hy = Math.cos(th) * nA[1] + Math.sin(th) * nB[1];
+                        return [Math.sin(ph) * hx, Math.sin(ph) * hy, Math.cos(ph)];
+                    }, uvTop, (ii) => kTop * (1 - 0.12 * ii / SEG), t, rim, 0);
+                });
+            }
         }
-        // ---- sides (and curb strips)
+        // ---- sides, vertical corners and kerb strips
+        const sideKey = r0.side ? (live ? r0.side : 'soil') : key;
+        const rs = r0.side ? renderFor(sideKey) : r0;
+        const sbuf = bufFor(sideKey, rs), sScale = rs.scale || 1, sFace = rs.uv === 'face';
+        const topSide = live ? T - rT : z + 1;
+        const kSide = var0 * 0.96;
         SIDE.forEach(({ d: [dx, dy], f }, i) => {
-            const nx = x + dx, ny = y + dy;
-            if (!inMap(nx, ny) && apron) return;
-            const top = live ? T - e[i] : z + 1;
-            let bottom = z;
-            if (hides(nx, ny, z)) { if (!(curb[i] > 0)) return; bottom = z + 1 - (my + curb[i]); }
+            let bottom = z, top = topSide;
+            if (!ex[i]) {
+                if (!(curb[i] > 0)) return;
+                bottom = z + 1 - (my + curb[i]); top = T;
+            }
             const face = FACES[f];
-            let key = m.key, r = r0;
-            if (r0.side) { key = live ? r0.side : 'soil'; r = renderFor(key); }
-            const buf = bufFor(key, r), scale = r.scale || 1, faceUv = r.uv === 'face';
-            // Corners along this side: (a, b) in cell units; f 2 = +x, 3 = -x, 4 = +y, 5 = -y.
-            const ends = f === 2 ? [[1, 0], [1, 1]] : f === 3 ? [[0, 1], [0, 0]] : f === 4 ? [[1, 1], [0, 1]] : [[0, 0], [1, 0]];
-            const pts = [[x + ends[0][0], y + ends[0][1], bottom], [x + ends[1][0], y + ends[1][1], bottom], [x + ends[1][0], y + ends[1][1], top], [x + ends[0][0], y + ends[0][1], top]];
-            const uvOf = (p, li) => {
-                const w = [p[0], p[1], p[2]];
+            const along = dx === 0 ? [1, 0] : [0, 1];
+            const cs = CORNERS.filter(([, , a, b2]) => a === i || b2 === i);
+            const lo = cs.find(c => (along[0] ? c[0] : c[1]) === 0), hi = cs.find(c => (along[0] ? c[0] : c[1]) === 1);
+            const cut0 = ex[i] && convex[CORNERS.indexOf(lo)] ? R : 0, cut1 = ex[i] && convex[CORNERS.indexOf(hi)] ? R : 0;
+            const fx = dx === 1 ? x + 1 : dx === -1 ? x : null, fy = dy === 1 ? y + 1 : dy === -1 ? y : null;
+            const P = (s2, h) => [along[0] ? x + s2 : fx, along[1] ? y + s2 : fy, h];
+            const pts = [P(cut0, bottom), P(1 - cut1, bottom), P(1 - cut1, top), P(cut0, top)];
+            const uvOf = p => {
                 const l = [p[0] - x, p[1] - y, p[2] - z];
-                let u = faceUv ? l[face.u] : w[face.u] / scale, v = faceUv ? l[face.v] : w[face.v] / scale;
-                if (face.flipU) u = faceUv ? 1 - u : -u;
+                let u = sFace ? l[face.u] : p[face.u] / sScale, v = sFace ? l[face.v] : p[face.v] / sScale;
+                if (face.flipU) u = sFace ? 1 - u : -u;
                 return [u, v];
             };
-            const ks = pts.map((p, li) => {
-                const dz = li >= 2 ? 1 : 0;
-                const seam = dz === 0 ? 0.84 : 1;
-                return var0 * seam * aoCorner(f, x, y, z, ends[li === 0 || li === 3 ? 0 : 1][0], ends[li === 0 || li === 3 ? 0 : 1][1], dz);
-            });
-            quad(buf, pts, [face.n[0], face.n[1], 0], pts.map(uvOf), ks, t);
+            const ks = pts.map((p, li) => kSide * (li < 2 ? 0.92 : 1) * aoCorner(f, x, y, z, along[0] ? (li === 0 || li === 3 ? 0 : 1) : (dx > 0 ? 1 : 0), along[1] ? (li === 0 || li === 3 ? 0 : 1) : (dy > 0 ? 1 : 0), li < 2 ? 0 : 1));
+            quad(sbuf, pts, [face.n[0], face.n[1], 0], pts.map(uvOf), ks, t);
+        });
+        CORNERS.forEach(([cx, cy, a, b2], c) => {
+            if (!convex[c]) return;
+            const ccx = cx ? x + 1 - R : x + R, ccy = cy ? y + 1 - R : y + R;
+            const nA = OUT[a], nB = OUT[b2];
+            patch(sbuf, 1, SEG, (ii, jj) => {
+                const th = (jj / SEG) * Math.PI / 2;
+                return [ccx + R * (Math.cos(th) * nA[0] + Math.sin(th) * nB[0]), ccy + R * (Math.cos(th) * nA[1] + Math.sin(th) * nB[1]), ii ? topSide : z];
+            }, (ii, jj) => { const th = (jj / SEG) * Math.PI / 2; return [Math.cos(th) * nA[0] + Math.sin(th) * nB[0], Math.cos(th) * nA[1] + Math.sin(th) * nB[1], 0]; },
+            (p) => [(p[0] + p[1]) / sScale, p[2] / sScale], (ii) => kSide * (ii ? 1 : 0.92), t);
         });
         // ---- bottom (rarely visible: overhangs)
         if (!hides(x, y, z - 1) && z > 0) {
-            const buf = bufFor(m.key, r0), scale = r0.scale || 1;
+            const buf = bufFor(m.key, r0);
             const pts = [[x, y, z], [x + 1, y, z], [x + 1, y + 1, z], [x, y + 1, z]];
             quad(buf, pts, [0, 0, -1], pts.map(p => [p[0] / scale, p[1] / scale]), pts.map(() => var0 * 0.7), t);
         }
-        void topNeighbour;
     }
     for (let z = z0; z < Math.min(z0 + CHUNK, store.height, cut); z++)
         for (let y = y0; y < Math.min(y0 + CHUNK, store.depth); y++)
@@ -190,9 +271,14 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
                 if (m.render === 'none' || kit(store, x, y, z, id)) continue;
                 const base = renderFor(m.key);
                 const g = KIND_GROUP[base.kind || 'opaque'];
-                const jitter = 0.94 + hash3(x, y, z) * 0.12;
-                const macro = base.macro ? 1 - base.macro + 2 * base.macro * valueNoise(x / 7.3, y / 7.3) : 1;
+                const jitter = 1;
+                const macro = 1;
                 const t = tint ? tint(x, y, z, m) : null;
+                if (m.liquid || m.key === 'ice' || m.key === 'deep_ice') {
+                    const key = m.key === 'deep_water' ? 'water' : m.key === 'deep_ice' ? 'ice' : m.key;
+                    emitConnectedWater(store,x,y,z,m.key,bufFor(key,renderFor(key)),quad,t,cut);
+                    continue;
+                }
                 if (g === 0 && options.rounded !== false) { emitRounded(x, y, z, m, base, jitter * macro, t); continue; }
                 for (let f = 0; f < 6; f++) {
                     const face = FACES[f];
@@ -237,7 +323,7 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
                                 if (opaque(cxw + ddx, cyw + ddy, czw + ddz)) occ++;
                             }
                         }
-                        const seam = f >= 2 && g === 0 && dz === 0 ? 0.84 : 1;
+                        const seam = 1;
                         const k = jitter * macro * elev * seam * (1 - Math.min(3, Math.max(0, occ - 1)) * 0.2) * (capped ? 0.55 : 1);
                         ao.push(k);
                         buf.positions.push(x + dx, z + dz, y + dy);

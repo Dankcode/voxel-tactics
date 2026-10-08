@@ -56,7 +56,9 @@ export class EventPlayer {
                     const steps = Math.max(1, Math.round(len * 6));
                     for (let s = 1; s <= steps; s++) {
                         const k = s / steps;
-                        v.setCell(a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k, a.z + (b.z - a.z) * k);
+                        // A two-cell step is a vault over low cover: hop over it.
+                        const hop = Math.hypot(b.x - a.x, b.y - a.y) > 1.5 ? Math.sin(k * Math.PI) * 1.1 : 0;
+                        v.setCell(a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k, a.z + (b.z - a.z) * k + hop);
                         g.updateEnemyVisibility();
                         await wait(len / speed / steps);
                     }

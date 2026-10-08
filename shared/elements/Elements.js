@@ -98,13 +98,13 @@ export class ElementField {
                     const isSurface = (m.walkable || m.liquid) && !store.isSolid(x, y, z + 1);
                     switch (element) {
                         case 'pyro':
-                            if (id === MAT.ice) { store.set(x, y, z, MAT.water); changes.push({ t: 'melt', x, y, z }); break; }
+                            if (m.family === 'ice' && m.meltTo) { store.set(x, y, z, MAT[m.meltTo]); changes.push({ t: 'melt', x, y, z }); break; }
                             if (m.flammable && this.ignite(x, y, z)) changes.push({ t: 'ignite', x, y, z });
                             if (isSurface) { const s = this.setSurface(x, y, z, 'burning'); changes.push({ t: 'surface', x, y, z, effect: s }); }
                             break;
                         case 'hydro':
                             if (this.extinguish(x, y, z)) changes.push({ t: 'extinguish', x, y, z });
-                            if (id === MAT.lava) { store.set(x, y, z, MAT.stone); changes.push({ t: 'cool', x, y, z }); break; }
+                            if (id === MAT.lava) { store.set(x, y, z, MAT.stone_floor); changes.push({ t: 'cool', x, y, z }); break; }   // cooled lava is ground, not a wall module
                             if (isSurface && !m.liquid) { const s = this.setSurface(x, y, z, 'wet', 3); changes.push({ t: 'surface', x, y, z, effect: s }); }
                             break;
                         case 'cryo':

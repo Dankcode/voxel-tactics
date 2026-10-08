@@ -3156,6 +3156,3164 @@
     ]
    ],
    "group": "decor"
+  },
+  "joined_wall_0": {
+   "slots": [
+    "self"
+   ],
+   "tris": 92,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "connected-wall",
+   "text": "Rounded connected wall; shared collision silhouette"
+  },
+  "joined_cap_0": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 22,
+   "bounds": [
+    [
+     -0.2,
+     1.008,
+     -0.2
+    ],
+    [
+     0.2,
+     1.008,
+     0.2
+    ]
+   ],
+   "group": "connected-wall"
+  },
+  "joined_wall_1": {
+   "slots": [
+    "self"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "connected-wall",
+   "text": "Rounded connected wall; shared collision silhouette"
+  },
+  "joined_cap_1": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.2,
+     1.008,
+     -0.2
+    ],
+    [
+     0.5,
+     1.008,
+     0.2
+    ]
+   ],
+   "group": "connected-wall"
+  },
+  "joined_wall_2": {
+   "slots": [
+    "self"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-wall",
+   "text": "Rounded connected wall; shared collision silhouette"
+  },
+  "joined_cap_2": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.2,
+     1.008,
+     -0.2
+    ],
+    [
+     0.2,
+     1.008,
+     0.5
+    ]
+   ],
+   "group": "connected-wall"
+  },
+  "joined_wall_3": {
+   "slots": [
+    "self"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-wall",
+   "text": "Rounded connected wall; shared collision silhouette"
+  },
+  "joined_cap_3": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 14,
+   "bounds": [
+    [
+     -0.2,
+     1.008,
+     -0.2
+    ],
+    [
+     0.5,
+     1.008,
+     0.5
+    ]
+   ],
+   "group": "connected-wall"
+  },
+  "joined_wall_4": {
+   "slots": [
+    "self"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "connected-wall",
+   "text": "Rounded connected wall; shared collision silhouette"
+  },
+  "joined_cap_4": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.5,
+     1.008,
+     -0.2
+    ],
+    [
+     0.2,
+     1.008,
+     0.2
+    ]
+   ],
+   "group": "connected-wall"
+  },
+  "joined_wall_5": {
+   "slots": [
+    "self"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "connected-wall",
+   "text": "Rounded connected wall; shared collision silhouette"
+  },
+  "joined_cap_5": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 2,
+   "bounds": [
+    [
+     -0.5,
+     1.008,
+     -0.2
+    ],
+    [
+     0.5,
+     1.008,
+     0.2
+    ]
+   ],
+   "group": "connected-wall"
+  },
+  "joined_wall_6": {
+   "slots": [
+    "self"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-wall",
+   "text": "Rounded connected wall; shared collision silhouette"
+  },
+  "joined_cap_6": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 14,
+   "bounds": [
+    [
+     -0.5,
+     1.008,
+     -0.2
+    ],
+    [
+     0.2,
+     1.008,
+     0.5
+    ]
+   ],
+   "group": "connected-wall"
+  },
+  "joined_wall_7": {
+   "slots": [
+    "self"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-wall",
+   "text": "Rounded connected wall; shared collision silhouette"
+  },
+  "joined_cap_7": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 16,
+   "bounds": [
+    [
+     -0.5,
+     1.008,
+     -0.2
+    ],
+    [
+     0.5,
+     1.008,
+     0.5
+    ]
+   ],
+   "group": "connected-wall"
+  },
+  "joined_wall_8": {
+   "slots": [
+    "self"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "connected-wall",
+   "text": "Rounded connected wall; shared collision silhouette"
+  },
+  "joined_cap_8": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.2,
+     1.008,
+     -0.5
+    ],
+    [
+     0.2,
+     1.008,
+     0.2
+    ]
+   ],
+   "group": "connected-wall"
+  },
+  "joined_wall_9": {
+   "slots": [
+    "self"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "connected-wall",
+   "text": "Rounded connected wall; shared collision silhouette"
+  },
+  "joined_cap_9": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 14,
+   "bounds": [
+    [
+     -0.2,
+     1.008,
+     -0.5
+    ],
+    [
+     0.5,
+     1.008,
+     0.2
+    ]
+   ],
+   "group": "connected-wall"
+  },
+  "joined_wall_10": {
+   "slots": [
+    "self"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-wall",
+   "text": "Rounded connected wall; shared collision silhouette"
+  },
+  "joined_cap_10": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 2,
+   "bounds": [
+    [
+     -0.2,
+     1.008,
+     -0.5
+    ],
+    [
+     0.2,
+     1.008,
+     0.5
+    ]
+   ],
+   "group": "connected-wall"
+  },
+  "joined_wall_11": {
+   "slots": [
+    "self"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-wall",
+   "text": "Rounded connected wall; shared collision silhouette"
+  },
+  "joined_cap_11": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 16,
+   "bounds": [
+    [
+     -0.2,
+     1.008,
+     -0.5
+    ],
+    [
+     0.5,
+     1.008,
+     0.5
+    ]
+   ],
+   "group": "connected-wall"
+  },
+  "joined_wall_12": {
+   "slots": [
+    "self"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "connected-wall",
+   "text": "Rounded connected wall; shared collision silhouette"
+  },
+  "joined_cap_12": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 14,
+   "bounds": [
+    [
+     -0.5,
+     1.008,
+     -0.5
+    ],
+    [
+     0.2,
+     1.008,
+     0.2
+    ]
+   ],
+   "group": "connected-wall"
+  },
+  "joined_wall_13": {
+   "slots": [
+    "self"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "connected-wall",
+   "text": "Rounded connected wall; shared collision silhouette"
+  },
+  "joined_cap_13": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 16,
+   "bounds": [
+    [
+     -0.5,
+     1.008,
+     -0.5
+    ],
+    [
+     0.5,
+     1.008,
+     0.2
+    ]
+   ],
+   "group": "connected-wall"
+  },
+  "joined_wall_14": {
+   "slots": [
+    "self"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-wall",
+   "text": "Rounded connected wall; shared collision silhouette"
+  },
+  "joined_cap_14": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 16,
+   "bounds": [
+    [
+     -0.5,
+     1.008,
+     -0.5
+    ],
+    [
+     0.2,
+     1.008,
+     0.5
+    ]
+   ],
+   "group": "connected-wall"
+  },
+  "joined_wall_15": {
+   "slots": [
+    "self"
+   ],
+   "tris": 116,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-wall",
+   "text": "Rounded connected wall; shared collision silhouette"
+  },
+  "joined_cap_15": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 30,
+   "bounds": [
+    [
+     -0.5,
+     1.008,
+     -0.5
+    ],
+    [
+     0.5,
+     1.008,
+     0.5
+    ]
+   ],
+   "group": "connected-wall"
+  },
+  "joined_hedge_0_top": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 92,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.43
+    ],
+    [
+     0.43,
+     0.86,
+     0.43
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected hedge run, top module"
+  },
+  "joined_hedge_0_full": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 92,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.43
+    ],
+    [
+     0.43,
+     1,
+     0.43
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_hedge_1_top": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.43
+    ],
+    [
+     0.5,
+     0.86,
+     0.43
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected hedge run, top module"
+  },
+  "joined_hedge_1_full": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.43
+    ],
+    [
+     0.5,
+     1,
+     0.43
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_hedge_2_top": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.43
+    ],
+    [
+     0.43,
+     0.86,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected hedge run, top module"
+  },
+  "joined_hedge_2_full": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.43
+    ],
+    [
+     0.43,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_hedge_3_top": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.43
+    ],
+    [
+     0.5,
+     0.86,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected hedge run, top module"
+  },
+  "joined_hedge_3_full": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.43
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_hedge_4_top": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.43
+    ],
+    [
+     0.43,
+     0.86,
+     0.43
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected hedge run, top module"
+  },
+  "joined_hedge_4_full": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.43
+    ],
+    [
+     0.43,
+     1,
+     0.43
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_hedge_5_top": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.43
+    ],
+    [
+     0.5,
+     0.86,
+     0.43
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected hedge run, top module"
+  },
+  "joined_hedge_5_full": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.43
+    ],
+    [
+     0.5,
+     1,
+     0.43
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_hedge_6_top": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.43
+    ],
+    [
+     0.43,
+     0.86,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected hedge run, top module"
+  },
+  "joined_hedge_6_full": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.43
+    ],
+    [
+     0.43,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_hedge_7_top": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.43
+    ],
+    [
+     0.5,
+     0.86,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected hedge run, top module"
+  },
+  "joined_hedge_7_full": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.43
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_hedge_8_top": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.5
+    ],
+    [
+     0.43,
+     0.86,
+     0.43
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected hedge run, top module"
+  },
+  "joined_hedge_8_full": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.5
+    ],
+    [
+     0.43,
+     1,
+     0.43
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_hedge_9_top": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.86,
+     0.43
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected hedge run, top module"
+  },
+  "joined_hedge_9_full": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.43
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_hedge_10_top": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.5
+    ],
+    [
+     0.43,
+     0.86,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected hedge run, top module"
+  },
+  "joined_hedge_10_full": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.5
+    ],
+    [
+     0.43,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_hedge_11_top": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.86,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected hedge run, top module"
+  },
+  "joined_hedge_11_full": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_hedge_12_top": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.43,
+     0.86,
+     0.43
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected hedge run, top module"
+  },
+  "joined_hedge_12_full": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.43,
+     1,
+     0.43
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_hedge_13_top": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.86,
+     0.43
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected hedge run, top module"
+  },
+  "joined_hedge_13_full": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.43
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_hedge_14_top": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.43,
+     0.86,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected hedge run, top module"
+  },
+  "joined_hedge_14_full": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.43,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_hedge_15_top": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 116,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.86,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected hedge run, top module"
+  },
+  "joined_hedge_15_full": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 116,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_planter_0_top": {
+   "slots": [
+    "self",
+    "soil"
+   ],
+   "tris": 114,
+   "bounds": [
+    [
+     -0.4,
+     0,
+     -0.4
+    ],
+    [
+     0.4,
+     0.605,
+     0.4
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected planter run, top module"
+  },
+  "joined_planter_0_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 92,
+   "bounds": [
+    [
+     -0.4,
+     0,
+     -0.4
+    ],
+    [
+     0.4,
+     1,
+     0.4
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_planter_1_top": {
+   "slots": [
+    "self",
+    "soil"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.4,
+     0,
+     -0.4
+    ],
+    [
+     0.5,
+     0.605,
+     0.4
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected planter run, top module"
+  },
+  "joined_planter_1_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.4,
+     0,
+     -0.4
+    ],
+    [
+     0.5,
+     1,
+     0.4
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_planter_2_top": {
+   "slots": [
+    "self",
+    "soil"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.4,
+     0,
+     -0.4
+    ],
+    [
+     0.4,
+     0.605,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected planter run, top module"
+  },
+  "joined_planter_2_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.4,
+     0,
+     -0.4
+    ],
+    [
+     0.4,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_planter_3_top": {
+   "slots": [
+    "self",
+    "soil"
+   ],
+   "tris": 70,
+   "bounds": [
+    [
+     -0.4,
+     0,
+     -0.4
+    ],
+    [
+     0.5,
+     0.605,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected planter run, top module"
+  },
+  "joined_planter_3_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.4,
+     0,
+     -0.4
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_planter_4_top": {
+   "slots": [
+    "self",
+    "soil"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.4
+    ],
+    [
+     0.4,
+     0.605,
+     0.4
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected planter run, top module"
+  },
+  "joined_planter_4_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.4
+    ],
+    [
+     0.4,
+     1,
+     0.4
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_planter_5_top": {
+   "slots": [
+    "self",
+    "soil"
+   ],
+   "tris": 10,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.4
+    ],
+    [
+     0.5,
+     0.605,
+     0.4
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected planter run, top module"
+  },
+  "joined_planter_5_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.4
+    ],
+    [
+     0.5,
+     1,
+     0.4
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_planter_6_top": {
+   "slots": [
+    "self",
+    "soil"
+   ],
+   "tris": 70,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.4
+    ],
+    [
+     0.4,
+     0.605,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected planter run, top module"
+  },
+  "joined_planter_6_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.4
+    ],
+    [
+     0.4,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_planter_7_top": {
+   "slots": [
+    "self",
+    "soil"
+   ],
+   "tris": 78,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.4
+    ],
+    [
+     0.5,
+     0.605,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected planter run, top module"
+  },
+  "joined_planter_7_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.4
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_planter_8_top": {
+   "slots": [
+    "self",
+    "soil"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.4,
+     0,
+     -0.5
+    ],
+    [
+     0.4,
+     0.605,
+     0.4
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected planter run, top module"
+  },
+  "joined_planter_8_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.4,
+     0,
+     -0.5
+    ],
+    [
+     0.4,
+     1,
+     0.4
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_planter_9_top": {
+   "slots": [
+    "self",
+    "soil"
+   ],
+   "tris": 70,
+   "bounds": [
+    [
+     -0.4,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.605,
+     0.4
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected planter run, top module"
+  },
+  "joined_planter_9_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.4,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.4
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_planter_10_top": {
+   "slots": [
+    "self",
+    "soil"
+   ],
+   "tris": 10,
+   "bounds": [
+    [
+     -0.4,
+     0,
+     -0.5
+    ],
+    [
+     0.4,
+     0.605,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected planter run, top module"
+  },
+  "joined_planter_10_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.4,
+     0,
+     -0.5
+    ],
+    [
+     0.4,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_planter_11_top": {
+   "slots": [
+    "self",
+    "soil"
+   ],
+   "tris": 78,
+   "bounds": [
+    [
+     -0.4,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.605,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected planter run, top module"
+  },
+  "joined_planter_11_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.4,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_planter_12_top": {
+   "slots": [
+    "self",
+    "soil"
+   ],
+   "tris": 70,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.4,
+     0.605,
+     0.4
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected planter run, top module"
+  },
+  "joined_planter_12_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.4,
+     1,
+     0.4
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_planter_13_top": {
+   "slots": [
+    "self",
+    "soil"
+   ],
+   "tris": 78,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.605,
+     0.4
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected planter run, top module"
+  },
+  "joined_planter_13_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.4
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_planter_14_top": {
+   "slots": [
+    "self",
+    "soil"
+   ],
+   "tris": 78,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.4,
+     0.605,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected planter run, top module"
+  },
+  "joined_planter_14_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.4,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_planter_15_top": {
+   "slots": [
+    "self",
+    "soil"
+   ],
+   "tris": 146,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.605,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected planter run, top module"
+  },
+  "joined_planter_15_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 116,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_sandbag_0_top": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 92,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.31
+    ],
+    [
+     0.31,
+     0.9,
+     0.31
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected sandbag run, top module"
+  },
+  "joined_sandbag_0_full": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 92,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.31
+    ],
+    [
+     0.31,
+     1,
+     0.31
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_sandbag_1_top": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.31
+    ],
+    [
+     0.5,
+     0.9,
+     0.31
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected sandbag run, top module"
+  },
+  "joined_sandbag_1_full": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.31
+    ],
+    [
+     0.5,
+     1,
+     0.31
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_sandbag_2_top": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.31
+    ],
+    [
+     0.31,
+     0.9,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected sandbag run, top module"
+  },
+  "joined_sandbag_2_full": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.31
+    ],
+    [
+     0.31,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_sandbag_3_top": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.31
+    ],
+    [
+     0.5,
+     0.9,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected sandbag run, top module"
+  },
+  "joined_sandbag_3_full": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.31
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_sandbag_4_top": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.31
+    ],
+    [
+     0.31,
+     0.9,
+     0.31
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected sandbag run, top module"
+  },
+  "joined_sandbag_4_full": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.31
+    ],
+    [
+     0.31,
+     1,
+     0.31
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_sandbag_5_top": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.31
+    ],
+    [
+     0.5,
+     0.9,
+     0.31
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected sandbag run, top module"
+  },
+  "joined_sandbag_5_full": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.31
+    ],
+    [
+     0.5,
+     1,
+     0.31
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_sandbag_6_top": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.31
+    ],
+    [
+     0.31,
+     0.9,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected sandbag run, top module"
+  },
+  "joined_sandbag_6_full": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.31
+    ],
+    [
+     0.31,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_sandbag_7_top": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.31
+    ],
+    [
+     0.5,
+     0.9,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected sandbag run, top module"
+  },
+  "joined_sandbag_7_full": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.31
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_sandbag_8_top": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.5
+    ],
+    [
+     0.31,
+     0.9,
+     0.31
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected sandbag run, top module"
+  },
+  "joined_sandbag_8_full": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.5
+    ],
+    [
+     0.31,
+     1,
+     0.31
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_sandbag_9_top": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.9,
+     0.31
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected sandbag run, top module"
+  },
+  "joined_sandbag_9_full": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.31
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_sandbag_10_top": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.5
+    ],
+    [
+     0.31,
+     0.9,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected sandbag run, top module"
+  },
+  "joined_sandbag_10_full": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.5
+    ],
+    [
+     0.31,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_sandbag_11_top": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.9,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected sandbag run, top module"
+  },
+  "joined_sandbag_11_full": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_sandbag_12_top": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.31,
+     0.9,
+     0.31
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected sandbag run, top module"
+  },
+  "joined_sandbag_12_full": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.31,
+     1,
+     0.31
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_sandbag_13_top": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.9,
+     0.31
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected sandbag run, top module"
+  },
+  "joined_sandbag_13_full": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.31
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_sandbag_14_top": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.31,
+     0.9,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected sandbag run, top module"
+  },
+  "joined_sandbag_14_full": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.31,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_sandbag_15_top": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 116,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.9,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected sandbag run, top module"
+  },
+  "joined_sandbag_15_full": {
+   "slots": [
+    "sandbag"
+   ],
+   "tris": 116,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_drystone_0_top": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 92,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.31
+    ],
+    [
+     0.31,
+     0.92,
+     0.31
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected drystone run, top module"
+  },
+  "joined_drystone_0_full": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 92,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.31
+    ],
+    [
+     0.31,
+     1,
+     0.31
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_drystone_1_top": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.31
+    ],
+    [
+     0.5,
+     0.92,
+     0.31
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected drystone run, top module"
+  },
+  "joined_drystone_1_full": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.31
+    ],
+    [
+     0.5,
+     1,
+     0.31
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_drystone_2_top": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.31
+    ],
+    [
+     0.31,
+     0.92,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected drystone run, top module"
+  },
+  "joined_drystone_2_full": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.31
+    ],
+    [
+     0.31,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_drystone_3_top": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.31
+    ],
+    [
+     0.5,
+     0.92,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected drystone run, top module"
+  },
+  "joined_drystone_3_full": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.31
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_drystone_4_top": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.31
+    ],
+    [
+     0.31,
+     0.92,
+     0.31
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected drystone run, top module"
+  },
+  "joined_drystone_4_full": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.31
+    ],
+    [
+     0.31,
+     1,
+     0.31
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_drystone_5_top": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.31
+    ],
+    [
+     0.5,
+     0.92,
+     0.31
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected drystone run, top module"
+  },
+  "joined_drystone_5_full": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.31
+    ],
+    [
+     0.5,
+     1,
+     0.31
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_drystone_6_top": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.31
+    ],
+    [
+     0.31,
+     0.92,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected drystone run, top module"
+  },
+  "joined_drystone_6_full": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.31
+    ],
+    [
+     0.31,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_drystone_7_top": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.31
+    ],
+    [
+     0.5,
+     0.92,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected drystone run, top module"
+  },
+  "joined_drystone_7_full": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.31
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_drystone_8_top": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.5
+    ],
+    [
+     0.31,
+     0.92,
+     0.31
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected drystone run, top module"
+  },
+  "joined_drystone_8_full": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.5
+    ],
+    [
+     0.31,
+     1,
+     0.31
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_drystone_9_top": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.92,
+     0.31
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected drystone run, top module"
+  },
+  "joined_drystone_9_full": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.31
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_drystone_10_top": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.5
+    ],
+    [
+     0.31,
+     0.92,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected drystone run, top module"
+  },
+  "joined_drystone_10_full": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.5
+    ],
+    [
+     0.31,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_drystone_11_top": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.92,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected drystone run, top module"
+  },
+  "joined_drystone_11_full": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.31,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_drystone_12_top": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.31,
+     0.92,
+     0.31
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected drystone run, top module"
+  },
+  "joined_drystone_12_full": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.31,
+     1,
+     0.31
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_drystone_13_top": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.92,
+     0.31
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected drystone run, top module"
+  },
+  "joined_drystone_13_full": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.31
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_drystone_14_top": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.31,
+     0.92,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected drystone run, top module"
+  },
+  "joined_drystone_14_full": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.31,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_drystone_15_top": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 116,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.92,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected drystone run, top module"
+  },
+  "joined_drystone_15_full": {
+   "slots": [
+    "drystone"
+   ],
+   "tris": 116,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "planter_plants": {
+   "slots": [
+    "leaves",
+    "flowers"
+   ],
+   "tris": 200,
+   "bounds": [
+    [
+     -0.497,
+     0.465,
+     -0.246
+    ],
+    [
+     0.457,
+     0.987,
+     0.298
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Shrubs and flowers in a planter cell",
+   "overhang": true
   }
  }
 }

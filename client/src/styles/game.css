@@ -189,3 +189,11 @@ button { text-transform: none; letter-spacing: .015em; border-radius: 3px; }
 .maps .map:hover { border-color: #8aa596; background: #f3f7f2; }
 .maps .map.on { border-color: #304e3d; background: #304e3d; box-shadow: 0 6px 18px #30433430; }
 .maps .map.on b { color: #f4f7ef; } .maps .map.on span { color: #cfdcd2; }
+
+/* Keep the soldier readout clear of the action strip on laptop-sized battle views. */
+@media (min-width: 901px) and (max-width: 1500px) {
+    .unitpanel { bottom: 112px; width: 245px; }
+    .unitpanel img { width: 56px; height: 56px; }
+    .unitpanel .uname { font-size: 16px; }
+    .unitpanel .nums { flex-wrap: wrap; gap: 2px 8px; }
+}

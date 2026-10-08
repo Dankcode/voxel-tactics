@@ -2,7 +2,7 @@
 // outlines with a faint fill, a path ribbon to the hovered tile with a destination marker, cover shields on the
 // destination's faces, aim cone, blast radius, throw arc, overwatch cones, plus debug layers.
 import * as THREE from 'three';
-import { dropAt } from './Ground.js';
+import { overlayDropAt as dropAt } from './Ground.js';
 import { coverAt } from '../../../shared/voxel/Cover.js';
 
 export const ZONE = { blue: 0x46c8ff, yellow: 0xffc845, red: 0xff5a4a, white: 0xffffff, teal: 0x5ff2d6 };
@@ -209,7 +209,7 @@ function tileMesh(cells, material) {
     const pos = [], idx = [];
     for (const n of cells) {
         const b = pos.length / 3, y = n.z + 1.02 - dropAt(n.x, n.y, n.z);
-        pos.push(n.x + 0.04, y, n.y + 0.04, n.x + 0.96, y, n.y + 0.04, n.x + 0.96, y, n.y + 0.96, n.x + 0.04, y, n.y + 0.96);
+        pos.push(n.x, y, n.y, n.x + 1, y, n.y, n.x + 1, y, n.y + 1, n.x, y, n.y + 1);
         idx.push(b, b + 2, b + 1, b, b + 3, b + 2);
     }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
