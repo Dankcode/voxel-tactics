@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import { Scene } from './render/Scene.js';
 import { VoxelView } from './render/VoxelView.js';
+import { setGroundStore } from './render/Ground.js';
 import { MaterialLibrary } from './render/MaterialLibrary.js';
 import { KitLibrary } from './render/kit/KitLibrary.js';
 import { Overlays } from './render/Overlays.js';
@@ -37,7 +38,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
 
 export class Game {
     constructor({ canvas, hudRoot, cutinRoot, floatRoot, onExit, options = {} }) {
-        this.options = { autoEndTurn: true, autoNext: true, followCamera: true, ...options };
+        this.options = { autoEndTurn: true, autoNext: true, followCamera: true, edgeScroll: true, ...options };
         this.scene = new Scene(canvas);
         this.library = new MaterialLibrary(this.scene.renderer, this.scene.clipping);
         this.kit = new KitLibrary(this.library);
@@ -78,8 +79,10 @@ export class Game {
             const r = store.roomAt(x, y, z) >= 0 ? store.roomAt(x, y, z) : store.roomAt(x, y, z + 1);
             return r >= 0 && this.fog && !this.battle.revealedRooms.has(r) ? [0.42, 0.44, 0.55] : null;
         };
+        setGroundStore(store);
+        this.voxelView.setVisual(this.battle.mission?.visual);
         this.voxelView.rebuildAll();
-        this.lanterns.scan(store);
+        this.lanterns.scan(store, this.battle.mission?.visual?.decor);
         this.cameraDirector.store = store;
         await Promise.all(this.battle.units.map(u => this.addView(u)));
         this.selected = null; this.mode = { kind: 'move' };
@@ -95,6 +98,16 @@ export class Game {
         this.hud.log(`${this.battle.mission.name}: ${this.battle.mission.objective?.text || ''}`);
         this.hud.banner(`ROUND ${this.battle.round}`, 'SQUAD PHASE', 'player');
         this.debug.onStart();
+        this.levelLocked = false;
+        // Each map has a time of day (Main Street at dusk, the docks at night) unless the player picked one.
+        if (!this.options.lighting) this.scene.setLighting(this.battle.mission.meta?.lighting || 'day');
+        this.setLevel(this.battle.mission.meta?.defaultCut ?? Infinity);
+        if (this.battle.mission.meta?.theme === 'modern') {
+            this.scene.viewHeight = 34;
+            this.scene.focus(store.width / 2, 2, 23);
+            this.scene.glide = null;
+            this.scene.updateCamera();
+        }
     }
     async addView(u) {
         if (this.views.has(u.id)) return this.views.get(u.id);
@@ -403,27 +416,47 @@ export class Game {
     bindInput(canvas) {
         canvas.addEventListener('contextmenu', e => e.preventDefault());
         canvas.addEventListener('mousemove', e => this.onHover(e));
-        canvas.addEventListener('mousedown', e => { if (e.button === 2 || e.button === 1) { this.dragging = { x: e.clientX, y: e.clientY, moved: false }; } });
+        // Camera: right-drag grabs the ground and pans, middle-drag orbits (yaw + clamped tilt), wheel zooms (eased).
+        canvas.addEventListener('mousedown', e => {
+            if (e.button !== 2 && e.button !== 1) return;
+            if (e.button === 1) e.preventDefault();                                  // no browser autoscroll
+            const grab = e.button === 2 ? this.scene.rig.groundPoint(this.scene.rayAt(e.clientX, e.clientY)) : null;
+            this.dragging = { button: e.button, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, grab };
+        });
         window.addEventListener('mouseup', e => {
             if (e.button === 2) { if (this.dragging && !this.dragging.moved) this.cancel(); this.dragging = null; }
             if (e.button === 1) this.dragging = null;
         });
         canvas.addEventListener('click', e => this.onClick(e));
-        canvas.addEventListener('wheel', e => { e.preventDefault(); this.scene.zoom(e.deltaY > 0 ? 1.1 : 0.9); }, { passive: false });
+        canvas.addEventListener('wheel', e => {
+            e.preventDefault();
+            const px = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+            this.scene.zoom(Math.exp(Math.max(-1, Math.min(1, px * 0.0015))));
+        }, { passive: false });
         window.addEventListener('keydown', e => this.onKey(e));
         window.addEventListener('keyup', e => this.keys.delete(e.key.toLowerCase()));
+        // Screen-edge scrolling: remember where the pointer is (not over HUD controls) and whether it left the window.
+        window.addEventListener('mousemove', e => { this.edgePtr = { x: e.clientX, y: e.clientY, ui: !!e.target?.closest?.('button, input, select, textarea, .options, .panel, .target') }; });
+        document.addEventListener('mouseleave', () => { this.edgePtr = null; });
+        window.addEventListener('blur', () => { this.edgePtr = null; this.keys.clear(); });
     }
     cancel() {
         if (this.debug.tool) { this.debug.setTool(null); return; }
         if (this.mode.kind !== 'move') this.setMode({ kind: 'move' });
         this.hud.hidePanel();
     }
+    /** WASD / arrows and screen edges feed the rig's smooth pan (relative to the camera yaw). */
     handleKeysHeld(dt) {
-        const k = this.keys, s = dt * 60;
-        if (k.has('w') || k.has('arrowup')) { this.scene.pan(0, s); this.scene.glide = null; }
-        if (k.has('s') || k.has('arrowdown')) { this.scene.pan(0, -s); this.scene.glide = null; }
-        if (k.has('a') || k.has('arrowleft')) { this.scene.pan(-s, 0); this.scene.glide = null; }
-        if (k.has('d') || k.has('arrowright')) { this.scene.pan(s, 0); this.scene.glide = null; }
+        const k = this.keys;
+        let x = (k.has('d') || k.has('arrowright') ? 1 : 0) - (k.has('a') || k.has('arrowleft') ? 1 : 0);
+        let y = (k.has('w') || k.has('arrowup') ? 1 : 0) - (k.has('s') || k.has('arrowdown') ? 1 : 0);
+        const p = this.edgePtr, M = 12;
+        if (p && !p.ui && this.options.edgeScroll && !this.dragging && !this.cameraDirector.active && document.hasFocus()) {
+            const W = window.innerWidth, H = window.innerHeight;
+            if (p.x <= M) x -= 1; else if (p.x >= W - 1 - M) x += 1;
+            if (p.y <= M) y += 1; else if (p.y >= H - 1 - M) y -= 1;
+        }
+        this.scene.rig.setPanIntent(Math.max(-1, Math.min(1, x)), Math.max(-1, Math.min(1, y)));
     }
     onKey(e) {
         if (!this.battle || ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
@@ -440,7 +473,8 @@ export class Game {
             case 'tab': e.preventDefault(); if (this.mode.kind === 'shoot') this.cycleTarget(e.shiftKey ? -1 : 1); else this.cycleUnit(e.shiftKey ? -1 : 1); break;
             case 'enter': case ' ': e.preventDefault(); if (this.mode.kind === 'shoot') this.confirmFire(); else if (key === 'enter') this.endTurn(); break;
             case 'backspace': case 'escape': this.cancel(); break;
-            case 'h': this.focusUnit(u); break;
+            case 'h': case 'home': e.preventDefault(); this.focusUnit(u); break;
+            case 'v': this.scene.toggleProjection(); this.hud.toast(this.scene.projection === 'ortho' ? 'Camera: isometric' : 'Camera: perspective'); break;
             case 'o': this.setMode({ kind: 'overwatch' }); break;
             case 'r': this.intent({ type: 'reload' }); break;
             case 't': if (u) { const id = Object.keys(u.items).find(k => u.items[k] > 0); if (id) this.setMode({ kind: 'throw', itemId: id }); } break;
@@ -455,8 +489,8 @@ export class Game {
     pick(px, py) {
         const ray = this.scene.rayAt(px, py);
         const store = this.battle.store, top = this.cutLevel;
-        // The camera sits far outside the map and castRay stops as soon as it leaves the grid, so clip the
-        // ray to the map's box first and start the voxel walk just inside it.
+        // The camera usually sits outside the map (always in ortho) and castRay stops as soon as it leaves the grid,
+        // so clip the ray to the map's box first and start the voxel walk just inside it (or at the lens if inside).
         const seg = clipToBox(ray.ray.origin, ray.ray.direction, store);
         if (!seg) return null;
         const { from, to } = seg;
@@ -477,8 +511,17 @@ export class Game {
     }
     onHover(e) {
         if (this.dragging) {
-            const dx = e.clientX - this.dragging.x, dy = e.clientY - this.dragging.y;
-            if (Math.abs(dx) + Math.abs(dy) > 3) { this.dragging.moved = true; this.scene.glide = null; this.scene.pan(-dx * 0.05, dy * 0.05); this.dragging.x = e.clientX; this.dragging.y = e.clientY; }
+            const d = this.dragging, dx = e.clientX - d.x, dy = e.clientY - d.y;
+            if (!d.moved && Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) <= 3) return;
+            d.moved = true; d.x = e.clientX; d.y = e.clientY;
+            const rig = this.scene.rig;
+            if (d.button === 1) rig.orbit(dx, dy);
+            else {
+                rig.glide = null;
+                const p = d.grab && rig.groundPoint(this.scene.rayAt(e.clientX, e.clientY), d.grab.y);
+                if (p) { rig.target.x += d.grab.x - p.x; rig.target.z += d.grab.z - p.z; rig.clamp(); rig.apply(); }
+                else rig.pan(-dx * 0.05, dy * 0.05);
+            }
             return;
         }
         if (!this.battle) return;

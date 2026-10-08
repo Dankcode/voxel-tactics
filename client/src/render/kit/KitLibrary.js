@@ -11,11 +11,50 @@ import { RENDER, FALLBACK } from '../RenderTable.js';
 /** slot → { tex (or 'self' = the voxel's own), uv: 'world' | 'mesh', scale, color, rough, metal, emissive, … } */
 export const SLOTS = {
     self: { tex: 'self', uv: 'world' },
+    // Present-day set.
+    frame: { tex: null, color: 0x2c3134, rough: 0.45, metal: 0.35 },                 // window / door frames, caps, legs
+    plinth: { tex: 'concrete', uv: 'world', scale: 1.5, color: 0x6c7174, rough: 0.9 },
+    leaf: { tex: 'oak_floor', uv: 'mesh', color: 0x8a6a4c, rough: 0.6 },                // door leaves
+    chrome: { tex: null, color: 0xc9cdd1, rough: 0.22, metal: 0.9 },
+    lacquer: { tex: null, color: 0xeeeee9, rough: 0.38 },                                // kitchen fronts, wardrobes
+    worktop: { tex: 'worktop', uv: 'world', scale: 1, rough: 0.28 },
+    porcelain: { tex: null, color: 0xf3f2ec, rough: 0.25 },
+    upholstery: { tex: 'upholstery', uv: 'world', scale: 1, rough: 0.95 },
+    linen: { tex: 'linen', uv: 'world', scale: 1, rough: 0.95 },
+    accent: { tex: null, color: 0xc49a4a, rough: 0.9 },
+    self_dark: { tex: null, color: 0x2f3438, rough: 0.7 },
+    screen: { tex: null, color: 0x0e1215, rough: 0.12, metal: 0.4, emissive: 0x0a1620, emissiveIntensity: 0.4 },
+    carpaint: { tex: null, color: 0xffffff, rough: 0.22, metal: 0.55 },
+    glass_dark: { tex: null, color: 0x1d2327, rough: 0.05, metal: 0.5, opacity: 0.9 },
+    tyre: { tex: null, color: 0x1b1c1e, rough: 0.92 },
+    tail: { tex: null, color: 0x9a1c16, rough: 0.3, emissive: 0x5a0a06, emissiveIntensity: 0.6 },
+    lamp: { tex: null, color: 0xfff6e2, rough: 0.3, emissive: 0xfff1d0, emissiveIntensity: 1.4 },
+    shade: { tex: null, color: 0xf2e6cc, rough: 0.8, emissive: 0xffd9a0, emissiveIntensity: 0.6 },
+    soil: { tex: 'soil', uv: 'world', scale: 1, color: 0x8a7a6a, rough: 1 },
+    flowers: { tex: null, color: 0xd96f86, rough: 0.8 },
+    goods_a: { tex: null, color: 0xc2553f, rough: 0.7 },
+    goods_b: { tex: null, color: 0x3f78a8, rough: 0.7 },
+    goods_c: { tex: null, color: 0xe1b94c, rough: 0.7 },
+    cardboard: { tex: null, color: 0xb88f5e, rough: 0.92 },
+    mesh: { tex: null, color: 0x9aa3a8, rough: 0.5, metal: 0.6, opacity: 0.32 },
+    post: { tex: 'deck', uv: 'world', scale: 1, color: 0x6e5440, rough: 0.85 },
+    lid: { tex: null, color: 0x22282a, rough: 0.7 },
+    red: { tex: null, color: 0xb3261e, rough: 0.45, metal: 0.2 },
+    steel_yellow: { tex: null, color: 0xd9a21b, rough: 0.5, metal: 0.3 },
+    canvas: { tex: null, color: 0xc77a52, rough: 0.9 },
+    canvas_white: { tex: null, color: 0xe9e5dc, rough: 0.9, side: 'double' },
+    rug: { tex: 'carpet', uv: 'world', scale: 1.2, color: 0xd8d2c6, rough: 1 },
+    pot: { tex: null, color: 0xd9d4ca, rough: 0.7 },
+    needles: { tex: 'leaves', uv: 'world', scale: 1.2, color: 0x7f9f78, rough: 0.9 },
+    shutter: { tex: 'siding', uv: 'world', scale: 1, color: 0xc9cdd0, rough: 0.5, metal: 0.5 },
+    wreck: { tex: 'metal', uv: 'world', scale: 1, color: 0x3a3330, rough: 0.9, metal: 0.4 },
+    books: { tex: null, color: 0x8a5a44, rough: 0.8 },
+    // Legacy set (still used by the older pieces).
     trim: { tex: 'timber', uv: 'world', scale: 1.5, color: 0xa08468, rough: 0.8 },
     quoin: { tex: 'stone_floor', uv: 'world', scale: 1.5, color: 0xe8e0d0, rough: 0.85 },
-    wood: { tex: 'plank', uv: 'world', scale: 1.5, rough: 0.8 },
+    wood: { tex: 'oak_floor', uv: 'world', scale: 1.5, rough: 0.6 },
     door: { tex: 'door', uv: 'world', scale: 1.2, rough: 0.75 },
-    glass: { tex: 'glass', uv: 'mesh', rough: 0.05, metal: 0.1, opacity: 0.45, color: 0xcfe8f2 },
+    glass: { tex: null, uv: 'mesh', rough: 0.03, metal: 0.25, opacity: 0.3, color: 0xc4dce4 },
     iron: { tex: 'metal', uv: 'world', scale: 1, rough: 0.45, metal: 0.7, color: 0x8a8f96 },
     glow: { tex: null, uv: 'mesh', color: 0xffd28a, emissive: 0xffb347, emissiveIntensity: 2.4 },
     cloth: { tex: 'cloth', uv: 'mesh', rough: 0.95, side: 'double' },
@@ -64,14 +103,14 @@ export class KitLibrary {
     material(slot, selfKey, clipping) {
         const def = SLOTS[slot] || SLOTS.self;
         const texName = def.tex === 'self' ? (RENDER[selfKey] || FALLBACK).tex : def.tex;
-        const key = `${slot}|${texName}`;
+        const key = `${slot}|${texName}|${def.tex === 'self' ? selfKey : ''}|${clipping ? 'clip' : 'free'}`;
         let m = this.cache.get(key);
         if (m) return m;
         const r = def.tex === 'self' ? (RENDER[selfKey] || FALLBACK) : {};
         const map = texName ? this.mats.tex(texName, false) : null, normalMap = texName ? this.mats.tex(texName, true) : null;
         const opacity = def.opacity ?? 1;
         m = new THREE.MeshStandardMaterial({
-            map, normalMap, color: def.color ?? 0xffffff,
+            map, normalMap, color: def.color ?? r.tint ?? 0xffffff,
             roughness: def.rough ?? r.rough ?? 0.9, metalness: def.metal ?? r.metal ?? 0,
             emissive: def.emissive ?? 0x000000, emissiveIntensity: def.emissiveIntensity ?? 0,
             transparent: opacity < 1, opacity, depthWrite: opacity >= 1,

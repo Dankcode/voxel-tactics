@@ -16,7 +16,7 @@ export class MaterialLibrary {
     }
     /** Preload every texture the table references (resolves even if some fail: those fall back to flat colour). */
     async load() {
-        const names = new Set(Object.values(RENDER).map(r => r.tex));
+        const names = new Set(Object.values(RENDER).map(r => r.tex).filter(Boolean));
         await Promise.all([...names].map(n => Promise.all([this.texture(n, false), this.texture(n, true)])));
     }
     texture(name, normal) {

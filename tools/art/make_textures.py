@@ -506,6 +506,194 @@ def make_grass_side(atlas, name='grass_side'):
     return save(name, col, h, 5.0)
 
 
+
+# ------------------------------------------------------------------------------------------- modern set
+def grid_joints(n_cells, width, jitter_seed=None):
+    """Distance-to-joint field for an n x n grid of slabs (tileable): 0 at a joint, grows inward."""
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    cell = N / n_cells
+    dx = np.minimum(np.mod(xx, cell), cell - np.mod(xx, cell))
+    dy = np.minimum(np.mod(yy, cell), cell - np.mod(yy, cell))
+    d = np.minimum(dx, dy)
+    ids = (np.floor(yy / cell) * n_cells + np.floor(xx / cell)).astype(np.int64)
+    return d, ids
+
+
+def make_lawn(atlas, name='lawn'):
+    g = atlas['grass']
+    big = np.tile(g, (2, 2, 1))
+    fine = np.asarray(Image.fromarray((big * 255).astype(np.uint8)).resize((N, N), Image.LANCZOS), dtype=np.float64) / 255.0
+    col = grade(fine, mul=(0.78, 0.98, 0.62), sat=1.05, contrast=1.08)
+    clover = blur(spectral(2.4, 401), 3)
+    col *= (0.9 + 0.2 * clover)[..., None]
+    return save(name, col, height_from_albedo(fine, blur_s=0.7), 3.5)
+
+
+def make_slabs(name, n_cells, base, seed, joint=2.2, var=0.07, stains=0.12):
+    d, ids = grid_joints(n_cells, 1)
+    grain = spectral(0.9, seed); mott = spectral(2.4, seed + 1)
+    cv = cell_values(ids, seed + 2)
+    col = colorize(rgb(*base), 0.5 * cv + 0.3 * mott + 0.2 * grain, mott, var)
+    st = np.clip((blur(spectral(2.8, seed + 3), 2) - 0.6) * 2.5, 0, 1)
+    col *= (1 - stains * st)[..., None]
+    j = np.clip(d / joint, 0, 1)
+    col *= (0.55 + 0.45 * j)[..., None]
+    bevel = np.clip(d / 6, 0, 1)
+    return save(name, col, bevel * 0.6 + grain * 0.15 + mott * 0.1, 4.0)
+
+
+def make_asphalt(name='asphalt', seed=411, mark=False):
+    grain = spectral(0.3, seed); mott = spectral(2.3, seed + 1)
+    f1, f2, ids, pts = voronoi(2600, seed + 2, 1.0)
+    keep = np.random.default_rng(seed + 3).random(len(pts)) < 0.35
+    agg = np.clip(1 - f1 / 2.2, 0, 1) * keep[ids]
+    col = colorize(rgb(66, 70, 74), 0.5 * mott + 0.5 * grain, mott, 0.16)
+    col = mix(col, rgb(120, 122, 124), agg * 0.55)
+    cracks = np.clip(1 - np.abs(band(3, 9, seed + 4) - 0.5) * 40, 0, 1) * (blur(spectral(2.6, seed + 5), 3) > 0.62)
+    col *= (1 - 0.35 * cracks)[..., None]
+    h = mott * 0.3 + agg * 0.5 - cracks * 0.3
+    if mark:
+        yy, xx = np.mgrid[0:N, 0:N]
+        paint = ((np.abs(yy - N / 2) < N * 0.045) & (np.mod(xx, N) < N * 0.62) & (np.mod(xx, N) > N * 0.08)).astype(float)
+        paint = blur(paint, 1.2) * (0.85 + 0.15 * grain)
+        col = mix(col, rgb(232, 228, 212), paint)
+        h = h + paint * 0.1
+    return save(name, col, h, 4.0)
+
+
+def make_boards(name, base, boards, seed, gap=3, grain_amt=0.35, vertical=False):
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    a = xx if vertical else yy
+    b = yy if vertical else xx
+    bw = N / boards
+    row = np.floor(a / bw)
+    rng_ = np.random.default_rng(seed)
+    offs = rng_.random(boards) * N
+    ends = np.mod(b + offs[row.astype(int) % boards], N / 2)
+    seam = (np.minimum(np.mod(a, bw), bw - np.mod(a, bw)) < gap) | (ends < 2)
+    grain = spectral(1.2, seed + 1, aniso=(1.0, 0.08) if vertical else (0.08, 1.0))
+    cv = cell_values((row * 7 + np.floor((b + offs[row.astype(int) % boards]) / (N / 2))).astype(np.int64) % 997, seed + 2)
+    col = colorize(rgb(*base), 0.45 * cv + grain_amt * grain + 0.2 * spectral(2.2, seed + 3), grain, 0.22)
+    col *= (1 - 0.6 * blur(seam.astype(float), 0.8))[..., None]
+    return save(name, col, grain * 0.3 - seam * 0.8, 4.0)
+
+
+def make_tiles(name='ceramic', n=4, base=(226, 230, 228), grout=(150, 154, 152), seed=431):
+    d, ids = grid_joints(n, 1)
+    mott = spectral(2.6, seed)
+    col = colorize(rgb(*base), 0.6 * cell_values(ids, seed) + 0.4 * mott, mott, 0.04)
+    g = np.clip(d / 3.0, 0, 1)
+    col = mix(col, np.ones((N, N, 3)) * rgb(*grout), 1 - g)
+    gloss = np.clip(1 - d / 40, 0, 1) * 0
+    return save(name, col + gloss[..., None], np.clip(d / 4, 0, 1) * 0.5, 3.0)
+
+
+def make_stucco(name='stucco', base=(230, 228, 220), seed=441):
+    fine = spectral(0.6, seed); trowel = spectral(2.2, seed + 1, aniso=(1.0, 0.6))
+    col = colorize(rgb(*base), 0.5 * fine + 0.5 * trowel, trowel, 0.05)
+    dirt = np.clip((blur(spectral(2.8, seed + 2), 3) - 0.62) * 2, 0, 1)
+    col *= (1 - 0.06 * dirt)[..., None]
+    return save(name, col, fine * 0.4 + trowel * 0.3, 2.0)
+
+
+def make_brick(name='brick', seed=451):
+    rows = 16
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    bh = N / rows; bw = N / 4
+    row = np.floor(yy / bh)
+    xo = np.mod(xx + (row % 2) * bw / 2, N)
+    dx = np.minimum(np.mod(xo, bw), bw - np.mod(xo, bw)); dy = np.minimum(np.mod(yy, bh), bh - np.mod(yy, bh))
+    d = np.minimum(dx, dy)
+    ids = (row * 8 + np.floor(xo / bw)).astype(np.int64)
+    mott = spectral(1.8, seed)
+    col = colorize(rgb(150, 82, 62), 0.6 * cell_values(ids, seed) + 0.4 * mott, cell_values(ids, seed + 1), 0.22)
+    mortar = np.clip(d / 2.6, 0, 1)
+    col = mix(col, np.ones((N, N, 3)) * rgb(176, 168, 152) * (0.9 + 0.2 * mott[..., None]), 1 - mortar)
+    return save(name, col, mortar * 0.7 + mott * 0.2, 5.0)
+
+
+def make_board_concrete(name='concrete_wall', seed=461):
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    boards = np.mod(yy, N / 6)
+    lines = np.clip(np.minimum(boards, N / 6 - boards) / 2, 0, 1)
+    grain = spectral(1.4, seed, aniso=(0.1, 1.0)); mott = spectral(2.5, seed + 1)
+    col = colorize(rgb(176, 178, 172), 0.5 * mott + 0.3 * grain + 0.2 * cell_values(np.floor(yy / (N / 6)).astype(np.int64), seed), mott, 0.08)
+    col *= (0.8 + 0.2 * lines)[..., None]
+    holes = np.zeros((N, N))
+    for cy in range(N // 12, N, N // 6):
+        for cx in (N // 4, 3 * N // 4):
+            holes = np.maximum(holes, np.clip(1 - np.hypot(xx - cx, yy - cy) / 5, 0, 1))
+    col *= (1 - 0.45 * holes)[..., None]
+    return save(name, col, lines * 0.3 + grain * 0.2 - holes * 0.4, 3.0)
+
+
+def make_corrugated(name, base, seed, ribs=16, rust=0.0, horizontal=False):
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    a = yy if horizontal else xx
+    ph = np.mod(a, N / ribs) / (N / ribs)
+    prof = np.clip(np.abs(ph - 0.5) * 4 - 0.6, 0, 1)          # trapezoid ribs
+    mott = spectral(2.4, seed); grain = spectral(1.0, seed + 1)
+    col = colorize(rgb(*base), 0.5 * mott + 0.3 * grain + 0.2 * prof, mott, 0.08)
+    col *= (0.78 + 0.22 * prof)[..., None]
+    if rust:
+        streak = np.clip((spectral(2.0, seed + 2, aniso=(1.0, 0.05)) - 0.6) * 3, 0, 1)
+        col = mix(col, rgb(130, 76, 44), streak * rust)
+    return save(name, col, prof, 6.0)
+
+
+def make_standing_seam(name='roof_metal', seed=471):
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    ph = np.mod(xx, N / 4)
+    seam = np.clip(1 - np.minimum(ph, N / 4 - ph) / 4, 0, 1)
+    mott = spectral(2.4, seed)
+    col = colorize(rgb(108, 116, 120), 0.7 * mott + 0.3 * spectral(0.9, seed + 1), mott, 0.08)
+    col *= (1 - 0.25 * seam)[..., None]
+    return save(name, col, seam, 5.0)
+
+
+def make_gravel(name='gravel', seed=481):
+    f1, f2, ids, pts = voronoi(1800, seed, 1.0)
+    edge = np.clip((f2 - f1) / 2.5, 0, 1)
+    col = colorize(rgb(160, 154, 144), 0.6 * cell_values(ids, seed) + 0.4 * spectral(2, seed + 1), cell_values(ids, seed + 2), 0.3)
+    col *= (0.5 + 0.5 * edge)[..., None]
+    return save(name, col, edge * 0.8, 6.0)
+
+
+def make_fabric(name, base, seed, weave=2.0):
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    w = (np.sin(xx * np.pi / weave) * np.sin(yy * np.pi / weave)) * 0.5 + 0.5
+    mott = spectral(2.4, seed)
+    col = colorize(rgb(*base), 0.3 * w + 0.7 * mott, mott, 0.08)
+    return save(name, col, w * 0.4 + mott * 0.2, 2.0)
+
+
+def make_worktop(name='worktop', seed=491):
+    veins = np.clip(1 - np.abs(warp(spectral(2.6, seed), 30, seed + 1) - 0.5) * 30, 0, 1)
+    col = colorize(rgb(228, 228, 222), spectral(1.0, seed + 2), spectral(2, seed + 3), 0.04)
+    col = mix(col, rgb(170, 170, 168), veins * 0.35)
+    return save(name, col, spectral(1.0, seed + 4) * 0.1, 1.0)
+
+
+def make_modern(atlas):
+    pk = atlas['planks']
+    oak = grade(pk, mul=(1.35, 1.12, 0.86), sat=0.85, contrast=0.92)
+    out = [
+        make_lawn(atlas),
+        save('oak_floor', oak, height_from_albedo(pk, blur_s=0.8), 2.5),
+        make_slabs('paving', 2, (184, 186, 182), 501, joint=2.4),
+        make_slabs('concrete', 2, (198, 198, 192), 511, joint=1.8, var=0.05, stains=0.18),
+        make_asphalt(), make_asphalt('road_mark', 421, mark=True),
+        make_boards('deck', (150, 128, 104), 6, 521, gap=4),
+        make_tiles(), make_tiles('tile_dark', 3, (88, 92, 96), (60, 62, 66), 531),
+        make_stucco(), make_brick(), make_board_concrete(),
+        make_corrugated('siding', (196, 202, 204), 541), make_corrugated('container', (200, 200, 196), 551, ribs=20, rust=0.35),
+        make_standing_seam(), make_gravel(),
+        make_fabric('upholstery', (110, 140, 136), 561), make_fabric('linen', (232, 230, 222), 571, 1.5),
+        make_fabric('carpet', (150, 140, 128), 581, 1.2), make_worktop(),
+    ]
+    return out
+
+
 def contact_sheet(names):
     cols = 8
     rows = (len(names) + cols - 1) // cols
@@ -532,6 +720,7 @@ def main():
         make_barrel('lantern', (40, 40, 44), (1.4, 1.2, 0.7), 215), make_hay(),
     ]
     names.append(make_grass_side(atlas))
+    names += make_modern(atlas)
     with open(os.path.join(OUT, 'manifest.json'), 'w') as f:
         json.dump({'size': N, 'textures': sorted(names), 'source': 'tools/art/make_textures.py'}, f, indent=1)
     contact_sheet(sorted(names))

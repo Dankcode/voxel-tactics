@@ -19,6 +19,7 @@ import { CLASSES, ENEMIES } from '../../../shared/content/units.js';
 import { STATUS_DEFS } from '../../../shared/elements/Elements.js';
 import { reasonText } from '../ui/Reasons.js';
 import { LocalSession } from '../net/LocalSession.js';
+import { SCENARIOS } from '../../../shared/session/Scenarios.js';
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const TOOLS = [
@@ -201,13 +202,12 @@ export class DebugTools {
             const gates = Object.entries(m.gates || {}).map(([k, ok]) => `<span class="${ok ? 'ok' : 'bad'}">${k}</span>`).join(' ');
             body = `<p><b>${esc(b.mission.name)}</b> · seed ${g.session.desc?.seed ?? '?'} · ${b.store.width}×${b.store.depth}×${b.store.height}</p>
                 <div class="row"><button data-d="restart">Restart</button><button data-d="reseed">New seed</button></div>
-                <div class="row"><button data-d="map" data-arg='${JSON.stringify({ scenario: 'proving-grounds', siteId: null })}'>Proving Grounds</button>${(this.sites || []).map(s => `<button data-d="map" data-arg='${JSON.stringify({ scenario: 'world', siteId: s.id })}'>${esc(s.name)}</button>`).join('')}</div>
+                <div class="row">${SCENARIOS.map(m => `<button data-d="map" data-arg='${JSON.stringify({ scenario: m.id })}' class="${b.mission.id === m.id ? 'on' : ''}">${esc(m.name)}</button>`).join('')}</div>
                 <h5>Map metrics ${m.pass ? '<span class="ok">PASS</span>' : '<span class="bad">gates failing</span>'}</h5>
                 <div class="metrics">cover ${pct(m.coverDensity)} · outdoor cover ${pct(m.outdoorCover)} · full ${pct(m.fullCoverShare)} · indoor ${pct(m.interiorShare)} · open square ${m.killingField} · sightline ${(m.sightlineMedian || 0).toFixed(0)} · lanes ${m.lanes} · breachable ${pct(m.breachability)} · destructible ${pct(m.destructibleCover)} · rooms ${m.rooms}</div>
                 <div class="gates">${gates}</div>
                 <h5>Weapons this battle</h5><table><tr><th>weapon</th><th>shots</th><th>hit</th><th>dmg</th><th>dmg/AP</th><th>kills</th></tr>${Object.entries(b.stats.weapons).map(([id, s]) => `<tr><td>${id}</td><td>${s.shots}</td><td>${s.projectiles ? pct(s.hits / s.projectiles) : '–'}</td><td>${s.damage}</td><td>${s.ap ? (s.damage / s.ap).toFixed(1) : '–'}</td><td>${s.kills}</td></tr>`).join('')}</table>
                 <p class="hint">hash ${b.hash().slice(0, 24)} · voxels destroyed ${b.stats.voxelsDestroyed} · fires ${b.stats.fires}</p>`;
-            if (!this.sites) fetch('/missions/sites/index.json').then(r => r.json()).then(s => { this.sites = s; this.render(); }).catch(() => { this.sites = []; });
         }
         this.el.innerHTML = `<div class="dhead"><b>DEBUG</b>${b.debugEnabled ? '' : ' <span class="bad">(intents disabled online)</span>'}<button data-d="close">✕</button></div><div class="tabs">${tabs}</div><div class="dbody">${body}</div>
             <div class="ops">${this.lastOps.map(o => `<span>${esc(o)}</span>`).join('')}</div>`;

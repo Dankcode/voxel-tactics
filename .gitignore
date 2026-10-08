@@ -4,3 +4,4 @@ output/
 server/data/
 .DS_Store
 *.log
+__pycache__/

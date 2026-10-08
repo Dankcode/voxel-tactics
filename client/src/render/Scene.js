@@ -1,4 +1,4 @@
-// Renderer, tactical orthographic camera (4 rotations, zoom, pan), lighting (sun with soft shadows, sky fill,
+// Renderer, the XCOM-style tactical camera rig (perspective by default, orthographic on V; see CameraRig.js), lighting (sun with soft shadows, sky fill,
 // image-based reflections), tone mapping and the storey cutaway plane.
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -6,8 +6,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-
-const PITCH = Math.atan2(28, Math.hypot(20, 26));          // vibe-game CameraView direction's elevation
+import { CameraRig } from './CameraRig.js';
 
 /** Lighting presets (debug panel can switch them). */
 export const LIGHTING = {
@@ -26,14 +25,9 @@ export class Scene {
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFShadowMap;
         this.scene = new THREE.Scene();
-        this.camera = new THREE.OrthographicCamera(-10, 10, 10, -10, -200, 400);
-        this.target = new THREE.Vector3(0, 0, 0);
-        this.yaw = Math.PI / 4;           // 45°, then 90° steps
-        this.yawTarget = this.yaw;
-        this.viewHeight = 22;              // world units visible vertically
+        this.rig = new CameraRig(window.innerWidth / Math.max(1, window.innerHeight));
         this.cutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1000);
         this.clipping = [this.cutPlane];
-        this.shake = 0;
         this.hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 1);
         this.sun = new THREE.DirectionalLight(0xffffff, 2);
         this.sun.castShadow = true;
@@ -53,6 +47,39 @@ export class Scene {
         this.resize();
         window.addEventListener('resize', () => this.resize());
     }
+    // ---- camera state lives on the rig; these keep the old Scene API (target, yaw, glide, shake, viewHeight).
+    get camera() { return this.rig.camera; }
+    get target() { return this.rig.target; }
+    get yaw() { return this.rig.yaw; }
+    get yawTarget() { return this.rig.yawTarget; }
+    get glide() { return this.rig.glide; }
+    set glide(v) { this.rig.glide = v; }
+    get shake() { return this.rig.shake; }
+    set shake(v) { this.rig.shake = v; }
+    get viewHeight() { return this.rig.viewHeight; }
+    set viewHeight(h) { this.rig.viewHeight = h; }
+    get projection() { return this.rig.mode; }
+    /** 'perspective' (default) or 'ortho' (the old isometric look); the AO passes follow the active camera. */
+    setProjection(mode) {
+        this.rig.setMode(mode);
+        this.syncPassCamera();
+        return this.rig.mode;
+    }
+    toggleProjection() { return this.setProjection(this.rig.isOrtho ? 'perspective' : 'ortho'); }
+    syncPassCamera() {
+        if (!this.composer) return;
+        const cam = this.camera;
+        this.renderPass.camera = cam;
+        const g = this.gtao;
+        if (g && g.camera !== cam) {
+            g.camera = cam;
+            for (const m of [g.gtaoMaterial, g.depthRenderMaterial]) {
+                if (!m?.defines || !('PERSPECTIVE_CAMERA' in m.defines)) continue;
+                m.defines.PERSPECTIVE_CAMERA = cam.isPerspectiveCamera ? 1 : 0;
+                m.needsUpdate = true;
+            }
+        }
+    }
     setLighting(name) {
         const L = LIGHTING[name] || LIGHTING.day;
         this.lightingName = name;
@@ -69,6 +96,7 @@ export class Scene {
     /** Fit the sun's shadow camera to the battlefield. */
     setBounds(w, d, h) {
         this.bounds = { w, d, h };
+        this.rig.setBounds(w, d);
         const r = Math.hypot(w, d) / 2 + 2;
         const cam = this.sun.shadow.camera;
         Object.assign(cam, { left: -r, right: r, top: r, bottom: -r, near: 1, far: r * 4 + h * 2 });
@@ -90,7 +118,8 @@ export class Scene {
     makeComposer() {
         const w = window.innerWidth, h = window.innerHeight;
         this.composer = new EffectComposer(this.renderer);
-        this.composer.addPass(new RenderPass(this.scene, this.camera));
+        this.renderPass = new RenderPass(this.scene, this.camera);
+        this.composer.addPass(this.renderPass);
         const gtao = new GTAOPass(this.scene, this.camera, w, h, undefined, { radius: 0.9, distanceExponent: 1.4, thickness: 1.2, scale: 1.1, samples: 12 });
         gtao.blendIntensity = 0.85;
         const base = gtao._overrideVisibility.bind(gtao);
@@ -107,48 +136,33 @@ export class Scene {
         this.composer.addPass(new OutputPass());
         this.composer.setSize(w, h);
         this.composer.setPixelRatio(this.renderer.getPixelRatio());
+        this.syncPassCamera();
     }
     resize() {
         const w = window.innerWidth, h = window.innerHeight;
         this.renderer.setSize(w, h, false);
         this.composer?.setSize(w, h);
         this.aspect = w / h;
+        this.rig.setAspect(this.aspect);
         this.updateCamera();
     }
     /** Cut everything above world height `y` (storey cutaway); Infinity disables it. */
-    setCut(y) { this.cutPlane.constant = Number.isFinite(y) ? y : 1000; this.cutLevel = y; }
-    rotate(steps) { this.yawTarget += steps * Math.PI / 2; }
-    zoom(f) { this.viewHeight = Math.max(8, Math.min(90, this.viewHeight * f)); this.updateCamera(); }
-    pan(dx, dz) {
-        // Pan in screen-aligned ground directions.
-        const fx = Math.sin(this.yaw), fz = Math.cos(this.yaw);
-        this.target.x += (-fx * dz + fz * dx) * this.viewHeight * 0.02;
-        this.target.z += (-fz * dz - fx * dx) * this.viewHeight * 0.02;
-    }
-    focus(x, y, z) { this.target.set(x, y, z); }
+    // Slightly above the cut so the dark section caps (y = cut + 0.001 … 0.026) survive and cut wall tops don't shimmer.
+    setCut(y) { this.cutPlane.constant = Number.isFinite(y) ? y + 0.04 : 1000; this.cutLevel = y; }
+    rotate(steps) { this.rig.rotate(steps); }
+    /** Smooth zoom: f > 1 zooms out (eased in updateCamera). */
+    zoom(f) { this.rig.zoom(f); }
+    pan(dx, dz) { this.rig.pan(dx, dz); }
+    focus(x, y, z) { this.rig.target.set(x, y, z); this.rig.clamp(); }
     /** Smoothly move the camera target (XCOM camera follow). */
-    glideTo(v, speed = 6) { this.glide = { to: v.clone(), speed }; }
+    glideTo(v, speed = 6) { this.rig.glideTo(v, speed); }
     /** Screen-relative facing: world direction (dx, dy) seen from this camera. Returns radians, 0 = toward camera. */
     screenAngle(dx, dy) {
         const a = Math.atan2(dx, dy);
         return a - this.yaw;
     }
-    updateCamera(dt = 0) {
-        if (Math.abs(this.yawTarget - this.yaw) > 1e-3) this.yaw += (this.yawTarget - this.yaw) * Math.min(1, dt * 8 || 1);
-        else this.yaw = this.yawTarget;
-        if (this.glide && dt) {
-            this.target.lerp(this.glide.to, Math.min(1, dt * this.glide.speed));
-            if (this.target.distanceTo(this.glide.to) < 0.02) this.glide = null;
-        }
-        const h = this.viewHeight, w = h * this.aspect;
-        Object.assign(this.camera, { left: -w / 2, right: w / 2, top: h / 2, bottom: -h / 2 });
-        const d = 120;
-        const off = new THREE.Vector3(Math.sin(this.yaw) * Math.cos(PITCH), Math.sin(PITCH), Math.cos(this.yaw) * Math.cos(PITCH)).multiplyScalar(d);
-        const jitter = this.shake > 0 ? new THREE.Vector3((Math.random() - 0.5) * this.shake, (Math.random() - 0.5) * this.shake, 0) : new THREE.Vector3();
-        this.camera.position.copy(this.target).add(off).add(jitter);
-        this.camera.lookAt(this.target.clone().add(jitter));
-        this.camera.updateProjectionMatrix();
-    }
+    /** dt 0 snaps the eased yaw / zoom (used on resize and mission start). */
+    updateCamera(dt = 0) { this.rig.update(dt); }
     render(dt) {
         this.shake = Math.max(0, this.shake - dt * 3);
         this.updateCamera(dt);
@@ -164,7 +178,7 @@ export class Scene {
     }
     project(v) {
         const p = v.clone().project(this.camera);
-        return { x: (p.x + 1) / 2 * window.innerWidth, y: (1 - p.y) / 2 * window.innerHeight, visible: p.z < 1 };
+        return { x: (p.x + 1) / 2 * window.innerWidth, y: (1 - p.y) / 2 * window.innerHeight, visible: p.z > -1 && p.z < 1 };
     }
 }
 

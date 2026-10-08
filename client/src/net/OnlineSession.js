@@ -4,7 +4,6 @@
 // as intents too, so every client animates exactly the same battle.
 import * as Colyseus from 'colyseus.js';
 import { createBattle } from '../../../shared/session/Scenarios.js';
-import { loadSite } from './LocalSession.js';
 
 export class OnlineSession {
     static async connect({ url, desc = null, roomId = null, name = 'Player' }) {
@@ -18,8 +17,7 @@ export class OnlineSession {
             room.onError((code, msg) => reject(new Error(`${code} ${msg}`)));
             setTimeout(() => reject(new Error('server did not send init')), 15000);
         });
-        const site = init.desc.scenario === 'world' ? await loadSite(init.desc.siteId) : null;
-        const battle = createBattle(init.desc, site);
+        const battle = createBattle(init.desc);
         const s = new OnlineSession(room, init, battle);
         for (const m of init.log) s.applyRemote(m, true);
         for (const [type, m] of early) if (type === 'intent' && m.seq > s.seq) s.applyRemote(m, true); else if (type === 'players') s.players = m.players;

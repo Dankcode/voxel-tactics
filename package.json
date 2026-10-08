@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "XCOM 2 / Phoenix Point-style co-op voxel tactics built on vibe-game's world, voxel and noise generation.",
+  "description": "XCOM 2-style present-day co-op tactics on a voxel battlefield (gameplay grid) drawn with a modern pre-baked tile set.",
   "workspaces": [
     "client",
     "server"
@@ -13,16 +13,15 @@
     "dev:all": "concurrently --kill-others-on-fail --names client,server \"npm run dev --workspace=client\" \"npm start --workspace=server\"",
     "server": "npm start --workspace=server",
     "build": "npm run build --workspace=client",
-    "test": "node --test shared/voxel/*.test.js shared/elements/*.test.js shared/battle/*.test.js shared/mission/*.test.js client/src/render/kit/*.test.js shared/worldgen/*.test.js server/test/*.test.js",
+    "test": "node --test shared/voxel/*.test.js shared/elements/*.test.js shared/battle/*.test.js shared/mission/*.test.js client/src/render/kit/*.test.js server/test/*.test.js",
     "test:fast": "node --test shared/voxel/*.test.js shared/elements/*.test.js shared/battle/*.test.js shared/mission/*.test.js client/src/render/kit/*.test.js",
     "sim": "node tools/sim/battle_sim.mjs --seeds 24",
     "sim:formations": "node tools/sim/battle_sim.mjs --seeds 100 --formations-compare --gate",
-    "worldgen:bake": "node tools/worldgen/bake_sites.mjs",
     "art:placeholders": "python3 tools/art/make_placeholders.py",
     "art:textures": "python3 tools/art/make_textures.py",
     "kit:bake": "node tools/kit/bake_tileset.mjs",
     "mission:report": "node tools/mission/report.mjs",
-    "sim:world": "node tools/sim/battle_sim.mjs --seeds 4 --scenario all-world"
+    "sim:all": "node tools/sim/battle_sim.mjs --seeds 4 --scenario all"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

@@ -2,8 +2,9 @@
 import { reachable, nodeKey } from '../world/PathSearch.js';
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
 import { measureMission } from './MissionMetrics.js';
+import { castRay, blocksSight } from '../voxel/Raycast.js';
 
-export function finalizeMission({ id, name, store, rooms, buildings, spawns, rng, objective, meta = {} }) {
+export function finalizeMission({ id, name, store, rooms, buildings, spawns, rng, objective, meta = {}, visual = null, secure = true }) {
     const occupied = new Set();
     const key = p => `${p.x},${p.y},${p.z}`;
     const player = spawns.player.map(p => {
@@ -46,12 +47,43 @@ export function finalizeMission({ id, name, store, rooms, buildings, spawns, rng
                 pos = cells.find(c => reach(c) && !occupied.has(key(c))) || null;
             }
         }
-        if (!pos || !reach(pos) || occupied.has(key(pos))) pos = nearestReachable(pos || spec.at || player[0]);
+        if (!pos || !reach(pos) || occupied.has(key(pos))) {
+            // Fall back near where the spec meant (its building), never next to the squad.
+            const b = buildings.find(b => b.id === (spec.room?.building || spec.roof));
+            const near = pos || spec.at || (b ? { x: b.x0 + b.w / 2, y: b.y0 + b.d / 2, z: b.baseZ } : null);
+            pos = near ? nearestReachable(near) : null;
+        }
         if (!pos) continue;
         occupied.add(key(pos));
         enemy.push({ type: spec.type, group: spec.group ?? 0, pos, facing: spec.facing || 's' });
     }
-    const mission = { id, name, store, rooms, buildings, spawns: { player, enemy }, objective, meta };
+    if (secure) secureSpawns(store, player, enemy, search, occupied, key);
+    const mission = { id, name, store, rooms, buildings, spawns: { player, enemy }, objective, meta, visual: visual || { hints: {}, decor: [] } };
     mission.metrics = measureMission(mission, { search });
     return mission;
+}
+
+/**
+ * Spawn safety (the spawnSafe gate): no enemy may start with a clear line of sight to a squad member within 24 tiles.
+ * An enemy that would is moved to the nearest reachable tile (same room or same outdoor/indoor status, within 8 tiles,
+ * at least 10 from every squad member) that no squad member can see.
+ */
+export function secureSpawns(store, player, enemy, search, occupied, key) {
+    const sees = (e) => player.some(p => Math.hypot(e.x - p.x, e.y - p.y) < 24 && !castRay(store, { x: e.x + 0.5, y: e.y + 0.5, h: e.z + 2.5 }, { x: p.x + 0.5, y: p.y + 0.5, h: p.z + 2 }, { blocks: blocksSight }).hit);
+    const nodes = [...search.nodes.values()];
+    for (const e of enemy) {
+        if (!sees(e.pos)) continue;
+        const room = store.roomAt(e.pos.x, e.pos.y, e.pos.z + 1);
+        const options = nodes.filter(n => !occupied.has(key(n)) && Math.hypot(n.x - e.pos.x, n.y - e.pos.y) <= 8 && Math.abs(n.z - e.pos.z) <= 3
+            && player.every(p => Math.hypot(n.x - p.x, n.y - p.y) >= 10))
+            .sort((a, b) => {
+                const ra = store.roomAt(a.x, a.y, a.z + 1), rb = store.roomAt(b.x, b.y, b.z + 1);
+                const pa = (ra === room ? 0 : (ra >= 0) === (room >= 0) ? 2 : 6), pb = (rb === room ? 0 : (rb >= 0) === (room >= 0) ? 2 : 6);
+                return (pa + Math.hypot(a.x - e.pos.x, a.y - e.pos.y)) - (pb + Math.hypot(b.x - e.pos.x, b.y - e.pos.y));
+            });
+        const to = options.find(n => !sees(n));
+        if (!to) continue;
+        occupied.delete(key(e.pos)); occupied.add(key(to));
+        e.pos = { x: to.x, y: to.y, z: to.z };
+    }
 }

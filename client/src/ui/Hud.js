@@ -20,7 +20,7 @@ export class Hud {
                 <div class="mission"><b></b><span></span></div>
                 <div class="turnbox"><div class="round"></div><div class="phase"></div></div>
                 <div class="tools">
-                    <button data-act="rotL" title="Rotate camera (Q)">${ICONS.rotL}</button><button data-act="rotR" title="Rotate camera (E)">${ICONS.rotR}</button>
+                    <button data-act="rotL" title="Rotate camera (Q) · middle-drag to orbit">${ICONS.rotL}</button><button data-act="rotR" title="Rotate camera (E) · middle-drag to orbit">${ICONS.rotR}</button>
                     <button data-act="lvlDown" title="Cutaway down (PgDn)">${ICONS.down}</button><span class="level"></span><button data-act="lvlUp" title="Cutaway up (PgUp)">${ICONS.up}</button>
                     <button data-act="cutins" class="cutin-mode" title="Back-shot cut-ins"></button>
                     <button data-act="options" title="Options">${ICONS.gear}</button>
@@ -61,8 +61,9 @@ export class Hud {
             case 'debug': g.debug.toggle(); break;
             case 'options': this.toggleOptions(); break;
             case 'opt': g.options[arg] = !g.options[arg]; this.renderOptions(); break;
-            case 'lighting': g.scene.setLighting(arg); this.renderOptions(); break;
+            case 'lighting': g.scene.setLighting(arg); g.options.lighting = arg; this.renderOptions(); break;
             case 'ao': g.scene.setAO(!g.scene.ao); this.renderOptions(); break;
+            case 'proj': g.scene.toggleProjection(); this.renderOptions(); break;
             case 'cue': TERRAIN_CUES[arg].value = TERRAIN_CUES[arg].value ? 0 : 1; this.renderOptions(); break;
             case 'menu': g.exitToMenu(); break;
             case 'select': g.select(arg); break;
@@ -86,6 +87,8 @@ export class Hud {
         if (el.classList.contains('hidden')) return;
         const row = (k, label) => `<button data-act="opt" data-arg="${k}" class="${o[k] ? 'on' : ''}">${o[k] ? '☑' : '☐'} ${label}</button>`;
         el.innerHTML = `<h4>Options</h4>${row('autoEndTurn', 'Auto end turn when the squad is spent')}${row('autoNext', 'Auto-select the next ready soldier')}${row('followCamera', 'Camera follows actions')}
+            <h4>Camera</h4>${row('edgeScroll', 'Screen-edge scrolling')}<button data-act="proj" class="${g.scene.projection === 'ortho' ? 'on' : ''}">${g.scene.projection === 'ortho' ? '☑' : '☐'} Isometric (orthographic) view (V)</button>
+            <div class="camhint" style="font-size:11px;opacity:.7;line-height:1.5;margin:4px 0 2px">WASD / arrows / screen edge pan · right-drag grab · middle-drag orbit · wheel zoom · Q/E rotate · H / Home centre on soldier · V isometric</div>
             <h4>Readability</h4><button data-act="cue" data-arg="uGrid" class="${TERRAIN_CUES.uGrid.value ? 'on' : ''}">${TERRAIN_CUES.uGrid.value ? '☑' : '☐'} Tile grid on walkable ground</button><button data-act="cue" data-arg="uRim" class="${TERRAIN_CUES.uRim.value ? 'on' : ''}">${TERRAIN_CUES.uRim.value ? '☑' : '☐'} Ledge rims (orange = 2+ drop)</button><button data-act="ao" class="${g.scene.ao ? 'on' : ''}">${g.scene.ao ? '☑' : '☐'} Ambient occlusion</button>
             <h4>Lighting</h4><div class="row">${['day', 'dusk', 'night'].map(l => `<button data-act="lighting" data-arg="${l}" class="${g.scene.lightingName === l ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     }

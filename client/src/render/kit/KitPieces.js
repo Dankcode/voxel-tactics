@@ -13,52 +13,11 @@
 //   * UVs: parts whose slot uses world-space mapping ignore these UVs (walls stay seamless across pieces); crates,
 //     barrels, hay, sandbags and cloth use the UVs authored here.
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { rng, box, clean, merge, softBox, blob } from './Geo.js';
+import { MODERN_PIECES } from './ModernPieces.js';
 
-export const WALL_T = 0.4;            // wall thickness (a voxel is ~0.9 m; XCOM-like thin walls)
-const ARM = 0.5 - WALL_T / 2;
-
-// ------------------------------------------------------------------------------------------- helpers
-function rng(seed) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
-const box = (w, h, d, x = 0, y = 0, z = 0) => new THREE.BoxGeometry(w, h, d).translate(x, y + h / 2, z);
-function clean(g) { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k); return g; }
-function merge(list) {
-    const parts = list.filter(Boolean).map(g => { const n = g.index ? g.toNonIndexed() : g; if (!n.attributes.uv) n.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(n.attributes.position.count * 2), 2)); return n; });
-    const m = mergeGeometries(parts.map(p => { for (const k of Object.keys(p.attributes)) if (!['position', 'normal', 'uv'].includes(k)) p.deleteAttribute(k); return p; }), false);
-    m.computeBoundingBox(); m.computeBoundingSphere();
-    return m;
-}
-/** Rounded box: a box whose corners are pulled in (cheap bevel) — used for bags, bales, crates. */
-function softBox(w, h, d, r, seg = 2) {
-    const g = new THREE.BoxGeometry(w, h, d, seg + 2, seg + 2, seg + 2);
-    const p = g.attributes.position, v = new THREE.Vector3();
-    const hw = w / 2 - r, hh = h / 2 - r, hd = d / 2 - r;
-    for (let i = 0; i < p.count; i++) {
-        v.fromBufferAttribute(p, i);
-        const c = new THREE.Vector3(Math.max(-hw, Math.min(hw, v.x)), Math.max(-hh, Math.min(hh, v.y)), Math.max(-hd, Math.min(hd, v.z)));
-        const dir = v.clone().sub(c);
-        if (dir.lengthSq() > 1e-9) v.copy(c.add(dir.normalize().multiplyScalar(r)));
-        p.setXYZ(i, v.x, v.y, v.z);
-    }
-    g.computeVertexNormals();
-    return g;
-}
-/** Lumpy rock / foliage blob: an icosphere with deterministic radial noise. */
-function blob(radius, detail, seed, squash = [1, 1, 1], amp = 0.18) {
-    const g = new THREE.IcosahedronGeometry(radius, detail);
-    const p = g.attributes.position, v = new THREE.Vector3(), r = rng(seed);
-    const bumps = Array.from({ length: 7 }, () => [new THREE.Vector3(r() - 0.5, r() - 0.5, r() - 0.5).normalize(), (r() - 0.3) * amp]);
-    for (let i = 0; i < p.count; i++) {
-        v.fromBufferAttribute(p, i);
-        const n = v.clone().normalize();
-        let k = 1;
-        for (const [d, a] of bumps) k += a * Math.max(0, n.dot(d)) ** 3;
-        v.copy(n.multiplyScalar(radius * k)).multiply(new THREE.Vector3(...squash));
-        p.setXYZ(i, v.x, v.y, v.z);
-    }
-    const flat = g.index ? g.toNonIndexed() : g; flat.computeVertexNormals();
-    return flat;
-}
+export { WALL_T, ARM } from './Geo.js';
+import { WALL_T, ARM } from './Geo.js';
 
 // ------------------------------------------------------------------------------------------- pieces
 /** id → () => [{ slot, geometry }]. Each piece also lists `meta` for the manifest. */
@@ -199,7 +158,9 @@ export const PIECES = {
         const r = rng(5), parts = [];
         for (let i = 0; i < 5; i++) parts.push(new THREE.OctahedronGeometry(0.14 + r() * 0.08).scale(0.7, 2.2, 0.7).rotateZ((r() - 0.5) * 0.7).rotateX((r() - 0.5) * 0.7).translate((r() - 0.5) * 0.4, 0.62, (r() - 0.5) * 0.4));
         return [{ slot: 'crystal', geometry: merge(parts) }];
-    } }
+    } },
+    // Present-day pieces (walls trims, glazing, doors, furniture, vehicles, street furniture, trees, decor).
+    ...MODERN_PIECES
 };
 
 /** Build every piece: Map id → [{ slot, geometry }] (variants as `id#n`). */

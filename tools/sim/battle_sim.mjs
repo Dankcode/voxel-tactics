@@ -2,14 +2,14 @@
 // Headless balance simulator (PLAN-01 rev 2 §15): AI vs AI on real missions, aggregated weapon,
 // throwable, destruction, breach and formation statistics, plus the formation A/B comparison.
 //
-//   node tools/sim/battle_sim.mjs --seeds 24 [--scenario proving-grounds|world:burg-10|all-world]
+//   node tools/sim/battle_sim.mjs --seeds 24 [--scenario cedar-close|proving-grounds|all]
 //        [--squad standard] [--rounds 40] [--formations-compare] [--gate] [--json out.json]
 import fs from 'node:fs';
 import os from 'node:os';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createBattle } from '../../shared/session/Scenarios.js';
+import { createBattle, SCENARIOS } from '../../shared/session/Scenarios.js';
 import { runAiSide } from '../../shared/battle/Ai.js';
 import { WEAPONS, THROWABLES } from '../../shared/content/weapons.js';
 
@@ -19,15 +19,11 @@ const args = Object.fromEntries(process.argv.slice(2).reduce((acc, a, i, all) =>
     return acc;
 }, []));
 const SEEDS = Number(args.seeds) || 16, ROUNDS = Number(args.rounds) || 40;
-const site = id => JSON.parse(fs.readFileSync(path.join(ROOT, 'client/public/missions/sites', `${id}.json`), 'utf8'));
-let scenarios;
-if (!args.scenario || args.scenario === 'proving-grounds') scenarios = [{ scenario: 'proving-grounds' }];
-else if (args.scenario === 'all-world') scenarios = JSON.parse(fs.readFileSync(path.join(ROOT, 'client/public/missions/sites/index.json'))).map(s => ({ scenario: 'world', siteId: s.id }));
-else if (args.scenario.startsWith('world:')) scenarios = [{ scenario: 'world', siteId: args.scenario.slice(6) }];
-else scenarios = [{ scenario: 'proving-grounds' }];
+const scenarios = args.scenario === 'all' ? SCENARIOS.map(m => ({ scenario: m.id }))
+    : [{ scenario: SCENARIOS.some(m => m.id === args.scenario) ? args.scenario : 'proving-grounds' }];
 
 function runOne(desc, { formations }) {
-    const b = createBattle(desc, desc.scenario === 'world' ? site(desc.siteId) : null);
+    const b = createBattle(desc);
     const t = Date.now();
     while (!b.outcome && b.round <= ROUNDS) {
         runAiSide(b, 'player', { formations });
@@ -99,12 +95,12 @@ for (const sc of scenarios) {
     const all = await runAll([...descs.map(d => [d, true]), ...(compare ? descs.map(d => [d, false]) : [])]);
     const withF = all.slice(0, descs.length);
     const aggF = aggregate(withF);
-    printReport(`${sc.siteId || sc.scenario} (formations on)`, aggF);
+    printReport(`${sc.scenario} (formations on)`, aggF);
     const entry = { scenario: sc, formationsOn: aggF };
     if (args['formations-compare']) {
         const without = all.slice(descs.length);
         const aggN = aggregate(without);
-        printReport(`${sc.siteId || sc.scenario} (formations off)`, aggN);
+        printReport(`${sc.scenario} (formations off)`, aggN);
         const delta = aggF.playerWinRate - aggN.playerWinRate;
         console.log(`\nformation win-rate delta: ${(delta * 100).toFixed(1)} pts (gate: +2 … +8 pooled, never > +12 per scenario, never < −3)`);
         entry.formationsOff = aggN; entry.formationDelta = delta;

@@ -5,6 +5,7 @@
 // (slab + 2 headroom, vibe-game INTERIOR_FLOOR_SPACING), corridors for large footprints, partitioned
 // rooms for small ones, doors, glass windows, stair runs (vibe-game createStairRun), destructible
 // furniture placed with interior-v2's connectivity guard, and voxel roofs.
+import { planModernInterior } from './ModernInterior.js';
 import { MAT, AIR } from '../voxel/Materials.js';
 import { createStairRun } from '../world/StairRun.js';
 
@@ -27,6 +28,21 @@ const ROOM_FURNITURE = {
     forge: ['forge', 'rack', 'keg', 'crate'], nave: ['altar', 'pew', 'pew', 'pew'], armory: ['rack', 'rack', 'keg', 'crates'],
     barracks: ['bed', 'bed', 'crate'], study: ['shelf', 'shelf', 'table'], office: ['table', 'shelf', 'crate'],
     corridor: ['crate'], cellar: ['crates', 'keg', 'water']
+};
+const MODERN_ITEMS = {
+    sofa: { mat: 'sofa', h: 1, place: 'wall', len: 3 },
+    cabinet: { mat: 'cabinet', h: 1, place: 'wall', len: 3 },
+    island: { mat: 'cabinet', h: 1, place: 'center', len: 2 },
+    bed: { mat: 'bed', h: 1, place: 'wall', len: 2 },
+    desk: { mat: 'desk', h: 1, place: 'wall', len: 2 },
+    coffee: { mat: 'desk', h: 1, place: 'center', len: 1 },
+    appliance: { mat: 'appliance', h: 2, place: 'wall', len: 1 },
+    vanity: { mat: 'cabinet', h: 1, place: 'wall', len: 1 }
+};
+const MODERN_FURNITURE = {
+    living: ['sofa', 'coffee'], kitchen: ['cabinet', 'island', 'appliance'],
+    bedroom: ['bed', 'desk'], office: ['desk', 'sofa'], bathroom: ['vanity', 'appliance'],
+    utility: ['appliance', 'cabinet']
 };
 const ROLE_ROOMS = {
     home: ['living', 'bedroom'], shop: ['shop', 'storeroom'], inn: ['hall', 'bedroom', 'storeroom'],
@@ -58,7 +74,7 @@ export function buildBuilding(store, spec, ctx) {
     const { x0, y0, w, d, baseZ } = spec;
     const storeys = Math.max(1, Math.min(3, spec.storeys | 0 || 1));
     const wallKey = spec.wall || 'plaster';
-    const floorKey = wallKey === 'stone' ? 'stone_floor' : 'plank';
+    const floorKey = spec.modern ? 'oak_floor' : wallKey === 'stone' ? 'stone_floor' : 'plank';
     const top = baseZ + STOREY * storeys;
     const rng = ctx.rng;
     const result = { id: spec.id, name: spec.name || spec.id, role: spec.role, x0, y0, w, d, baseZ, storeys, rooms: [], doors: [], windows: [], stairs: [], top };
@@ -82,7 +98,7 @@ export function buildBuilding(store, spec, ctx) {
     buildRoof(store, spec, top, wallKey);
 
     // 2. Plan the interior once; every storey shares it so stairs and corridors line up.
-    const plan = planInterior(spec, rng);
+    const plan = spec.modern ? planModernInterior(spec) : planInterior(spec, rng);
     const entry = resolveEntry(spec, plan);
 
     // 3. Partitions, doors and doorways, per storey.
@@ -98,8 +114,9 @@ export function buildBuilding(store, spec, ctx) {
             const id = ctx.nextRoomId();
             const kinds = ROLE_ROOMS[spec.role] || ROLE_ROOMS.home;
             const kind = room.kind || (s > 0 && spec.role !== 'keep' ? 'bedroom' : kinds[i % kinds.length]);
-            const rec = { id, buildingId: spec.id, storey: s, kind, cells: room.cells, floorZ: fz, lit: rng.next() < 0.55, doors: [] };
+            const rec = { id, buildingId: spec.id, storey: s, kind, cells: room.cells, floorZ: fz, lit: spec.modern || rng.next() < 0.55, doors: [] };
             for (const [x, y] of room.cells) for (let h = 1; h < STOREY; h++) store.rooms[store.index(x, y, fz + h)] = id;
+            if (spec.modern && ['kitchen', 'bathroom', 'utility'].includes(kind)) for (const [x, y] of room.cells) store.set(x, y, fz, MAT.ceramic);
             result.rooms.push(rec); ctx.rooms.push(rec);
             return rec;
         });
@@ -141,7 +158,7 @@ export function buildBuilding(store, spec, ctx) {
         const fz = baseZ + STOREY * s;
         for (const p of perimeterRuns(spec)) {
             p.cells.forEach(([x, y], i) => {
-                if (i === 0 || i === p.cells.length - 1 || (i + (s % 2)) % 3 !== 1) return;
+                if (i === 0 || i === p.cells.length - 1 || (spec.modern ? i % 5 > 2 : (i + (s % 2)) % 3 !== 1)) return;
                 const [ix, iy] = [x - SIDES[p.side][0], y - SIDES[p.side][1]];
                 if (!footprint.has(`${ix},${iy}`) || plan.wallSet.has(`${ix},${iy}`)) return;  // a partition meets the wall here
                 if (exterior.some(e => Math.abs(e.x - x) + Math.abs(e.y - y) <= 1)) return;
@@ -161,9 +178,9 @@ export function buildBuilding(store, spec, ctx) {
             if (run.storey === s) run.cells.forEach(c => obstacles.add(`${c.x},${c.y}`));
             if (run.storey === s - 1) [run.before, run.cells[0], run.cells[1]].forEach(c => obstacles.add(`${c.x},${c.y}`));
         }
-        furnish(store, plan, roomIdsByStorey[s], fz, reserved, rng, anchor, obstacles);
+        furnish(store, plan, roomIdsByStorey[s], fz, reserved, rng, anchor, obstacles, spec.modern);
         for (const room of roomIdsByStorey[s]) {
-            if (!room.lit) continue;
+            if (spec.modern || !room.lit) continue;
             const wallCell = room.cells.flatMap(([x, y]) => Object.values(SIDES).map(([dx, dy]) => [x + dx, y + dy]))
                 .find(([x, y]) => store.get(x, y, fz + 2) === MAT[wallKey] || store.get(x, y, fz + 2) === MAT.stone);
             if (wallCell) store.set(wallCell[0], wallCell[1], fz + 2, MAT.lantern);
@@ -317,18 +334,18 @@ function connected(floorSet, blocked, start) {
     return seen.size === total;
 }
 
-function furnish(store, plan, rooms, fz, reserved, rng, anchor, obstacles = new Set()) {
+function furnish(store, plan, rooms, fz, reserved, rng, anchor, obstacles = new Set(), modern = false) {
     const floorSet = new Set(plan.floor.map(([x, y]) => `${x},${y}`));
     const blocked = new Set(obstacles);
     // Cells in front of doors and on stair runs stay free.
     const keepFree = new Set([...reserved, ...obstacles]);
     const start = anchor ? [anchor.x, anchor.y] : plan.floor[0];
     for (const room of rooms) {
-        const list = ROOM_FURNITURE[room.kind] || ROOM_FURNITURE.living;
+        const list = modern ? (MODERN_FURNITURE[room.kind] || MODERN_FURNITURE.bedroom) : (ROOM_FURNITURE[room.kind] || ROOM_FURNITURE.living);
         const cells = room.cells.filter(([x, y]) => !keepFree.has(`${x},${y}`) && store.get(x, y, fz + 1) === AIR);
         const isWall = ([x, y]) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => store.isSolid(x + dx, y + dy, fz + 1));
         for (const itemKey of list) {
-            const item = ITEMS[itemKey]; if (!item) continue;
+            const item = (modern ? MODERN_ITEMS : ITEMS)[itemKey]; if (!item) continue;
             const pool = cells.filter(c => (item.place === 'wall') === isWall(c) && !blocked.has(`${c[0]},${c[1]}`));
             rng.shuffle(pool);
             let placed = false;
@@ -353,7 +370,7 @@ function furnish(store, plan, rooms, fz, reserved, rng, anchor, obstacles = new 
 function buildRoof(store, spec, top, wallKey) {
     const { x0, y0, w, d } = spec;
     const style = spec.roof || 'flat';
-    const slab = wallKey === 'timber' ? 'plank' : 'stone_floor';          // never the wall material: the tile set draws walls as panels
+    const slab = spec.modern ? 'concrete' : wallKey === 'timber' ? 'plank' : 'stone_floor';          // never the wall material: the tile set draws walls as panels
     for (let y = y0; y < y0 + d; y++) for (let x = x0; x < x0 + w; x++) store.set(x, y, top, MAT[style === 'flat' || style === 'terrace' ? slab : 'roof']);
     if (style === 'flat' || style === 'terrace') {
         for (let y = y0; y < y0 + d; y++) for (let x = x0; x < x0 + w; x++) {

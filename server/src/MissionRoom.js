@@ -8,26 +8,16 @@
 // Squad units are dealt round-robin to connected players; the squad's turn ends when every connected
 // player has voted End Turn. Reconnects get the full intent log and replay it.
 import colyseus from 'colyseus';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { createBattle } from '../../shared/session/Scenarios.js';
+import { createBattle, scenarioId } from '../../shared/session/Scenarios.js';
 import { decide } from '../../shared/battle/Ai.js';
 
 const { Room } = colyseus;
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-export function loadSiteFromDisk(siteId) {
-    const file = path.join(ROOT, 'client/public/missions/sites', `${path.basename(siteId)}.json`);
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
-}
-
 export class MissionRoom extends Room {
     onCreate(options = {}) {
         this.maxClients = 4;
         const d = options.desc || {};
-        this.desc = { scenario: d.scenario === 'world' ? 'world' : 'proving-grounds', siteId: d.siteId || null, seed: Number(d.seed) || 1, squad: d.squad || 'standard' };
-        const site = this.desc.scenario === 'world' ? loadSiteFromDisk(this.desc.siteId) : null;
-        this.battle = createBattle(this.desc, site);
+        this.desc = { scenario: scenarioId(d.scenario), seed: Number(d.seed) || 1, squad: d.squad || 'standard' };
+        this.battle = createBattle(this.desc);
         this.log = [];             // [{ seq, intent, nonce }]
         this.players = [];         // [{ id, sessionId, name }]
         this.votes = new Set();

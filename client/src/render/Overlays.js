@@ -2,6 +2,7 @@
 // outlines with a faint fill, a path ribbon to the hovered tile with a destination marker, cover shields on the
 // destination's faces, aim cone, blast radius, throw arc, overwatch cones, plus debug layers.
 import * as THREE from 'three';
+import { dropAt } from './Ground.js';
 import { coverAt } from '../../../shared/voxel/Cover.js';
 
 export const ZONE = { blue: 0x46c8ff, yellow: 0xffc845, red: 0xff5a4a, white: 0xffffff, teal: 0x5ff2d6 };
@@ -95,17 +96,17 @@ export class Overlays {
     showPath(path, dash = false) {
         this.clearPath();
         if (!path || path.length < 2) return;
-        const pts = path.map(p => new THREE.Vector3(p.x + 0.5, p.z + 1.06, p.y + 0.5));
+        const pts = path.map(p => new THREE.Vector3(p.x + 0.5, p.z + 1.06 - dropAt(p.x, p.y, p.z), p.y + 0.5));
         this.pathGroup.add(new THREE.Mesh(ribbonGeometry(pts, 0.09), dash ? this.mats.pathDash : this.mats.path));
         const end = path[path.length - 1];
         this.marker.visible = true;
-        this.marker.position.set(end.x + 0.5, end.z + 1.03, end.y + 0.5);
+        this.marker.position.set(end.x + 0.5, end.z + 1.03 - dropAt(end.x, end.y, end.z), end.y + 0.5);
         const col = dash ? ZONE.yellow : ZONE.blue;
         for (const m of Object.values(this.marker.userData)) m.material.color.setHex(col);
     }
     setHover(cell) {
         if (!cell) { this.hover.visible = false; return; }
-        this.hover.visible = true; this.hover.position.set(cell.x + 0.5, cell.z + 1.03, cell.y + 0.5);
+        this.hover.visible = true; this.hover.position.set(cell.x + 0.5, cell.z + 1.03 - dropAt(cell.x, cell.y, cell.z), cell.y + 0.5);
     }
     /** XCOM shield icons on the four faces of a standing position; flankedBy: list of {dx, dy} threats. */
     showCover(store, cell, { flanked = false } = {}) {
@@ -207,7 +208,7 @@ function frameGeometry(w) {
 function tileMesh(cells, material) {
     const pos = [], idx = [];
     for (const n of cells) {
-        const b = pos.length / 3, y = n.z + 1.02;
+        const b = pos.length / 3, y = n.z + 1.02 - dropAt(n.x, n.y, n.z);
         pos.push(n.x + 0.04, y, n.y + 0.04, n.x + 0.96, y, n.y + 0.04, n.x + 0.96, y, n.y + 0.96, n.x + 0.04, y, n.y + 0.96);
         idx.push(b, b + 2, b + 1, b, b + 3, b + 2);
     }
@@ -220,7 +221,7 @@ function tileMesh(cells, material) {
 function edgeMesh(edges, material) {
     const pos = [], idx = [], w = 0.09, y0 = 0.035;
     for (const [n, dx, dy] of edges) {
-        const y = n.z + 1 + y0, x0 = n.x, z0 = n.y;
+        const y = n.z + 1 + y0 - dropAt(n.x, n.y, n.z), x0 = n.x, z0 = n.y;
         let a, b, c, d;
         if (dy === -1) { a = [x0, z0]; b = [x0 + 1, z0]; c = [x0 + 1, z0 + w]; d = [x0, z0 + w]; }
         else if (dy === 1) { a = [x0, z0 + 1 - w]; b = [x0 + 1, z0 + 1 - w]; c = [x0 + 1, z0 + 1]; d = [x0, z0 + 1]; }

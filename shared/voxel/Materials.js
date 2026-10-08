@@ -9,7 +9,7 @@
 //   projectile  'block' stops a bullet, 'pass' lets it through, 'shatter' stops it but breaks (glass)
 //   hp          damage the voxel absorbs before it is destroyed (Infinity = indestructible)
 //   part        vibe-game BUILDING_PARTS code, read by the copied TraversalRules (2 door, 4 stairs)
-import { ELEMENTS } from '../world/TileRegistry.js';
+import { ELEMENTS } from '../elements/ElementIds.js';
 
 const M = [];
 function def(key, o) {
@@ -59,9 +59,9 @@ def('trunk', { label: 'Tree trunk', color: 0x6a4a2c, hp: 6, flammable: true, bur
 def('furniture', { label: 'Furniture', element: ELEMENTS.STRUCTURE, color: 0x8c5a33, hp: 3, flammable: true, burnTo: 'ash', family: 'wood', structural: false });
 def('shelf', { label: 'Shelf', element: ELEMENTS.STRUCTURE, color: 0x6e4a2b, hp: 4, flammable: true, burnTo: 'ash', family: 'wood', structural: false });
 def('crate', { label: 'Crate', element: ELEMENTS.STRUCTURE, color: 0xb98a4e, hp: 3, flammable: true, burnTo: 'ash', family: 'wood', structural: false });
-def('barrel_powder', { label: 'Powder keg', element: ELEMENTS.PYRO, color: 0x8a2d1c, hp: 1, flammable: true, family: 'wood', structural: false,
+def('barrel_powder', { label: 'Fuel drum', element: ELEMENTS.PYRO, color: 0x8a2d1c, hp: 1, flammable: true, family: 'wood', structural: false,
     explosive: { radius: 2.6, power: 9, damage: 5, element: 'pyro' } });
-def('barrel_water', { label: 'Water barrel', element: ELEMENTS.HYDRO, color: 0x3c6e8f, hp: 2, family: 'wood', structural: false,
+def('barrel_water', { label: 'Water drum', element: ELEMENTS.HYDRO, color: 0x3c6e8f, hp: 2, family: 'wood', structural: false,
     explosive: { radius: 1.8, power: 0, damage: 0, element: 'hydro' } });
 def('metal', { label: 'Iron', color: 0x5b6168, hp: 16, family: 'metal' });
 def('rubble', { label: 'Rubble', color: 0x8a8378, hp: 3, moveCost: 1.5, family: 'stone', structural: false });
@@ -69,7 +69,7 @@ def('ash', { label: 'Ash', color: 0x3d3a37, hp: 1, moveCost: 1.1, structural: fa
 def('sandbag', { label: 'Sandbags', element: ELEMENTS.ANEMO, color: 0xc2a86b, hp: 6, family: 'earth', structural: false });
 def('crystal', { label: 'Crystal node', element: ELEMENTS.CRYO, color: 0x8fd8ff, hp: 5, opaque: false, render: 'glass', family: 'ice', structural: false });
 def('cloth', { label: 'Awning', element: ELEMENTS.STRUCTURE, color: 0xd9a441, hp: 1, solid: true, opaque: true, projectile: 'pass', flammable: true, burnTo: null, family: 'plant', structural: false });
-def('lantern', { label: 'Lantern', element: ELEMENTS.PYRO, color: 0xffd36b, hp: 1, light: 3, family: 'metal', structural: false,
+def('lantern', { label: 'Light fixture', element: ELEMENTS.PYRO, color: 0xffd36b, hp: 1, light: 3, family: 'metal', structural: false,
     explosive: { radius: 1.4, power: 1, damage: 1, element: 'pyro' } });
 def('hay', { label: 'Hay bale', element: ELEMENTS.ANEMO, color: 0xd8b860, hp: 3, flammable: true, burnTo: 'ash', family: 'plant', structural: false });
 // Cover props (shared/mission/PropCatalog.js): each one is a real object with a gameplay job.
@@ -78,6 +78,44 @@ def('fence', { label: 'Plank fence', element: ELEMENTS.STRUCTURE, color: 0x8a644
 def('rock', { label: 'Boulder', color: 0x8c877d, hp: 14, family: 'stone', debris: 'rubble', structural: false });
 def('cart', { label: 'Cart', element: ELEMENTS.STRUCTURE, color: 0x8a6238, hp: 4, flammable: true, burnTo: 'ash', family: 'wood', structural: false });
 def('stall', { label: 'Market stall', element: ELEMENTS.STRUCTURE, color: 0xa47a4a, hp: 3, flammable: true, burnTo: 'ash', family: 'wood', structural: false });
+
+// Modern kit materials are appended so existing recorded material IDs remain stable.
+def('stucco', { label: 'Stucco wall', color: 0xe5e3da, hp: 6, family: 'stone', debris: 'rubble' });
+def('concrete', { label: 'Concrete paving', color: 0xc3c6c2, hp: 10, family: 'stone', debris: 'rubble' });
+def('asphalt', { label: 'Asphalt', color: 0x424c52, hp: 8, family: 'stone' });
+def('oak_floor', { label: 'Oak floor', color: 0xc3a47e, hp: 5, family: 'wood', flammable: true, burnTo: 'ash' });
+def('ceramic', { label: 'Ceramic tile', color: 0xd8dfdb, hp: 6, family: 'stone' });
+def('lawn', { label: 'Lawn', color: 0x839578, hp: 5, debris: 'soil' });
+def('sofa', { label: 'Sofa', color: 0x537e7c, hp: 3, family: 'wood', flammable: true, burnTo: 'ash', structural: false, walkable: false });
+def('cabinet', { label: 'Kitchen cabinet', color: 0xe3e5de, hp: 5, family: 'wood', flammable: true, structural: false, walkable: false });
+def('bed', { label: 'Bed', color: 0xa8b9ad, hp: 3, family: 'wood', flammable: true, structural: false, walkable: false });
+def('desk', { label: 'Desk', color: 0xb99870, hp: 3, family: 'wood', flammable: true, structural: false, walkable: false });
+def('planter', { label: 'Concrete planter', color: 0xafb7b1, hp: 8, family: 'stone', debris: 'rubble', structural: false, walkable: false });
+def('privacy_fence', { label: 'Privacy fence', color: 0x9a795b, hp: 4, family: 'wood', flammable: true, structural: false, walkable: false });
+def('car_body', { label: 'Parked car', color: 0xaabcc1, hp: 10, family: 'metal', structural: false, walkable: false });
+def('appliance', { label: 'Appliance', color: 0xd5dad7, hp: 7, family: 'metal', structural: false, walkable: false });
+def('road_mark', { label: 'Road marking', color: 0xe1dfcb, hp: 8, family: 'stone' });
+// Modern set, pass 2: themed ground, walls and real-object cover (shared/mission/themes/*).
+def('paving', { label: 'Paving slabs', color: 0xb9bcb8, hp: 10, family: 'stone', debris: 'rubble' });
+def('deck', { label: 'Timber deck', element: ELEMENTS.STRUCTURE, color: 0x9a8268, hp: 4, flammable: true, burnTo: 'ash', family: 'wood' });
+def('gravel', { label: 'Gravel', color: 0x9b968d, hp: 6, moveCost: 1.05, family: 'stone' });
+def('brick', { label: 'Brick wall', element: ELEMENTS.STRUCTURE, color: 0x9b5a45, hp: 9, family: 'stone', debris: 'rubble' });
+def('concrete_wall', { label: 'Concrete wall', color: 0xb4b5b0, hp: 12, family: 'stone', debris: 'rubble' });
+def('siding', { label: 'Metal siding', color: 0x8d969a, hp: 5, family: 'metal' });
+def('roof_metal', { label: 'Metal roof', color: 0x7c868b, hp: 4, family: 'metal', walkable: false });
+def('car_cabin', { label: 'Car cabin', color: 0x7c8a90, hp: 8, family: 'metal', structural: false, walkable: false });
+def('container', { label: 'Shipping container', color: 0x9c4b3a, hp: 20, family: 'metal', structural: false });
+def('dumpster', { label: 'Dumpster', color: 0x3f6a4e, hp: 12, family: 'metal', structural: false, walkable: false });
+def('jersey', { label: 'Concrete barrier', color: 0xbcbcb4, hp: 14, family: 'stone', debris: 'rubble', structural: false, walkable: false });
+def('bench', { label: 'Bench', element: ELEMENTS.STRUCTURE, color: 0x8a6a48, hp: 3, flammable: true, burnTo: 'ash', family: 'wood', structural: false, walkable: false });
+def('bin', { label: 'Wheelie bin', color: 0x3d4a52, hp: 2, family: 'wood', flammable: true, structural: false, walkable: false });
+def('pump', { label: 'Fuel pump', element: ELEMENTS.PYRO, color: 0xc8c8c0, hp: 4, family: 'metal', structural: false,
+    explosive: { radius: 2.8, power: 8, damage: 6, element: 'pyro' }, walkable: false });
+def('pallet', { label: 'Pallet stack', element: ELEMENTS.STRUCTURE, color: 0xb08a5c, hp: 3, flammable: true, burnTo: 'ash', family: 'wood', structural: false, walkable: false });
+def('shelving', { label: 'Store shelving', color: 0x9aa3a8, hp: 5, family: 'metal', structural: false, walkable: false });
+def('chainlink', { label: 'Chain-link fence', color: 0x8f989c, hp: 2, solid: true, opaque: false, projectile: 'pass', family: 'metal', structural: false, walkable: false });
+def('carpet', { label: 'Carpet', element: ELEMENTS.STRUCTURE, color: 0x7d7f86, hp: 5, flammable: true, burnTo: 'ash', family: 'wood' });
+def('tile_dark', { label: 'Floor tiles', element: ELEMENTS.STRUCTURE, color: 0x5d6266, hp: 7, family: 'stone' });
 
 export const MATERIALS = Object.freeze(M);
 export const MAT = Object.freeze(Object.fromEntries(M.map(m => [m.key, m.id])));

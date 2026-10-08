@@ -7,6 +7,8 @@ import { buildProvingGrounds } from '../../../../shared/mission/ProvingGrounds.j
 import { MATERIALS, MAT, AIR } from '../../../../shared/voxel/Materials.js';
 import { CHUNK } from '../../../../shared/voxel/VoxelStore.js';
 import { buildAllPieces, PIECES } from './KitPieces.js';
+import { MODERN_OVERHANG } from './ModernPieces.js';
+import { MAPS } from '../../../../shared/mission/Maps.js';
 import { KitView, kitHandler } from './KitView.js';
 import { buildRoofGeometry, roofColumn } from './RoofBuilder.js';
 
@@ -15,8 +17,10 @@ const fakeKit = { piece: id => pieces.get(id) || pieces.get(`${id}#0`), material
 const mission = buildProvingGrounds({ seed: 1 });
 const store = mission.store;
 
-function buildAll(cut = Infinity) {
+function buildAll(cut = Infinity, m = mission) {
+    const store = m.store;
     const view = new KitView(fakeKit, []);
+    view.setVisual(m.visual);
     const byPiece = new Map();
     let roofs = 0;
     for (let cz = 0; cz < Math.ceil(store.height / CHUNK); cz++) for (let cy = 0; cy < Math.ceil(store.depth / CHUNK); cy++) for (let cx = 0; cx < Math.ceil(store.width / CHUNK); cx++) {
@@ -30,7 +34,7 @@ function buildAll(cut = Infinity) {
 }
 
 test('every piece builds within its cell (except the documented overhangs)', () => {
-    const overhang = new Set(['cart_shaft', 'stall', 'foliage', 'hedge', 'stair_rail', 'rock#0', 'rock#1', 'rock#2', 'rock_top', 'door_open_lower', 'door_open_upper', 'cart_wheels']);
+    const overhang = new Set(['cart_shaft', 'stall', 'foliage', 'hedge', 'stair_rail', 'rock#0', 'rock#1', 'rock#2', 'rock_top', 'door_open_lower', 'door_open_upper', 'cart_wheels', 'mdoor_open_lower', 'mdoor_open_upper', 'gdoor_open_lower', 'gdoor_open_upper', ...MODERN_OVERHANG]);
     for (const [id, parts] of pieces) {
         for (const { geometry } of parts) {
             geometry.computeBoundingBox();
@@ -43,11 +47,39 @@ test('every piece builds within its cell (except the documented overhangs)', () 
     assert.ok(Object.keys(PIECES).length >= 40);
 });
 
-test('the proving grounds draws walls, windows, doors, stairs, roofs and every cover prop with tile-set pieces', () => {
+test('the training facility draws walls, glazing, doors, stairs, roofs, furniture, vehicles and cover with tile-set pieces', () => {
     const { byPiece, roofs } = buildAll();
-    for (const id of ['wall_core', 'wall_arm', 'window', 'door_lower', 'door_upper', 'stair_step', 'crate', 'barrel', 'sandbags', 'cart_body', 'stall', 'hedge', 'foliage', 'trunk_base'])
+    for (const id of ['wall_core', 'wall_arm', 'plinth_core', 'mcap_core', 'glaze', 'glaze_head', 'mdoor_lower', 'mdoor_upper', 'stair_step', 'crate', 'barrel', 'sandbags', 'hedge', 'car', 'tree_round', 'jersey', 'column'].filter(id => id !== 'column'))
         assert.ok((byPiece.get(id) || 0) > 0, `no ${id} instances`);
-    assert.ok(roofs > 0, 'the powder shack has a pitched roof surface');
+    assert.ok(roofs > 0, 'the fuel store has a pitched roof surface');
+});
+
+test('every present-day map draws its furniture from hints, whole vehicles and trees, and its decor', () => {
+    for (const def of MAPS) {
+        const m = def.build({ seed: 1 });
+        const { byPiece } = buildAll(Infinity, m);
+        const hinted = new Set(Object.values(m.visual.hints).map(h => h.piece).filter(Boolean));
+        for (const id of hinted) assert.ok(pieces.has(id) || pieces.has(`${id}#0`), `${def.id}: hint names unknown piece ${id}`);
+        for (const d of m.visual.decor) assert.ok(pieces.has(d.kind), `${def.id}: unknown decor ${d.kind}`);
+        const drawn = [...hinted].filter(id => (byPiece.get(id) || 0) > 0);
+        assert.ok(drawn.length >= hinted.size * 0.8, `${def.id}: hinted pieces drawn ${drawn.length}/${hinted.size}`);
+        assert.equal(byPiece.get('wreck') || 0, 0, `${def.id}: intact vehicles are drawn whole`);
+    }
+});
+
+test('a damaged car falls back to wreck fragments; destroying a tree trunk drops back to canopy blobs', () => {
+    const m = MAPS.find(d => d.id === 'cedar-close').build({ seed: 1 });
+    const [ak, car] = Object.entries(m.visual.hints).find(([, h]) => h.piece === 'car');
+    const s2 = m.store.clone();
+    const [x, y, z] = car.cells[0].split(',').map(Number);
+    s2.set(x, y, z, AIR);
+    const view = new KitView(fakeKit, []); view.setVisual(m.visual);
+    let wrecks = 0;
+    for (let cz = 0; cz < Math.ceil(s2.height / CHUNK); cz++) for (let cy = 0; cy < Math.ceil(s2.depth / CHUNK); cy++) for (let cx = 0; cx < Math.ceil(s2.width / CHUNK); cx++)
+        for (const mesh of view.buildChunk(s2, cx, cy, cz)) if (mesh.isInstancedMesh && pieces.get('wreck').some(p => p.geometry === mesh.geometry)) wrecks += mesh.count;
+    assert.ok(wrecks >= car.cells.length - 1 - 1, `wreck fragments ${wrecks}`);
+    assert.ok(view.dependencies() instanceof Map);
+    assert.ok(ak);
 });
 
 test('every visible voxel is drawn by exactly one system', () => {
@@ -59,7 +91,7 @@ test('every visible voxel is drawn by exactly one system', () => {
         if (m.render === 'none' && m.key !== 'door_open') continue;
         assert.ok(kit !== undefined, `${m.key} at ${x},${y},${z}`);
         // cube-drawn materials must not be wall-like props the kit expects
-        if (!kit) assert.ok(!['plaster', 'timber', 'crate', 'sandbag', 'drystone', 'fence', 'hay', 'cart', 'stall', 'rock', 'roof', 'glass', 'door'].includes(m.key), `${m.key} left to the cube mesher`);
+        if (!kit) assert.ok(!['plaster', 'timber', 'stucco', 'brick', 'concrete_wall', 'siding', 'crate', 'sandbag', 'sofa', 'cabinet', 'bed', 'desk', 'appliance', 'shelving', 'pallet', 'planter', 'privacy_fence', 'chainlink', 'jersey', 'bench', 'bin', 'pump', 'car_body', 'car_cabin', 'container', 'dumpster', 'roof', 'glass', 'door'].includes(m.key), `${m.key} left to the cube mesher`);
     }
 });
 

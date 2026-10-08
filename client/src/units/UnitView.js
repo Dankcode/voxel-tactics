@@ -1,6 +1,7 @@
 // A 2D character standing in the voxel world: a camera-facing quad (depth-tested against voxels),
 // a ground ring, an HP/AP bar, and a SpriteAnimator driving the placeholder atlas.
 import * as THREE from 'three';
+import { dropAt } from '../render/Ground.js';
 import { SpriteAnimator } from '../anim/SpriteAnimator.js';
 import { FACING_VEC } from '../../../shared/battle/Units.js';
 
@@ -71,7 +72,7 @@ export class UnitView {
     }
     /** Visual position from the battle state (used after animations settle). */
     snap() { this.setCell(this.unit.x, this.unit.y, this.unit.z); this.facingVec = [...(FACING_VEC[this.unit.facing] || [0, 1])]; }
-    setCell(x, y, z) { this.pos.set(x + 0.5, z + 1, y + 0.5); this.group.position.copy(this.pos); }
+    setCell(x, y, z) { this.pos.set(x + 0.5, z + 1 - dropAt(x, y, z), y + 0.5); this.group.position.copy(this.pos); }
     setWorld(x, y, h) { this.pos.set(x, h, y); this.group.position.copy(this.pos); }
     face(dx, dy) { if (dx || dy) this.facingVec = [dx, dy]; }
     worldPosition() { return this.pos.clone(); }

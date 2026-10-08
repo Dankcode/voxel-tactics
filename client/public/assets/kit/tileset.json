@@ -1,6 +1,6 @@
 {
  "version": "tileset-v1",
- "generated": "2026-10-06",
+ "generated": "2026-10-08",
  "cell": {
   "size": 1,
   "height": 1,
@@ -726,21 +726,21 @@
    "slots": [
     "hedge"
    ],
-   "tris": 160,
+   "tris": 272,
    "bounds": [
     [
-     -0.515,
-     0.102,
-     -0.522
+     -0.5,
+     0,
+     -0.43
     ],
     [
-     0.545,
-     1.052,
-     0.459
+     0.5,
+     0.929,
+     0.43
     ]
    ],
    "group": "foliage",
-   "text": "Hedge bush (concealment, bullets pass)"
+   "text": "Clipped box hedge (concealment, bullets pass)"
   },
   "foliage": {
    "slots": [
@@ -942,6 +942,2220 @@
    ],
    "group": "decor",
    "text": "Crystal cluster"
+  },
+  "mcap_core": {
+   "slots": [
+    "frame"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.25,
+     1,
+     -0.25
+    ],
+    [
+     0.25,
+     1.06,
+     0.25
+    ]
+   ],
+   "group": "modern-wall",
+   "text": "Dark metal flashing on an exposed modern wall top"
+  },
+  "mcap_arm": {
+   "slots": [
+    "frame"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     0.2,
+     1,
+     -0.25
+    ],
+    [
+     0.5,
+     1.06,
+     0.25
+    ]
+   ],
+   "group": "modern-wall"
+  },
+  "plinth_core": {
+   "slots": [
+    "plinth"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.22,
+     0,
+     -0.22
+    ],
+    [
+     0.22,
+     0.1,
+     0.22
+    ]
+   ],
+   "group": "modern-wall",
+   "text": "Skirting / plinth at the foot of a wall"
+  },
+  "plinth_arm": {
+   "slots": [
+    "plinth"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     0.2,
+     0,
+     -0.22
+    ],
+    [
+     0.5,
+     0.1,
+     0.22
+    ]
+   ],
+   "group": "modern-wall"
+  },
+  "glaze": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.05
+    ],
+    [
+     0.5,
+     1,
+     0.05
+    ]
+   ],
+   "group": "glazing",
+   "text": "Full-width glazing panel with half mullions at both cell edges (+X run)"
+  },
+  "glaze_sill": {
+   "slots": [
+    "frame"
+   ],
+   "tris": 24,
+   "bounds": [
+    [
+     -0.5,
+     -0.005,
+     -0.26
+    ],
+    [
+     0.5,
+     0.06,
+     0.26
+    ]
+   ],
+   "group": "glazing",
+   "text": "Bottom rail and outside sill under a glazing run"
+  },
+  "glaze_head": {
+   "slots": [
+    "frame"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.5,
+     0.93,
+     -0.05
+    ],
+    [
+     0.5,
+     1,
+     0.05
+    ]
+   ],
+   "group": "glazing",
+   "text": "Head rail over a glazing run"
+  },
+  "mdoor_lower": {
+   "slots": [
+    "frame",
+    "leaf",
+    "chrome"
+   ],
+   "tris": 60,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.21
+    ],
+    [
+     0.5,
+     1,
+     0.21
+    ]
+   ],
+   "group": "modern-door",
+   "text": "Flush timber door in a slim frame (lower voxel)"
+  },
+  "mdoor_upper": {
+   "slots": [
+    "frame",
+    "leaf",
+    "self"
+   ],
+   "tris": 60,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.21
+    ],
+    [
+     0.5,
+     1,
+     0.21
+    ]
+   ],
+   "group": "modern-door"
+  },
+  "mdoor_open_lower": {
+   "slots": [
+    "frame",
+    "leaf"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.21
+    ],
+    [
+     0.5,
+     1,
+     0.87
+    ]
+   ],
+   "group": "modern-door",
+   "text": "Open door, leaf swung toward +Z"
+  },
+  "mdoor_open_upper": {
+   "slots": [
+    "frame",
+    "leaf",
+    "self"
+   ],
+   "tris": 60,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.21
+    ],
+    [
+     0.5,
+     1,
+     0.87
+    ]
+   ],
+   "group": "modern-door"
+  },
+  "gdoor_lower": {
+   "slots": [
+    "frame",
+    "glass",
+    "chrome"
+   ],
+   "tris": 96,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "modern-door",
+   "text": "Glazed storefront door with push bar"
+  },
+  "gdoor_upper": {
+   "slots": [
+    "frame",
+    "glass"
+   ],
+   "tris": 84,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "modern-door"
+  },
+  "gdoor_open_lower": {
+   "slots": [
+    "frame",
+    "glass"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.87
+    ]
+   ],
+   "group": "modern-door"
+  },
+  "gdoor_open_upper": {
+   "slots": [
+    "frame",
+    "glass"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     0.95,
+     0.83
+    ]
+   ],
+   "group": "modern-door"
+  },
+  "roller_lower": {
+   "slots": [
+    "frame",
+    "shutter"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.22
+    ],
+    [
+     0.5,
+     1,
+     0.22
+    ]
+   ],
+   "group": "modern-door",
+   "text": "Roller shutter (warehouse) lower voxel"
+  },
+  "roller_upper": {
+   "slots": [
+    "frame",
+    "shutter"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.22
+    ],
+    [
+     0.5,
+     1,
+     0.22
+    ]
+   ],
+   "group": "modern-door"
+  },
+  "roller_open_lower": {
+   "slots": [
+    "frame"
+   ],
+   "tris": 24,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.22
+    ],
+    [
+     0.5,
+     1,
+     0.22
+    ]
+   ],
+   "group": "modern-door"
+  },
+  "roller_open_upper": {
+   "slots": [
+    "frame",
+    "shutter"
+   ],
+   "tris": 84,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.22
+    ],
+    [
+     0.5,
+     1,
+     0.22
+    ]
+   ],
+   "group": "modern-door"
+  },
+  "column": {
+   "slots": [
+    "iron"
+   ],
+   "tris": 24,
+   "bounds": [
+    [
+     -0.17,
+     0,
+     -0.17
+    ],
+    [
+     0.17,
+     1,
+     0.17
+    ]
+   ],
+   "group": "structure",
+   "text": "Square steel column (canopies)"
+  },
+  "sofa": {
+   "slots": [
+    "self",
+    "frame",
+    "accent"
+   ],
+   "tris": 480,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.42
+    ],
+    [
+     0.5,
+     0.78,
+     0.44
+    ]
+   ],
+   "group": "furniture",
+   "text": "Sofa section (back −Z)"
+  },
+  "sofa_end_l": {
+   "slots": [
+    "self",
+    "frame",
+    "accent"
+   ],
+   "tris": 588,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.42
+    ],
+    [
+     0.5,
+     0.78,
+     0.44
+    ]
+   ],
+   "group": "furniture",
+   "text": "Sofa end with the arm at −X"
+  },
+  "sofa_end_r": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 480,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.42
+    ],
+    [
+     0.5,
+     0.78,
+     0.44
+    ]
+   ],
+   "group": "furniture",
+   "text": "Sofa end with the arm at +X"
+  },
+  "booth": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 228,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.45
+    ],
+    [
+     0.5,
+     0.96,
+     0.35
+    ]
+   ],
+   "group": "furniture",
+   "text": "Diner booth bench, high back"
+  },
+  "bed_head": {
+   "slots": [
+    "wood",
+    "linen",
+    "self"
+   ],
+   "tris": 348,
+   "bounds": [
+    [
+     -0.5,
+     0.04,
+     -0.5
+    ],
+    [
+     0.5,
+     0.89,
+     0.5
+    ]
+   ],
+   "group": "furniture",
+   "text": "Bed half with headboard and pillow (head −Z)"
+  },
+  "bed_foot": {
+   "slots": [
+    "wood",
+    "linen",
+    "self",
+    "accent"
+   ],
+   "tris": 336,
+   "bounds": [
+    [
+     -0.509,
+     0.04,
+     -0.5
+    ],
+    [
+     0.509,
+     0.53,
+     0.5
+    ]
+   ],
+   "group": "furniture",
+   "text": "Bed half at the foot, duvet and throw"
+  },
+  "bed_head_single": {
+   "slots": [
+    "wood",
+    "linen",
+    "self"
+   ],
+   "tris": 348,
+   "bounds": [
+    [
+     -0.45,
+     0.04,
+     -0.5
+    ],
+    [
+     0.45,
+     0.74,
+     0.5
+    ]
+   ],
+   "group": "furniture"
+  },
+  "bed_foot_single": {
+   "slots": [
+    "wood",
+    "linen",
+    "self"
+   ],
+   "tris": 228,
+   "bounds": [
+    [
+     -0.45,
+     0.04,
+     -0.5
+    ],
+    [
+     0.45,
+     0.5,
+     0.5
+    ]
+   ],
+   "group": "furniture"
+  },
+  "kitchen": {
+   "slots": [
+    "lacquer",
+    "plinth",
+    "worktop",
+    "frame",
+    "chrome",
+    "lacquer"
+   ],
+   "tris": 96,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1.86,
+     0.16
+    ]
+   ],
+   "group": "furniture",
+   "text": "Base cabinet, worktop and wall cupboard (back −Z)",
+   "overhang": true
+  },
+  "kitchen_sink": {
+   "slots": [
+    "lacquer",
+    "plinth",
+    "worktop",
+    "frame",
+    "chrome",
+    "lacquer",
+    "chrome"
+   ],
+   "tris": 144,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1.86,
+     0.16
+    ]
+   ],
+   "group": "furniture",
+   "overhang": true
+  },
+  "kitchen_hob": {
+   "slots": [
+    "lacquer",
+    "plinth",
+    "worktop",
+    "frame",
+    "chrome",
+    "lacquer",
+    "screen",
+    "chrome"
+   ],
+   "tris": 120,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1.86,
+     0.16
+    ]
+   ],
+   "group": "furniture",
+   "overhang": true
+  },
+  "island": {
+   "slots": [
+    "lacquer",
+    "plinth",
+    "worktop"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.51,
+     0,
+     -0.47
+    ],
+    [
+     0.51,
+     0.9,
+     0.51
+    ]
+   ],
+   "group": "furniture",
+   "text": "Kitchen island with an overhanging worktop"
+  },
+  "fridge_lower": {
+   "slots": [
+    "self",
+    "frame",
+    "chrome"
+   ],
+   "tris": 156,
+   "bounds": [
+    [
+     -0.45,
+     0,
+     -0.47
+    ],
+    [
+     0.45,
+     1.02,
+     0.315
+    ]
+   ],
+   "group": "furniture",
+   "text": "Tall fridge, lower voxel"
+  },
+  "fridge_upper": {
+   "slots": [
+    "self",
+    "frame",
+    "chrome"
+   ],
+   "tris": 144,
+   "bounds": [
+    [
+     -0.45,
+     0,
+     -0.47
+    ],
+    [
+     0.45,
+     0.9,
+     0.315
+    ]
+   ],
+   "group": "furniture"
+  },
+  "washer": {
+   "slots": [
+    "self",
+    "chrome",
+    "glass"
+   ],
+   "tris": 492,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.45
+    ],
+    [
+     0.43,
+     0.86,
+     0.29
+    ]
+   ],
+   "group": "furniture",
+   "text": "Washing machine"
+  },
+  "tv_unit": {
+   "slots": [
+    "wood",
+    "frame"
+   ],
+   "tris": 168,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.45
+    ],
+    [
+     0.5,
+     0.52,
+     0.06
+    ]
+   ],
+   "group": "furniture",
+   "text": "Low media cabinet (TV sits on it as decor)"
+  },
+  "wardrobe_lower": {
+   "slots": [
+    "lacquer",
+    "frame",
+    "chrome"
+   ],
+   "tris": 60,
+   "bounds": [
+    [
+     -0.49,
+     0,
+     -0.48
+    ],
+    [
+     0.49,
+     1,
+     0.155
+    ]
+   ],
+   "group": "furniture",
+   "text": "Tall cupboard / wardrobe / filing cabinet, lower voxel"
+  },
+  "wardrobe_upper": {
+   "slots": [
+    "lacquer",
+    "frame"
+   ],
+   "tris": 24,
+   "bounds": [
+    [
+     -0.49,
+     0,
+     -0.48
+    ],
+    [
+     0.49,
+     0.9,
+     0.13
+    ]
+   ],
+   "group": "furniture"
+  },
+  "desk_end_l": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.36
+    ],
+    [
+     0.5,
+     0.75,
+     0.36
+    ]
+   ],
+   "group": "furniture",
+   "text": "Desk / table end (legs at −X)"
+  },
+  "desk_end_r": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.36
+    ],
+    [
+     0.5,
+     0.75,
+     0.36
+    ]
+   ],
+   "group": "furniture"
+  },
+  "desk_mid": {
+   "slots": [
+    "self"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.5,
+     0.7,
+     -0.36
+    ],
+    [
+     0.5,
+     0.75,
+     0.36
+    ]
+   ],
+   "group": "furniture"
+  },
+  "workbench": {
+   "slots": [
+    "wood",
+    "iron",
+    "goods_a"
+   ],
+   "tris": 108,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.485
+    ],
+    [
+     0.5,
+     1.56,
+     0.23
+    ]
+   ],
+   "group": "furniture",
+   "text": "Steel workbench with a vice, tools and a pegboard",
+   "overhang": true
+  },
+  "bookcase_lower": {
+   "slots": [
+    "wood",
+    "goods_a",
+    "goods_b",
+    "goods_c"
+   ],
+   "tris": 180,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.49
+    ],
+    [
+     0.5,
+     1,
+     -0.12
+    ]
+   ],
+   "group": "furniture",
+   "text": "Bookcase (two voxels)"
+  },
+  "bookcase_upper": {
+   "slots": [
+    "wood",
+    "goods_a",
+    "goods_b",
+    "goods_c"
+   ],
+   "tris": 180,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.49
+    ],
+    [
+     0.5,
+     0.92,
+     -0.12
+    ]
+   ],
+   "group": "furniture"
+  },
+  "store_shelf_lower": {
+   "slots": [
+    "frame",
+    "goods_a",
+    "goods_b",
+    "goods_c"
+   ],
+   "tris": 288,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.4
+    ],
+    [
+     0.5,
+     1,
+     0.4
+    ]
+   ],
+   "group": "furniture",
+   "text": "Double-sided store gondola with goods",
+   "overhang": true
+  },
+  "store_shelf_upper": {
+   "slots": [
+    "frame",
+    "goods_a",
+    "goods_b",
+    "goods_c"
+   ],
+   "tris": 288,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.35
+    ],
+    [
+     0.5,
+     0.76,
+     0.35
+    ]
+   ],
+   "group": "furniture",
+   "overhang": true
+  },
+  "cooler_lower": {
+   "slots": [
+    "self",
+    "goods_a",
+    "goods_b",
+    "goods_c",
+    "glass"
+   ],
+   "tris": 180,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.44
+    ],
+    [
+     0.5,
+     1,
+     0.4
+    ]
+   ],
+   "group": "furniture",
+   "text": "Glass-door drinks cooler"
+  },
+  "cooler_upper": {
+   "slots": [
+    "self",
+    "goods_a",
+    "goods_b",
+    "goods_c",
+    "glass",
+    "lamp"
+   ],
+   "tris": 204,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.44
+    ],
+    [
+     0.5,
+     0.9,
+     0.42
+    ]
+   ],
+   "group": "furniture"
+  },
+  "checkout": {
+   "slots": [
+    "lacquer",
+    "screen",
+    "accent"
+   ],
+   "tris": 132,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.35
+    ],
+    [
+     0.5,
+     0.83,
+     0.37
+    ]
+   ],
+   "group": "furniture",
+   "text": "Checkout counter with a belt"
+  },
+  "counter": {
+   "slots": [
+    "accent",
+    "lacquer",
+    "worktop"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.38
+    ],
+    [
+     0.5,
+     0.91,
+     0.46
+    ]
+   ],
+   "group": "furniture",
+   "text": "Service counter (diner, reception)"
+  },
+  "vanity": {
+   "slots": [
+    "wood",
+    "porcelain",
+    "chrome"
+   ],
+   "tris": 168,
+   "bounds": [
+    [
+     -0.45,
+     0.3,
+     -0.5
+    ],
+    [
+     0.45,
+     1.75,
+     0.03
+    ]
+   ],
+   "group": "furniture",
+   "text": "Vanity unit with a basin and a mirror",
+   "overhang": true
+  },
+  "pallet": {
+   "slots": [
+    "wood",
+    "cardboard"
+   ],
+   "tris": 600,
+   "bounds": [
+    [
+     -0.48,
+     0,
+     -0.48
+    ],
+    [
+     0.48,
+     0.91,
+     0.48
+    ]
+   ],
+   "group": "cover",
+   "text": "Wrapped boxes on a pallet"
+  },
+  "pallet_top": {
+   "slots": [
+    "cardboard"
+   ],
+   "tris": 324,
+   "bounds": [
+    [
+     -0.45,
+     0,
+     -0.45
+    ],
+    [
+     0.45,
+     0.7,
+     0.45
+    ]
+   ],
+   "group": "cover"
+  },
+  "locker_lower": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 96,
+   "bounds": [
+    [
+     -0.54,
+     0,
+     -0.49
+    ],
+    [
+     0.54,
+     1,
+     0.021
+    ]
+   ],
+   "group": "furniture",
+   "text": "Steel lockers",
+   "overhang": true
+  },
+  "locker_upper": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.49,
+     0,
+     -0.49
+    ],
+    [
+     0.49,
+     0.86,
+     0.017
+    ]
+   ],
+   "group": "furniture"
+  },
+  "planter": {
+   "slots": [
+    "self",
+    "soil",
+    "leaves",
+    "flowers"
+   ],
+   "tris": 340,
+   "bounds": [
+    [
+     -0.537,
+     0,
+     -0.4
+    ],
+    [
+     0.49,
+     1.007,
+     0.4
+    ]
+   ],
+   "group": "cover",
+   "text": "Concrete planter trough with planting (+X run)",
+   "overhang": true
+  },
+  "privacy_fence": {
+   "slots": [
+    "post",
+    "self"
+   ],
+   "tris": 84,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.05
+    ],
+    [
+     0.5,
+     1,
+     0.05
+    ]
+   ],
+   "group": "cover",
+   "text": "Horizontal cedar slat fence with a post (+X run)"
+  },
+  "privacy_fence_top": {
+   "slots": [
+    "post",
+    "self",
+    "post"
+   ],
+   "tris": 84,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.05
+    ],
+    [
+     0.5,
+     0.87,
+     0.05
+    ]
+   ],
+   "group": "cover",
+   "text": "Upper voxel of a tall fence, with a cap rail"
+  },
+  "chainlink": {
+   "slots": [
+    "iron",
+    "mesh"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.03
+    ],
+    [
+     0.5,
+     1,
+     0.03
+    ]
+   ],
+   "group": "cover",
+   "text": "Chain-link panel (see-through, bullets pass)"
+  },
+  "chainlink_top": {
+   "slots": [
+    "iron",
+    "mesh"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.03
+    ],
+    [
+     0.5,
+     0.9,
+     0.03
+    ]
+   ],
+   "group": "cover"
+  },
+  "jersey": {
+   "slots": [
+    "self"
+   ],
+   "tris": 28,
+   "bounds": [
+    [
+     -0.49,
+     0,
+     -0.32
+    ],
+    [
+     0.49,
+     0.78,
+     0.32
+    ]
+   ],
+   "group": "cover",
+   "text": "Concrete jersey barrier (+X run)"
+  },
+  "bench": {
+   "slots": [
+    "self",
+    "iron"
+   ],
+   "tris": 108,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.384
+    ],
+    [
+     0.5,
+     0.82,
+     0.23
+    ]
+   ],
+   "group": "cover",
+   "text": "Park bench (back −Z)"
+  },
+  "bin": {
+   "slots": [
+    "self",
+    "lid",
+    "tyre"
+   ],
+   "tris": 308,
+   "bounds": [
+    [
+     -0.316,
+     0,
+     -0.355
+    ],
+    [
+     0.316,
+     0.97,
+     0.34
+    ]
+   ],
+   "group": "cover",
+   "text": "Wheelie bin"
+  },
+  "pump": {
+   "slots": [
+    "plinth",
+    "self",
+    "screen",
+    "red",
+    "tyre"
+   ],
+   "tris": 408,
+   "bounds": [
+    [
+     -0.45,
+     0,
+     -0.35
+    ],
+    [
+     0.45,
+     1,
+     0.35
+    ]
+   ],
+   "group": "cover",
+   "text": "Fuel pump (explodes)"
+  },
+  "shelf_unit": {
+   "slots": [
+    "frame"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.25
+    ],
+    [
+     0.5,
+     1,
+     0.25
+    ]
+   ],
+   "group": "furniture"
+  },
+  "car": {
+   "slots": [
+    "carpaint",
+    "glass_dark",
+    "tyre",
+    "chrome",
+    "frame",
+    "lamp",
+    "tail"
+   ],
+   "tris": 704,
+   "bounds": [
+    [
+     -2.041,
+     0,
+     -0.92
+    ],
+    [
+     2.022,
+     1.37,
+     0.92
+    ]
+   ],
+   "group": "vehicle",
+   "text": "Parked car, whole object (4 × 2 cells, front +X)",
+   "footprint": [
+    4,
+    2
+   ],
+   "overhang": true
+  },
+  "container": {
+   "slots": [
+    "self",
+    "frame",
+    "chrome"
+   ],
+   "tris": 732,
+   "bounds": [
+    [
+     -2.46,
+     0,
+     -0.97
+    ],
+    [
+     2.49,
+     1.96,
+     0.97
+    ]
+   ],
+   "group": "vehicle",
+   "text": "Shipping container (5 × 2 × 2 cells)",
+   "footprint": [
+    5,
+    2
+   ],
+   "overhang": true
+  },
+  "dumpster": {
+   "slots": [
+    "self",
+    "lid",
+    "tyre"
+   ],
+   "tris": 196,
+   "bounds": [
+    [
+     -1.031,
+     0,
+     -0.46
+    ],
+    [
+     1.031,
+     0.928,
+     0.496
+    ]
+   ],
+   "group": "cover",
+   "text": "Dumpster (2 × 1 cells)",
+   "footprint": [
+    2,
+    1
+   ],
+   "overhang": true
+  },
+  "wreck": {
+   "slots": [
+    "wreck"
+   ],
+   "tris": 128,
+   "bounds": [
+    [
+     -0.47,
+     0.12,
+     -0.45
+    ],
+    [
+     0.47,
+     0.934,
+     0.45
+    ]
+   ],
+   "group": "vehicle",
+   "text": "Burnt-out wreck fragment (a damaged vehicle cell)"
+  },
+  "tree_round": {
+   "slots": [
+    "bark",
+    "leaves"
+   ],
+   "tris": 644,
+   "bounds": [
+    [
+     -1.119,
+     0,
+     -1.329
+    ],
+    [
+     1.17,
+     4.722,
+     1.487
+    ]
+   ],
+   "group": "foliage",
+   "text": "Deciduous street tree (whole object)",
+   "overhang": true
+  },
+  "tree_conifer": {
+   "slots": [
+    "bark",
+    "needles"
+   ],
+   "tris": 208,
+   "bounds": [
+    [
+     -1.054,
+     0,
+     -0.954
+    ],
+    [
+     1.014,
+     5.7,
+     1.083
+    ]
+   ],
+   "group": "foliage",
+   "text": "Conifer (whole object)",
+   "overhang": true
+  },
+  "rug": {
+   "slots": [
+    "rug"
+   ],
+   "tris": 108,
+   "bounds": [
+    [
+     -0.5,
+     0.001,
+     -0.5
+    ],
+    [
+     0.5,
+     0.021,
+     0.5
+    ]
+   ],
+   "group": "decor",
+   "text": "Rug, 1 × 1 (scaled per instance)"
+  },
+  "coffee_table": {
+   "slots": [
+    "wood",
+    "frame"
+   ],
+   "tris": 156,
+   "bounds": [
+    [
+     -0.45,
+     0,
+     -0.25
+    ],
+    [
+     0.45,
+     0.37,
+     0.25
+    ]
+   ],
+   "group": "decor"
+  },
+  "floor_lamp": {
+   "slots": [
+    "frame",
+    "shade"
+   ],
+   "tris": 128,
+   "bounds": [
+    [
+     -0.166,
+     0,
+     -0.17
+    ],
+    [
+     0.166,
+     1.64,
+     0.17
+    ]
+   ],
+   "group": "decor",
+   "light": true
+  },
+  "plant": {
+   "slots": [
+    "pot",
+    "leaves"
+   ],
+   "tris": 128,
+   "bounds": [
+    [
+     -0.233,
+     0,
+     -0.252
+    ],
+    [
+     0.242,
+     0.844,
+     0.241
+    ]
+   ],
+   "group": "decor"
+  },
+  "plant_tall": {
+   "slots": [
+    "pot",
+    "bark",
+    "leaves"
+   ],
+   "tris": 228,
+   "bounds": [
+    [
+     -0.306,
+     0,
+     -0.267
+    ],
+    [
+     0.301,
+     1.59,
+     0.284
+    ]
+   ],
+   "group": "decor"
+  },
+  "tv": {
+   "slots": [
+    "screen",
+    "frame"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.475,
+     0,
+     -0.23
+    ],
+    [
+     0.475,
+     0.65,
+     -0.07
+    ]
+   ],
+   "group": "decor"
+  },
+  "wall_art": {
+   "slots": [
+    "frame",
+    "canvas"
+   ],
+   "tris": 24,
+   "bounds": [
+    [
+     -0.35,
+     0.2,
+     -0.055
+    ],
+    [
+     0.35,
+     0.7,
+     -0.013
+    ]
+   ],
+   "group": "decor",
+   "text": "Framed print on a wall (+Z faces the room)"
+  },
+  "stool": {
+   "slots": [
+    "self_dark",
+    "chrome"
+   ],
+   "tris": 120,
+   "bounds": [
+    [
+     -0.16,
+     0,
+     -0.16
+    ],
+    [
+     0.16,
+     0.67,
+     0.16
+    ]
+   ],
+   "group": "decor"
+  },
+  "nightstand": {
+   "slots": [
+    "wood",
+    "shade",
+    "frame"
+   ],
+   "tris": 168,
+   "bounds": [
+    [
+     -0.21,
+     0.02,
+     -0.44
+    ],
+    [
+     0.21,
+     0.76,
+     -0.06
+    ]
+   ],
+   "group": "decor",
+   "light": true
+  },
+  "office_chair": {
+   "slots": [
+    "self_dark",
+    "chrome"
+   ],
+   "tris": 300,
+   "bounds": [
+    [
+     -0.271,
+     0.02,
+     -0.236
+    ],
+    [
+     0.271,
+     0.948,
+     0.28
+    ]
+   ],
+   "group": "decor"
+  },
+  "monitor": {
+   "slots": [
+    "screen",
+    "frame"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.25,
+     0,
+     -0.21
+    ],
+    [
+     0.25,
+     0.42,
+     -0.09
+    ]
+   ],
+   "group": "decor"
+  },
+  "toilet": {
+   "slots": [
+    "porcelain"
+   ],
+   "tris": 216,
+   "bounds": [
+    [
+     -0.18,
+     0,
+     -0.29
+    ],
+    [
+     0.18,
+     0.7,
+     0.22
+    ]
+   ],
+   "group": "decor"
+  },
+  "shower": {
+   "slots": [
+    "porcelain",
+    "glass",
+    "chrome"
+   ],
+   "tris": 96,
+   "bounds": [
+    [
+     -0.43,
+     0,
+     -0.46
+    ],
+    [
+     0.43,
+     1.76,
+     0.43
+    ]
+   ],
+   "group": "decor"
+  },
+  "cafe_table": {
+   "slots": [
+    "worktop",
+    "chrome"
+   ],
+   "tris": 136,
+   "bounds": [
+    [
+     -0.32,
+     0,
+     -0.32
+    ],
+    [
+     0.32,
+     0.74,
+     0.32
+    ]
+   ],
+   "group": "decor"
+  },
+  "register": {
+   "slots": [
+    "screen"
+   ],
+   "tris": 24,
+   "bounds": [
+    [
+     -0.15,
+     0,
+     -0.23
+    ],
+    [
+     0.15,
+     0.3,
+     0.03
+    ]
+   ],
+   "group": "decor"
+  },
+  "streetlight": {
+   "slots": [
+    "iron",
+    "lamp"
+   ],
+   "tris": 88,
+   "bounds": [
+    [
+     -0.14,
+     0,
+     -0.14
+    ],
+    [
+     0.14,
+     3.6,
+     1
+    ]
+   ],
+   "group": "decor",
+   "light": true,
+   "text": "Street light (arm toward +Z)"
+  },
+  "floodlight": {
+   "slots": [
+    "iron",
+    "lamp"
+   ],
+   "tris": 68,
+   "bounds": [
+    [
+     -0.45,
+     0,
+     -1.296
+    ],
+    [
+     0.45,
+     4.46,
+     0.09
+    ]
+   ],
+   "group": "decor",
+   "light": true
+  },
+  "mailbox": {
+   "slots": [
+    "frame",
+    "self_dark"
+   ],
+   "tris": 120,
+   "bounds": [
+    [
+     -0.11,
+     0,
+     -0.2
+    ],
+    [
+     0.11,
+     1.16,
+     0.2
+    ]
+   ],
+   "group": "decor"
+  },
+  "hydrant": {
+   "slots": [
+    "red"
+   ],
+   "tris": 172,
+   "bounds": [
+    [
+     -0.18,
+     0,
+     -0.12
+    ],
+    [
+     0.18,
+     0.6,
+     0.12
+    ]
+   ],
+   "group": "decor"
+  },
+  "flowers": {
+   "slots": [
+    "leaves",
+    "flowers"
+   ],
+   "tris": 180,
+   "bounds": [
+    [
+     -0.306,
+     -0.016,
+     -0.36
+    ],
+    [
+     0.339,
+     0.268,
+     0.349
+    ]
+   ],
+   "group": "decor"
+  },
+  "shrub": {
+   "slots": [
+    "hedge"
+   ],
+   "tris": 80,
+   "bounds": [
+    [
+     -0.559,
+     -0.091,
+     -0.529
+    ],
+    [
+     0.515,
+     0.703,
+     0.461
+    ]
+   ],
+   "group": "decor"
+  },
+  "patio_set": {
+   "slots": [
+    "wood",
+    "frame"
+   ],
+   "tris": 348,
+   "bounds": [
+    [
+     -0.6,
+     0,
+     -0.82
+    ],
+    [
+     0.6,
+     0.86,
+     0.82
+    ]
+   ],
+   "group": "decor",
+   "text": "Outdoor table with four chairs"
+  },
+  "umbrella": {
+   "slots": [
+    "chrome",
+    "canvas_white"
+   ],
+   "tris": 32,
+   "bounds": [
+    [
+     -1.1,
+     0,
+     -1.1
+    ],
+    [
+     1.1,
+     2.275,
+     1.1
+    ]
+   ],
+   "group": "decor"
+  },
+  "drain": {
+   "slots": [
+    "frame"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.25,
+     0.002,
+     -0.16
+    ],
+    [
+     0.25,
+     0.014,
+     0.16
+    ]
+   ],
+   "group": "decor"
+  },
+  "bollard": {
+   "slots": [
+    "iron"
+   ],
+   "tris": 80,
+   "bounds": [
+    [
+     -0.19,
+     0,
+     -0.2
+    ],
+    [
+     0.19,
+     0.56,
+     0.2
+    ]
+   ],
+   "group": "decor"
+  },
+  "bus_stop": {
+   "slots": [
+    "iron",
+    "glass",
+    "frame"
+   ],
+   "tris": 96,
+   "bounds": [
+    [
+     -1.5,
+     0,
+     -0.6
+    ],
+    [
+     1.5,
+     2.28,
+     0.6
+    ]
+   ],
+   "group": "decor",
+   "text": "Bus shelter (glass panels, roof, bench)",
+   "overhang": true
+  },
+  "gate_sign": {
+   "slots": [
+    "iron",
+    "canvas_white"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.55,
+     0,
+     -0.03
+    ],
+    [
+     0.55,
+     1.9,
+     0.03
+    ]
+   ],
+   "group": "decor"
+  },
+  "crane_leg": {
+   "slots": [
+    "steel_yellow"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     6.1,
+     4.072
+    ]
+   ],
+   "group": "decor",
+   "overhang": true
+  },
+  "price_sign": {
+   "slots": [
+    "iron",
+    "canvas_white",
+    "lamp"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.7,
+     0,
+     -0.065
+    ],
+    [
+     0.7,
+     3.7,
+     0.065
+    ]
+   ],
+   "group": "decor",
+   "light": true
+  },
+  "air_pump": {
+   "slots": [
+    "red"
+   ],
+   "tris": 108,
+   "bounds": [
+    [
+     -0.15,
+     0,
+     -0.12
+    ],
+    [
+     0.15,
+     1.1,
+     0.12
+    ]
+   ],
+   "group": "decor"
+  },
+  "motel_sign": {
+   "slots": [
+    "iron",
+    "red",
+    "lamp"
+   ],
+   "tris": 132,
+   "bounds": [
+    [
+     -0.8,
+     0,
+     -0.1
+    ],
+    [
+     0.8,
+     4.6,
+     0.1
+    ]
+   ],
+   "group": "decor",
+   "light": true
+  },
+  "canopy": {
+   "slots": [
+    "lacquer",
+    "red",
+    "lamp"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.502,
+     0.02,
+     -0.502
+    ],
+    [
+     0.502,
+     0.4,
+     0.502
+    ]
+   ],
+   "group": "decor",
+   "text": "Forecourt canopy roof, 1 × 1 (scaled per instance; carried by steel columns)"
+  },
+  "stepping": {
+   "slots": [
+    "plinth"
+   ],
+   "tris": 108,
+   "bounds": [
+    [
+     -0.25,
+     0,
+     -0.2
+    ],
+    [
+     0.25,
+     0.03,
+     0.2
+    ]
+   ],
+   "group": "decor"
   }
  }
 }
