@@ -1,4 +1,8 @@
-# Fireteam (working title; repo: voxel-tactics)
+# Xcom2 game: Fireteam (working title)
+
+A 2D-character XCOM 2-style game in the browser with co-op multiplayer and PvP. Repo:
+[Dankcode/Xcom2-game](https://github.com/Dankcode/Xcom2-game); the full history of the earlier local
+`voxel-tactics` repo is in it.
 
 Spun off from [Dankcode/vibe-game](https://github.com/Dankcode/vibe-game) (path search, traversal, RNG and the tile-set
 contract came from there; see `PROVENANCE.md`). Next: [PLAN-02](docs/PLAN-02-image-to-map-generation.md), maps
@@ -25,7 +29,7 @@ are drawn as whole objects. The block-world look stays in vibe-game.
 ```bash
 npm install            # on macOS run this natively (don't copy node_modules between machines)
 npm run dev            # http://localhost:5173  → menu
-npm test               # 47 tests: voxels, elements, ballistics, battle, debug ops, buildings, cover pass, maps, tile set, co-op room
+npm test               # 61 tests: voxels, cover, elements, ballistics, battle, buildings, maps, tile set, co-op room
 ```
 
 Deep links for testing:
