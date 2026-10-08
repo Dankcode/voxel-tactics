@@ -13,7 +13,8 @@ are drawn as whole objects. The block-world look stays in vibe-game.
 > Test build. Character and tile-set art is **placeholder** (procedural, see `docs/LEVELS.md` → Resource
 > requirements), and the animation code is a skeleton with marked TODOs. The battle rules, maps, destruction,
 > elements, formations, AI, balance sim and online co-op work. See `docs/LEVELS.md`, `docs/TILESET.md`,
-> `docs/RENDERING.md`, `docs/ANIMATION-AUDIT.md` and `docs/BALANCE.md`.
+> `docs/RENDERING.md`, `docs/ANIMATION-AUDIT.md` and `docs/BALANCE.md`. **Every game rule is documented in
+> [`docs/mechanics/`](docs/mechanics/README.md)** (generated tables refresh with `npm run docs:mechanics`).
 
 ## Quick start
 

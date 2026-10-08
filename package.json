@@ -22,7 +22,8 @@
     "kit:bake": "node tools/kit/bake_tileset.mjs",
     "mission:report": "node tools/mission/report.mjs",
     "sim:all": "node tools/sim/battle_sim.mjs --seeds 4 --scenario all",
-    "art:mobile": "python3 tools/art/make_mobile_textures.py"
+    "art:mobile": "python3 tools/art/make_mobile_textures.py",
+    "docs:mechanics": "node tools/docs/gen_mechanics_tables.mjs --write"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
