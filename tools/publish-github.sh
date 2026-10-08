@@ -1,16 +1,31 @@
 #!/usr/bin/env bash
-# Put this repo on GitHub as its own repository (a spin-off of Dankcode/vibe-game) and push every branch.
-# GitHub can't fork a repository into the account that already owns it, so this game lives in its own repo and
-# names vibe-game as its upstream in the description and README.
+# Put this repo on GitHub and push every branch.
 #
-#   tools/publish-github.sh [owner/name] [--public]
-# Needs the GitHub CLI signed in (gh auth login). Default: Dankcode/voxel-tactics, private.
+#   tools/publish-github.sh <owner/name> [--public]
+#
+# Works with a repo that already exists on GitHub (for example one created in the web UI with a README or licence):
+# its history is merged in (our files win on conflicts) before pushing. If the repo doesn't exist it is created
+# (private unless --public). Needs git; creating a repo also needs the GitHub CLI signed in (gh auth login).
 set -euo pipefail
-REPO="${1:-Dankcode/voxel-tactics}"
+REPO="${1:?usage: tools/publish-github.sh owner/name [--public]}"
 VISIBILITY="--private"; [[ "${2:-}" == "--public" ]] && VISIBILITY="--public"
+URL="https://github.com/$REPO.git"
 cd "$(dirname "$0")/.."
-if ! git remote get-url origin >/dev/null 2>&1; then
-  gh repo create "$REPO" $VISIBILITY --source=. --remote=origin \
+git checkout -q main
+if git remote get-url origin >/dev/null 2>&1; then git remote set-url origin "$URL"; else git remote add origin "$URL"; fi
+if git ls-remote --exit-code origin >/dev/null 2>&1 || git ls-remote origin >/dev/null 2>&1; then
+  # The repo exists. If it already has commits (README, licence), merge them in under ours.
+  if [ -n "$(git ls-remote --heads origin 2>/dev/null)" ]; then
+    DEFAULT="$(git ls-remote --symref origin HEAD | awk '/^ref:/ {sub("refs/heads/","",$2); print $2}')"
+    DEFAULT="${DEFAULT:-main}"
+    git fetch -q origin "$DEFAULT"
+    if ! git merge-base --is-ancestor "origin/$DEFAULT" main 2>/dev/null; then
+      git merge -q --allow-unrelated-histories -X ours -m "Merge GitHub's initial $DEFAULT into the game history" "origin/$DEFAULT"
+    fi
+  fi
+else
+  command -v gh >/dev/null || { echo "Repo $REPO not found and the GitHub CLI isn't installed; create it on github.com first."; exit 1; }
+  gh repo create "$REPO" $VISIBILITY \
     --description "Fireteam: present-day XCOM 2-style co-op tactics in three.js on a destructible voxel grid. Spun off from Dankcode/vibe-game."
 fi
 git push -u origin main
