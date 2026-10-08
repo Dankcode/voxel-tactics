@@ -1,5 +1,9 @@
 # Fireteam (working title; repo: voxel-tactics)
 
+Spun off from [Dankcode/vibe-game](https://github.com/Dankcode/vibe-game) (path search, traversal, RNG and the tile-set
+contract came from there; see `PROVENANCE.md`). Next: [PLAN-02](docs/PLAN-02-image-to-map-generation.md), maps
+generated from a single picture.
+
 A present-day, turn-based co-op tactics game in three.js: **XCOM 2** side phases, cover, overwatch, breaching and
 an XCOM-style camera, and **Phoenix Point** free-aim ballistics with body parts, on fully destructible maps.
 Characters are 2D. Every committed action plays a **Chaos Zero Nightmare-style back shot**.
