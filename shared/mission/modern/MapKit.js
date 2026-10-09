@@ -1,6 +1,7 @@
 // Map-authoring toolkit for the present-day themes: ground, roads, buildings, vehicles, trees, hedges, decor, the
 // theme cover pass and the finishing step. Every map is still a voxel grid (the gameplay truth); vehicles, trees and
 // furniture also leave render hints so the tile set can draw them as whole objects, and decor is visual only.
+import { ladderAttachment, validateLadders } from '../../world/LadderAttachment.js';
 import { VoxelStore } from '../../voxel/VoxelStore.js';
 import { MAT } from '../../voxel/Materials.js';
 import { createRng, hashString } from '../../util/Rng.js';
@@ -11,15 +12,15 @@ import { finalizeMission } from '../MissionCommon.js';
 export const CAR_COLORS = [[0.92, 0.93, 0.94], [0.18, 0.2, 0.23], [0.42, 0.5, 0.47], [0.62, 0.66, 0.7], [0.55, 0.14, 0.12], [0.2, 0.3, 0.45], [0.75, 0.7, 0.6]];
 export const CONTAINER_COLORS = [[0.62, 0.2, 0.14], [0.16, 0.3, 0.5], [0.2, 0.42, 0.3], [0.78, 0.5, 0.16], [0.55, 0.57, 0.6]];
 
-export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'lawn' }) {
+export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'lawn', datum = 1 }) {
     const store = new VoxelStore(width, depth, height);
     const rng = createRng(hashString(`${id}:${seed}`));
     let next = 0;
     const ctx = { rng, rooms: [], nextRoomId: () => next++, hints: {}, decor: [] };
     const m = {
-        id, seed, store, rng, ctx, buildings: [], keep: new Set(), G: 1,
+        id, seed, store, rng, ctx, buildings: [], keep: new Set(), G: datum,
         hints: ctx.hints, decor: ctx.decor,
-        ground(x0, y0, x1, y1, key, z = 1) {
+        ground(x0, y0, x1, y1, key, z = datum) {
             for (let y = Math.max(0, y0); y <= Math.min(depth - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(width - 1, x1); x++) store.set(x, y, z, MAT[key]);
         },
         /** Keep these cells free of scattered cover (approaches, spawns, driveways). */
@@ -45,7 +46,7 @@ export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'l
             return b;
         },
         /** A line of `key` voxels h tall. axis 'x' | 'y'. */
-        line(x, y, len, axis, key, h = 1, z = 1) {
+        line(x, y, len, axis, key, h = 1, z = datum) {
             for (let i = 0; i < len; i++) for (let k = 1; k <= h; k++) store.set(x + (axis === 'x' ? i : 0), y + (axis === 'y' ? i : 0), z + k, MAT[key]);
         },
         hedge(x, y, len, axis, z = 1) { m.line(x, y, len, axis, 'hedge', 1, z); },
@@ -59,8 +60,9 @@ export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'l
             const land = store.surfaces(x + dx, y + dy).find(s => s.z === top);
             if (!(top - foot >= 2) || !land || land.headroom < 2)
                 throw new Error(`${id}: no ledge for a ladder at ${x},${y} → ${dx},${dy} (foot ${foot}, top ${top})`);
+            for (let z = foot + 1; z <= top; z++) if(!store.isSolid(x+dx,y+dy,z)) throw Error(`ladder.attachment: ${id} ${x},${y},${z}`);
             for (let z = foot + 1; z <= top; z++) store.set(x, y, z, MAT.ladder);
-            m.reserve(x - 1, y - 1, x + 1, y + 1);
+            m.reserve(x - 2, y - 2, x + 2, y + 2);
             return { x, y, foot, top };
         },
         /**
@@ -133,6 +135,7 @@ export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'l
                 blocked: (x, y) => m.keep.has(`${x},${y}`) || near(x, y) || blocked(x, y) });
         },
         finish({ name, spawns, objective, meta = {} }) {
+            validateLadders(store);
             // Decor that a later prop or the cover pass landed on is dropped.
             for (let i = ctx.decor.length - 1; i >= 0; i--) {
                 const d = ctx.decor[i];
@@ -144,6 +147,8 @@ export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'l
         }
     };
     store.fill(0, 0, 0, width - 1, depth - 1, 0, 'bedrock');
+    if(datum>1)store.fill(0,0,1,width-1,depth-1,datum-1,'concrete');
+    store.datum=datum;
     m.ground(0, 0, width - 1, depth - 1, ground);
     return m;
 }

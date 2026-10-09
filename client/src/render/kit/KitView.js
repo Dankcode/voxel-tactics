@@ -1,3 +1,4 @@
+import { ladderAttachment } from '../../../../shared/world/LadderAttachment.js';
 // Autotiles structure and cover voxels into tile-set pieces, chunk by chunk, as instanced meshes.
 //
 // The voxel grid stays the gameplay truth. This only decides what each voxel looks like, from its material, its
@@ -242,7 +243,8 @@ export class KitView {
             case 'ladder': {
                 // Back against the neighbour it leans on: the side with a solid voxel at this height (or the ledge above).
                 let yaw = 0;
-                for (const [dx, dy] of DIRS) if (store.isSolid(x + dx, y + dy, z)) { yaw = yawToward(dx, dy); break; }
+                const attachment=ladderAttachment(store,x,y,z);
+                if(attachment)yaw=yawToward(...attachment);
                 add(keyOf(get(x, y, z + 1)) === 'ladder' ? 'ladder' : 'ladder_top', x, y, z, yaw, k);
                 break;
             }
