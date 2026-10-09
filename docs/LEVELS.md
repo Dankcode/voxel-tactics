@@ -19,6 +19,11 @@ modern tile-set pieces (see `docs/TILESET.md` and `docs/RENDERING.md`).
 | Roadside | **Route 9 Stop** (`route-9`) | 52 × 42 | A gas station (forecourt canopy on steel columns, fuel pumps that **explode**), its shop, a one-storey motel with a door per room, the motel lot, the highway | dusk |
 | Training | **Training Facility** (`proving-grounds`) | 60 × 46 | The systems test map, restyled: a firing range with a section of each wall type, a two-storey command bunker, a fuel store with a pitched roof, a concrete watchtower with roof access, a townhouse, a pond with ice, an earth berm | day |
 
+Objectives: Cedar Close and the Training Facility are **eliminate**; Main Street is **hold** (the junction in front of
+the diner, 4 rounds); Harbor Yard is **extract** (fight through to the boat on the quay, at least 2 out; ladders lead up
+the container stacks); Route 9 is **recover** (a cash bag in a motel room, carried back to the arrival area). Every
+character has 30 HP and gun damage comes from the round; rules in `docs/mechanics/`.
+
 Every map passes the design gates on seeds 1–4 (tested in `shared/mission/maps.test.js`): cover density, outdoor
 cover ≥ 20 %, **no outdoor tile more than 6 moves from cover**, full-cover share, no open square bigger than 14,
 median sightline 5–22, at least two lanes to the enemy, most rooms with two ways in, mostly destructible cover,
@@ -75,7 +80,8 @@ in two, door fronts and stair landings stay clear).
 
 Glazing per room kind: `full` (living, dining, sales, lobby, open office: floor-to-ceiling, a pier every 4th cell),
 `band` (kitchen, study, office: a window band over a sill wall), `punched` (bedrooms, units, halls), `clerestory`
-(warehouses), `none` (bathrooms, storerooms). Glass is real cover until it is shot out (`projectile: 'shatter'`).
+(warehouses), `none` (bathrooms, storerooms). Glass is aesthetic: no cover, shots and sight pass, and a pane a bullet
+crosses breaks.
 
 Furniture recipes (`ITEMS`, `ROOM_FURNITURE`) give each item a material (gameplay: `sofa`, `cabinet`, `bed`, `desk`,
 `appliance`, `shelving`, `pallet`, `crate`, fuel drums …), a footprint along a wall or the room's long axis, a height

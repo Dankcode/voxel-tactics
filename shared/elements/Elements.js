@@ -25,14 +25,15 @@ export function combineSurface(current, incoming) {
 
 /** Unit statuses (data, like vibe-game shared/content/statuses.js). */
 export const STATUS_DEFS = Object.freeze({
-    burning: { rounds: 2, dotPerRound: 2, removes: [], tags: ['fire'] },
+    burning: { rounds: 2, dotPerRound: 3, removes: [], tags: ['fire'] },
     wet: { rounds: 2, removes: ['burning'], tags: ['water'] },
     chilled: { rounds: 2, maxStacks: 2, apPerStack: -1, tags: ['cold'] },
     frozen: { rounds: 1, rooted: true, tags: ['cold'] },
     stunned: { rounds: 1, apPenalty: -2, tags: ['concussion'] },
-    bleeding: { rounds: 3, dotPerRound: 1, tags: ['wound'] },
+    bleeding: { rounds: 3, dotPerRound: 2, tags: ['wound'] },
     suppressed: { rounds: 1, accuracyMult: 0.6, tags: ['fear'] },
     braced: { rounds: 1, armorBonus: 4, tags: ['buff'] },
+    staggered: { rounds: 1, accuracyMult: 0.8, tags: ['move'] },          // landed a jump: off balance until the next turn
     surprised: { rounds: 1, apPenalty: -1, noReaction: true, tags: ['breach'] },
     panicked: { rounds: 1, apMult: 0.5, noAbilities: true, tags: ['stress'] }
 });

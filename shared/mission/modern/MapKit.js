@@ -50,6 +50,20 @@ export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'l
         },
         hedge(x, y, len, axis, z = 1) { m.line(x, y, len, axis, 'hedge', 1, z); },
         /**
+         * Steel ladder in cell (x, y) leaning on its neighbour in direction (dx, dy): rungs from the ground up to the
+         * neighbour's top, so units climb from (x, y) onto that ledge (PathSearch.ladderMoves). Fails loudly when the
+         * top is not a standable ledge or the ladder cell is not open ground.
+         */
+        ladder(x, y, dx, dy) {
+            const foot = store.topSolid(x, y), top = store.topSolid(x + dx, y + dy);
+            const land = store.surfaces(x + dx, y + dy).find(s => s.z === top);
+            if (!(top - foot >= 2) || !land || land.headroom < 2)
+                throw new Error(`${id}: no ledge for a ladder at ${x},${y} → ${dx},${dy} (foot ${foot}, top ${top})`);
+            for (let z = foot + 1; z <= top; z++) store.set(x, y, z, MAT.ladder);
+            m.reserve(x - 1, y - 1, x + 1, y + 1);
+            return { x, y, foot, top };
+        },
+        /**
          * Parked car: 2 wide × 4 long, body voxels (half cover) with a cabin over the middle two rows (full cover there).
          * axis: the long axis; dir +1 / −1: which end is the front.
          */

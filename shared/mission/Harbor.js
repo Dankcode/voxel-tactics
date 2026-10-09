@@ -30,6 +30,8 @@ export function buildHarbor({ seed = 1 } = {}) {
     const rows = [[4, 8], [4, 14], [16, 8], [16, 14], [10, 24], [20, 26], [24, 8]];
     rows.forEach(([x, y], i) => m.container(x, y, 'x', null, 1, i % 3 === 1));
     m.container(28, 15, 'y'); m.container(45, 25, 'y', null, 1, true);
+    // Ladders up the stacks: high ground over the lanes (jump back down to the yard or onto a lower container).
+    m.ladder(15, 24, -1, 0); m.ladder(19, 26, 1, 0); m.ladder(45, 30, 0, -1);
 
     // Chain-link fence along the yard boundary with a gate at the road.
     for (let x = 0; x < W; x++) if (x < 22 || x > 27) m.line(x, 35, 1, 'x', 'chainlink', 2);
@@ -62,7 +64,8 @@ export function buildHarbor({ seed = 1 } = {}) {
     };
     return m.finish({
         name: 'Harbor Yard', spawns,
-        objective: { kind: 'eliminate', text: 'A Syndicate shipment is on the quay. Clear the container yard and the warehouse.' },
+        objective: { kind: 'extract', text: 'A Syndicate shipment is on the quay and the squad has been spotted. Fight through the container yard to the boat on the quay and get at least two out.',
+            zone: { x0: 21, y0: 4, x1: 30, y1: 5 }, needed: 2 },
         meta: { kind: 'docks', theme: 'Industrial', defaultCut: 4, coverProps: cover.placed.length, lighting: 'night', rng: rng.next() }
     });
 }

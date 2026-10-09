@@ -9,6 +9,7 @@
 // The docs carry each table between `<!-- generated:<name> -->` and `<!-- /generated:<name> -->` markers; paste the
 // printed output there by hand, or let --write replace every marked block in place.
 import { WEAPONS, THROWABLES, ARMOR } from '../../shared/content/weapons.js';
+import { CALIBERS } from '../../shared/content/calibers.js';
 import { CLASSES, ENEMIES, ABILITIES, BODY, PARTS, SQUADS, ENEMY_PODS } from '../../shared/content/units.js';
 import { FORMATIONS, FORMATION_RULES } from '../../shared/content/formations.js';
 import { BALANCE } from '../../shared/content/balance.js';
@@ -30,9 +31,14 @@ const ELEMENT_NAME = Object.fromEntries(Object.entries(ELEMENTS).map(([k, v]) =>
 const SECTIONS = {
     weapons() {
         const rows = Object.values(WEAPONS).filter(w => w.kind === 'ballistic').map(w => [
-            `\`${w.id}\``, w.name, w.ap, w.projectiles, w.damage, w.pierce, w.shred || '—', `${w.spread}°`, w.range, w.maxRange,
+            `\`${w.id}\``, w.name, w.caliber ? CALIBERS[w.caliber].name : '— (fuel)', w.ap, w.projectiles, w.damage, w.pierce, w.shred || '—', `${w.spread}°`, w.range, w.maxRange,
             `${w.ammo} (${w.perShot}/shot)`, w.reloadAp, w.voxel, w.noise, w.element || '—']);
-        return table(['id', 'name', 'AP', 'proj.', 'dmg/proj.', 'pierce', 'shred', 'spread', 'range', 'max range', 'ammo', 'reload AP', 'voxel dmg', 'noise', 'element'], rows);
+        return table(['id', 'name', 'round', 'AP', 'proj.', 'dmg/proj.', 'pierce', 'shred', 'spread', 'range', 'max range', 'ammo', 'reload AP', 'voxel dmg', 'noise', 'element'], rows);
+    },
+    calibers() {
+        const rows = Object.values(CALIBERS).map(c => [`\`${c.id}\``, c.name, c.damage, c.pierce, c.voxel,
+            Object.values(WEAPONS).filter(w => w.caliber === c.id).map(w => w.name).join(', ') || '—']);
+        return table(['id', 'round', 'dmg/proj.', 'pierce', 'voxel dmg', 'fired by'], rows);
     },
     melee() {
         const rows = Object.values(WEAPONS).filter(w => w.kind === 'melee').map(w => [

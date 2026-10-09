@@ -14,14 +14,15 @@ noted; the player-facing flow is `client/src/Game.js`.
 - **Round end** (`Battle.roundEnd`), once per round, after the enemy phase: the element field ticks (fire burns and
   spreads, surfaces and smoke fade, see [06](06-elements.md)), burned-out voxels trigger a collapse check, every
   unit standing on a burning surface or a burning voxel gets `burning`, then falls are resolved. Elements therefore
-  tick **once per round, not once per side**.
+  tick **once per round, not once per side**. Then `objectiveRoundEnd` counts hold progress and checks the
+  deadline ([Objectives](#objectives-and-outcome)), and if the battle is not over the next round starts.
 
 ## Start of a side (`Battle.startSide`)
 
 For each living unit of the side that is starting, in this order:
 
 1. **Damage over time**: every status with `dotPerRound` hits the torso with pierce 99: `burning` deals
-   `B.burningDamage` = 2 (as pyro), `bleeding` 1 (nothing in play applies bleeding; only the debug `status` op).
+   `B.burningDamage` = 3 (as pyro), `bleeding` 2 (nothing in play applies bleeding; only the debug `status` op).
 2. **AP** = `maxAp` (4) − 1 per `chilled` stack − 2 if `stunned` − 1 if `surprised`; then halved and rounded up
    if `panicked`; floored at 0. On the very first squad phase the penalties are ignored (`first`).
 3. Reset: `moveOnlyAp = 0`, `reactionsLeft = 1`, overwatch cleared, one-shot buffs cleared (Snap Shot, Deadeye,
@@ -50,11 +51,13 @@ For each living unit of the side that is starting, in this order:
 | `breach` | 1 per participant | see [08](08-interiors-and-breaching.md) | `doBreach` |
 | `formation` | 1 per member moved into its slot | see [09](09-formations.md) | `Formations.declare` |
 | `formation_break` | 0 | | `Formations.dissolve` |
+| `extract` | 1 to send; the unit's remaining AP and move-only AP go to 0 and it leaves the map | objective is `extract` or `recover` with a zone; unit inside the zone (`not_in_zone`) | `doExtract` |
+| `recover` | 1 | `recover` objective; item not carried or secured (`no_target`); item within Chebyshev 1 and \|Δz\| ≤ 1 (`not_adjacent`) | `doRecover` |
 | `endTurn` | — | must be the active side | `endTurn` |
 
 Rejections come back as one of `REJECT` (`not_your_turn`, `not_your_unit`, `unit_down`, `no_ap`, `unreachable`,
 `occupied`, `no_ammo`, `out_of_range`, `no_item`, `no_target`, `bad_intent`, `no_will`, `battle_over`, `no_door`,
-`not_adjacent`, `formation_invalid`) plus `debug_disabled`, `no_unit`, `out_of_bounds`, `no_footing`,
+`not_adjacent`, `formation_invalid`, `not_in_zone`) plus `debug_disabled`, `no_unit`, `out_of_bounds`, `no_footing`,
 `bad_unit_type`, `bad_material`, `bad_element`, `bad_status` from debug intents (`DebugOps.validateDebug`).
 
 ## Move then act: blue and yellow zones
@@ -106,9 +109,47 @@ Rooms are revealed for the squad when a squad unit enters one, opens a door into
 enemy inside one becomes visible. Reveal is presentation and AI bookkeeping (the client tints unrevealed rooms; the
 squad autopilot breaches unrevealed rooms); it does not hide state. Details in [08](08-interiors-and-breaching.md).
 
-## Winning and losing
+## Objectives and outcome
 
-`Battle.checkOutcome` runs after every intent and every kill: no living enemies → the squad wins; no living squad
-units → the enemy wins. After that every intent is refused with `battle_over`. Every current map uses the
-`eliminate` objective; `Battle` has no round limit (the balance sim stops at `--rounds`, default 40, and scores a
-draw). Units have a `down` flag that nothing sets: there is no bleed-out, HP 0 is death.
+Each mission carries an `objective` spec; `Battle` builds its state with `Objectives.createObjective` (unknown kinds
+become `eliminate`). The HUD shows the spec's `text` and a status line (`Objectives.objectiveStatus`), offers
+**Take** *label* and **Extract** buttons (1 AP) when they are legal for the selected unit (`Hud.js`), and the
+overlay draws the zone (teal tiles) and the item (`Overlays.showObjective`). The end banner names the `reason`.
+
+| Kind | Squad wins when | Extra intents |
+|---|---|---|
+| `eliminate` (default) | no hostile left alive | — |
+| `extract` | every squad member still on the map has extracted and at least `needed` (default 1) made it out; or no hostile left | `extract` in the zone |
+| `recover` | the item is **secured**: picked up when the spec has no zone, otherwise carried out by its carrier's `extract`. Killing every hostile does **not** win | `recover` next to the item; `extract` in the zone |
+| `hold` | `rounds` (default 3) round ends with a squad member in the zone and no hostile in it; or no hostile left | — |
+
+- **Zone**: `{ x0, y0, x1, y1, z?, dz? }`, inclusive; with `z` a unit counts only within `dz` (default 1) levels of it
+  (`Objectives.inZone`).
+- **Extract** (`doExtract`): the unit gets `extracted`, its AP and move-only AP drop to 0, overwatch is cleared and
+  it leaves its formation. `Units.alive` is false for extracted units, so they cannot act, be targeted, see or be
+  counted as standing; they stay in the unit list. Extracting while carrying the item secures it.
+- **Recover** (`doRecover`): 1 AP; the unit becomes the carrier (secured at once if there is no zone); noise radius
+  4 at the unit. A carrier who dies **drops** the item on its tile (`kill`, `drop` event); anyone can pick it up
+  again.
+- **Hold** counts in `objectiveRoundEnd`, after the round end, i.e. at the end of each full round (after the enemy
+  phase): +1 when the zone has a living squad member and no living hostile; a contested or empty zone just does not
+  count (no reset). An `objective` event reports `held`, `rounds` and `contested`.
+- **Deadline**: optional `turns`. At the end of round `turns` the objective fails if the battle is not yet over.
+  No current map sets it.
+- Only squad units may `extract` or `recover` (`bad_intent` / `no_target` for a Syndicate unit).
+
+`Battle.checkOutcome` runs after every intent, every kill and every `objectiveRoundEnd`, in this order; the first
+match ends the battle with `outcome = { winner, round, reason }` (and an `outcome` event):
+
+| Check | Winner | `reason` |
+|---|---|---|
+| deadline passed (`failed`) | enemy | `timer` |
+| `recover` and the item secured | squad | `recovered` |
+| `hold` and `held ≥ rounds` | squad | `held` |
+| no living hostile, kind ≠ `recover` | squad | `eliminated` |
+| no squad unit left on the map (dead or extracted): `extract` with `extracted ≥ needed` | squad | `extracted` |
+| … otherwise | enemy | `squad lost` |
+
+After that every intent is refused with `battle_over`. Without a deadline there is no round limit (the balance sim
+stops at `--rounds`, default 40, and scores a draw). Units have a `down` flag that nothing sets: there is no
+bleed-out, HP 0 is death. Per-map objectives are listed in [11](11-maps-and-level-design.md#objectives).

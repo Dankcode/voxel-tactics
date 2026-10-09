@@ -58,8 +58,10 @@ event log slice the client animates.
 
 ## What the hash covers (`Battle.hash`)
 
-Materials of every voxel (FNV-1a), each unit's id, position, HP, AP, dead flag, stress, facing and per-part HP and
-armour, the element field (surfaces, fires, smoke), and the event sequence number. **Not covered**: voxel HP, ammo,
+Materials of every voxel (FNV-1a), each unit's id, position, HP, AP, state (0 on the map, 1 dead, 2 extracted),
+stress, facing and per-part HP and armour, the objective progress (kind, rounds held, extracted unit ids, the item's
+position, carrier and secured flag, the failed flag), the element field (surfaces, fires, smoke), and the event
+sequence number. **Not covered**: voxel HP, ammo,
 items, Will, statuses, overwatch, buffs, formations, alert state, revealed rooms and the RNG state. A divergence in
 those is only caught once it changes something hashed.
 

@@ -13,9 +13,9 @@ Cover works on two layers:
 
 | Weight | Materials | Readout |
 |---|---|---|
-| 1 | every material with `projectile: 'block'` or `'shatter'` (walls, props, furniture, vehicles, ground, rubble, closed doors, ice, **glass**) | counts |
+| 1 | every material with `projectile: 'block'` (walls, props, furniture, vehicles, ground, rubble, closed doors, ice) | counts |
 | 0.35 | `concealment` materials: `hedge`, `leaves` (opaque, bullets pass) | treated as **no cover** (`protection` returns 0 below weight 1) |
-| 0 | air, `door_open`, water, `chainlink`, `cloth` (awning) | no cover |
+| 0 | air, **`glass`**, `door_open`, water, `chainlink`, `cloth` (awning), `ladder` | no cover |
 
 ## Cover per face (`Cover.coverToward`, `coverAt`)
 
@@ -68,19 +68,21 @@ band otherwise). Consequences of the 5-ray rule, all from the code:
 
 More background, including the audit of rating vs geometry, is in `docs/CONNECTED-SURFACES.md`.
 
-## Glass: readout and ballistics disagree
+## Glass is cosmetic
 
-- The readout counts glass as weight 1 (`projectile: 'shatter'`), so windows rate as cover: a two-high pane is FULL,
-  a window over a sill wall is FULL, a full-height storefront is FULL.
-- The tracer (`Ballistics.traceProjectile`) only stops on `projectile: 'block'`. A ray that crosses a pane
-  **shatters it and keeps going**; the estimate never counts glass as cover. Verified: a target behind a two-high
-  glass wall is rated FULL cover yet shows a 100 % hit chance with the Sniper Rifle, and the live shot hits and
-  breaks one pane.
-- Blast shielding (`Battle.blastUnits`) and the lean-out check (`chooseMuzzle`) also ignore glass. Grenade arcs
-  (`Raycast.traceArc`, default `blocksProjectile` = anything not `'pass'`) **are** blocked by glass.
-- Glass is not opaque, so it never blocks sight.
+`glass` is `projectile: 'pass'` with `shatters: true` (`Materials.js`), so the readout and the ballistics agree:
 
-`docs/LEVELS.md` ("Glass is real cover until it is shot out") describes the readout, not the ballistics.
+- **No cover**: `coverWeight` is 0, so a window, a window over a sill wall (only the sill counts) or a storefront
+  rates as nothing. A sill wall under a pane still gives its own HALF.
+- **Never stops anything**: bullets (`traceProjectile` stops only on `'block'`), sight (not opaque), grenade arcs
+  (`Raycast.traceArc` blocks on anything not `'pass'`), blast shielding (`Battle.blastUnits`) and the lean-out check
+  (`chooseMuzzle`) all ignore it.
+- **It still breaks**: a pane whose real shape a live bullet crosses before the ray ends is set to air
+  (`Battle.fireWeapon`, from the tracer's `glass` list), so windows shatter as visual feedback and the voxel store
+  changes. The hit-chance estimate breaks nothing.
+- Glass is still `solid` (blocks movement) and, by default value, `walkable` ([13](13-materials.md#notes)).
+
+`docs/LEVELS.md` ("Glass is real cover until it is shot out") predates this and is out of date.
 
 ## Concealment (hedges, leaves)
 

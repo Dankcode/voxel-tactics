@@ -8,7 +8,7 @@
 // XCOM 2: side phases, cover readout, flanking, overwatch, grenades, concealed pods.
 // Chaos Zero Nightmare: Stress and Breakdown, and the "back shot" cut-in event on every committed action.
 import { createRng, hashString } from '../util/Rng.js';
-import { reachable, pathTo, nodeKey } from '../world/PathSearch.js';
+import { reachable, pathTo, nodeKey, stepKind } from '../world/PathSearch.js';
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
 import { MAT, AIR, materialById } from '../voxel/Materials.js';
 import { castRay, fitArc, blocksSight } from '../voxel/Raycast.js';
@@ -22,9 +22,10 @@ import { createUnit, alive, hasStatus, addStatus, removeStatus, accuracyMult, mo
 import { estimateShot, chooseMuzzle, sampleCone, traceProjectile, aimPointOf, partCentre } from './Ballistics.js';
 import { Formations } from './Formations.js';
 import { validateDebug, applyDebug } from './DebugOps.js';
+import { createObjective, inZone, extractionOpen } from './Objectives.js';
 
 export const REJECT = Object.freeze(['not_your_turn', 'not_your_unit', 'unit_down', 'no_ap', 'unreachable', 'occupied', 'no_ammo', 'out_of_range',
-    'no_item', 'no_target', 'bad_intent', 'no_will', 'battle_over', 'no_door', 'not_adjacent', 'formation_invalid']);
+    'no_item', 'no_target', 'bad_intent', 'no_will', 'battle_over', 'no_door', 'not_adjacent', 'formation_invalid', 'not_in_zone']);
 
 const PROFILE = AGENT_PROFILES.player;
 
@@ -47,6 +48,7 @@ export class Battle {
         this.seq = 0;
         this.log = [];
         this.outcome = null;
+        this.objective = createObjective(mission.objective);
         this.revealedRooms = new Set();
         this.formations = new Formations(this);
         this.stats = { weapons: {}, throwables: {}, voxelsDestroyed: 0, fires: 0, breaches: 0, reactions: 0, formations: {} };
@@ -224,6 +226,17 @@ export class Battle {
             case 'formation': return this.formations.validate(intent);
             case 'formation_break': return null;
             case 'face': return null;
+            case 'extract': {
+                if (!extractionOpen(this.objective) || u.side !== 'player') return 'bad_intent';
+                if (!inZone(this.objective.zone, u)) return 'not_in_zone';
+                return u.ap < 1 ? 'no_ap' : null;
+            }
+            case 'recover': {
+                const it = this.objective.kind === 'recover' && u.side === 'player' ? this.objective.item : null;
+                if (!it || it.carrier || it.secured) return 'no_target';
+                if (Math.max(Math.abs(it.x - u.x), Math.abs(it.y - u.y)) > 1 || Math.abs(it.z - u.z) > 1) return 'not_adjacent';
+                return u.ap < 1 ? 'no_ap' : null;
+            }
             default: return 'bad_intent';
         }
     }
@@ -252,6 +265,8 @@ export class Battle {
             case 'formation': this.formations.declare(intent); break;
             case 'formation_break': this.formations.dissolve(intent.formationId, 'ordered'); break;
             case 'face': u.facing = intent.facing; this.emit({ t: 'face', unitId: u.id, facing: u.facing }); break;
+            case 'extract': this.doExtract(u); break;
+            case 'recover': this.doRecover(u); break;
         }
         this.afterAction();
         return { ok: true, events: this.log.slice(start) };
@@ -301,6 +316,7 @@ export class Battle {
         } else {
             this.formations.onSideEnd('enemy');
             this.roundEnd();
+            this.objectiveRoundEnd();
             if (!this.outcome) { this.round++; this.startSide('player'); }
         }
     }
@@ -322,10 +338,49 @@ export class Battle {
 
     checkOutcome() {
         if (this.outcome) return;
+        const o = this.objective;
         const p = this.unitsOf('player').length, e = this.unitsOf('enemy').length;
-        if (!e) this.outcome = { winner: 'player', round: this.round };
-        else if (!p) this.outcome = { winner: 'enemy', round: this.round };
-        if (this.outcome) this.emit({ t: 'outcome', ...this.outcome });
+        let winner = null, reason = null;
+        if (o.failed) { winner = 'enemy'; reason = 'timer'; }
+        else if (o.kind === 'recover' && o.item.secured) { winner = 'player'; reason = 'recovered'; }
+        else if (o.kind === 'hold' && o.held >= o.rounds) { winner = 'player'; reason = 'held'; }
+        else if (!e && o.kind !== 'recover') { winner = 'player'; reason = 'eliminated'; }
+        else if (!p) {
+            const out = o.extracted.length >= o.needed && o.kind === 'extract';
+            winner = out ? 'player' : 'enemy'; reason = out ? 'extracted' : 'squad lost';
+        }
+        if (winner) { this.outcome = { winner, round: this.round, reason }; this.emit({ t: 'outcome', ...this.outcome }); }
+    }
+
+    // ---------------------------------------------------------------- objectives
+    doExtract(u) {
+        const o = this.objective;
+        u.ap = 0; u.moveOnlyAp = 0; u.overwatch = null; u.extracted = true;
+        o.extracted.push(u.id);
+        const withItem = o.item?.carrier === u.id;
+        if (withItem) o.item.secured = true;
+        this.formations.onUnitLost(u);
+        this.emit({ t: 'extract', unitId: u.id, item: withItem });
+    }
+    doRecover(u) {
+        const it = this.objective.item;
+        u.ap -= 1;
+        it.carrier = u.id;
+        if (!this.objective.zone) it.secured = true;
+        this.emit({ t: 'recover', unitId: u.id, label: it.label, secured: it.secured });
+        this.noise(u.x, u.y, u.z, 4, u);
+    }
+    /** End of a full round: hold progress and the deadline. */
+    objectiveRoundEnd() {
+        const o = this.objective;
+        if (o.kind === 'hold') {
+            const squad = this.unitsOf('player').some(u => inZone(o.zone, u));
+            const hostile = this.unitsOf('enemy').some(u => inZone(o.zone, u));
+            if (squad && !hostile) o.held++;
+            this.emit({ t: 'objective', kind: 'hold', held: o.held, rounds: o.rounds, contested: squad && hostile });
+        }
+        if (o.turns && this.round >= o.turns && !this.outcome) o.failed = true;
+        this.checkOutcome();
     }
 
     // ---------------------------------------------------------------- movement
@@ -338,9 +393,13 @@ export class Battle {
         const fromMoveOnly = Math.min(u.moveOnlyAp, ap);
         u.moveOnlyAp -= fromMoveOnly; ap -= fromMoveOnly;
         u.ap -= ap;
-        const walked = [path[0]];
+        const walked = [path[0]], kinds = [];
+        let jumped = false;
         for (let i = 1; i < path.length; i++) {
             const p = path[i];
+            const kind = stepKind(this.store, path[i - 1], p);
+            kinds.push(kind);
+            if (kind === 'jump') jumped = true;
             this.openDoorsOnStep(u, path[i - 1], p);
             u.facing = facingToward(p.x - u.x, p.y - u.y);
             u.x = p.x; u.y = p.y; u.z = p.z;
@@ -354,7 +413,8 @@ export class Battle {
             if (before && !alive(u)) break;
             if (u.statuses.some(s => s.id === 'frozen')) break;
         }
-        this.emit({ t: 'move', unitId: u.id, path: walked, ap: ap + fromMoveOnly });
+        this.emit({ t: 'move', unitId: u.id, path: walked, kinds: kinds.slice(0, walked.length - 1), ap: ap + fromMoveOnly });
+        if (alive(u) && jumped) this.giveStatus(u, 'staggered', 1);
         if (alive(u)) {
             const surf = this.field.surfaceAt(u.x, u.y, u.z);
             if (surf === 'burning') this.giveStatus(u, 'burning');
@@ -517,6 +577,8 @@ export class Battle {
     kill(t, source) {
         t.hp = 0; t.dead = true; t.overwatch = null;
         this.emit({ t: 'death', unitId: t.id, source });
+        const it = this.objective.item;
+        if (it?.carrier === t.id) { Object.assign(it, { carrier: null, x: t.x, y: t.y, z: t.z }); this.emit({ t: 'drop', unitId: t.id, x: t.x, y: t.y, z: t.z, label: it.label }); }
         this.formations.onUnitLost(t);
         const killer = this.unit(source);
         if (killer && killer.side !== t.side) { killer.stats.kills++; this.addStress(killer, -B.stressRelieveOnKill, 'kill'); const ws = this.weaponStats(killer.weapon); ws.kills++; }
@@ -629,7 +691,7 @@ export class Battle {
         const path = [{ x: u.x, y: u.y, z: u.z }];
         for (let i = 0; i < tiles; i++) {
             const nx = u.x + sx, ny = u.y + sy;
-            if (this.store.isSolid(nx, ny, u.z + 1) || this.store.isSolid(nx, ny, u.z + 2) || this.occupant(nx, ny, u.z)) { this.dealDamage(u, 'torso', 1, { pierce: 99, source: 'impact' }); break; }
+            if (this.store.isSolid(nx, ny, u.z + 1) || this.store.isSolid(nx, ny, u.z + 2) || this.occupant(nx, ny, u.z)) { this.dealDamage(u, 'torso', B.impactDamage, { pierce: 99, source: 'impact' }); break; }
             const below = this.store.surfaces(nx, ny).filter(s => s.z <= u.z && s.headroom >= 2).at(-1);
             if (!below) break;
             u.x = nx; u.y = ny;
@@ -661,7 +723,7 @@ export class Battle {
             } else if (above) {
                 u.z = above.z;                         // rubble piled on them: climb out, bruised
                 this.emit({ t: 'fall', unitId: u.id, from, to: u.z });
-                this.dealDamage(u, 'torso', 3, { pierce: 99, source: 'crushed' });
+                this.dealDamage(u, 'torso', B.crushDamage, { pierce: 99, source: 'crushed' });
             } else if (!here) {
                 this.emit({ t: 'fall', unitId: u.id, from, to: -1 });
                 this.kill(u, 'fall');
@@ -825,8 +887,10 @@ export class Battle {
 
     /** Hash of everything that matters for lockstep: map, units, field. */
     hash() {
-        const units = this.units.map(u => [u.id, u.x, u.y, u.z, u.hp, u.ap, u.dead ? 1 : 0, u.stress, u.facing, Object.values(u.parts).map(p => p.hp + ':' + p.armor).join(',')].join('|')).join(';');
-        return `${this.store.hash()}:${hashString(units).toString(16)}:${hashString(JSON.stringify(this.field.snapshot())).toString(16)}:${this.seq}`;
+        const o = this.objective;
+        const obj = [o.kind, o.held, o.extracted.join(','), o.item ? `${o.item.x},${o.item.y},${o.item.z},${o.item.carrier},${o.item.secured}` : '', o.failed].join('|');
+        const units = this.units.map(u => [u.id, u.x, u.y, u.z, u.hp, u.ap, u.dead ? 1 : u.extracted ? 2 : 0, u.stress, u.facing, Object.values(u.parts).map(p => p.hp + ':' + p.armor).join(',')].join('|')).join(';');
+        return `${this.store.hash()}:${hashString(units + obj).toString(16)}:${hashString(JSON.stringify(this.field.snapshot())).toString(16)}:${this.seq}`;
     }
 }
 

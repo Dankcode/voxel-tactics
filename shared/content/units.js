@@ -1,5 +1,8 @@
 // Squad classes and hostile types (modern setting, human factions only). Ids are stable (saves, art folders, tests);
 // names are what the player sees. `art` names the placeholder sprite set in client/public/assets/characters.
+/** Every character has the same small pool; classes differ by armour, mobility, accuracy and kit. Gun damage comes
+ *  from the round (shared/content/calibers.js), so a rifle hit is a third of anyone's health. */
+export const UNIT_HP = 30;
 export const BODY = Object.freeze({
     // Part hit points as a fraction of the unit's hp pool (Phoenix Point: parts share the pool).
     head: { share: 0.4, label: 'Head' }, torso: { share: 1.0, label: 'Torso' },
@@ -8,26 +11,26 @@ export const BODY = Object.freeze({
 export const PARTS = Object.freeze(['head', 'torso', 'armL', 'armR', 'legs']);
 
 export const CLASSES = Object.freeze({
-    vanguard: { id: 'vanguard', name: 'Assault', role: 'Close quarters: shotgun, sidearm, knife', art: 'vanguard', hp: 22, accuracy: 0.85, mobility: 3.4, will: 6, armor: 'medium',
+    vanguard: { id: 'vanguard', name: 'Assault', role: 'Close quarters: shotgun, sidearm, knife', art: 'vanguard', hp: UNIT_HP, accuracy: 0.9, mobility: 3.4, will: 6, armor: 'medium',
         weapons: ['blunderbuss', 'handcannon', 'sword'], items: { fire_flask: 1, smoke_pot: 1 }, abilities: ['dash', 'rally'] },
-    grenadier: { id: 'grenadier', name: 'Grenadier', role: 'Assault rifle, frag grenades, demolition', art: 'grenadier', hp: 24, accuracy: 0.8, mobility: 2.9, will: 6, armor: 'heavy',
+    grenadier: { id: 'grenadier', name: 'Grenadier', role: 'Assault rifle, frag grenades, demolition', art: 'grenadier', hp: UNIT_HP, accuracy: 0.85, mobility: 2.9, will: 6, armor: 'heavy',
         weapons: ['repeater'], items: { powder_bomb: 2, gale_flask: 1 }, abilities: ['demolish', 'suppress'] },
-    marksman: { id: 'marksman', name: 'Sharpshooter', role: 'Sniper rifle and sidearm; overwatch from height', art: 'marksman', hp: 18, accuracy: 1.0, mobility: 3.1, will: 7, armor: 'light',
+    marksman: { id: 'marksman', name: 'Sharpshooter', role: 'Sniper rifle and sidearm; overwatch from height', art: 'marksman', hp: UNIT_HP, accuracy: 1.0, mobility: 3.1, will: 7, armor: 'light',
         weapons: ['longrifle', 'handcannon'], items: { smoke_pot: 1, frost_flask: 1 }, abilities: ['quick_aim', 'deadeye'] },
-    warden: { id: 'warden', name: 'Breacher', role: 'Ballistic shield, suppressed carbine, breaching charges', art: 'warden', hp: 26, accuracy: 0.82, mobility: 2.9, will: 7, armor: 'plate',
+    warden: { id: 'warden', name: 'Breacher', role: 'Ballistic shield, suppressed carbine, breaching charges', art: 'warden', hp: UNIT_HP, accuracy: 0.88, mobility: 2.9, will: 7, armor: 'plate',
         weapons: ['crossbow', 'sword'], items: { breach_charge: 2, water_flask: 1 }, abilities: ['brace', 'rally'] }
 });
 
 export const ENEMIES = Object.freeze({
-    cultist: { id: 'cultist', name: 'Gunman', faction: 'syndicate', art: 'cultist', hp: 14, accuracy: 0.7, mobility: 3, will: 4, armor: 'light',
+    cultist: { id: 'cultist', name: 'Gunman', faction: 'syndicate', art: 'cultist', hp: UNIT_HP, accuracy: 0.55, mobility: 3, will: 4, armor: 'light',
         weapons: ['musket', 'sword'], items: { fire_flask: 1 }, abilities: [] },
-    archer: { id: 'archer', name: 'Lookout', faction: 'syndicate', art: 'archer', hp: 12, accuracy: 0.85, mobility: 3.2, will: 4, armor: 'hide',
+    archer: { id: 'archer', name: 'Lookout', faction: 'syndicate', art: 'archer', hp: UNIT_HP, accuracy: 0.64, mobility: 3.2, will: 4, armor: 'hide',
         weapons: ['shortbow'], items: {}, abilities: [] },
-    pyromancer: { id: 'pyromancer', name: 'Arsonist', faction: 'syndicate', art: 'pyromancer', hp: 16, accuracy: 0.75, mobility: 2.8, will: 6, armor: 'light',
+    pyromancer: { id: 'pyromancer', name: 'Arsonist', faction: 'syndicate', art: 'pyromancer', hp: UNIT_HP, accuracy: 0.68, mobility: 2.8, will: 6, armor: 'light',
         weapons: ['firelance'], items: { fire_flask: 2 }, abilities: [] },
-    brute: { id: 'brute', name: 'Enforcer', faction: 'syndicate', art: 'brute', hp: 30, accuracy: 0.6, mobility: 3.2, will: 6, armor: 'heavy',
+    brute: { id: 'brute', name: 'Enforcer', faction: 'syndicate', art: 'brute', hp: UNIT_HP, accuracy: 0.6, mobility: 3.2, will: 6, armor: 'heavy',
         weapons: ['maul'], items: {}, abilities: [] },
-    warden_foe: { id: 'warden_foe', name: 'Riot Guard', faction: 'syndicate', art: 'guard', hp: 22, accuracy: 0.75, mobility: 2.8, will: 6, armor: 'plate',
+    warden_foe: { id: 'warden_foe', name: 'Riot Guard', faction: 'syndicate', art: 'guard', hp: UNIT_HP, accuracy: 0.62, mobility: 2.8, will: 6, armor: 'plate',
         weapons: ['musket', 'sword'], items: {}, abilities: ['brace'] }
 });
 

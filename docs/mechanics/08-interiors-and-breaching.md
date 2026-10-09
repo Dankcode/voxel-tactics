@@ -64,7 +64,7 @@ closed door; charge entry needs some participant carrying a Breaching Charge and
 2. Entry:
    - **door**: the door opens; noise 12 at the door (×0.5 with an active Breach Stack);
    - **charge**: the first participant with a charge spends it; it detonates at the door (floor + 1.5) as a
-     Breaching Charge explosion (power 16, radius 1.7, geo, 4 damage, noise 16; [05](05-destruction.md)).
+     Breaching Charge explosion (power 16, radius 1.7, geo, 8 damage, noise 16; [05](05-destruction.md)).
 3. The room is revealed.
 4. **Defenders** = every living unit of the other side whose room is the breached room. Unalerted defenders get
    `surprised` (1 round) and lose any overwatch; then the defenders' pods are alerted.
@@ -79,9 +79,9 @@ Consequences worth knowing:
 
 - `surprised` = −1 AP on the defender's next turn and no reactions until then.
 - **A Breaching Charge hits the breachers too.** Blast damage and statuses apply to every unit in range, and the
-  stack is usually clustered (radius +1, damage ×1.25). Verified on the Training Facility bunker door: a Breacher
-  alone, or a Breacher + Assault, take 0 damage (armour) but are **stunned** (−2 AP next turn); a stack of three
-  took 7, 2 and 2 damage and were all stunned.
+  stack is usually clustered (radius +1, damage ×1.25). Every breacher in range is **stunned** (−2 AP next turn).
+  Damage is at most 8 × 1.25 = 10 before armour; blast pierce is half the torso armour rounded up, so a Breacher
+  (plate 6, effective 3) takes at most 7 and an Assault (medium 3, effective 1) at most 9, less with distance.
 - Entrants do not reveal rooms step by step and make no move noise during the entry.
 - Units with a melee weapon selected, or an empty magazine, enter without shooting.
 

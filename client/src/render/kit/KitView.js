@@ -54,6 +54,7 @@ export function kitHandler(store, x, y, z, id = store.get(x, y, z)) {
         case 'leaves': return 'foliage';
         case 'trunk': return 'trunk';
         case 'lantern': return 'lantern';
+        case 'ladder': return 'ladder';
         case 'furniture': return 'table';
         case 'shelf': return 'shelf';
         case 'cloth': return 'banner';
@@ -236,6 +237,13 @@ export class KitView {
                     mask.forEach((on, i) => { if (on) add('wall_arm', x, y, z, DIRS[i][2], wall); });
                     add('sconce', x, y, z, wallAxis(), wall);
                 } else add('lantern', x, y, z, 0, k);
+                break;
+            }
+            case 'ladder': {
+                // Back against the neighbour it leans on: the side with a solid voxel at this height (or the ledge above).
+                let yaw = 0;
+                for (const [dx, dy] of DIRS) if (store.isSolid(x + dx, y + dy, z)) { yaw = yawToward(dx, dy); break; }
+                add(keyOf(get(x, y, z + 1)) === 'ladder' ? 'ladder' : 'ladder_top', x, y, z, yaw, k);
                 break;
             }
             case 'stairs': {

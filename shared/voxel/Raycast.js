@@ -3,7 +3,7 @@
 import { intersectCellShape } from './ConnectedShapes.js';
 import { materialById } from './Materials.js';
 
-/** Bullets: glass and solid block; foliage and open doors pass. */
+/** Bullets: solid materials block; glass, foliage and open doors pass. */
 export const blocksProjectile = (store, x, y, z) => { const m = materialById(store.get(x, y, z)); return m.projectile !== 'pass'; };
 /** Sight: opaque materials block (closed doors, walls, foliage). */
 export const blocksSight = (store, x, y, z) => materialById(store.get(x, y, z)).opaque;

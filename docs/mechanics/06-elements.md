@@ -84,14 +84,15 @@ Fire and the fuel drum: a burning fuel drum (1 HP, flammable) burns away **witho
 <!-- generated:statuses -->
 | status | rounds | data fields | tags |
 |---|---|---|---|
-| `burning` | 2 | dotPerRound: 2; removes: — | fire |
+| `burning` | 2 | dotPerRound: 3; removes: — | fire |
 | `wet` | 2 | removes: burning | water |
 | `chilled` | 2 | maxStacks: 2; apPerStack: -1 | cold |
 | `frozen` | 1 | rooted: true | cold |
 | `stunned` | 1 | apPenalty: -2 | concussion |
-| `bleeding` | 3 | dotPerRound: 1 | wound |
+| `bleeding` | 3 | dotPerRound: 2 | wound |
 | `suppressed` | 1 | accuracyMult: 0.6 | fear |
 | `braced` | 1 | armorBonus: 4 | buff |
+| `staggered` | 1 | accuracyMult: 0.8 | move |
 | `surprised` | 1 | apPenalty: -1; noReaction: true | breach |
 | `panicked` | 1 | apMult: 0.5; noAbilities: true | stress |
 <!-- /generated:statuses -->
@@ -101,7 +102,7 @@ tick at the start of the **owner's** turn, after AP is computed ([01](01-turn-fl
 
 | Status | Effect in play | Applied by |
 |---|---|---|
-| `burning` | 2 torso damage (pierce 99) at the start of each own turn | pyro hits, fire surfaces / voxels, debug |
+| `burning` | 3 torso damage (`B.burningDamage`, pierce 99) at the start of each own turn | pyro hits, fire surfaces / voxels, debug |
 | `wet` | removes and blocks `burning`; pyro damage −1; cryo freezes instead of chilling | hydro, wet surfaces |
 | `chilled` | −1 AP per stack on the next turn (max 2 stacks) | cryo on a dry unit |
 | `frozen` | tiles per AP = 0 (cannot move; a move in progress stops) until it expires at the start of its own turn | cryo on a wet unit |
@@ -110,12 +111,13 @@ tick at the start of the **owner's** turn, after AP is computed ([01](01-turn-fl
 | `braced` | +4 armour on every part | Shield Wall (1 round: through the opponent's phase) |
 | `surprised` | −1 AP on the next turn; cannot take overwatch reactions | unalerted defenders of a breached room (1 round) |
 | `panicked` | next turn's AP halved (rounded up); abilities refused while present | stress breakdown (1 round) |
-| `bleeding` | 1 damage per own turn | nothing in play (debug `status` op only) |
+| `staggered` | accuracy × 0.8 (`Units.accuracyMult`) for the rest of the turn and any overwatch reaction in the opponent's phase; removed at the start of its next turn | landing a jump down ([02](02-movement.md#jumping-down)), 1 round |
+| `bleeding` | 2 torso damage (pierce 99) per own turn | nothing in play (debug `status` op only) |
 
 Known quirks, from the code:
 
 - **`burning` never expires.** Its damage tick is dealt as `pyro`, which re-applies `burning` and refreshes it to 2
-  rounds before the tick takes one off. Verified: a burning Gunman stays burning and loses 2 HP every turn for as
+  rounds before the tick takes one off. Verified: a burning Gunman stays burning and loses 3 HP every turn for as
   long as it lives. Only water / `wet` ends it.
 - **`panicked` mostly expires before it matters for abilities.** It is given for 1 round at breakdown. AP halving
   happens at the start of the unit's next turn, and the same start-of-turn tick removes the status, so abilities are

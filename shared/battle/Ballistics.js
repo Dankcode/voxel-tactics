@@ -113,7 +113,7 @@ export function traceProjectile(battle, o, d, maxDist, { ignore = null } = {}) {
     const end = { x: o.x + d[0] * maxDist, y: o.y + d[1] * maxDist, h: o.h + d[2] * maxDist };
     const r = castRay(store, o, end, {
         blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile === 'block',
-        visit: (x, y, z, t) => { if (materialById(store.get(x, y, z)).projectile === 'shatter') {
+        visit: (x, y, z, t) => { if (materialById(store.get(x, y, z)).shatters) {
             const origin=[o.x,o.y,o.h];
             let exit=maxDist;
             [x,y,z].forEach((c,i)=>{if(d[i]) exit=Math.min(exit,((d[i]>0?c+1:c)-origin[i])/d[i]);});

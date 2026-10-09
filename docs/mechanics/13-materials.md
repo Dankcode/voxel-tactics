@@ -10,7 +10,8 @@ Every voxel stores one material id (0 = air). Definitions: `shared/voxel/Materia
 | `hp` | damage absorbed before destruction; ∞ = indestructible ([05](05-destruction.md)) | 4 |
 | `solid` | blocks movement and the body; something to stand on if also walkable | true |
 | `opaque` | blocks sight ([03](03-cover-and-sight.md)) | = solid |
-| `projectile` | `block` stops bullets; `pass` lets them through; `shatter` (glass) breaks when a ray crosses it and lets the ray continue | `block` if solid, else `pass` |
+| `projectile` | `block` stops bullets, grenade arcs and blast shielding; `pass` lets them through | `block` if solid, else `pass` |
+| `shatters` | cosmetic: a live bullet crossing it sets it to air (glass; [03](03-cover-and-sight.md#glass-is-cosmetic)) | false |
 | `walkable` | its top can be a standing surface ([02](02-movement.md)) | = solid |
 | `moveCost` | path cost multiplier when standing on it | 1 |
 | `liquid`, `traversal` | `wade` (shallow water: standable) or `blocked` (deep water, lava) | — |
@@ -25,7 +26,7 @@ Every voxel stores one material id (0 = air). Definitions: `shared/voxel/Materia
 | `part` | vibe-game building part: 2 door, 4 stairs (traversal) | 0 |
 | `light`, `render`, `color` | presentation only | — |
 
-**Cover class** (`coverWeight`): 1 for `block` and `shatter` materials (they count in the cover readout), 0.35 for
+**Cover class** (`coverWeight`): 1 for `block` materials (they count in the cover readout), 0.35 for
 concealment (`hedge`, `leaves`; the readout treats anything under 1 as no cover), 0 for the rest. **Connected
 shape**: the footprint rays and the cover sampler see ([03](03-cover-and-sight.md#partial-connected-shapes)); a dash
 means a full cell. Ground materials show "cover (1)" because a one-high step of soil beside a unit is cover like
@@ -52,7 +53,7 @@ anything else that stops bullets.
 | 13 | `plank` | Wood floor | 4 | yes | yes | block | yes | 1 | — | yes | — | burn→ash | yes | wood | structure | cover (1) | — |
 | 14 | `stone_floor` | Stone floor | 8 | yes | yes | block | yes | 1 | — | — | — | — | yes | stone | structure | cover (1) | — |
 | 15 | `roof` | Roof tiles | 3 | yes | yes | block | — | 1 | — | yes | — | burn→ash | yes | wood | structure | cover (1) | — |
-| 16 | `glass` | Window | 1 | yes | — | shatter | yes | 1 | — | — | — | — | — | glass | structure | cover (1) | pane 0.1 |
+| 16 | `glass` | Window | 1 | yes | — | pass | yes | 1 | — | — | — | — | — | glass | structure | none (0) | pane 0.1 |
 | 17 | `door` | Door | 4 | — | yes | block | — | 1 | — | yes | — | — | — | wood | structure | cover (1) | pane 0.08 |
 | 18 | `door_open` | Open door | 4 | — | — | pass | — | 1 | — | — | — | — | — | wood | structure | none (0) | — |
 | 19 | `stairs_wood` | Wooden stairs | 4 | yes | yes | block | yes | 1 | — | yes | — | burn→ash | yes | wood | structure | cover (1) | — |
@@ -116,7 +117,8 @@ anything else that stops bullets.
 | 77 | `chainlink` | Chain-link fence | 2 | yes | — | pass | — | 1 | — | — | — | — | — | metal | geo | none (0) | band 0.08 |
 | 78 | `carpet` | Carpet | 5 | yes | yes | block | yes | 1 | — | yes | — | burn→ash | yes | wood | structure | cover (1) | — |
 | 79 | `tile_dark` | Floor tiles | 7 | yes | yes | block | yes | 1 | — | — | — | — | yes | stone | structure | cover (1) | — |
-| 80 | `deep_ice` | Ice (over deep water) | 2 | yes | — | block | yes | 1.4 | — | — | — | melt→deep_water | yes | ice | cryo | cover (1) | liquid shoreline |
+| 80 | `ladder` | Ladder | 3 | — | — | pass | — | 1 | — | — | — | — | — | metal | structure | none (0) | — |
+| 81 | `deep_ice` | Ice (over deep water) | 2 | yes | — | block | yes | 1.4 | — | — | — | melt→deep_water | yes | ice | cryo | cover (1) | liquid shoreline |
 <!-- /generated:materials -->
 
 ## Notes
@@ -126,6 +128,10 @@ anything else that stops bullets.
 - `container`, `rock` (boulder) and `crystal` are walkable: units can stand on shipping containers and boulders.
 - `door` is not solid: units walk through closed doors (opening them); see [02](02-movement.md#doors).
 - `chainlink` is solid (blocks movement, vaultable) but not opaque and `pass`: no cover, no sight block.
+- `glass` is solid (blocks movement) but `pass` and not opaque: no cover, never stops a shot, sight or an arc; it
+  only breaks.
+- `ladder` is not solid, not walkable, not opaque and `pass`: no cover; movement uses it through
+  `PathSearch.ladderMoves` ([02](02-movement.md#ladders)). Placed only by `MapKit.ladder` (Harbor Yard).
 - `hedge` is solid, opaque and `pass`: blocks movement and sight, not bullets.
 - Flammable materials without `burnTo` (`door`, `hedge`, `leaves`, `cloth`, `barrel_powder`, `cabinet`, `bed`,
   `desk`, `privacy_fence`, `bin`) turn to air when they burn out instead of ash (none of them has `debris`). The fuel

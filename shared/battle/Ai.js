@@ -6,6 +6,7 @@ import { coverAgainst, COVER } from '../voxel/Cover.js';
 import { estimateShot } from './Ballistics.js';
 import { alive, partArmor } from './Units.js';
 import { nodeKey, pathTo } from '../world/PathSearch.js';
+import { inZone, extractionOpen, objectiveGoal } from './Objectives.js';
 
 export const DEFAULT_POLICY = Object.freeze({ formations: false, breach: true, grenadeMinTargets: 2, shootThreshold: 0.9, samples: 24 });
 
@@ -42,6 +43,15 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
     const known = knownEnemies(battle, u);
     const ranged = u.weapons.map(id => WEAPONS[id]).find(w => w.kind === 'ballistic');
     const melee = u.weapons.map(id => WEAPONS[id]).find(w => w.kind === 'melee');
+
+    // Objectives (squad side): extract from the zone, pick up the item, and steer movement toward the goal.
+    const o = battle.objective;
+    const goal = u.side === 'player' && o ? objectiveGoal(o) : null;
+    if (u.side === 'player' && o && u.ap >= 1) {
+        if (extractionOpen(o) && inZone(o.zone, u) && (o.kind === 'extract' || o.item?.carrier === u.id)) return { type: 'extract', unitId: u.id };
+        const it = o.kind === 'recover' ? o.item : null;
+        if (it && !it.carrier && !it.secured && Math.max(Math.abs(it.x - u.x), Math.abs(it.y - u.y)) <= 1 && Math.abs(it.z - u.z) <= 1) return { type: 'recover', unitId: u.id };
+    }
 
     // Melee specialists close in and strike.
     if (!ranged && melee) {
@@ -100,10 +110,10 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
         return null;
     }
 
-    // Nothing in sight: advance on the nearest hostile (patrol / search), favouring cover on the way.
+    // Nothing in sight: advance on the objective, else the nearest hostile (patrol / search).
     if (!known.length) {
         if (u.movedThisTurn >= 1 && u.ap < 2) return null;
-        const target = nearest(u, battle.enemiesOf(u));
+        const target = goal ? { ...goal, z: goal.z ?? u.z } : nearest(u, battle.enemiesOf(u));
         if (!target || u.movedThisTurn > 12) return null;
         const step = advance(battle, u, target);
         return step ? { type: 'move', unitId: u.id, to: step, group } : null;
@@ -112,7 +122,7 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
     // Move to a better tile, keeping enough AP to shoot.
     if (u.ap + u.moveOnlyAp > (ammoOk ? shotAp : 0) && !u.movedThisTurn) {
         const budgetAp = Math.max(1, u.ap + u.moveOnlyAp - (ammoOk ? shotAp : 0));
-        const tile = bestTile(battle, u, ranged, known.length ? known : battle.enemiesOf(u), budgetAp);
+        const tile = bestTile(battle, u, ranged, known.length ? known : battle.enemiesOf(u), budgetAp, goal);
         if (tile && (tile.x !== u.x || tile.y !== u.y || tile.z !== u.z)) return { type: 'move', unitId: u.id, to: tile, group };
     }
     if (shot) return shot.intent;
@@ -141,7 +151,9 @@ function bestShot(battle, u, w, known, policy) {
     return best && best.value > 0.05 ? best : null;
 }
 
-function bestTile(battle, u, w, threats, budgetAp) {
+function bestTile(battle, u, w, threats, budgetAp, goal = null) {
+    const o = battle.objective;
+    const pull = !goal ? 0 : (o.kind === 'extract' || o.item?.carrier === u.id) ? 2.2 : o.kind === 'hold' ? 1.2 : 0.8;
     const search = battle.reach(u, budgetAp * battle.mobility(u));
     const nodes = [...search.nodes.values()];
     if (!nodes.length) return null;
@@ -165,6 +177,10 @@ function bestTile(battle, u, w, threats, budgetAp) {
         if (surf === 'burning' || battle.field.isBurning(n.x, n.y, n.z)) s -= 40;
         s -= allies.filter(o => Math.max(Math.abs(o.x - n.x), Math.abs(o.y - n.y)) <= 2).length * 4;
         if (threats.length) s += Math.max(0, n.z - Math.min(...threats.map(e => e.z))) * 2;
+        if (goal) {
+            s -= Math.hypot(n.x - goal.x, n.y - goal.y) * pull;
+            if (o.zone && inZone(o.zone, n) && o.kind !== 'recover') s += 25;
+        }
         scored.push({ n, s });
     }
     scored.sort((a, b) => b.s - a.s);
