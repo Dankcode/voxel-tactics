@@ -53,13 +53,26 @@ export class EventPlayer {
                 for (let i = 1; i < path.length; i++) {
                     const a = path[i - 1], b = path[i];
                     v.face(b.x - a.x, b.y - a.y);
-                    const len = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+                    const kind = e.kinds?.[i - 1] || (Math.hypot(b.x - a.x, b.y - a.y) > 1.5 ? 'vault' : 'walk');
+                    const len = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) * (kind === 'climb' ? 1.6 : 1);
                     const steps = Math.max(1, Math.round(len * 6));
                     for (let s = 1; s <= steps; s++) {
                         const k = s / steps;
-                        // A two-cell step is a vault over low cover: hop over it.
-                        const hop = Math.hypot(b.x - a.x, b.y - a.y) > 1.5 ? Math.sin(k * Math.PI) * 1.1 : 0;
-                        v.setCell(a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k, a.z + (b.z - a.z) * k + hop);
+                        let px = a.x + (b.x - a.x) * k, py = a.y + (b.y - a.y) * k, pz = a.z + (b.z - a.z) * k;
+                        if (kind === 'vault') pz += Math.sin(k * Math.PI) * 1.1;                // hop over low cover
+                        else if (kind === 'jump') {
+                            // Step off the edge, then drop under gravity.
+                            const h = Math.min(1, k / 0.35);
+                            px = a.x + (b.x - a.x) * h; py = a.y + (b.y - a.y) * h;
+                            pz = k < 0.35 ? a.z + Math.sin(h * Math.PI / 2) * 0.25 : a.z + 0.25 - (a.z + 0.25 - b.z) * ((k - 0.35) / 0.65) ** 2;
+                        } else if (kind === 'climb') {
+                            // Up: climb the ladder column, then step onto the ledge. Down: step onto the ladder, then descend.
+                            const up = b.z > a.z, split = 0.8;
+                            const vk = up ? Math.min(1, k / split) : Math.max(0, (k - (1 - split)) / split);
+                            const hk = up ? Math.max(0, (k - split) / (1 - split)) : Math.min(1, k / (1 - split));
+                            px = a.x + (b.x - a.x) * hk; py = a.y + (b.y - a.y) * hk; pz = a.z + (b.z - a.z) * vk;
+                        }
+                        v.setCell(px, py, pz);
                         g.updateEnemyVisibility();
                         await wait(len / speed / steps);
                     }
@@ -114,6 +127,10 @@ export class EventPlayer {
             }
             case 'disabled': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition().add(new THREE.Vector3(0, 0.4, 0)), `${PART_LABEL[e.part]} disabled`.toUpperCase(), '#ffb74d', 15); break; }
             case 'death': { const v = this.view(e.unitId); if (v) { v.animator.play('down'); v.drawBar(); fx.float(v.worldPosition(), v.unit.side === 'player' ? 'KIA' : 'KILLED', '#ff5252', 22); } await this.d(0.3); break; }
+            case 'extract': { const v = this.view(e.unitId); if (v) { fx.float(v.worldPosition(), e.item ? 'EXTRACTED WITH THE PACKAGE' : 'EXTRACTED', '#5ff2d6', 20); await this.d(0.35); v.setVisible(false); } g.overlays.showObjective(g.battle); break; }
+            case 'recover': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition(), `${(e.label || 'item').toUpperCase()} RECOVERED`, '#5ff2d6', 20); g.overlays.showObjective(g.battle); await this.d(0.3); break; }
+            case 'drop': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition(), `${(e.label || 'item').toUpperCase()} DROPPED`, '#ffc845', 18); g.overlays.showObjective(g.battle); break; }
+            case 'objective': if (e.kind === 'hold') g.hud.log(e.contested ? `Zone contested — held ${e.held}/${e.rounds}` : `Zone held ${e.held}/${e.rounds}`); break;
             case 'status': { const v = this.view(e.unitId); if (v && (v.unit.side === 'player' || g.isVisible(v.unit))) fx.float(v.worldPosition().add(new THREE.Vector3(0, 0.3, 0)), e.statusId, '#ffe08a', 14); break; }
             case 'stress': { const v = this.view(e.unitId); if (v) { v.drawBar(); if (e.breakdown) { fx.float(v.worldPosition(), 'BREAKDOWN', '#c38bff', 22); await this.d(0.4); } } break; }
             case 'reaction': { const v = this.view(e.watcherId); if (v) fx.float(v.worldPosition(), 'OVERWATCH!', '#ff9f6b', 18); await this.d(0.2); break; }

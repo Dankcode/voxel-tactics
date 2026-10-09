@@ -84,14 +84,15 @@ normal explosion and chain rules ([05](05-destruction.md#explosive-materials)).
 <!-- generated:statuses -->
 | status | rounds | data fields | tags |
 |---|---|---|---|
-| `burning` | 2 | dotPerRound: 2; removes: — | fire |
+| `burning` | 2 | dotPerRound: 3; removes: — | fire |
 | `wet` | 2 | removes: burning | water |
 | `chilled` | 2 | maxStacks: 2; apPerStack: -1 | cold |
 | `frozen` | 1 | rooted: true | cold |
 | `stunned` | 1 | apPenalty: -2 | concussion |
-| `bleeding` | 3 | dotPerRound: 1 | wound |
+| `bleeding` | 3 | dotPerRound: 2 | wound |
 | `suppressed` | 1 | accuracyMult: 0.6 | fear |
 | `braced` | 1 | armorBonus: 4 | buff |
+| `staggered` | 1 | accuracyMult: 0.8 | move |
 | `surprised` | 1 | apPenalty: -1; noReaction: true | breach |
 | `panicked` | 1 | apMult: 0.5; noAbilities: true | stress |
 <!-- /generated:statuses -->
@@ -101,7 +102,7 @@ tick at the start of the **owner's** turn, after AP is computed ([01](01-turn-fl
 
 | Status | Effect in play | Applied by |
 |---|---|---|
-| `burning` | 2 torso damage (pierce 99) at the start of each own turn | pyro hits, fire surfaces / voxels, debug |
+| `burning` | 3 torso damage (`B.burningDamage`, pierce 99) at the start of each own turn | pyro hits, fire surfaces / voxels, debug |
 | `wet` | removes and blocks `burning`; pyro damage −1; cryo freezes instead of chilling | hydro, wet surfaces |
 | `chilled` | −1 AP per stack on the next turn (max 2 stacks) | cryo on a dry unit |
 | `frozen` | tiles per AP = 0 (cannot move; a move in progress stops) through its affected own turn, removed at side end | cryo on a wet unit |
@@ -110,7 +111,8 @@ tick at the start of the **owner's** turn, after AP is computed ([01](01-turn-fl
 | `braced` | +4 armour on every part | Shield Wall (1 round: through the opponent's phase) |
 | `surprised` | −1 AP on the next turn; cannot take overwatch reactions | unalerted defenders of a breached room (1 round) |
 | `panicked` | next turn's AP halved (rounded up); abilities refused while present | stress breakdown (1 round) |
-| `bleeding` | 1 damage per own turn | nothing in play (debug `status` op only) |
+| `staggered` | accuracy × 0.8 (`Units.accuracyMult`) for the rest of the turn and any overwatch reaction in the opponent's phase; removed at the start of its next turn | landing a jump down ([02](02-movement.md#jumping-down)), 1 round |
+| `bleeding` | 2 torso damage (pierce 99) per own turn | nothing in play (debug `status` op only) |
 
 Duration details:
 

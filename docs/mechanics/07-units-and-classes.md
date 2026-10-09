@@ -9,19 +9,23 @@ Data: `shared/content/units.js` (classes, Syndicate types, abilities, squads), `
 <!-- generated:units -->
 | id | name | side | HP | part HP head/torso/arm/legs | accuracy | tiles per AP (base + armour) | Will | armour | weapons (first = default) | items | abilities |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `vanguard` | Assault | squad | 22 | 9/22/9/12 | 0.85 | 3.2 (3.4 -0.2) | 6 | `medium` | Combat Shotgun, Sidearm, Combat Knife | Incendiary Grenade ×1, Smoke Grenade ×1 | Sprint, Rally |
-| `grenadier` | Grenadier | squad | 24 | 10/24/10/13 | 0.8 | 2.5 (2.9 -0.4) | 6 | `heavy` | Assault Rifle | Frag Grenade ×2, Concussion Grenade ×1 | Demolition, Suppressive Fire |
-| `marksman` | Sharpshooter | squad | 18 | 7/18/7/10 | 1 | 3.1 (3.1) | 7 | `light` | Sniper Rifle, Sidearm | Smoke Grenade ×1, Cryo Canister ×1 | Snap Shot, Deadeye |
-| `warden` | Breacher | squad | 26 | 10/26/10/14 | 0.82 | 2.5 (2.9 -0.4) | 7 | `plate` | Suppressed Carbine, Combat Knife | Breaching Charge ×2, Extinguisher Grenade ×1 | Shield Wall, Rally |
-| `cultist` | Gunman | Syndicate | 14 | 6/14/6/8 | 0.7 | 3 (3) | 4 | `light` | Battle Rifle, Combat Knife | Incendiary Grenade ×1 | — |
-| `archer` | Lookout | Syndicate | 12 | 5/12/5/7 | 0.85 | 3.2 (3.2) | 4 | `hide` | Marksman Rifle | — | — |
-| `pyromancer` | Arsonist | Syndicate | 16 | 6/16/6/9 | 0.75 | 2.8 (2.8) | 6 | `light` | Flamethrower | Incendiary Grenade ×2 | — |
+| `vanguard` | Assault | squad | 30 | 12/30/12/17 | 0.9 | 3.2 (3.4 -0.2) | 6 | `medium` | Combat Shotgun, Sidearm, Combat Knife | Incendiary Grenade ×1, Smoke Grenade ×1 | Sprint, Rally |
+| `grenadier` | Grenadier | squad | 30 | 12/30/12/17 | 0.85 | 2.5 (2.9 -0.4) | 6 | `heavy` | Assault Rifle | Frag Grenade ×2, Concussion Grenade ×1 | Demolition, Suppressive Fire |
+| `marksman` | Sharpshooter | squad | 30 | 12/30/12/17 | 1 | 3.1 (3.1) | 7 | `light` | Sniper Rifle, Sidearm | Smoke Grenade ×1, Cryo Canister ×1 | Snap Shot, Deadeye |
+| `warden` | Breacher | squad | 30 | 12/30/12/17 | 0.88 | 2.5 (2.9 -0.4) | 7 | `plate` | Suppressed Carbine, Combat Knife | Breaching Charge ×2, Extinguisher Grenade ×1 | Shield Wall, Rally |
+| `cultist` | Gunman | Syndicate | 30 | 12/30/12/17 | 0.55 | 3 (3) | 4 | `light` | AK Rifle, Combat Knife | Incendiary Grenade ×1 | — |
+| `archer` | Lookout | Syndicate | 30 | 12/30/12/17 | 0.64 | 3.2 (3.2) | 4 | `hide` | Marksman Rifle | — | — |
+| `pyromancer` | Arsonist | Syndicate | 30 | 12/30/12/17 | 0.68 | 2.8 (2.8) | 6 | `light` | Flamethrower | Incendiary Grenade ×2 | — |
 | `brute` | Enforcer | Syndicate | 30 | 12/30/12/17 | 0.6 | 2.8 (3.2 -0.4) | 6 | `heavy` | Sledgehammer | — | — |
-| `warden_foe` | Riot Guard | Syndicate | 22 | 9/22/9/12 | 0.75 | 2.4 (2.8 -0.4) | 6 | `plate` | Battle Rifle, Combat Knife | — | Shield Wall |
+| `warden_foe` | Riot Guard | Syndicate | 30 | 12/30/12/17 | 0.62 | 2.4 (2.8 -0.4) | 6 | `plate` | AK Rifle, Combat Knife | — | Shield Wall |
 <!-- /generated:units -->
 
-- **HP** is one pool. Each body part also has its own HP gauge, a share of the pool (below); damage to a part comes
-  off both the part and the pool ([04](04-ballistics-and-weapons.md#damage-battledealdamage)).
+- **HP**: every character, squad and Syndicate, has **30** (`UNIT_HP`). It is one pool. Each body part also has its
+  own HP gauge, `max(1, round(30 × share))` (`createUnit`): head 12, arms 12, legs 17 (16.5 rounds up), torso 30
+  (it mirrors the pool). Damage to a part comes off both the part and the pool
+  ([04](04-ballistics-and-weapons.md#damage-battledealdamage)). Classes differ by armour, mobility, accuracy and
+  kit; gun damage comes from the round ([04](04-ballistics-and-weapons.md#ammunition-calibers)), so one rifle hit
+  is about a third of anyone's health.
 - **Tiles per AP** = class mobility + armour mobility ([02](02-movement.md)).
 - **Weapons**: the first is the default (`u.weapon`); switching is free. All ballistic weapons start loaded.
 - **AP**: 4 for everyone (`B.apPerTurn`). **Will** starts at max and regenerates +1 per own turn.
@@ -41,11 +45,11 @@ Data: `shared/content/units.js` (classes, Syndicate types, abilities, squads), `
 <!-- generated:armor -->
 | armour | head | torso | arm L | arm R | legs | mobility (tiles/AP) |
 |---|---|---|---|---|---|---|
-| `light` | 0 | 1 | 0 | 0 | 0 | 0 |
-| `medium` | 0 | 2 | 1 | 1 | 1 | -0.2 |
-| `heavy` | 1 | 3 | 2 | 2 | 2 | -0.4 |
+| `light` | 0 | 2 | 0 | 0 | 1 | 0 |
+| `medium` | 1 | 3 | 2 | 2 | 2 | -0.2 |
+| `heavy` | 2 | 4 | 3 | 3 | 3 | -0.4 |
 | `hide` | 0 | 1 | 0 | 0 | 0 | 0 |
-| `plate` | 2 | 4 | 3 | 3 | 3 | -0.4 |
+| `plate` | 3 | 6 | 4 | 4 | 4 | -0.4 |
 <!-- /generated:armor -->
 
 ## Abilities
@@ -113,7 +117,9 @@ usable abilities in practice.
 
 - The Breacher's role text mentions a "ballistic shield"; there is no shield mechanic beyond plate armour and Shield
   Wall.
-- `armor: 'hide'` (Lookout) is identical to `light`.
+- `armor: 'hide'` (Lookout) is the lightest set: 1 on the torso, 0 elsewhere (`light` is 2 torso, 1 legs).
+- Squad accuracies (0.85–1.0) sit above the Syndicate's (0.55–0.68); the values were retuned with the 30-HP / caliber
+  change to keep the balance-sim win rates near their earlier level (`npm run sim`).
 - `ENEMY_PODS` presets are not used by the current maps; each map lists its enemies and groups directly
   ([11](11-maps-and-level-design.md)).
 

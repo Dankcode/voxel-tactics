@@ -16,9 +16,11 @@ export const BALANCE = {
     stressOnNearMiss: { value: 4, min: 0, max: 10 },
     stressRelieveOnKill: { value: 10, min: 0, max: 30 },
     breakdownAt: { value: 100, min: 60, max: 150 },
-    fallDamagePerLevel: { value: 3, min: 0, max: 8 },
+    fallDamagePerLevel: { value: 5, min: 0, max: 12 },
     fireSpreadChance: { value: 0.3, min: 0, max: 0.8 },
-    burningDamage: { value: 2, min: 0, max: 5 },
+    burningDamage: { value: 3, min: 0, max: 8 },
+    crushDamage: { value: 5, min: 0, max: 12 },                   // rubble lands on a unit
+    impactDamage: { value: 2, min: 0, max: 6 },                   // knocked back into a wall or a unit
     clusteredRadiusBonus: { value: 1, min: 0, max: 2 },
     clusteredDamageMult: { value: 1.25, min: 1, max: 2 }
 };

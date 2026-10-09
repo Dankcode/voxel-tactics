@@ -29,7 +29,7 @@ are drawn as whole objects. The block-world look stays in vibe-game.
 ```bash
 npm install            # on macOS run this natively (don't copy node_modules between machines)
 npm run dev            # http://localhost:5173  → menu
-npm test               # 61 tests: voxels, cover, elements, ballistics, battle, buildings, maps, tile set, co-op room
+npm test               # 71 tests: voxels, cover, elements, ballistics, battle, buildings, maps, tile set, co-op room
 ```
 
 Deep links for testing:

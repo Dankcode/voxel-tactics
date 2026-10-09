@@ -58,8 +58,8 @@ event log slice the client animates.
 ## What the hash covers (`Battle.hash`)
 
 Materials and HP of every voxel; complete unit state (including ownership, body parts, ammo, items, Will,
-statuses, overwatch, buffs, alert state and formations); round, active side and outcome; revealed rooms; element
-field; formation records and next ID; RNG state; controllers; debug mode; event sequence. Render caches and
+statuses, overwatch, buffs, alert state and formations); round, active side and outcome; revealed rooms; objective progress (rounds held, extracted units, the item's position, carrier and secured
+flag, the failed flag); element field; formation records and next ID; RNG state; controllers; debug mode; event sequence. Render caches and
 presentation-only data are excluded. State divergence is detected before it affects damage or position.
 
 ## Debug intents

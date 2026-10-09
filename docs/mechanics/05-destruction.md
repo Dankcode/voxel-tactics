@@ -103,12 +103,13 @@ voxel out, and after debug destroys.
 | Situation at the unit's tile | Result |
 |---|---|
 | its surface still exists with headroom ≥ 2 | nothing |
-| surface gone, a lower surface with headroom ≥ 2 exists | falls to it; legs take (levels − 1) × `B.fallDamagePerLevel` (3), pierce 99, if it fell more than 1 level; stress +8 |
-| a surface 1–2 voxels above exists (rubble piled on it) | climbs onto it, 3 torso damage ("crushed") |
+| surface gone, a lower surface with headroom ≥ 2 exists | falls to it; legs take (levels − 1) × `B.fallDamagePerLevel` (5), pierce 99, if it fell more than 1 level; stress +8 |
+| a surface 1–2 voxels above exists (rubble piled on it) | climbs onto it, `B.crushDamage` (5) torso damage, pierce 99 ("crushed") |
 | no surface at, below or just above | dies (falls to −1), e.g. on melted `deep_ice` |
 | surface exists but headroom < 2 and nothing above | stays (no rule) |
 
 **Knockback** (`Battle.knockback`; Sledgehammer 2 tiles, Concussion Grenade 2 tiles): the unit is pushed one tile at a
-time along the rounded direction away from the attacker or blast centre. It stops with 1 damage (pierce 99) at a
+time along the rounded direction away from the attacker or blast centre. It stops with `B.impactDamage` (2) torso damage (pierce 99) at a
 solid cell at z+1 or z+2 or another unit; stops if there is no surface at or below its height; a drop of more than
-1 level deals (drop − 1) × 3 to the legs and stops it. Knockback does not trigger overwatch.
+1 level deals (drop − 1) × `B.fallDamagePerLevel` (5) to the legs and stops it. Knockback does not trigger
+overwatch. A voluntary jump down ([02](02-movement.md#jumping-down)) deals no fall damage.

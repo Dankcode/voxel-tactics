@@ -43,12 +43,17 @@ export class Overlays {
         this.aim = new THREE.Group(); this.group.add(this.aim);
         this.debug = new THREE.Group(); this.group.add(this.debug);
         this.debugLayer = new THREE.Group(); this.group.add(this.debugLayer);
+        this.objectiveGroup = new THREE.Group(); this.group.add(this.objectiveGroup);
         this.mats = {
             blueLine: glowMaterial(ZONE.blue, 0.95, clip), yellowLine: glowMaterial(ZONE.yellow, 0.95, clip),
             blueFill: new THREE.MeshBasicMaterial({ color: ZONE.blue, transparent: true, opacity: 0.1, depthWrite: false, clippingPlanes: clip, toneMapped: false }),
             yellowFill: new THREE.MeshBasicMaterial({ color: ZONE.yellow, transparent: true, opacity: 0.08, depthWrite: false, clippingPlanes: clip, toneMapped: false }),
             path: glowMaterial(ZONE.blue, 0.9, clip), pathDash: glowMaterial(ZONE.yellow, 0.9, clip),
-            hover: glowMaterial(0xffffff, 0.55, clip)
+            hover: glowMaterial(0xffffff, 0.55, clip),
+            objLine: glowMaterial(ZONE.teal, 0.85, clip),
+            objFill: new THREE.MeshBasicMaterial({ color: ZONE.teal, transparent: true, opacity: 0.12, depthWrite: false, clippingPlanes: clip, toneMapped: false }),
+            objBeam: glowMaterial(ZONE.teal, 0.5, clip),
+            objCase: new THREE.MeshStandardMaterial({ color: 0xd08a2c, roughness: 0.5, metalness: 0.2 })
         };
         this.hover = new THREE.Mesh(frameGeometry(0.06), this.mats.hover);
         this.hover.visible = false; this.group.add(this.hover);
@@ -180,6 +185,33 @@ export class Overlays {
         }
     }
     // ------------------------------------------------------------------ debug layers
+    /** The mission objective: its zone (teal tiles, outlined) and the item to recover (a case with a beacon). */
+    showObjective(battle) {
+        for (const c of [...this.objectiveGroup.children]) { this.objectiveGroup.remove(c); c.geometry?.dispose(); }
+        const o = battle?.objective; if (!o) return;
+        if (o.zone) {
+            const cells = [], inside = new Set();
+            for (let y = o.zone.y0; y <= o.zone.y1; y++) for (let x = o.zone.x0; x <= o.zone.x1; x++) {
+                const s = battle.store.surfaceNear(x, y, o.zone.z ?? Infinity);
+                if (s && (o.zone.z == null || Math.abs(s.z - o.zone.z) <= (o.zone.dz ?? 1))) { cells.push(s); inside.add(`${x},${y}`); }
+            }
+            const edges = [];
+            for (const n of cells) for (const [dx, dy] of DIRS) if (!inside.has(`${n.x + dx},${n.y + dy}`)) edges.push([n, dx, dy]);
+            if (cells.length) this.objectiveGroup.add(tileMesh(cells, this.mats.objFill), edgeMesh(edges, this.mats.objLine));
+        }
+        const it = o.item;
+        if (it && !it.carrier && !it.secured) {
+            const y = it.z + 1 - dropAt(it.x, it.y, it.z);
+            const box = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.3, 0.16), this.mats.objCase);
+            box.position.set(it.x + 0.5, y + 0.15, it.y + 0.5); box.castShadow = true;
+            const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 2.4, 6).translate(0, 1.2, 0), this.mats.objBeam);
+            beam.position.set(it.x + 0.5, y, it.y + 0.5);
+            const ring = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.44, 32).rotateX(-Math.PI / 2), this.mats.objLine);
+            ring.position.set(it.x + 0.5, y + 0.03, it.y + 0.5);
+            this.objectiveGroup.add(box, beam, ring);
+        }
+        Overlays.flag(this.objectiveGroup);
+    }
     clearDebugLayer() { for (const c of [...this.debugLayer.children]) { this.debugLayer.remove(c); c.geometry?.dispose(); c.material?.dispose?.(); } }
     /** Coloured tiles: cells = [{x, y, z, color}]. */
     showDebugTiles(cells, opacity = 0.35) {

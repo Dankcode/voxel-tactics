@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { B } from '../content/balance.js';
 import assert from 'node:assert/strict';
 import { Battle } from './Battle.js';
 import { VoxelStore } from '../voxel/VoxelStore.js';
@@ -24,9 +25,10 @@ function arena({ squad = ['grenadier', 'marksman'], players = [{ x: 10, y: 16, z
 test('burning deals exactly two own-turn ticks and expires without refreshing itself', () => {
     const b = arena(), u = b.unit('p0'), hp = u.hp;
     addStatus(u, 'burning');
-    b.startSide('player'); assert.equal(u.hp, hp - 2);
-    b.startSide('player'); assert.equal(u.hp, hp - 4); assert.ok(!hasStatus(u, 'burning'));
-    b.startSide('player'); assert.equal(u.hp, hp - 4);
+    const tick = B.burningDamage;
+    b.startSide('player'); assert.equal(u.hp, hp - tick);
+    b.startSide('player'); assert.equal(u.hp, hp - 2 * tick); assert.ok(!hasStatus(u, 'burning'));
+    b.startSide('player'); assert.equal(u.hp, hp - 2 * tick);
 });
 
 test('panic, freezing and suppression last through the affected own turn', () => {
@@ -53,24 +55,18 @@ test('suppressive fire pays ability AP and Will, uses ammo and rejects free shot
     const before = b.hash(); assert.equal(b.apply(intent).reason, 'no_ammo'); assert.equal(b.hash(), before);
 });
 
-test('glass is physical cover until the first impact destroys it', () => {
+test('glass is cosmetic: no cover, shots pass through and break the pane', () => {
     const b = arena(), u = b.unit('p1'), e = b.unit('e0');
     Object.assign(u, { x: 10, y: 16 }); Object.assign(b.unit('p0'), { x: 5, y: 16 });
     for (const z of [2, 3]) b.store.set(10, 7, z, MAT.glass);
-    assert.equal(coverAgainst(b.store, e.x, e.y, e.z, u.x, u.y), COVER.FULL);
+    assert.equal(coverAgainst(b.store, e.x, e.y, e.z, u.x, u.y), COVER.NONE);
     const aim = { unitId: e.id, part: 'torso' };
     const est = estimateShot(b, u, aim, { weapon: WEAPONS.longrifle, spread: 0.1, samples: 32 });
-    assert.equal(est.hit, 0); assert.equal(est.cover, 1);
-    const first = traceProjectile(b, { x: 10.5, y: 16.5, h: 3.05 }, [0, -1, 0], 20, { ignore: u.id });
-    assert.equal(first.kind, 'voxel'); assert.equal(first.voxel.z, 3);
+    assert.equal(est.cover, 0); assert.ok(est.hit > 0.9);
+    const ray = traceProjectile(b, { x: 10.5, y: 16.5, h: 3.05 }, [0, -1, 0], 20, { ignore: u.id });
+    assert.notEqual(ray.kind, 'voxel'); assert.equal(ray.glass.length, 1);
     assert.ok(b.apply({ type: 'shoot', unitId: u.id, aim }).ok);
-    assert.ok([2, 3].some(z => b.store.get(10, 7, z) === AIR));
-    const shot = b.log.find(e => e.t === 'shot'), impact = shot.projectiles[0];
-    assert.equal(impact.kind, 'voxel'); assert.ok(impact.destroyed);
-    const delta = [impact.to.x - shot.muzzle.x, impact.to.y - shot.muzzle.y, impact.to.h - shot.muzzle.h];
-    const length = Math.hypot(...delta);
-    const clear = traceProjectile(b, shot.muzzle, delta.map(v => v / length), 20, { ignore: u.id });
-    assert.equal(clear.kind, 'unit', 'the same ray can cross the pane its previous impact destroyed');
+    assert.ok([2, 3].some(z => b.store.get(10, 7, z) === AIR), 'the crossed pane shatters');
 });
 
 test('unit targeting requires squad sight; free aim can still shoot opaque cover', () => {

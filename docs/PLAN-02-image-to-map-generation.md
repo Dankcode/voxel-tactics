@@ -1,6 +1,9 @@
 # PLAN-02 — From one picture to a playable multi-storey map
 
 Status: **first playable authoring implementation** (2026-10-09). See [MAPGEN.md](MAPGEN.md) for the working screenshot/reference compiler, exact voxel slate, validation, installation and regression command. Cedar Close is one recorded test reference, not the default design for all missions. The multi-storey WFC and floor-concept-art stages below remain future work.
+Leon also decided §16.2–4 and asked for them to be built; they are implemented (see §8 and the M0 / M5 / M8 rows
+of §12): glass is aesthetic, jump-down and ladders, and extract / recover / hold objectives, plus 30 HP for every
+character with caliber-based damage (§8.6).
 
 ## 1. Goal
 
@@ -208,14 +211,18 @@ gameplay piece gets a material and a connected footprint where it is a wall or c
 
 1. **Height and cover**: a shooter 2+ voxels above the target ignores half cover that is lower than the target's
    chest (XCOM high ground). Today the cover readout ignores shooter height (`docs/mechanics/03`).
-2. **Glass**: today glass rates as cover but never stops a shot (mechanics quirk 2). Decide: either glass absorbs
-   the first shot (breaks, no damage) or it rates as no cover. Recommended: the first shot through a pane breaks it
-   and loses 50 % of its damage.
-3. **Moves**: jump down one storey from a ledge or balcony (fall rule exists; cost 1 AP plus a stagger), and climb
-   ladders and drainpipes (a vertical step of 3 at extra cost). This is a traversal addition in
-   `TraversalRules` / `PathSearch`, like vaulting.
-4. **Objectives** beyond eliminate: `extract` (a unit reaches a zone), `recover` (interact with an object, 1 AP),
-   `hold` (N rounds in a zone), so story beats can be objectives. These are battle-engine additions with tests.
+2. **Glass** — *done, decided: glass is aesthetic.* It gives no cover and never stops a shot or sight; a pane a
+   bullet crosses still breaks (`shatters`). Readout and ballistics agree.
+3. **Moves** — *done.* Jump down 2–4 voxels off a ledge (cost 3, no fall damage, `staggered` until the next turn;
+   a railing blocks it) and fixed steel ladders (`ladder` material, cost 1.5 + rise, both ways). Drainpipes are not
+   in. Harbor Yard has three ladders up container stacks. See `docs/mechanics/02-movement.md`.
+4. **Objectives** — *done.* `extract`, `recover` (with or without an extraction zone) and `hold`, plus an optional
+   `turns` deadline, in `shared/battle/Objectives.js`; Route 9 (recover), Main Street (hold) and Harbor Yard
+   (extract) use them. See `docs/mechanics/01-turn-flow.md`.
+6. **Health and damage** (added by Leon 2026-10-09) — *done.* Every character has **30 HP**; gun damage comes from
+   the round (`shared/content/calibers.js`: 9 mm, 5.56, .300 BLK, 7.62×39, 7.62×51, .338, 12-gauge), not the gun.
+   Armour, explosives, melee, fire and falls were rescaled to the new pool and the balance sim's win rates kept near
+   their old values. See `docs/mechanics/04-ballistics-and-weapons.md` and `07-units-and-classes.md`.
 5. **Line of sight for shots**: a shot must have line of sight (mechanics quirk 4); it matters more with floors.
 
 ## 9. Determinism and congruence rules (from the map-to-world playbook)
@@ -263,15 +270,15 @@ docs/MAPGEN.md                            how to make a map from a picture
 
 | # | Step | Accept when |
 |---|---|---|
-| M0 | Fix rule quirks that block vertical play: shots need LOS, the glass rule (§8.2), burning expiry | focused tests; full suite green |
+| M0 | Fix rule quirks that block vertical play: shots need LOS, the glass rule (§8.2 — **done**), burning expiry | focused tests; full suite green |
 | M1 | Restore the WFC solver; extend ModernBuilder into `StoreyCompiler` (room graphs, 4 storeys, stacked cores, aligned walls, second escape) | a hand-written 4-storey `layout.json` builds; gates pass on 4 seeds; collapse test |
 | M2 | `layout.json` schema, `PackageBuilder`, package registry in `Maps.js`; port Cedar Close to a package | Cedar Close from the package is byte-identical across runs; map tests extended to packages |
 | M3 | Floor-plan WFC and facade WFC from a hand-written `design.json` (no AI yet) | 20 seeds × 3 programmes solve without contradiction, or fail with a named constraint |
 | M4 | Site WFC and the congruence audit | a hand-written `site.json` → congruent site (IoU ≥ 0.85), no dropped buildings |
-| M5 | New pieces (§7) and moves (§8.3); high-ground cover (§8.1) | kit tests for parity and winding; traversal and cover tests |
+| M5 | New pieces (§7; ladder **done**) and moves (§8.3 — **done**); high-ground cover (§8.1) | kit tests for parity and winding; traversal and cover tests |
 | M6 | Authoring CLI with providers; stage A and B against the Cedar Close concept; review in a browser preview | `site.json` / `design.json` validate against their schemas; human review |
 | M7 | Stage C concept art and read-back; the full run → a package; the gates | one new 3–4 storey map passes every gate on 4 seeds and plays in co-op |
-| M8 | Objectives (§8.4) and story decor; briefing UI with concept art | an extract or recover mission plays to completion in the sim |
+| M8 | Objectives (§8.4 — **done**) and story decor; briefing UI with concept art | an extract or recover mission plays to completion in the sim |
 | M9 | Three more maps from three pictures; docs | `docs/MAPGEN.md`; every map passes the gates |
 
 M0–M5 need no AI provider, so they can start as soon as this plan is approved.
@@ -307,7 +314,7 @@ individually.
 1. **Image model for concept art** (stage C): OpenAI Images, Google Gemini image generation, Stability, or a local
    ComfyUI/SDXL on the Mac. The vision and design stages assume the Claude API. All need an API key in the Mac's
    environment.
-2. **Glass rule** (§8.2): first shot breaks the pane and loses 50 % damage (recommended), or glass is no cover.
-3. **New moves** (§8.3): jump down and ladders in scope for this plan, or later?
-4. **Objectives** (§8.4): include in this plan (M8), or keep "eliminate" only for now?
+2. ~~Glass rule~~ — decided: aesthetic only (§8.2, done).
+3. ~~New moves~~ — in scope (§8.3, done).
+4. ~~Objectives~~ — in scope (§8.4, done; the briefing UI with concept art stays in M8).
 5. **First picture**: the Cedar Close concept, or a picture of your choice for the first generated map?

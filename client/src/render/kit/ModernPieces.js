@@ -74,7 +74,17 @@ const wallTrims = {
         { slot: 'frame', geometry: merge([box(0.06, 1, WALL_T + 0.04, -0.47), box(0.06, 1, WALL_T + 0.04, 0.47), box(1, 0.2, 0.34, 0, 0.8, -0.04)]) },
         { slot: 'shutter', geometry: disc(0.12, 0.94, 12, 0, 0.88, -0.02).rotateY(Math.PI / 2) }
     ]),
-    column: P({ group: 'structure', text: 'Square steel column (canopies)' }, () => [{ slot: 'iron', geometry: merge([box(0.26, 1, 0.26), box(0.34, 0.08, 0.34)]) }])
+    column: P({ group: 'structure', text: 'Square steel column (canopies)' }, () => [{ slot: 'iron', geometry: merge([box(0.26, 1, 0.26), box(0.34, 0.08, 0.34)]) }]),
+    // Fixed steel ladder against a wall or container side; its back (−Z) meets the wall. One piece per ladder voxel.
+    ladder: P({ group: 'structure', text: 'Steel ladder segment (rails and rungs, back against the wall)' }, () => [{ slot: 'iron', geometry: merge([
+        box(0.05, 1, 0.05, -0.22, 0, -0.36), box(0.05, 1, 0.05, 0.22, 0, -0.36),
+        ...[0.12, 0.37, 0.62, 0.87].map(y => box(0.44, 0.035, 0.035, 0, y, -0.36)),
+        box(0.05, 0.05, 0.12, -0.22, 0.45, -0.46), box(0.05, 0.05, 0.12, 0.22, 0.45, -0.46)]) }]),
+    ladder_top: P({ group: 'structure', overhang: true, text: 'Top ladder segment: rails curve over the ledge as grab handles' }, () => [{ slot: 'iron', geometry: merge([
+        box(0.05, 1, 0.05, -0.22, 0, -0.36), box(0.05, 1, 0.05, 0.22, 0, -0.36),
+        ...[0.12, 0.37, 0.62, 0.87].map(y => box(0.44, 0.035, 0.035, 0, y, -0.36)),
+        box(0.05, 0.9, 0.05, -0.22, 1, -0.36), box(0.05, 0.9, 0.05, 0.22, 1, -0.36),
+        box(0.05, 0.05, 0.42, -0.22, 1.85, -0.57), box(0.05, 0.05, 0.42, 0.22, 1.85, -0.57)]) }])
 };
 
 // ----------------------------------------------------------------------------------------- furniture

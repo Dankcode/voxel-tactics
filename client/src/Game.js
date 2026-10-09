@@ -93,6 +93,7 @@ export class Game {
         if (first) this.select(first.id, { snap: true });
         this.fx.syncField(this.battle.field);
         this.updateEnemyVisibility();
+        this.overlays.showObjective(this.battle);
         session.onEvents = events => this.player.enqueue(events);
         session.onRemoteTurn = () => this.maybeRunAi();
         this.hud.reset();
@@ -161,7 +162,7 @@ export class Game {
     updateEnemyVisibility() {
         for (const v of this.views.values()) {
             const u = v.unit;
-            v.setVisible(u.side === 'player' || this.isVisible(u) || (u.dead && !this.fog));
+            v.setVisible(!u.extracted && (u.side === 'player' || this.isVisible(u) || (u.dead && !this.fog)));
         }
     }
     settleViews() {
@@ -170,6 +171,7 @@ export class Game {
         this.fx.syncField(this.battle.field);
         this.updateEnemyVisibility();
         this.overlays.showOverwatch(this.battle.units.filter(u => alive(u) && (u.side === 'player' || this.isVisible(u))));
+        this.overlays.showObjective(this.battle);
         this.refreshRange();
         this.hud.refresh();
         this.debug.refresh();

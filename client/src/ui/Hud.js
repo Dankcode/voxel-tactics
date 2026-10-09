@@ -2,9 +2,11 @@
 // panel bottom-left, the ability bar bottom-centre with numbered slots, enemy target icons above it, the
 // target panel (Phoenix Point body-part aim) on the right, banners, toasts, a cursor tooltip and the log.
 import { WEAPONS, THROWABLES } from '../../../shared/content/weapons.js';
+import { CALIBERS } from '../../../shared/content/calibers.js';
 import { ABILITIES, CLASSES, ENEMIES } from '../../../shared/content/units.js';
 import { FORMATIONS } from '../../../shared/content/formations.js';
 import { alive } from '../../../shared/battle/Units.js';
+import { inZone, extractionOpen, objectiveStatus } from '../../../shared/battle/Objectives.js';
 import { ICONS } from './Icons.js';
 import { TERRAIN_CUES } from '../render/MaterialLibrary.js';
 import { QUALITY, setQuality } from '../render/Quality.js';
@@ -19,7 +21,7 @@ export class Hud {
         root.innerHTML = `
             <div class="topbar">
                 <div class="mission"><b></b><span></span></div>
-                <div class="turnbox"><div class="round"></div><div class="phase"></div></div>
+                <div class="turnbox"><div class="round"></div><div class="phase"></div><div class="objstat"></div></div>
                 <div class="tools">
                     <button data-act="rotL" title="Rotate camera (Q) · middle-drag to orbit">${ICONS.rotL}</button><button data-act="rotR" title="Rotate camera (E) · middle-drag to orbit">${ICONS.rotR}</button>
                     <button data-act="lvlDown" title="Cutaway down (PgDn)">${ICONS.down}</button><span class="level"></span><button data-act="lvlUp" title="Cutaway up (PgUp)">${ICONS.up}</button>
@@ -132,7 +134,7 @@ export class Hud {
             else {
                 const empty = (u.ammo[id] ?? 0) < (w.perShot || 1);
                 s.push({ act: 'weapon', arg: id, icon: w.spread > 4 ? ICONS.shotgun : (w.range >= 14 ? ICONS.rifle : ICONS.fire), name: w.name, cost: `${b.shotAp(u, w)}`, sub: `${u.ammo[id] ?? 0}/${w.ammo}`, disabled: ap < b.shotAp(u, w) || empty,
-                    on: mode.kind === 'shoot' && mode.weaponId === id && !mode.suppress, tip: `<b>${w.name}</b> · ${b.shotAp(u, w)} AP · ${w.damage} dmg${w.projectiles > 1 ? ` ×${w.projectiles}` : ''} · range ${w.range}${empty ? ' · <i class="flank">EMPTY — reload</i>' : ''}` });
+                    on: mode.kind === 'shoot' && mode.weaponId === id && !mode.suppress, tip: `<b>${w.name}</b>${w.caliber ? ` · ${CALIBERS[w.caliber].name}` : ''} · ${b.shotAp(u, w)} AP · ${w.damage} dmg${w.projectiles > 1 ? ` ×${w.projectiles}` : ''}${w.pierce ? ` · pierce ${w.pierce}` : ''} · range ${w.range}${empty ? ' · <i class="flank">EMPTY — reload</i>' : ''}` });
             }
         });
         for (const [id, n] of Object.entries(u.items)) if (n > 0) { const t = THROWABLES[id]; s.push({ act: 'throw', arg: id, icon: ICONS.grenade, name: t.name, cost: `${t.ap}`, sub: `×${n}`, disabled: ap < t.ap, on: mode.kind === 'throw' && mode.itemId === id, tip: `<b>${t.name}</b> · ${t.ap} AP · radius ${t.radius}${t.element ? ` · ${t.element}` : ''}` }); }
@@ -144,6 +146,11 @@ export class Hud {
         s.push(f ? { act: 'formBreak', arg: f.id, icon: ICONS.formation, name: `Break ${FORMATIONS[f.template].name}`, cost: '0', tip: 'Dissolve the formation' }
             : { act: 'formation', icon: ICONS.formation, name: 'Formation', cost: '1', tip: '<b>Formation</b> (F) · Shield Line, Breach Stack, Crossfire' });
         if (b.breachPoints(u).length) s.push({ act: 'breach', icon: ICONS.breach, name: 'Breach', cost: '1', tip: '<b>Breach</b> (B) · stack up and storm the room; one free shot each' });
+        const o = b.objective;
+        if (o?.kind === 'recover' && !o.item.carrier && !o.item.secured && Math.max(Math.abs(o.item.x - u.x), Math.abs(o.item.y - u.y)) <= 1 && Math.abs(o.item.z - u.z) <= 1)
+            s.push({ act: 'recover', icon: ICONS.ability, name: `Take ${o.item.label}`, cost: '1', disabled: ap < 1, tip: `<b>Recover</b> · 1 AP · pick up the ${esc(o.item.label.toLowerCase())}${o.zone ? ' — then get it to the extraction zone' : ''}` });
+        if (o && extractionOpen(o) && inZone(o.zone, u))
+            s.push({ act: 'extract', icon: ICONS.ability, name: 'Extract', cost: '1', disabled: ap < 1, tip: '<b>Extract</b> · 1 AP · leave the map from the extraction zone' });
         if (this.game.nearestDoor(u)) s.push({ act: 'door', icon: ICONS.door, name: 'Door', cost: '0', tip: 'Open / close the adjacent door' });
         return s;
     }
@@ -161,6 +168,8 @@ export class Hud {
             case 'formBreak': g.intent({ type: 'formation_break', formationId: s.arg }); break;
             case 'breach': this.showBreachPanel(); break;
             case 'door': g.toggleNearestDoor(); break;
+            case 'recover': g.intent({ type: 'recover' }); break;
+            case 'extract': g.intent({ type: 'extract' }); break;
         }
         this.refresh();
     }
@@ -172,6 +181,7 @@ export class Hud {
         this.root.classList.toggle('enemy-phase', b.activeSide !== 'player');
         this.el('.mission b').textContent = b.mission.name;
         this.el('.mission span').textContent = b.mission.objective?.text || '';
+        this.el('.turnbox .objstat').textContent = objectiveStatus(b.objective, id => b.unit(id)?.name || id);
         this.el('.round').textContent = `ROUND ${b.round}`;
         const phase = this.el('.phase');
         phase.textContent = b.outcome ? 'MISSION OVER' : b.activeSide === 'player' ? 'SQUAD PHASE' : 'ENEMY ACTIVITY';
@@ -203,7 +213,7 @@ export class Hud {
                 <div class="hp seg big">${segs(u.hp, u.maxHp)}</div><div class="nums"><span>HP ${Math.max(0, u.hp)}/${u.maxHp}</span><span>AP ${u.ap}${u.moveOnlyAp ? `+${u.moveOnlyAp}` : ''}/${u.maxAp}</span><span>WILL ${u.will}/${u.maxWill}</span></div>
                 <div class="pips">${pips(u.ap + u.moveOnlyAp, u.maxAp, 'ap big')}</div>
                 <div class="stress" title="Stress ${u.stress}/100"><i style="width:${u.stress}%"></i></div>
-                <div class="tags">${w ? `<span class="wpn">${esc(w.name)} ${w.ammo ? `${u.ammo[w.id] ?? 0}/${w.ammo}` : ''}</span>` : ''}${u.statuses.map(s => `<span>${s.id}</span>`).join('')}${Object.entries(u.parts).filter(([, p]) => p.disabled).map(([k]) => `<span class="dis">${k} ✕</span>`).join('')}${u.god ? '<span class="dbg">GOD</span>' : ''}</div></div>`;
+                <div class="tags">${w ? `<span class="wpn">${esc(w.name)} ${w.ammo ? `${u.ammo[w.id] ?? 0}/${w.ammo}` : ''}</span>` : ''}${b.objective?.item?.carrier === u.id ? `<span class="obj">${esc(b.objective.item.label)}</span>` : ''}${u.statuses.map(s => `<span>${s.id}</span>`).join('')}${Object.entries(u.parts).filter(([, p]) => p.disabled).map(([k]) => `<span class="dis">${k} ✕</span>`).join('')}${u.god ? '<span class="dbg">GOD</span>' : ''}</div></div>`;
         } else up.classList.add('hidden');
         // Ability bar.
         const canAct = u && g.controllable(u) && !b.outcome && !g.aiRunning;
@@ -262,7 +272,8 @@ export class Hud {
         const el = this.el('.outcome'); el.classList.remove('hidden');
         const b = this.game.battle;
         const kills = b.units.filter(u => u.side === 'enemy' && u.dead).length;
-        el.innerHTML = `<div class="ocard ${o.winner}"><h2>${o.winner === 'player' ? 'MISSION COMPLETE' : 'SQUAD LOST'}</h2>
+        const why = { recovered: `${b.objective.item?.label || 'Package'} recovered`, held: 'Zone held', extracted: `${b.objective.extracted.length} extracted`, eliminated: 'All hostiles down', timer: 'Out of time', 'squad lost': 'The squad was lost' }[o.reason] || '';
+        el.innerHTML = `<div class="ocard ${o.winner}"><h2>${o.winner === 'player' ? 'MISSION COMPLETE' : o.reason === 'timer' ? 'MISSION FAILED' : 'SQUAD LOST'}</h2>${why ? `<p class="owhy">${esc(why)}</p>` : ''}
             <div class="ostats"><div><b>${o.round}</b>rounds</div><div><b>${kills}</b>hostiles killed</div><div><b>${b.unitsOf('player').length}</b>soldiers standing</div><div><b>${b.stats.voxelsDestroyed}</b>voxels destroyed</div><div><b>${b.stats.breaches}</b>breaches</div></div>
             <button data-act="restart">REPLAY</button><button data-act="menu">MENU</button></div>`;
     }

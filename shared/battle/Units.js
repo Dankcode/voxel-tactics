@@ -37,7 +37,8 @@ export function createUnit(typeId, side, pos, id, overrides = {}) {
     };
 }
 
-export const alive = u => !u.dead && !u.down;
+/** On the map and able to act (not dead, downed or extracted). */
+export const alive = u => !u.dead && !u.down && !u.extracted;
 export const hasStatus = (u, id) => u.statuses.some(s => s.id === id);
 export function addStatus(u, id, rounds) {
     const def = STATUS_DEFS[id]; if (!def) return null;
@@ -58,6 +59,7 @@ export function accuracyMult(u) {
     if (arms === 1) m *= 0.75; else if (arms === 2) m *= 0.5;
     if (u.parts.head.disabled) m *= 0.8;
     if (hasStatus(u, 'suppressed')) m *= STATUS_DEFS.suppressed.accuracyMult;
+    if (hasStatus(u, 'staggered')) m *= STATUS_DEFS.staggered.accuracyMult;
     if (u.stress >= 75) m *= 0.9;
     return m;
 }

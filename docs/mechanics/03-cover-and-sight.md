@@ -13,9 +13,9 @@ Cover works on two layers:
 
 | Weight | Materials | Readout |
 |---|---|---|
-| 1 | every material with `projectile: 'block'` or `'shatter'` (walls, props, furniture, vehicles, ground, rubble, closed doors, ice, **glass**) | counts |
+| 1 | every material with `projectile: 'block'` (walls, props, furniture, vehicles, ground, rubble, closed doors, ice) | counts |
 | 0.35 | `concealment` materials: `hedge`, `leaves` (opaque, bullets pass) | treated as **no cover** (`protection` returns 0 below weight 1) |
-| 0 | air, `door_open`, water, `chainlink`, `cloth` (awning) | no cover |
+| 0 | air, **`glass`**, `door_open`, water, `chainlink`, `cloth` (awning), `ladder` | no cover |
 
 ## Cover per face (`Cover.coverToward`, `coverAt`)
 
@@ -68,12 +68,19 @@ band otherwise). Consequences of the 5-ray rule, all from the code:
 
 More background, including the audit of rating vs geometry, is in `docs/CONNECTED-SURFACES.md`.
 
-## Glass: fragile physical cover
+## Glass is cosmetic
 
-The readout counts glass as weight 1. Bullet rays, grenade arcs, blast shielding and muzzle checks all treat its
-actual pane as an obstruction. The projectile that hits a pane stops there and deals voxel damage; glass has
-1 HP, so an ordinary bullet destroys it. Later projectiles in the same burst see the opening. The Monte Carlo
-preview samples the current intact geometry without mutating panes. Glass remains transparent to sight.
+`glass` is `projectile: 'pass'` with `shatters: true` (`Materials.js`), so the readout and the ballistics agree:
+
+- **No cover**: `coverWeight` is 0, so a window, a window over a sill wall (only the sill counts) or a storefront
+  rates as nothing. A sill wall under a pane still gives its own HALF.
+- **Never stops anything**: bullets (`traceProjectile` stops only on `'block'`), sight (not opaque), grenade arcs
+  (`Raycast.traceArc` blocks on anything not `'pass'`), blast shielding (`Battle.blastUnits`) and the lean-out check
+  (`chooseMuzzle`) all ignore it.
+- **It still breaks**: a pane whose real shape a live bullet crosses before the ray ends is set to air
+  (`Battle.fireWeapon`, from the tracer's `glass` list), so windows shatter as visual feedback and the voxel store
+  changes. The hit-chance estimate breaks nothing.
+- Glass is still `solid` (blocks movement) and, by default value, `walkable` ([13](13-materials.md#notes)).
 
 ## Concealment (hedges, leaves)
 

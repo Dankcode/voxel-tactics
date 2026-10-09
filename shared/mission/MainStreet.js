@@ -68,7 +68,8 @@ export function buildMainStreet({ seed = 1 } = {}) {
     };
     return m.finish({
         name: 'Main Street', spawns,
-        objective: { kind: 'eliminate', text: 'The Syndicate has taken Main Street. Clear the shops and the office block.' },
+        objective: { kind: 'hold', text: 'The Syndicate has taken Main Street. Hold the junction in front of the diner for 4 rounds so the convoy can get through.',
+            zone: { x0: 22, y0: 17, x1: 29, y1: 22 }, rounds: 4 },
         meta: { kind: 'downtown', theme: 'Downtown', defaultCut: 4, coverProps: cover.placed.length, lighting: 'dusk' }
     });
 }

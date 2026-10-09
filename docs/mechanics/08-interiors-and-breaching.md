@@ -68,7 +68,7 @@ closed door; charge entry needs some participant carrying a Breaching Charge and
 2. Entry:
    - **door**: the door opens; noise 12 at the door (×0.5 with an active Breach Stack);
    - **charge**: the first participant with a charge spends it; it detonates at the door (floor + 1.5) as a
-     Breaching Charge explosion (power 16, radius 1.7, geo, 4 damage, noise 16; [05](05-destruction.md)).
+     Breaching Charge explosion (power 16, radius 1.7, geo, 8 damage, noise 16; [05](05-destruction.md)).
 3. The room is revealed.
 4. **Defenders** = every living unit of the other side whose room is the breached room. Unalerted defenders get
    `surprised` (1 round) and lose any overwatch; then the defenders' pods are alerted.

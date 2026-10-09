@@ -30,7 +30,7 @@ function runOne(desc, { formations }) {
         if (!b.outcome) runAiSide(b, 'enemy');
     }
     return {
-        winner: b.outcome?.winner || 'draw', rounds: b.round, ms: Date.now() - t,
+        winner: b.outcome?.winner || 'draw', reason: b.outcome?.reason || 'round cap', objective: b.objective.kind, rounds: b.round, ms: Date.now() - t,
         survivors: b.unitsOf('player').length, enemiesLeft: b.unitsOf('enemy').length, stats: b.stats,
         playerDamage: b.units.filter(u => u.side === 'player').reduce((s, u) => s + u.stats.damage, 0)
     };
@@ -47,7 +47,7 @@ function aggregate(runs) {
     }
     const n = runs.length || 1;
     return {
-        battles: runs.length, playerWinRate: runs.filter(r => r.winner === 'player').length / n, draws: runs.filter(r => r.winner === 'draw').length / n,
+        battles: runs.length, objective: runs[0]?.objective, reasons: runs.reduce((a, r) => (a[`${r.winner}:${r.reason}`] = (a[`${r.winner}:${r.reason}`] || 0) + 1, a), {}), playerWinRate: runs.filter(r => r.winner === 'player').length / n, draws: runs.filter(r => r.winner === 'draw').length / n,
         avgRounds: runs.reduce((s, r) => s + r.rounds, 0) / n, avgSurvivors: runs.reduce((s, r) => s + r.survivors, 0) / n, avgMs: runs.reduce((s, r) => s + r.ms, 0) / n,
         weapons: w, throwables: th, formations: f, perBattle: { voxels: voxels / n, fires: fires / n, breaches: breaches / n, reactions: reactions / n }
     };
@@ -57,6 +57,7 @@ const pct = v => `${(v * 100).toFixed(0)}%`.padStart(5);
 function printReport(title, agg) {
     console.log(`\n== ${title} — ${agg.battles} battles`);
     console.log(`player win ${pct(agg.playerWinRate)} · draws ${pct(agg.draws)} · avg rounds ${agg.avgRounds.toFixed(1)} · survivors ${agg.avgSurvivors.toFixed(2)} · ${agg.avgMs.toFixed(0)} ms/battle`);
+    console.log(`objective ${agg.objective} · outcomes ${Object.entries(agg.reasons).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
     console.log(`per battle: voxels ${agg.perBattle.voxels.toFixed(1)} · fires ${agg.perBattle.fires.toFixed(1)} · breaches ${agg.perBattle.breaches.toFixed(2)} · reactions ${agg.perBattle.reactions.toFixed(1)}`);
     console.log('weapon            shots  proj-hit  dmg/shot  dmg/AP  kills/shot  voxels');
     for (const [id, s] of Object.entries(agg.weapons).sort((a, b) => b[1].shots - a[1].shots)) {

@@ -24,6 +24,7 @@ export function finalizeMission({ id, name, store, rooms, buildings, spawns, rng
         }
         return best;
     };
+    objective = resolveObjective(objective, { id, store, buildings, rng, player, reach, occupied, key });
     const enemy = [];
     for (const spec of spawns.enemy) {
         let pos = null;
@@ -32,7 +33,7 @@ export function finalizeMission({ id, name, store, rooms, buildings, spawns, rng
         else if (spec.room) {
             const b = buildings.find(b => b.id === spec.room.building);
             const list = b?.rooms.filter(r => r.gameplay !== false && r.storey === (spec.room.storey ?? 0)) || [];
-            const room = spec.room.kind ? list.find(r => r.kind === spec.room.kind) : list[(spec.room.index ?? 0) % Math.max(1, list.length)];
+            const room = roomFor(list, spec.room);
             if (room) {
                 const cells = rng.shuffle(room.cells.map(([x, y]) => ({ x, y, z: room.floorZ })));
                 pos = cells.find(c => reach(c) && !occupied.has(key(c))) || null;
@@ -61,6 +62,47 @@ export function finalizeMission({ id, name, store, rooms, buildings, spawns, rng
     const mission = { id, name, store, rooms, buildings, spawns: { player, enemy }, objective, meta, visual: visual || { hints: {}, decor: [] } };
     mission.metrics = measureMission(mission, { search });
     return mission;
+}
+
+/** A building room by kind (the index-th of that kind) or by index. */
+function roomFor(list, spec) {
+    const pool = spec.kind ? list.filter(r => r.kind === spec.kind) : list;
+    return pool.length ? pool[(spec.index ?? 0) % pool.length] : null;
+}
+
+/**
+ * Objective specs may name places instead of coordinates; resolve them and check the squad can get there.
+ *   item: { x, y, z } | { room: { building, kind?, index?, storey? } }   → a reachable floor cell in that room
+ *   zone: { x0, y0, x1, y1, z? } | 'spawn' (the squad's arrival area, one cell round it)
+ */
+function resolveObjective(spec, { id, store, buildings, rng, player, reach, occupied, key }) {
+    if (!spec || !spec.kind || spec.kind === 'eliminate') return spec;
+    const o = { ...spec };
+    if (o.zone === 'spawn') {
+        const xs = player.map(p => p.x), ys = player.map(p => p.y);
+        o.zone = { x0: Math.min(...xs) - 1, y0: Math.min(...ys) - 1, x1: Math.max(...xs) + 1, y1: Math.max(...ys) + 1 };
+    }
+    if (o.zone) {
+        let ok = false;
+        for (let y = o.zone.y0; y <= o.zone.y1 && !ok; y++) for (let x = o.zone.x0; x <= o.zone.x1 && !ok; x++)
+            ok = store.surfaces(x, y).some(s => (o.zone.z == null || Math.abs(s.z - o.zone.z) <= (o.zone.dz ?? 1)) && reach({ x, y, z: s.z }));
+        if (!ok) throw new Error(`${id}: objective zone ${JSON.stringify(o.zone)} has no reachable cell`);
+    }
+    if (o.item?.room) {
+        const b = buildings.find(b => b.id === o.item.room.building);
+        const room = roomFor(b?.rooms.filter(r => r.gameplay !== false && r.storey === (o.item.room.storey ?? 0)) || [], o.item.room);
+        const cells = room ? rng.shuffle(room.cells.map(([x, y]) => ({ x, y, z: room.floorZ }))) : [];
+        const at = cells.find(c => reach(c) && !occupied.has(key(c)));
+        if (!at) throw new Error(`${id}: no reachable cell for the objective item in ${JSON.stringify(o.item.room)}`);
+        const { room: _r, ...rest } = o.item;
+        o.item = { ...rest, ...at, building: b.id, roomId: room.id };
+    } else if (o.item) {
+        const s = store.surfaceNear(o.item.x, o.item.y, o.item.z ?? Infinity);
+        o.item = { ...o.item, z: s ? s.z : o.item.z };
+        if (!reach(o.item)) throw new Error(`${id}: objective item at ${o.item.x},${o.item.y} is unreachable`);
+    }
+    if (o.item) occupied.add(key(o.item));
+    return o;
 }
 
 /**

@@ -16,16 +16,40 @@ Measured on seed 1:
 <!-- generated:maps -->
 | id | name | theme | size W×D×H | buildings | rooms | enemies | pods | lighting | cover density | cover gap | killing field | sightline median | lanes | breachability | spawn safe | gates (seed 1) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `cedar-image` | Cedar Close · Image Study | Suburbs | 48×40×12 | 2 | 8 | 4 | 2 | dusk | 46% | 5 | 4 | 9.8 | 4 | 100% | yes | PASS |
-| `cedar-close` | Cedar Close | Suburbs | 48×40×12 | 2 | 8 | 7 | 4 | day | 48% | 4 | 5 | 6.3 | 4 | 100% | yes | PASS |
-| `main-street` | Main Street | Downtown | 52×42×14 | 4 | 17 | 8 | 4 | dusk | 49% | 4 | 6 | 8.4 | 4 | 94% | yes | PASS |
-| `harbor-yard` | Harbor Yard | Industrial | 54×44×14 | 2 | 5 | 8 | 4 | night | 36% | 5 | 5 | 6.8 | 2 | 100% | yes | PASS |
-| `route-9` | Route 9 Stop | Roadside | 52×42×12 | 2 | 6 | 7 | 4 | dawn | 36% | 5 | 5 | 10.5 | 4 | 100% | yes | PASS |
-| `proving-grounds` | Training Facility | Training | 60×46×16 | 4 | 17 | 9 | 5 | overcast | 40% | 5 | 5 | 8.2 | 4 | 76% | yes | PASS |
+| `cedar-image` | Cedar Close · Image Study | Suburbs | 48×40×12 | 2 | 8 | 4 | 2 | dusk | 45% | 5 | 4 | 9.8 | 4 | 100% | yes | PASS |
+| `cedar-close` | Cedar Close | Suburbs | 48×40×12 | 2 | 8 | 7 | 4 | day | 47% | 4 | 5 | 6.3 | 4 | 100% | yes | PASS |
+| `main-street` | Main Street | Downtown | 52×42×14 | 4 | 17 | 8 | 4 | dusk | 46% | 4 | 6 | 8.4 | 4 | 94% | yes | PASS |
+| `harbor-yard` | Harbor Yard | Industrial | 54×44×14 | 2 | 5 | 8 | 4 | night | 36% | 6 | 6 | 7.0 | 2 | 100% | yes | PASS |
+| `route-9` | Route 9 Stop | Roadside | 52×42×12 | 2 | 6 | 7 | 4 | dawn | 35% | 5 | 5 | 10.5 | 4 | 100% | yes | PASS |
+| `proving-grounds` | Training Facility | Training | 60×46×16 | 4 | 17 | 9 | 5 | overcast | 39% | 5 | 5 | 8.5 | 4 | 76% | yes | PASS |
 <!-- /generated:maps -->
 
-Every map uses the `eliminate` objective and the Syndicate. `lighting` and `defaultCut` (storey cutaway 4) in
-`meta` are presentation only.
+Every map fights the Syndicate. `lighting` and `defaultCut` (storey cutaway 4) in `meta` are presentation only.
+
+## Objectives
+
+Each builder passes an `objective` spec to `finish`; rules and outcomes are in
+[01](01-turn-flow.md#objectives-and-outcome).
+
+| Map | Kind | Spec |
+|---|---|---|
+| Cedar Close | `eliminate` | clear the safehouse |
+| Main Street | `hold` | zone x 22–29, y 17–22 (the junction in front of the diner, any height), `rounds: 4` |
+| Harbor Yard | `extract` | zone x 21–30, y 4–5 (the quay, any height), `needed: 2` |
+| Route 9 Stop | `recover` | item `Cash bag` in `room: { building: 'motel', kind: 'unit', index: 3 }` (the last of the motel's four units; the Riot Guard and Gunman of pod 2 start in units 2 and 3); `zone: 'spawn'` (x 1–8, y 35–39: carry it back to the arrival area on the highway) |
+| Training Facility | `eliminate` | live-fire exercise |
+
+Spec format (`Objectives.js`, resolved by `MissionCommon.resolveObjective`):
+`{ kind, text, zone?, item?, rounds?, needed?, turns? }`.
+
+- `zone`: `{ x0, y0, x1, y1, z?, dz? }` (inclusive), or `'spawn'`: the bounding box of the squad spawn points grown by
+  one cell, no `z`. A zone must contain at least one cell the squad can reach from its first spawn point, or the
+  build throws.
+- `item`: `{ x, y, z?, label }` (snapped to the surface; must be reachable) or `{ room: { building, kind?, index?,
+  storey? }, label }`: a random reachable free floor cell of that room (picked with the map RNG; the resolved item
+  also records `building` and `roomId`). The build throws when no such cell exists. The item's cell is marked
+  occupied, so no enemy spawns on it. `label` defaults to `Package`.
+- Specs with kind `eliminate` (or none) pass through unchanged.
 
 ## Build pipeline (`MapKit.createMap` → `finish`)
 
@@ -40,7 +64,9 @@ Every map uses the `eliminate` objective and the Syndicate. `lighting` and `defa
    room kind. Each building's door approaches (2 cells out) are reserved from scattered cover.
 3. Hand-placed objects: cars (4 × 2 `car_body`, `car_cabin` on the middle two rows: half cover at the ends, full in
    the middle), containers (5 × 2 × 2, hp 20, walkable on top), dumpsters, trees (trunk + leaves), hedges, lines of
-   any material, fuel drums and pumps.
+   any material, fuel drums and pumps, ladders (`m.ladder`: a `ladder` column against a ledge at least 2 high,
+   3×3 reserved from the cover pass; [02](02-movement.md#ladders)). Harbor Yard has three, up container stacks at
+   (15, 24), (19, 26) and (45, 30).
 4. **Cover pass** (`m.scatter` → `CoverScatter.scatterCover`), see below.
 5. `finish` → `MissionCommon.finalizeMission`: spawns, reachability, spawn safety, metrics.
 
@@ -125,6 +151,10 @@ Prop `cover` is the catalogue's intent; the real rating comes from the voxels an
 - Squad spawn points snap to the nearest surface; the first one seeds a full reachability search.
 - Enemy specs: `pos` (exact), `at` (snapped to the surface), `room: { building, kind?, storey?, index? }` (a random
   reachable free cell of that room), `roof: buildingId` (the reachable roof cell nearest the roof's centre).
+- Room choice (`roomFor`): among the building's rooms on that storey (default 0), filtered by `kind` when given, take
+  the `index`-th (default 0, modulo the count). Before this change `index` was ignored when `kind` was given, so
+  Route 9's two motel-unit spawns (`index` 1 and 2) now start in different units than before (both used to resolve
+  to the first unit).
 - A spec that resolves to an unreachable or occupied cell falls back to the reachable free tile nearest the intended
   spot (or its building's centre), scored by horizontal distance + 2 × height difference. Enemies keep the spec's
   `group` (pod) and `facing` (default south).

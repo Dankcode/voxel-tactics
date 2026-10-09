@@ -6,7 +6,8 @@
 //
 //   solid       blocks movement and can be stood on
 //   opaque      blocks line of sight
-//   projectile  'block' stops a bullet, 'pass' lets it through, 'shatter' stops it but breaks (glass)
+//   projectile  'block' stops a bullet, 'pass' lets it through
+//   shatters    cosmetic: a bullet crossing it breaks it (glass panes; no cover, never stops a shot)
 //   hp          damage the voxel absorbs before it is destroyed (Infinity = indestructible)
 //   part        vibe-game BUILDING_PARTS code, read by the copied TraversalRules (2 door, 4 stairs)
 import { ELEMENTS } from '../elements/ElementIds.js';
@@ -21,7 +22,7 @@ function def(key, o) {
         render: o.render ?? ((o.solid ?? true) ? 'solid' : 'none'), moveCost: o.moveCost ?? 1, traversal: o.traversal ?? null,
         liquid: !!o.liquid, part: o.part ?? 0, debris: o.debris ?? null, explosive: o.explosive ?? null,
         burnTo: o.burnTo ?? null, meltTo: o.meltTo ?? null, freezeTo: o.freezeTo ?? null, structural: o.structural ?? (o.solid ?? true),
-        light: o.light ?? 0, concealment: o.concealment ?? 0, family: o.family ?? 'earth', walkable: o.walkable ?? (o.solid ?? true)
+        shatters: !!o.shatters, light: o.light ?? 0, concealment: o.concealment ?? 0, family: o.family ?? 'earth', walkable: o.walkable ?? (o.solid ?? true)
     });
     M.push(m);
     return m;
@@ -46,7 +47,7 @@ def('stone_floor', { label: 'Stone floor', element: ELEMENTS.STRUCTURE, color: 0
 // can't stand on them. It vaults low ones (PathSearch canVault) and goes round tall ones, as in XCOM.
 // Pitched roofs are not walkable (XCOM rule: flat roofs are terrain, pitched roofs are scenery you can shoot through).
 def('roof', { label: 'Roof tiles', element: ELEMENTS.STRUCTURE, color: 0xb4553f, hp: 3, family: 'wood', flammable: true, burnTo: 'ash', walkable: false });
-def('glass', { label: 'Window', element: ELEMENTS.STRUCTURE, color: 0xbfe6f2, hp: 1, opaque: false, projectile: 'shatter', render: 'glass', family: 'glass', structural: false });
+def('glass', { label: 'Window', element: ELEMENTS.STRUCTURE, color: 0xbfe6f2, hp: 1, opaque: false, projectile: 'pass', shatters: true, render: 'glass', family: 'glass', structural: false });
 def('door', { label: 'Door', element: ELEMENTS.STRUCTURE, color: 0x6f4526, hp: 4, solid: false, opaque: true, projectile: 'block', render: 'solid', flammable: true, part: 2, family: 'wood', structural: false, walkable: false });
 def('door_open', { label: 'Open door', element: ELEMENTS.STRUCTURE, color: 0x6f4526, hp: 4, solid: false, opaque: false, projectile: 'pass', render: 'none', part: 2, family: 'wood', structural: false, walkable: false });
 def('stairs_wood', { label: 'Wooden stairs', element: ELEMENTS.STRUCTURE, color: 0x8b5e3a, hp: 4, flammable: true, part: 4, burnTo: 'ash', family: 'wood' });
@@ -118,6 +119,9 @@ def('shelving', { label: 'Store shelving', color: 0x9aa3a8, hp: 5, family: 'meta
 def('chainlink', { label: 'Chain-link fence', color: 0x8f989c, hp: 2, solid: true, opaque: false, projectile: 'pass', family: 'metal', structural: false, walkable: false });
 def('carpet', { label: 'Carpet', element: ELEMENTS.STRUCTURE, color: 0x7d7f86, hp: 5, flammable: true, burnTo: 'ash', family: 'wood' });
 def('tile_dark', { label: 'Floor tiles', element: ELEMENTS.STRUCTURE, color: 0x5d6266, hp: 7, family: 'stone' });
+// A fixed steel ladder: not a surface, never cover; units climb it between its foot and the ledge its top rung is
+// level with (PathSearch.ladderMoves).
+def('ladder', { label: 'Ladder', element: ELEMENTS.STRUCTURE, color: 0x8a9196, hp: 3, solid: false, opaque: false, projectile: 'pass', render: 'none', family: 'metal', structural: false, walkable: false });
 // Ice over deep water remembers its depth: it melts back into deep water, not a wadeable shallow.
 def('deep_ice', { label: 'Ice (over deep water)', element: ELEMENTS.CRYO, color: 0xbfe6f7, hp: 2, moveCost: 1.4, meltTo: 'deep_water', render: 'glass', opaque: false, family: 'ice' });
 
@@ -133,6 +137,6 @@ export const AIR = 0;
 /** How much a voxel of this material covers a body standing behind it. */
 export function coverWeight(m) {
     if (!m || m.id === AIR) return 0;
-    if (m.projectile === 'block' || m.projectile === 'shatter') return 1;
+    if (m.projectile === 'block') return 1;
     return m.concealment ? 0.35 : 0;
 }
