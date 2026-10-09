@@ -2,7 +2,7 @@
 
 Architecture comes from the supplied reference. Gameplay flow takes priority over reconstructing every room. Cedar Close is only a recorded regression image; industrial, downtown and roadside references use their own building programs and cover catalogs.
 
-The authoring sequence is image analysis → footprints and combat flow → voxel placement → exact design slate → connectivity and combat-quality validation. The shared compiler places the buildings, partitions, cover and terrain, then records integer slate layers and the complete flattened 3D material matrix directly from the voxels (`index = x + y*width + z*width*depth`). One slate tile is one world unit and one voxel cell. No separately scaled overlay can drift from the placed tiles. The exported SVG uses the same coordinates, with the approach route and locked-room labels over the placed floors and cover. In-game surface finishes use continuous world coordinates and omit repeated per-tile texture motifs.
+The authoring sequence is image analysis → footprints and combat flow → voxel placement → exact design slate → connectivity and combat-quality validation. The shared compiler places the buildings, partitions, cover and terrain, then records integer slate layers and the complete flattened 3D material matrix directly from the voxels (`index = x + y*width + z*width*depth`). One slate tile is one world unit and one voxel cell. No separately scaled overlay can drift from the placed tiles. The exported SVG uses the same coordinates, with walkable approach routes and locked-room labels over the placed floors and cover. Routes are traced through outdoor voxel cells after architecture and fixed props are placed, reserved from cover scatter, and verified again after scatter; preview lines follow these exact routes instead of passing through walls. In-game surface finishes use continuous world coordinates and omit repeated per-tile texture motifs.
 
 ## Run the recorded regression
 
@@ -27,7 +27,7 @@ Inspect the JSON metrics and exact SVG slate. A fresh vision analysis is also sa
 npm run mapgen -- --image /path/to/reference.png --site /tmp/reference-map.json --out /tmp/reviewed-map.json --install
 ```
 
-`--install` adds a unique map ID to `shared/mission/generated/GeneratedSites.js`, making it available in the mission menu and shared co-op scenario registry. Installation rejects maps failing the existing cover, sightline, lanes, breachability and spawn-safety gates for the selected seed. Run the multi-seed map tests after installation. Both client and server rebuild the same package with the same mission seed; neither runs a model during play.
+`--install` adds a unique map ID to `shared/mission/generated/GeneratedSites.js`, making it available in the mission menu and shared co-op scenario registry. Installation rejects maps failing the existing cover, sightline, lanes, breachability and spawn-safety gates for the selected seed and regression seeds 1–4 before changing the registry. The exported package records each validated seed. Run the map tests after installation. Both client and server rebuild the same package with the same mission seed; neither runs a model during play.
 
 ## Room and layout rules
 
@@ -40,4 +40,4 @@ This first compiler uses connected program layouts and seeded cover placement. I
 
 ## Validation record
 
-The full suite passed 80 tests, including deterministic/co-op rebuilding, multi-seed combat gates, inaccessible service rooms, exact slate/matrix identity, non-suburban programs and collision-safe camera frames. Production build passed. Saved-image compilation, package round-trip and registry installation/rebuild were exercised. Browser plugin not available; bundled Playwright checked the desktop mission, preparation, actual firing, skill cut-in, cancellation and console health. A 390×844 capture was also inspected; the existing HUD remains designed for desktop and overflows a narrow phone viewport.
+The full suite passed 82 tests, including deterministic/co-op rebuilding, multi-seed combat gates, inaccessible service rooms, exact slate/matrix identity, non-suburban programs and collision-safe camera frames. Production build passed. Saved-image compilation, package round-trip and registry installation/rebuild were exercised. Browser plugin not available; bundled Playwright checked the desktop mission, preparation, actual firing, skill cut-in, cancellation and console health. A 390×844 capture was also inspected; the existing HUD remains designed for desktop and overflows a narrow phone viewport.

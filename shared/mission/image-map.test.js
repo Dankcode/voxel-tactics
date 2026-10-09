@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildImageMap, validateSite } from '../mapgen/PackageBuilder.js';
+import { buildImageMap, validateSite, validateImageSeeds } from '../mapgen/PackageBuilder.js';
 import { CEDAR_IMAGE_SITE } from './generated/CedarImage.js';
 import { reachable, nodeKey } from '../world/PathSearch.js';
+import { canStep, AGENT_PROFILES } from '../world/TraversalRules.js';
+import { slateSvg } from '../mapgen/DesignSlate.js';
 import { MAT } from '../voxel/Materials.js';
 import { planRows, PROGRAMS } from './modern/ModernBuilder.js';
 
@@ -43,4 +45,28 @@ test('reference compiler uses industrial architecture and cover instead of a sub
     assert.equal(mission.meta.timeOfDay,'night');assert.equal(mission.meta.theme,'Industrial');
     assert.ok(mission.rooms.every(r=>r.kind!=='living'&&r.kind!=='bathroom'));
     assert.deepEqual(mission.visual.slate.flow,mission.meta.flow);
+});
+
+
+test('design flow follows walkable outdoor voxel routes rather than cutting through a building', () => {
+    const site=structuredClone(CEDAR_IMAGE_SITE);
+    site.flow=[[0.02,0.47],[0.44,0.47],[0.47,0.16]];
+    const mission=buildImageMap(site);
+    const routes=mission.visual.slate.flowRoutes;
+    assert.equal(routes.length,site.flow.length);
+    assert.ok(routes[1].length>24, 'route must detour around the house');
+    for(const route of routes) for(let i=0;i<route.length;i++) {
+        const p=route[i];
+        assert.equal(mission.store.roomAt(p.x,p.y,p.z+1),-1);
+        if(i) assert.ok(canStep(mission.store,route[i-1],p,AGENT_PROFILES.player));
+    }
+    const svg=slateSvg(mission.visual.slate);
+    const points=routes[1].map(({x,y})=>`${(x+0.5)*16},${(y+0.5)*16}`).join(' ');
+    assert.ok(svg.includes(`points="${points}"`));
+});
+
+test('installation validation checks all selected and regression seeds', () => {
+    const checks=validateImageSeeds(CEDAR_IMAGE_SITE,[1,2,3,4,1]);
+    assert.deepEqual(checks.map(c=>c.seed),[1,2,3,4]);
+    assert.ok(checks.every(c=>c.metrics.pass));
 });

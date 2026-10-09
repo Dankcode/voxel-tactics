@@ -2,7 +2,7 @@
 import { createMap } from '../mission/modern/MapKit.js';
 import { designSlate } from './DesignSlate.js';
 import { SUBURB_PROPS, DOWNTOWN_PROPS, DOCKS_PROPS, FORECOURT_PROPS } from '../mission/PropCatalog.js';
-import { reachable, nodeKey } from '../world/PathSearch.js';
+import { reachable, nodeKey, pathTo } from '../world/PathSearch.js';
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
 
 export function validateSite(site) {
@@ -37,12 +37,7 @@ export function buildImageMap(site, { seed = 1 } = {}) {
         const [x0,y0,x1,y1] = rect(b.bounds);
         m.building({ id: b.id, program: b.program, x0,y0,w:x1-x0+1,d:y1-y0+1,front:b.front });
     }
-    // Cover placement follows the route, but leaves a two-cell approach lane free.
     const flow = [site.insertion, ...site.flow].map(point);
-    for (let i=1;i<flow.length;i++) {
-        const a=flow[i-1], b=flow[i], steps=Math.max(Math.abs(b[0]-a[0]),Math.abs(b[1]-a[1]));
-        for (let j=0;j<=steps;j++) { const t=steps ? j/steps : 0, x=Math.round(a[0]+(b[0]-a[0])*t), y=Math.round(a[1]+(b[1]-a[1])*t); m.reserve(x,y,x+1,y); }
-    }
     const [sx,sy] = flow[0];
     m.reserve(sx-2,sy-1,sx+3,sy+1);
     m.line(Math.max(1,sx-3),Math.max(1,sy-2),2,'x','planter');
@@ -63,12 +58,40 @@ export function buildImageMap(site, { seed = 1 } = {}) {
         if(clear)m.line(x,y,1,'x','planter');
     }
     const catalog=({Downtown:DOWNTOWN_PROPS,Industrial:DOCKS_PROPS,Roadside:FORECOURT_PROPS})[site.theme] || SUBURB_PROPS;
+    // Trace routes on the placed architecture and fixed props, then reserve them before adding scattered cover.
+    const traceFlow = () => {
+        const routes = [];
+        for (let i = 1; i < flow.length; i++) {
+            const start = { x: flow[i-1][0], y: flow[i-1][1], z: 1 };
+            const goal = { x: flow[i][0], y: flow[i][1], z: 1 };
+            const outdoor = p => m.store.roomAt(p.x,p.y,p.z+1) < 0;
+            const search = reachable(m.store,start,Infinity,AGENT_PROFILES.player,{
+                vault:false, blocked:p=>!outdoor(p), goal:p=>nodeKey(p)===nodeKey(goal)
+            });
+            const path = outdoor(start) && outdoor(goal) ? pathTo(search,goal) : [];
+            if (!path.length) throw new Error(`Gameplay waypoint ${goal.x},${goal.y} is blocked; no outdoor flow route`);
+            routes.push(path);
+        }
+        return routes;
+    };
+    for (const route of traceFlow()) for (const {x,y} of route) m.reserve(x,y,x+1,y);
     m.scatter(catalog,{ maxGap:3,targetShare:0.34 });
+    const flowRoutes = traceFlow();
     const enemies=m.buildings.flatMap((b,i) => b.rooms.filter(r=>r.gameplay && r.storey===0).filter(r=>['living','study','sales','open_office','warehouse','dining','workshop'].includes(r.kind)).slice(0,2).map((r,j)=>({type:j?'archer':'cultist',group:i,room:{building:b.id,kind:r.kind}})));
-    const mission=m.finish({ name:site.name || site.id, spawns:{ player:[[-1,0],[1,0],[0,0],[-1,1],[1,1],[0,1]].map(([dx,dy])=>({x:sx+dx,y:sy+dy,z:1})), enemy:enemies }, objective:{kind:'eliminate',text:'Advance through the approach lanes and clear the occupied buildings.'}, meta:{theme:site.theme || 'Suburbs',lighting:site.timeOfDay,timeOfDay:site.timeOfDay,defaultCut:4,imageGenerated:true,source:site.source,flow} });
+    const mission=m.finish({ name:site.name || site.id, spawns:{ player:[[-1,0],[1,0],[0,0],[-1,1],[1,1],[0,1]].map(([dx,dy])=>({x:sx+dx,y:sy+dy,z:1})), enemy:enemies }, objective:{kind:'eliminate',text:'Advance through the approach lanes and clear the occupied buildings.'}, meta:{theme:site.theme || 'Suburbs',lighting:site.timeOfDay,timeOfDay:site.timeOfDay,defaultCut:4,imageGenerated:true,source:site.source,flow,flowRoutes} });
     const search=reachable(mission.store,mission.spawns.player[0],Infinity,AGENT_PROFILES.player);
     for (const [x,y] of flow) if (!search.costs.has(nodeKey({x,y,z:1}))) throw new Error(`Gameplay waypoint ${x},${y} is blocked; revise image analysis flow`);
     for (const room of mission.rooms.filter(r=>r.gameplay)) if (!room.cells.some(([x,y])=>search.costs.has(nodeKey({x,y,z:room.floorZ})))) throw new Error(`Combat room ${room.buildingId}/${room.kind} is unreachable`);
     mission.visual.slate = designSlate(mission);
     return mission;
+}
+
+/** Check the seeds offered by the authoring regression before publishing a map to the scenario registry. */
+export function validateImageSeeds(site, seeds = [1, 2, 3, 4]) {
+    return [...new Set(seeds)].map(seed => {
+        const mission = buildImageMap(site, { seed });
+        const failures = Object.entries(mission.metrics.gates).filter(([,pass])=>!pass).map(([gate])=>gate);
+        if (failures.length) throw new Error(`Map ${site.id} seed ${seed} fails combat design gates: ${failures.join(', ')}`);
+        return { seed, metrics: mission.metrics };
+    });
 }

@@ -16,7 +16,7 @@ Measured on seed 1:
 <!-- generated:maps -->
 | id | name | theme | size W×D×H | buildings | rooms | enemies | pods | lighting | cover density | cover gap | killing field | sightline median | lanes | breachability | spawn safe | gates (seed 1) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `cedar-image` | Cedar Close · Image Study | Suburbs | 48×40×12 | 2 | 8 | 4 | 2 | dusk | 47% | 4 | 4 | 9.1 | 4 | 100% | yes | PASS |
+| `cedar-image` | Cedar Close · Image Study | Suburbs | 48×40×12 | 2 | 8 | 4 | 2 | dusk | 46% | 5 | 4 | 9.8 | 4 | 100% | yes | PASS |
 | `cedar-close` | Cedar Close | Suburbs | 48×40×12 | 2 | 8 | 7 | 4 | day | 48% | 4 | 5 | 6.3 | 4 | 100% | yes | PASS |
 | `main-street` | Main Street | Downtown | 52×42×14 | 4 | 17 | 8 | 4 | dusk | 49% | 4 | 6 | 8.4 | 4 | 94% | yes | PASS |
 | `harbor-yard` | Harbor Yard | Industrial | 54×44×14 | 2 | 5 | 8 | 4 | night | 36% | 5 | 5 | 6.8 | 2 | 100% | yes | PASS |
