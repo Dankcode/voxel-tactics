@@ -27,14 +27,14 @@ test('every map passes the design gates (cover gap ≤ 6, spawn safety, lanes, b
     }
 });
 
-test('every room and every building exit is reachable from the squad, and door approaches stay clear', () => {
+test('combat rooms and exits are reachable, closed rooms stay inaccessible, and door approaches stay clear', () => {
     for (const def of MAPS) {
         const m = def.build({ seed: 1 });
         const s = m.store;
         const search = reachable(s, m.spawns.player[0], Infinity, AGENT_PROFILES.player);
         for (const room of m.rooms) {
             const ok = room.cells.some(([x, y]) => search.costs.has(nodeKey({ x, y, z: room.floorZ })));
-            assert.ok(ok, `${def.id}: room ${room.id} (${room.buildingId} ${room.kind}, storey ${room.storey}) unreachable`);
+            assert.equal(ok, room.gameplay !== false, `${def.id}: room ${room.id} (${room.buildingId} ${room.kind}, storey ${room.storey}) has incorrect gameplay access`);
         }
         for (const b of m.buildings) for (const e of b.exits || []) {
             const side = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] }[e.side];

@@ -48,6 +48,7 @@ export const PRESETS = {
         flash: [[0, 0], [d - 0.35, 0], [d - 0.3, 1, 'linear'], [d - 0.12, 0]],
         dolly: [[0, 0], [d, 1, 'inOutSine']]
     }),
+    skill: d => PRESETS.shot(d ?? 1.4),
     burst: d => PRESETS.shot(d ?? 1.35),
     heavy: d => PRESETS.shot(d ?? 1.6),
     melee: (d = 1.1) => new CutInTimeline(d, {

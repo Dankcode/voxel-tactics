@@ -22,6 +22,7 @@ export class EventPlayer {
             try { await this.play(e); } catch (err) { console.error('event playback', e, err); }
         }
         this.busy = false;
+        if (this.game.cameraDirector.phase === 'action') this.game.cameraDirector.end();
         this.game.settleViews();
         const w = this.idleWaiters; this.idleWaiters = [];
         w.forEach(r => r());
@@ -37,11 +38,11 @@ export class EventPlayer {
                 const group = (e.group || [e.unitId]).map(id => g.battle.unit(id)).filter(Boolean);
                 if (!group.length || (u.side === 'enemy' && !g.isVisible(u))) break;
                 const target = e.targetIds?.[0] ? g.battle.unit(e.targetIds[0]) : null;
-                const title = e.kind === 'breach' ? 'BREACH' : (WEAPONS[e.weaponId]?.name || THROWABLES[e.itemId]?.name || e.kind).toUpperCase();
+                const title = e.kind === 'breach' ? 'BREACH' : (WEAPONS[e.weaponId]?.name || THROWABLES[e.itemId]?.name || ABILITIES[e.abilityId]?.name || e.kind).toUpperCase();
                 const sub = g.lastPreview?.unitId === e.unitId && g.lastPreview.hit != null ? `${Math.round(g.lastPreview.hit * 100)}% on target` : (target ? `→ ${target.name}` : '');
                 const sv = this.view(e.unitId), tv = target ? this.view(target.id) : null;
                 await g.cutins.play({ units: group, kind: e.kind, title, subtitle: sub, side: u.side,
-                    shooterPos: sv?.worldPosition(), targetPos: tv ? tv.worldPosition() : sv?.worldPosition().clone().add(new THREE.Vector3(...faceVec(u), 0).multiplyScalar(4)) });
+                    shooterPos: sv?.worldPosition(), targetPos: tv ? tv.worldPosition() : sv?.worldPosition().clone().add(new THREE.Vector3(...faceVec(u)).multiplyScalar(4)) });
                 break;
             }
             case 'move': case 'knockback': {

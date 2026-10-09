@@ -70,6 +70,7 @@ export const RENDER = {
     stone_floor: { tex: 'stone_floor', scale: 3, rough: 0.85, normal: 0.8 },
     roof: { tex: 'roof', scale: 2, rough: 0.8, normal: 1.1 },
     glass: { tex: 'glass', scale: 1, rough: 0.08, normal: 0.3, kind: 'glass', opacity: 0.38 },
+    door_locked: { tex: 'door', scale: 2, rough: 0.9, normal: 0.3 },
     door: { tex: 'door', scale: 2, rough: 0.8, normal: 1 },
     stairs_wood: { tex: 'stairs_wood', scale: 1.5, rough: 0.8, normal: 0.9 },
     stairs_stone: { tex: 'concrete', scale: 2, rough: 0.85, normal: 0.5, tint: 0xd8d8d4 },

@@ -24,6 +24,7 @@ export class CutInDirector {
      * Returns a promise that resolves when the cut-in finishes (or immediately when disabled).
      */
     async play(o) {
+        if (o.shooterPos && o.targetPos) this.cameraDirector.begin(o.shooterPos, o.targetPos);
         if (this.mode === 'off') return;
         const key = o.units.map(u => u.id).join(',');
         if (this.mode === 'first' && this.shownThisTurn.has(key)) return;
@@ -54,7 +55,6 @@ export class CutInDirector {
             figures.appendChild(fig);
         });
         this.root.appendChild(el);
-        if (o.shooterPos && o.targetPos) this.cameraDirector.begin(o.shooterPos, o.targetPos);
         this.cameraDirector.hidden = new Set(o.units.map(u => u.id));
         document.body.classList.add('cutin-active');
         const cur = { timeline, t: 0, el };
@@ -79,7 +79,7 @@ export class CutInDirector {
             };
             requestAnimationFrame(step);
         });
-        this.cameraDirector.end();
+        // Keep the action camera through tracer/skill playback; EventPlayer returns to tactics when the queue drains.
         this.cameraDirector.hidden = new Set();
         document.body.classList.remove('cutin-active');
         el.remove();

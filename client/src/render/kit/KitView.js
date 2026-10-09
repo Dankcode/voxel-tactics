@@ -21,7 +21,7 @@ import { buildRoofGeometry } from './RoofBuilder.js';
 
 export const MODERN_WALLS = new Set(['stucco', 'brick', 'concrete_wall', 'siding']);
 const WALLS = new Set(['stone', 'plaster', 'timber', ...MODERN_WALLS]);
-const WALL_LIKE = new Set([...WALLS, 'city_wall', 'glass', 'door', 'door_open', 'lantern']);
+const WALL_LIKE = new Set([...WALLS, 'city_wall', 'glass', 'door', 'door_locked', 'door_open', 'lantern']);
 const FURNITURE = new Set(['sofa', 'cabinet', 'bed', 'desk', 'appliance', 'shelving', 'pallet']);
 const PROPS = new Set(['planter', 'privacy_fence', 'chainlink', 'jersey', 'bench', 'bin', 'pump']);
 const OBJECTS = new Set(['car_body', 'car_cabin', 'container', 'dumpster']);
@@ -43,7 +43,7 @@ export function kitHandler(store, x, y, z, id = store.get(x, y, z)) {
     if (OBJECTS.has(k)) return 'object';
     switch (k) {
         case 'glass': return 'window';
-        case 'door': case 'door_open': return 'door';
+        case 'door': case 'door_locked': case 'door_open': return 'door';
         case 'stairs_wood': case 'stairs_stone': return 'stairs';
         case 'roof': return 'roof';
         case 'crate': return 'crate';
@@ -108,7 +108,7 @@ export class KitView {
             q.setFromAxisAngle(up, yaw); s.set(scale * sx, scale, scale * sz); p.set(x + 0.5 + dx, z + dz, y + 0.5 + dy);
             m4.compose(p, q, s);
             const fog = opts.tint?.(Math.round(x), Math.round(y), z) || null;
-            const shade = WALLS.has(selfKey) || ['glass', 'door', 'door_open'].includes(selfKey) ? 1 : 0.97 + hash(x, y, z) * 0.04;
+            const shade = WALLS.has(selfKey) || ['glass', 'door', 'door_locked', 'door_open'].includes(selfKey) ? 1 : 0.97 + hash(x, y, z) * 0.04;
             parts.forEach((part, i) => {
                 const k = `${piece}|${i}|${part.slot === 'self' || part.slot === 'barrel' ? selfKey : ''}`;
                 let e = inst.get(k);
@@ -214,7 +214,7 @@ export class KitView {
                 break;
             }
             case 'door': {
-                const isDoor = kk => kk === 'door' || kk === 'door_open';
+                const isDoor = kk => kk === 'door' || kk === 'door_locked' || kk === 'door_open';
                 const lower = !isDoor(keyOf(store.get(x, y, z - 1)));
                 const open = k === 'door_open';
                 const wall = neighbourWall(store, x, y, z) || 'plaster';

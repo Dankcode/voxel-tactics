@@ -1,7 +1,6 @@
 # PLAN-02 — From one picture to a playable multi-storey map
 
-Status: **draft for approval** (2026-10-08). Nothing in this plan is implemented yet. Follows the plan → approve →
-implement workflow: Codex (or Claude, if Leon asks) implements only the approved steps, test first.
+Status: **first playable authoring implementation** (2026-10-09). See [MAPGEN.md](MAPGEN.md) for the working screenshot/reference compiler, exact voxel slate, validation, installation and regression command. Cedar Close is one recorded test reference, not the default design for all missions. The multi-storey WFC and floor-concept-art stages below remain future work.
 
 ## 1. Goal
 

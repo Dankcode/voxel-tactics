@@ -199,7 +199,7 @@ export function buildModern(store, spec, ctx) {
     const L = (iu, iv) => toWorld(iu + 1, iv + 1);
     const wallSet = new Set([...plan.walls].map(c => { const [iu, iv] = c.split(',').map(Number); return k2(...L(iu, iv)); }));
     const roomsW = plan.rooms.map(r => ({ ...r, cells: r.cells.map(([iu, iv]) => L(iu, iv)) }));
-    const doorsW = plan.doors.map(dr => { const [x, y] = L(dr.iu, dr.iv); return { x, y, open: dr.open, a: dr.a, b: dr.b }; });
+    const doorsW = plan.doors.map(dr => { const [x, y] = L(dr.iu, dr.iv); return { x, y, open: dr.open, locked: dr.locked, a: dr.a, b: dr.b }; });
     const floorCells = [];
     for (let y = y0 + 1; y < y0 + d - 1; y++) for (let x = x0 + 1; x < x0 + w - 1; x++) if (!wallSet.has(k2(x, y)) || doorsW.some(dr => dr.x === x && dr.y === y)) floorCells.push([x, y]);
     for (const dr of doorsW) wallSet.delete(k2(dr.x, dr.y));
@@ -217,13 +217,13 @@ export function buildModern(store, spec, ctx) {
         const fz = baseZ + STOREY * s;
         for (const c of wallSet) { const [x, y] = c.split(',').map(Number); for (let h = 1; h < STOREY; h++) store.set(x, y, fz + h, MAT[wallKey]); }
         for (const dr of doorsW) {
-            for (let h = 1; h < STOREY; h++) store.set(dr.x, dr.y, fz + h, dr.open ? AIR : MAT.door);
-            result.doors.push({ x: dr.x, y: dr.y, z: fz, storey: s, exterior: false, open: dr.open });
+            for (let h = 1; h < STOREY; h++) store.set(dr.x, dr.y, fz + h, dr.locked ? MAT.door_locked : dr.open ? AIR : MAT.door);
+            result.doors.push({ x: dr.x, y: dr.y, z: fz, storey: s, exterior: false, open: dr.open, locked: !!dr.locked });
         }
         const recs = roomsW.map(room => {
             const kind = s > 0 && prog.upper ? (prog.upper[room.kind] || room.kind) : room.kind;
             const id = ctx.nextRoomId();
-            const rec = { id, buildingId: spec.id, storey: s, kind, cells: room.cells, floorZ: fz, lit: spec.lighting?.[kind] ?? spec.lit ?? !(prog.dim || []).includes(kind), doors: [] };
+            const rec = { id, buildingId: spec.id, storey: s, kind, gameplay: room.gameplay, cells: room.cells, floorZ: fz, lit: spec.lighting?.[kind] ?? spec.lit ?? !(prog.dim || []).includes(kind), doors: [] };
             for (const [x, y] of room.cells) {
                 for (let h = 1; h < STOREY; h++) store.rooms[store.index(x, y, fz + h)] = id;
                 if (WET.has(kind)) store.set(x, y, fz, MAT[prog.wet || 'ceramic']);
@@ -244,7 +244,9 @@ export function buildModern(store, spec, ctx) {
     }
 
     // 4. Stairs between storeys (and to the roof when asked).
-    const floorSet = new Set(floorCells.map(([x, y]) => k2(x, y)));
+    const inactive = new Set(roomsW.filter(r => !r.gameplay).flatMap(r => r.cells.map(c => k2(...c))));
+    for (const dr of doorsW) if (dr.locked) inactive.add(k2(dr.x, dr.y));
+    const floorSet = new Set(floorCells.filter(c => !inactive.has(k2(...c))).map(([x, y]) => k2(x, y)));
     const frontOf = (x, y) => Object.values(SIDES).map(([dx, dy]) => k2(x + dx, y + dy)).filter(k => floorSet.has(k));
     const reserved = new Set([...doorsW.flatMap(dr => [k2(dr.x, dr.y), ...frontOf(dr.x, dr.y)]), ...exterior.flatMap(e => frontOf(e.x, e.y))]);
     const roofAccess = spec.roofAccess ?? prog.roofAccess ?? false;
@@ -253,7 +255,7 @@ export function buildModern(store, spec, ctx) {
     const stairCells = new Set();
     for (let s = 0; s < runs; s++) {
         const fz = baseZ + STOREY * s;
-        const run = placeStairRun(floorSet, reserved, stairCells, fz, [...stairRooms, ...roomsW, { cells: floorCells }], rng);
+        const run = placeStairRun(floorSet, reserved, stairCells, fz, [...stairRooms, ...roomsW].filter(r => r.gameplay).concat({ cells: floorCells.filter(c => floorSet.has(k2(...c))) }), rng);
         if (!run) break;
         run.cells.forEach((c, i) => { for (let z = fz + 1; z <= fz + 1 + i; z++) store.set(c.x, c.y, z, MAT.stairs_stone); });
         for (const c of [run.before, run.cells[0], run.cells[1]]) store.set(c.x, c.y, fz + STOREY, AIR);
@@ -277,7 +279,7 @@ export function buildModern(store, spec, ctx) {
                 const room = roomOfCell.get(inner);
                 const kind = room ? (s > 0 && prog.upper ? (prog.upper[room.kind] || room.kind) : room.kind) : null;
                 const ok = room && !wallSet.has(inner) && !doorNear(x, y) && !stairCells.has(inner) && store.get(x, y, fz + 1) === MAT[wallKey];
-                const g = ok ? (spec.glaze?.[kind] || GLAZE[kind] || 'punched') : null;
+                const g = ok && room?.gameplay !== false ? (spec.glaze?.[kind] || GLAZE[kind] || 'punched') : null;
                 if (!g) { cur = null; continue; }
                 if (!cur || cur.g !== g) runs.push(cur = { g, cells: [] });
                 cur.cells.push([x, y]);
@@ -383,7 +385,7 @@ export function planRows(IW, ID, prog, spec = {}) {
         row.rooms.forEach((rm, k) => {
             const u0 = u, u1 = u + us[k] - 1, cells = [];
             for (let vv = v0; vv <= v1; vv++) for (let uu = u0; uu <= u1; uu++) { cells.push([uu, vv]); cellRoom.set(k2(uu, vv), rooms.length); }
-            rooms.push({ kind: rm.kind, u0, u1, v0, v1, cells, row: ri, col: k });
+            rooms.push({ kind: rm.kind, gameplay: spec.gameplayRooms?.includes(rm.kind) || (rm.gameplay !== false && !spec.closedRooms?.includes(rm.kind) && !['bathroom', 'bath', 'restroom', 'utility'].includes(rm.kind)), u0, u1, v0, v1, cells, row: ri, col: k });
             u = u1 + 1;
             if (k < row.rooms.length - 1) { for (let vv = v0; vv <= v1; vv++) walls.add(k2(u, vv)); u++; }
         });
@@ -420,6 +422,7 @@ export function planRows(IW, ID, prog, spec = {}) {
     const hub = new Set(['living', 'sales', 'dining', 'lobby', 'hall', 'loading', 'open_office', 'warehouse', 'workshop']);
     const addExit = (room, side, entry = false) => {
         const r = rooms[room];
+        if (!r.gameplay) return false;
         let u, v;
         const along = (a0, a1, t) => Math.max(a0, Math.min(a1, Math.round(a0 + (a1 - a0) * t)));
         if (side === 'front') { if (r.v0 !== 0) return false; u = along(r.u0, r.u1, entry ? (spec.entryAt ?? 0.5) : 0.5) + 1; v = 0; }
@@ -433,7 +436,9 @@ export function planRows(IW, ID, prog, spec = {}) {
     };
     if (prog.unitsPerFront) rooms.forEach((r, i) => { if (r.kind === 'unit') addExit(i, 'front', i === 0); });
     else {
-        const entryRoom = Math.max(0, rooms.findIndex(r => r.kind === prog.entry && r.v0 === 0));
+        const preferredEntry = rooms.findIndex(r => r.gameplay && r.kind === prog.entry && r.v0 === 0);
+        const entryRoom = preferredEntry >= 0 ? preferredEntry : rooms.findIndex(r => r.gameplay && r.v0 === 0);
+        if (entryRoom < 0) throw new Error('Building needs a playable front entry');
         addExit(entryRoom, 'front', true);
         for (const kind of prog.back || []) { const i = rooms.findIndex(r => r.kind === kind && r.v1 === ID - 1); if (i >= 0 && addExit(i, 'back')) break; }
         for (const kind of prog.side || []) {
@@ -443,13 +448,13 @@ export function planRows(IW, ID, prog, spec = {}) {
     }
     // Spanning tree from rooms with exits, open-plan pairs and hubs first; then loops for breaching.
     const reached = new Set(exits.map(e => e.room));
-    const plist = [...pairs.values()].sort((p, q) => score(q) - score(p));
+    const plist = [...pairs.values()].filter(p => rooms[p.a].gameplay && rooms[p.b].gameplay).sort((p, q) => score(q) - score(p));
     function score(p) { return (openPair(p.a, p.b) ? 10 : 0) + (hub.has(rooms[p.a].kind) || hub.has(rooms[p.b].kind) ? 5 : 0) + Math.min(4, p.cells.length) * 0.1; }
     if (!reached.size) reached.add(0);
-    for (let guard = 0; guard < 64 && reached.size < rooms.length; guard++) {
+    for (let guard = 0; guard < 64 && reached.size < rooms.filter(r => r.gameplay).length; guard++) {
         const p = plist.find(p => !linked.has(`${p.a}|${p.b}`) && reached.has(p.a) !== reached.has(p.b));
         if (!p) { // a room no partition reaches (motel units): it has its own exit
-            const lone = rooms.findIndex((_, i) => !reached.has(i));
+            const lone = rooms.findIndex((r, i) => r.gameplay && !reached.has(i));
             if (lone < 0) break;
             reached.add(lone); continue;
         }
@@ -462,6 +467,14 @@ export function planRows(IW, ID, prog, spec = {}) {
         if (rooms[p.a].kind === 'bath' && rooms[p.b].kind === 'bath') continue;
         addDoor(p);
     }
+    // Decorative rooms get a closed, locked door; they never form a route or a second entrance.
+    rooms.forEach((r, i) => {
+        if (r.gameplay) return;
+        const pair = [...pairs.values()].find(p => (p.a === i && rooms[p.b].gameplay) || (p.b === i && rooms[p.a].gameplay));
+        if (!pair) return;
+        const [iu, iv] = pair.cells[Math.floor(pair.cells.length / 2)];
+        doors.push({ iu, iv, a: pair.a, b: pair.b, open: false, locked: true });
+    });
     // Doors may not sit on a partition junction (a wall cell touching 3+ wall cells) — slide along the wall.
     for (const dr of doors) {
         const n = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([du, dv]) => walls.has(k2(dr.iu + du, dr.iv + dv))).length;
@@ -516,6 +529,7 @@ function furnish(store, { floorSet, rooms, fz, keepFree, obstacles, rng, hints, 
     const blocked = new Set(obstacles);
     let parts = components(floorSet, blocked);
     for (const room of rooms) {
+        if (room.gameplay === false) continue;
         const roomSet = new Set(room.cells.map(([x, y]) => k2(x, y)));
         const isFree = (x, y) => roomSet.has(k2(x, y)) && !keepFree.has(k2(x, y)) && !blocked.has(k2(x, y)) && store.get(x, y, fz + 1) === AIR;
         const wallAt = (x, y) => !roomSet.has(k2(x, y)) && store.isSolid(x, y, fz + 1) && store.get(x, y, fz + 1) !== MAT.door;

@@ -707,6 +707,7 @@ export class Battle {
     doAbility(u, intent) {
         const a = ABILITIES[intent.abilityId];
         u.will -= a.wp; u.ap -= a.ap;
+        if (a.id !== 'suppress') this.emit({ t: 'cutin', unitId: u.id, kind: 'skill', abilityId: a.id, targetIds: [] });
         this.emit({ t: 'ability', unitId: u.id, abilityId: a.id });
         switch (a.id) {
             case 'dash': u.moveOnlyAp += 1; break;
@@ -746,7 +747,7 @@ export class Battle {
         const mine = this.roomOf(u);
         for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
             const r = this.store.roomAt(d.x + dx, d.y + dy, d.z + 1);
-            if (r >= 0 && r !== mine) return r;
+            if (r >= 0 && r !== mine && this.mission.rooms[r]?.gameplay !== false) return r;
         }
         return -1;
     }

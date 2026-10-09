@@ -88,6 +88,6 @@ export function buildProvingGrounds({ seed = 1 } = {}) {
     return m.finish({
         name: 'Training Facility', spawns,
         objective: { kind: 'eliminate', text: 'Live-fire exercise: eliminate all hostiles.' },
-        meta: { kind: 'proving-grounds', theme: 'Training', defaultCut: 4, coverProps: cover.placed.length }
+        meta: { kind: 'proving-grounds', lighting: 'overcast', theme: 'Training', defaultCut: 4, coverProps: cover.placed.length }
     });
 }

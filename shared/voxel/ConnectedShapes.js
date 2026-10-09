@@ -3,7 +3,7 @@
 import { materialById } from './Materials.js';
 export const WALL_THICKNESS = 0.4;
 export const WALL_KEYS = new Set(['stone', 'plaster', 'timber', 'stucco', 'brick', 'concrete_wall', 'siding']);
-const OPENINGS = new Set(['glass', 'door', 'door_open', 'lantern']);
+const OPENINGS = new Set(['glass', 'door', 'door_open', 'door_locked', 'lantern']);
 export const CONNECTION_DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]]; // E S W N
 const keyAt = (s, x, y, z) => materialById(s.get(x, y, z)).key;
 export const wallLike = key => WALL_KEYS.has(key) || OPENINGS.has(key);
@@ -90,7 +90,7 @@ export function collisionFootprint(store, x, y, z) {
     const band = BANDS[key];
     if (band) return bandFootprint(bandMask(store, x, y, z, band.family), band.thickness, band.radius);
     if (WALL_KEYS.has(key)) return wallFootprint(wallMask(store, x, y, z));
-    if (key === 'glass' || key === 'door') {
+    if (key === 'glass' || key === 'door' || key === 'door_locked') {
         const t = key === 'glass' ? 0.1 : 0.08, a = (1-t)/2, b=1-a;
         return openingAxis(store,x,y,z) === 'x' ? [[0,a],[1,a],[1,b],[0,b]] : [[a,0],[b,0],[b,1],[a,1]];
     }

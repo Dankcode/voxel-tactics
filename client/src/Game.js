@@ -65,6 +65,7 @@ export class Game {
 
     // ------------------------------------------------------------------ lifecycle
     async start(session) {
+        this.cameraDirector.end();
         this.session = session;
         this.battle = session.battle;
         this.voxelView?.dispose();
@@ -74,6 +75,7 @@ export class Game {
         const store = this.battle.store;
         await this.libraryReady;
         this.scene.setBounds(store.width, store.depth, store.height);
+        this.scene.setMission(this.battle.mission);
         this.voxelView = new VoxelView(this.scene, store, this.library, this.options.kit === false ? null : this.kit);
         this.voxelView.tint = (x, y, z) => {
             const r = store.roomAt(x, y, z) >= 0 ? store.roomAt(x, y, z) : store.roomAt(x, y, z + 1);
@@ -100,7 +102,7 @@ export class Game {
         this.debug.onStart();
         this.levelLocked = false;
         // Each map has a time of day (Main Street at dusk, the docks at night) unless the player picked one.
-        if (!this.options.lighting) this.scene.setLighting(this.battle.mission.meta?.lighting || 'day');
+        if (!this.options.lighting) this.scene.setLighting(this.battle.mission.meta?.timeOfDay || this.battle.mission.meta?.lighting || 'day');
         this.setLevel(this.battle.mission.meta?.defaultCut ?? Infinity);
         if (this.battle.mission.meta?.theme === 'modern') {
             this.scene.viewHeight = 34;
@@ -124,6 +126,7 @@ export class Game {
         this.time += dt;
         this.handleKeysHeld(dt);
         const yaw = this.scene.yaw;
+        this.cameraDirector.update(dt);
         const cine = this.cameraDirector.active;
         for (const v of this.views.values()) {
             v.update(dt, cine ? Math.atan2(this.cameraDirector.cam.position.x - v.pos.x, this.cameraDirector.cam.position.z - v.pos.z) : yaw);
@@ -216,6 +219,7 @@ export class Game {
         if (glide && this.options.followCamera) this.scene.glideTo(t, 5); else { this.scene.glide = null; this.scene.target.copy(t); }
     }
     setMode(m) {
+        if (this.cameraDirector.phase === 'prepare') this.cameraDirector.end();
         this.mode = m; this.targetInfo = null;
         this.overlays.clearAim();
         this.overlays.clearPath();
@@ -603,6 +607,7 @@ export class Game {
             const cover = coverAgainst(this.battle.store, target.x, target.y, target.z, u.x, u.y);
             this.targetInfo = { key, target, part, byPart, anyHit: any, blocked, friendly, spread, mods, muzzle, lean, distance, cover, flanked: cover === COVER.NONE, ap: this.mode.suppress ? ABILITIES.suppress.ap : this.battle.shotAp(u, w), inRange: distance <= w.maxRange };
         }
+        this.cameraDirector.prepare(new THREE.Vector3(u.x+0.5,u.z+1,u.y+0.5), new THREE.Vector3(target.x+0.5,target.z+1,target.y+0.5));
         this.targetInfo.part = part;
         this.overlays.showCone(this.targetInfo.muzzle, partCentre(target, part), this.targetInfo.spread);
         if (frame && this.options.followCamera) this.scene.glideTo(new THREE.Vector3((u.x + target.x) / 2 + 0.5, (u.z + target.z) / 2 + 1, (u.y + target.y) / 2 + 0.5), 4);

@@ -86,11 +86,11 @@ export function measureMission(mission, { search = null, gates = DEFAULT_GATES }
     }
     // Rooms with two or more ways in.
     const doorsPerRoom = new Map();
-    for (const b of mission.buildings || []) for (const d of b.doors) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    for (const b of mission.buildings || []) for (const d of b.doors.filter(d => !d.locked)) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         const r = store.roomAt(d.x + dx, d.y + dy, d.z + 1);
         if (r >= 0) doorsPerRoom.set(r, (doorsPerRoom.get(r) || 0) + 1);
     }
-    const rooms = mission.rooms || [];
+    const rooms = (mission.rooms || []).filter(r => r.gameplay !== false);
     const breachability = rooms.length ? rooms.filter(r => (doorsPerRoom.get(r.id) || 0) >= 2).length / rooms.length : 1;
     // Spawn safety.
     let spawnSafe = 1, firstContact = Infinity;

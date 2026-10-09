@@ -121,6 +121,9 @@ def('tile_dark', { label: 'Floor tiles', element: ELEMENTS.STRUCTURE, color: 0x5
 // Ice over deep water remembers its depth: it melts back into deep water, not a wadeable shallow.
 def('deep_ice', { label: 'Ice (over deep water)', element: ELEMENTS.CRYO, color: 0xbfe6f7, hp: 2, moveCost: 1.4, meltTo: 'deep_water', render: 'glass', opaque: false, family: 'ice' });
 
+// Locked background-room doors cannot be opened or destroyed into accidental gameplay routes.
+def('door_locked', { label: 'Locked service-room door', color: 0x666b70, hp: Infinity, family: 'metal', walkable: false, structural: false });
+
 export const MATERIALS = Object.freeze(M);
 export const MAT = Object.freeze(Object.fromEntries(M.map(m => [m.key, m.id])));
 export const materialById = id => M[id] || M[0];

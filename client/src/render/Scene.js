@@ -7,10 +7,13 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { missionBackdrop } from './MissionBackdrop.js';
 import { CameraRig } from './CameraRig.js';
 
 /** Lighting presets (debug panel can switch them). */
 export const LIGHTING = {
+    dawn: { sun: 0xffd4ad, sunI: 1.9, sky: 0x98b7ce, ground: 0x454b4f, hemiI: 0.8, env: 0.3, exposure: 1.05, bgTop: '#455a70', bgBottom: '#b6afb0', fog: 0x7a8c9a, sunDir: [0.85, 0.35, -0.4] },
+    overcast: { sun: 0xdce7ee, sunI: 1.3, sky: 0xb0c0cc, ground: 0x505b62, hemiI: 1.1, env: 0.3, exposure: 1, bgTop: '#596b79', bgBottom: '#96a5ae', fog: 0x798c98, sunDir: [-0.4, 1, -0.3] },
     day: { sun: 0xfff0d8, sunI: 2.6, sky: 0xc9dcf2, ground: 0x5a4c3a, hemiI: 0.9, env: 0.35, exposure: 1.0, bgTop: '#0d151d', bgBottom: '#2b3843', fog: 0x1b252e, sunDir: [-0.55, 1, -0.35] },
     dusk: { sun: 0xffb27a, sunI: 2.2, sky: 0x7f8fb8, ground: 0x3a2e2a, hemiI: 0.7, env: 0.25, exposure: 1.05, bgTop: '#2c3550', bgBottom: '#c98a63', fog: 0x6d6a78, sunDir: [-0.9, 0.45, -0.2] },
     night: { sun: 0x9fb4ff, sunI: 0.9, sky: 0x31406b, ground: 0x15161c, hemiI: 0.55, env: 0.15, exposure: 1.25, bgTop: '#070b16', bgBottom: '#1b2438', fog: 0x111725, sunDir: [-0.4, 1, 0.5] }
@@ -49,7 +52,7 @@ export class Scene {
         window.addEventListener('resize', () => this.resize());
     }
     // ---- camera state lives on the rig; these keep the old Scene API (target, yaw, glide, shake, viewHeight).
-    get camera() { return this.rig.camera; }
+    get camera() { return this.actionCamera || this.rig.camera; }
     get target() { return this.rig.target; }
     get yaw() { return this.rig.yaw; }
     get yawTarget() { return this.rig.yawTarget; }
@@ -88,11 +91,18 @@ export class Scene {
         this.hemi.color.set(L.sky); this.hemi.groundColor.set(L.ground); this.hemi.intensity = L.hemiI;
         this.scene.environmentIntensity = L.env;
         this.renderer.toneMappingExposure = L.exposure;
+        this.scene.background?.dispose();
         this.scene.background = gradientTexture(L.bgTop, L.bgBottom);
-        this.scene.fog = new THREE.Fog(L.fog, 160, 320);
+        this.scene.fog = new THREE.Fog(L.fog, 45, 145);
         this.sunDir = new THREE.Vector3(...L.sunDir).normalize();
         this.back.intensity = (L.backI ?? 0.55);
         this.placeSun();
+    }
+    setMission(mission) {
+        this.backdrop?.userData.dispose();
+        if (this.backdrop) this.scene.remove(this.backdrop);
+        this.backdrop = missionBackdrop(this.bounds.w, this.bounds.d, mission.id);
+        this.scene.add(this.backdrop);
     }
     /** Fit the sun's shadow camera to the battlefield. */
     setBounds(w, d, h) {

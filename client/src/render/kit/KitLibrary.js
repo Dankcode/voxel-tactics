@@ -4,6 +4,8 @@
 // Slots on wall-like pieces use WORLD-SPACE UVs (computed in the vertex shader from the instance's world position
 // and normal), so a wall made of a dozen instanced pieces reads as one continuous surface of stone or plaster.
 import * as THREE from 'three';
+import { materialByKey } from '../../../../shared/voxel/Materials.js';
+import { CONTINUOUS_SURFACES, surfaceFinish } from '../SurfaceFinish.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { buildAllPieces } from './KitPieces.js';
 import { RENDER, FALLBACK } from '../RenderTable.js';
@@ -107,10 +109,11 @@ export class KitLibrary {
         let m = this.cache.get(key);
         if (m) return m;
         const r = def.tex === 'self' ? (RENDER[selfKey] || FALLBACK) : {};
-        const map = texName ? this.mats.tex(texName, false) : null, normalMap = texName ? this.mats.tex(texName, true) : null;
+        const continuous = def.tex === 'self' && CONTINUOUS_SURFACES.has(selfKey);
+        const map = !continuous && texName ? this.mats.tex(texName, false) : null, normalMap = !continuous && texName ? this.mats.tex(texName, true) : null;
         const opacity = def.opacity ?? 1;
         m = new THREE.MeshStandardMaterial({
-            map, normalMap, color: def.color ?? r.tint ?? 0xffffff,
+            map, normalMap, color: continuous ? materialByKey(selfKey).color : def.color ?? r.tint ?? 0xffffff,
             roughness: def.rough ?? r.rough ?? 0.9, metalness: def.metal ?? r.metal ?? 0,
             emissive: def.emissive ?? 0x000000, emissiveIntensity: def.emissiveIntensity ?? 0,
             transparent: opacity < 1, opacity, depthWrite: opacity >= 1,
@@ -119,6 +122,7 @@ export class KitLibrary {
         });
         if (r.brightness) m.color.multiplyScalar(r.brightness);
         if (def.uv === 'world') worldUv(m, def.scale ?? r.scale ?? 2);
+        if (continuous) surfaceFinish(m);
         this.cache.set(key, m);
         return m;
     }

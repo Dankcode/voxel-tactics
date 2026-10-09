@@ -9,17 +9,20 @@ XCOM-style breach. Code: `Battle.doMove` / `openDoorsOnStep` / `doDoor` / `revea
 - `ModernBuilder.buildModern` writes a room id into `VoxelStore.rooms` for the air voxels at floor + 1 and floor + 2
   of every room cell, per storey. Partitions and doorway cells belong to no room (−1); outdoors is −1.
 - A unit's room is the room id at its z + 1 (`Battle.roomOf`). Room records live in `mission.rooms`:
-  `{ id, buildingId, storey, kind, cells, floorZ, lit, doors }`.
+  `{ id, buildingId, storey, kind, gameplay, cells, floorZ, lit, doors }`.
 - Warehouse rooms default to dim; other rooms default to lit. Specs can override lighting by room kind or for
   the whole building ([03](03-cover-and-sight.md#other-modifiers-tied-to-position)).
 - Building layout (programs, partitions, door placement so most rooms have two ways in, glazing, furniture with a
   connectivity guard, stairs) is described in `docs/LEVELS.md` and [11](11-maps-and-level-design.md).
+
+Bathrooms, baths, restrooms and utility rooms default to `gameplay: false`. Their doors remain locked, they have no exterior glazing or exits, and they are excluded from stairs, enemy room spawns, furnishing connectivity and breach targets. `gameplayRooms` explicitly promotes a kind for an objective; `closedRooms` closes additional unused kinds. Combat-room connectivity and metrics count playable rooms only. Surrounding walls retain normal elemental destruction rules.
 
 ## Doors
 
 | Material | Movement | Sight | Bullets | Cover readout |
 |---|---|---|---|---|
 | `door` (closed) | walk through; opens for free when stepped into | blocks | blocks (hp 4, flammable) | counts (0.08 pane) |
+| `door_locked` | blocked; cannot open or breach | blocks | blocks (permanent door) | counts (0.08 pane) |
 | `door_open` | walk through | passes | passes | none |
 
 - Doors fill floor + 1 and floor + 2 of the doorway cell. Interior doors are placed on partitions (a spanning tree

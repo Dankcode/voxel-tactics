@@ -58,6 +58,6 @@ export function buildRoute9({ seed = 1 } = {}) {
     return m.finish({
         name: 'Route 9 Stop', spawns,
         objective: { kind: 'eliminate', text: 'Syndicate couriers are holed up at the motel. Mind the fuel pumps.' },
-        meta: { kind: 'roadside', theme: 'Roadside', defaultCut: 4, coverProps: cover.placed.length, lighting: 'dusk' }
+        meta: { kind: 'roadside', theme: 'Roadside', defaultCut: 4, coverProps: cover.placed.length, lighting: 'dawn' }
     });
 }

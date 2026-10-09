@@ -31,7 +31,7 @@ export function finalizeMission({ id, name, store, rooms, buildings, spawns, rng
         else if (spec.at) { const s = store.surfaceNear(spec.at.x, spec.at.y, spec.at.z ?? Infinity); pos = s ? { x: spec.at.x, y: spec.at.y, z: s.z } : null; }
         else if (spec.room) {
             const b = buildings.find(b => b.id === spec.room.building);
-            const list = b?.rooms.filter(r => r.storey === (spec.room.storey ?? 0)) || [];
+            const list = b?.rooms.filter(r => r.gameplay !== false && r.storey === (spec.room.storey ?? 0)) || [];
             const room = spec.room.kind ? list.find(r => r.kind === spec.room.kind) : list[(spec.room.index ?? 0) % Math.max(1, list.length)];
             if (room) {
                 const cells = rng.shuffle(room.cells.map(([x, y]) => ({ x, y, z: room.floorZ })));

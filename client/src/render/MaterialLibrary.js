@@ -1,8 +1,10 @@
 // Loads the PBR voxel textures (albedo + normal) and builds one MeshStandardMaterial per render key.
 // Textures: client/public/assets/textures/pbr/ (tools/art/make_textures.py). Tuning lives in RenderTable.js.
 import * as THREE from 'three';
+import { materialByKey } from '../../../shared/voxel/Materials.js';
 import { RENDER, FALLBACK } from './RenderTable.js';
 
+import { CONTINUOUS_SURFACES, surfaceFinish } from './SurfaceFinish.js';
 import { QUALITY } from './Quality.js';
 
 const BASE = QUALITY.textures;
@@ -42,10 +44,11 @@ export class MaterialLibrary {
         if (m) return m;
         const r = RENDER[key] || FALLBACK;
         const kind = r.kind || 'opaque';
-        const map = this.tex(r.tex, false), normalMap = this.tex(r.tex, true);
+        const continuous = CONTINUOUS_SURFACES.has(key);
+        const map = continuous ? null : this.tex(r.tex, false), normalMap = continuous ? null : this.tex(r.tex, true);
         m = new THREE.MeshStandardMaterial({
             map, normalMap, vertexColors: true,
-            color: r.tint ?? 0xffffff, roughness: r.rough ?? 0.9, metalness: r.metal ?? 0,
+            color: continuous ? materialByKey(key).color : r.tint ?? 0xffffff, roughness: r.rough ?? 0.9, metalness: r.metal ?? 0,
             normalScale: new THREE.Vector2((r.normal ?? 1) * QUALITY.normalScale, (r.normal ?? 1) * QUALITY.normalScale),
             emissive: r.emissive ?? 0x000000, emissiveIntensity: r.emissiveIntensity ?? 0,
             clippingPlanes: this.clipping, clipShadows: true,
@@ -54,7 +57,7 @@ export class MaterialLibrary {
             depthWrite: kind === 'opaque' || (r.opacity ?? 1) >= 1
         });
         if (r.brightness) m.color.multiplyScalar(r.brightness);
-        if (kind === 'opaque') heightCues(m);
+        if (kind === 'opaque') { heightCues(m); if (continuous) surfaceFinish(m); }
         if (r.emissive && map) m.emissiveMap = map;
         if (kind === 'water') {
             // Water scrolls its normal map; keep its own clone so other keys sharing the texture don't scroll.

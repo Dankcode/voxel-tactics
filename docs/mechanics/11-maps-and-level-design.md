@@ -16,11 +16,12 @@ Measured on seed 1:
 <!-- generated:maps -->
 | id | name | theme | size W×D×H | buildings | rooms | enemies | pods | lighting | cover density | cover gap | killing field | sightline median | lanes | breachability | spawn safe | gates (seed 1) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `cedar-close` | Cedar Close | Suburbs | 48×40×12 | 2 | 10 | 7 | 4 | day | 49% | 4 | 5 | 6.5 | 4 | 100% | yes | PASS |
-| `main-street` | Main Street | Downtown | 52×42×14 | 4 | 18 | 8 | 4 | dusk | 51% | 5 | 5 | 7.3 | 4 | 94% | yes | PASS |
+| `cedar-image` | Cedar Close · Image Study | Suburbs | 48×40×12 | 2 | 8 | 4 | 2 | dusk | 47% | 4 | 4 | 9.1 | 4 | 100% | yes | PASS |
+| `cedar-close` | Cedar Close | Suburbs | 48×40×12 | 2 | 8 | 7 | 4 | day | 48% | 4 | 5 | 6.3 | 4 | 100% | yes | PASS |
+| `main-street` | Main Street | Downtown | 52×42×14 | 4 | 17 | 8 | 4 | dusk | 49% | 4 | 6 | 8.4 | 4 | 94% | yes | PASS |
 | `harbor-yard` | Harbor Yard | Industrial | 54×44×14 | 2 | 5 | 8 | 4 | night | 36% | 5 | 5 | 6.8 | 2 | 100% | yes | PASS |
-| `route-9` | Route 9 Stop | Roadside | 52×42×12 | 2 | 11 | 7 | 4 | dusk | 38% | 5 | 5 | 10.3 | 4 | 64% | yes | PASS |
-| `proving-grounds` | Training Facility | Training | 60×46×16 | 4 | 19 | 9 | 5 | day | 40% | 6 | 5 | 7.4 | 4 | 89% | yes | PASS |
+| `route-9` | Route 9 Stop | Roadside | 52×42×12 | 2 | 6 | 7 | 4 | dawn | 36% | 5 | 5 | 10.5 | 4 | 100% | yes | PASS |
+| `proving-grounds` | Training Facility | Training | 60×46×16 | 4 | 17 | 9 | 5 | overcast | 40% | 5 | 5 | 8.2 | 4 | 76% | yes | PASS |
 <!-- /generated:maps -->
 
 Every map uses the `eliminate` objective and the Syndicate. `lighting` and `defaultCut` (storey cutaway 4) in
@@ -174,3 +175,11 @@ Also reported, not gated: `reachableTiles`, `interiorShare`, `firstContact` (clo
 
 These differ from PLAN-01 §13.1 (cover 25–45 %, killing field ≤ 12, sightline median 10–18, ≥ 3 lanes,
 breachability ≥ 70 %, first contact 12–20); the code's `DEFAULT_GATES` are authoritative.
+
+## Reference maps and visual presentation
+
+[MAPGEN.md](../MAPGEN.md) describes image analysis, combat-flow adaptation, exact integer slates and offline packages. Each slate cell corresponds to one voxel; material boundaries, locked rooms and routes use those coordinates directly. Floors, roads, lawns and plaster use flat material colors with continuous world-space grain, including instanced wall pieces; they keep the destructible voxel matrix underneath.
+
+Mission metadata `timeOfDay` selects day, dawn, dusk, overcast or night. Route 9 starts at dawn, Harbor Yard at night, and Training Facility under overcast light. A visual neighborhood backdrop and distance haze frame the battlefield without adding gameplay collision or cover.
+
+Preparing a shot activates a close shoulder camera; committing shooting or a skill activates a lower, tighter back-shot camera through action playback. The camera checks voxel occupancy and the shoulder-to-lens ray, tries both shoulders, and returns to the tactical camera on cancellation or playback completion. Picking and target projections use the active camera. Character cut-in art can be disabled independently of these action angles.

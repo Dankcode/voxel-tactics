@@ -117,6 +117,7 @@ anything else that stops bullets.
 | 78 | `carpet` | Carpet | 5 | yes | yes | block | yes | 1 | — | yes | — | burn→ash | yes | wood | structure | cover (1) | — |
 | 79 | `tile_dark` | Floor tiles | 7 | yes | yes | block | yes | 1 | — | — | — | — | yes | stone | structure | cover (1) | — |
 | 80 | `deep_ice` | Ice (over deep water) | 2 | yes | — | block | yes | 1.4 | — | — | — | melt→deep_water | yes | ice | cryo | cover (1) | liquid shoreline |
+| 81 | `door_locked` | Locked service-room door | ∞ | yes | yes | block | — | 1 | — | — | — | — | — | metal | geo | cover (1) | — |
 <!-- /generated:materials -->
 
 ## Notes

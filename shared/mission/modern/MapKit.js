@@ -126,7 +126,7 @@ export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'l
                 if (store.get(Math.floor(d.x + 0.5), Math.floor(d.y + 0.5), d.z) !== 0) ctx.decor.splice(i, 1);
             }
             return finalizeMission({ id, name, store, rooms: ctx.rooms, buildings: m.buildings, spawns, rng, objective,
-                meta: { seed, ...meta }, visual: { hints: ctx.hints, decor: ctx.decor } });
+                meta: { seed, ...meta, timeOfDay: meta.timeOfDay || meta.lighting || 'day' }, visual: { hints: ctx.hints, decor: ctx.decor } });
         }
     };
     store.fill(0, 0, 0, width - 1, depth - 1, 0, 'bedrock');
