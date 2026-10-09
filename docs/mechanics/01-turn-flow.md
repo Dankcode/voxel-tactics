@@ -27,9 +27,9 @@ For each living unit of the side that is starting, in this order:
 3. Reset: `moveOnlyAp = 0`, `reactionsLeft = 1`, overwatch cleared, one-shot buffs cleared (Snap Shot, Deadeye,
    Demolition expire if unused), Will +`B.willRegen` (1, capped at max Will; not on the first squad phase),
    `movedThisTurn = 0`.
-4. **Status durations tick**: every status loses 1 round; those at 0 are removed. Because AP is computed *before*
-   the tick, a 1-round status given during the opponent's phase costs its AP penalty on the unit's next turn and
-   then disappears.
+4. **Status durations tick**: every status loses 1 round. AP penalties are computed before that tick.
+   Final-turn panic, freezing and suppression remain active through the owner's actions and are removed at side
+   end; other expired statuses disappear at side start. Burning's damage tick never refreshes its duration.
 5. Formations update (`Formations.onSideStart`: cohesion regain, Crossfire dissolves; see [09](09-formations.md)).
 
 ## Action points
@@ -39,14 +39,14 @@ For each living unit of the side that is starting, in this order:
 | Intent | AP | Other cost / rule | Code |
 |---|---|---|---|
 | `move` | `ceil(path cost ÷ tiles per AP)`; move-only AP is spent first | path must fit `(ap + moveOnlyAp) × tiles per AP` | `doMove`, `apForCost` |
-| `shoot` | weapon AP (Snap Shot −1, min 1) | ammo ≥ `perShot`; aim point ≤ `maxRange` (horizontal); **no line-of-sight check** | `doShoot` |
+| `shoot` | weapon AP (Snap Shot −1, min 1) | ammo ≥ `perShot`; aim point ≤ `maxRange` (horizontal); unit target must be visible to its side | `doShoot` |
 | `melee` | weapon AP | target adjacent: Chebyshev ≤ 1 and \|Δz\| ≤ 1 | `doMelee` |
 | `throw` | item AP | horizontal tile distance ≤ item range | `doThrow` |
 | `overwatch` | needs ≥ weapon AP (Snap Shot does not help); then spends **all** AP and move-only AP | ammo ≥ `perShot` | `doOverwatch` |
 | `reload` | `reloadAp` (1 for every weapon) | refills to full (allowed even when full) | `apply` |
 | `switchWeapon`, `face` | 0 | | `apply` |
 | `ability` | ability AP | ability Will; refused while `panicked` | `doAbility` |
-| `door` | 0 to open, **1 to close** | door within Chebyshev 1 (no height check) | `doDoor` |
+| `door` | 0 to open, **1 to close** | door within Chebyshev 1 and |Δz| ≤ 1; closing requires 1 AP | `doDoor` |
 | `breach` | 1 per participant | see [08](08-interiors-and-breaching.md) | `doBreach` |
 | `formation` | 1 per member moved into its slot | see [09](09-formations.md) | `Formations.declare` |
 | `formation_break` | 0 | | `Formations.dissolve` |

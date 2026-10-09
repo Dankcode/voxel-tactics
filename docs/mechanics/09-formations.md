@@ -23,22 +23,22 @@ Code: `shared/battle/Formations.js`, data `shared/content/formations.js`, hooks 
 
 ## Declaring (`Formations.validate`, `declare`)
 
-- Intent: `{ type: 'formation', template, memberIds, leaderId?, facing? }` (facing n / e / s / w; the client uses the
+- Intent: `{ type: 'formation', unitId, template, memberIds, leaderId?, facing? }` (facing n / e / s / w; the client uses the
   hovered tile or the camera direction). The leader defaults to the first member.
-- Every member is alive, on the active side, not already in a formation; the member count is within the template's
+- Every member is alive, owned by the commanding player, on the active side, not already in a formation;
+  member IDs must be unique and the leader must be a listed member; the member count is within the template's
   min–max.
 - **Cap**: a side may have at most max(1, floor(side size ÷ 4)) formations at once (`perSoldiers` 4). Side size
   counts every unit of that side, dead ones included, so a standard 4-soldier squad gets exactly one.
 - **Slot templates** (Shield Line, Breach Stack): slots are `[right, forward]` offsets from the leader in the
   formation's facing frame, placed on the surface nearest the leader's height. Each slot must have a surface within
   ±1 voxel of the leader with headroom ≥ 2. A member counts as **in slot** within Chebyshev 1 and ±1 voxel. A member
-  not in slot must be within Chebyshev **3** of its slot and have ≥ 1 AP.
+  not exactly on its slot (including height) must be within Chebyshev **3** and have ≥ 1 AP.
 - Breach Stack also needs the leader to have a breach point (a closed door within 2 tiles,
   [08](08-interiors-and-breaching.md)).
 - On declare, every member not standing **exactly** on its slot is moved to the slot (or a free neighbour) reachable
   within 4 × its tiles per AP, for a flat **1 AP**, as a direct relocation: no overwatch, no noise, no reveal. A
-  member that was within tolerance but not exact still pays 1 AP, and nothing checks that it has it, so its AP can go
-  to −1 (edge case in the code).
+  member within tolerance but not exact still pays 1 AP; validation requires that AP before any mutation.
 - **Crossfire**: exactly 2 members, both already **on overwatch**, at least 4 tiles apart, with overlapping cones
   (`conesOverlap` samples each cone's axis every 1.5 tiles from 2 tiles out and tests it against the other cone). On
   declare both get 2 reactions.

@@ -16,7 +16,7 @@ export class MissionRoom extends Room {
     onCreate(options = {}) {
         this.maxClients = 4;
         const d = options.desc || {};
-        this.desc = { scenario: scenarioId(d.scenario), seed: Number(d.seed) || 1, squad: d.squad || 'standard' };
+        this.desc = { scenario: scenarioId(d.scenario), seed: Number(d.seed) || 1, squad: d.squad || 'standard', debug: d.debug === true };
         this.battle = createBattle(this.desc);
         this.log = [];             // [{ seq, intent, nonce }]
         this.players = [];         // [{ id, sessionId, name }]
@@ -73,6 +73,7 @@ export class MissionRoom extends Room {
             }
             return this.endPlayerTurn(m.nonce);
         }
+        if (intent.type === 'debug' && p.id !== 'P1') return client.send('reject', { nonce: m.nonce, reason: 'not_your_unit' });
         if (intent.type === 'owners') return client.send('reject', { nonce: m.nonce, reason: 'bad_intent' });
         const r = this.commit(intent, m.nonce);
         if (!r.ok) client.send('reject', { nonce: m.nonce, reason: r.reason });

@@ -14,7 +14,8 @@ Movement still reserves a wall's grid cell, so a unit cannot path through the th
 
 Ray traversal first finds a candidate voxel, then intersects its connected polygon prism. Grenade arcs use segment rays too. Window/door planes share their orientation with the renderer; small opening frames are represented by the plane's conservative thickness rather than separate decorative meshes. Open door leaves are cosmetic and provide no cover.
 
-Directional shields sample five rays across a 0.76-cell body-width band at lower and upper body height. At least four hits in both bands means full cover; at least two in either band means half. A narrow isolated post or wall end cannot grant full protection. Cover remains a directional tactical rating; individual projectiles use the actual polygon. Destroyed sections immediately lose their cover and obstruction. Window cover remains fragile and glass only shatters if the projectile crosses the pane.
+Directional shields sample five rays across a 0.76-cell body-width band at lower and upper body height. At least four hits in both bands means full cover; at least two in either band means half. A narrow isolated post or wall end cannot grant full protection. Cover remains a directional tactical rating; individual projectiles use the actual polygon. Destroyed sections immediately lose their cover and obstruction. Window cover remains fragile: a projectile crossing the pane stops there and destroys it; later projectiles
+pass through the new opening.
 
 ## Grouped cover
 

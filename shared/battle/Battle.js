@@ -156,13 +156,15 @@ export class Battle {
         if (intent.type === 'endTurn') return intent.side === this.activeSide ? null : 'not_your_turn';
         if (intent.type === 'owners') return intent.owners && typeof intent.owners === 'object' ? null : 'bad_intent';
         if (intent.type === 'debug') return validateDebug(this, intent);
-        const u = this.unit(intent.unitId);
-        if (!u) return intent.type === 'formation_break' ? null : 'bad_intent';
+        const u = this.unit(intent.unitId || (intent.type === 'formation_break' ? this.formations.list.get(intent.formationId)?.leaderId : null));
+        if (!u) return 'bad_intent';
         if (!alive(u)) return 'unit_down';
         if (u.side !== this.activeSide) return 'not_your_turn';
         if (intent.by && intent.by !== '*' && u.owner !== intent.by) return 'not_your_unit';
         switch (intent.type) {
             case 'move': {
+                const group = intent.group && this.formations.of(u);
+                if (group && intent.by && intent.by !== '*' && this.formations.members(group).some(m => m.owner !== intent.by)) return 'not_your_unit';
                 const t = intent.to; if (!t) return 'bad_intent';
                 const o = this.occupant(t.x, t.y, t.z); if (o && o.id !== u.id) return 'occupied';
                 const cost = this.reach(u).costs.get(nodeKey(t));
@@ -175,7 +177,12 @@ export class Battle {
                 if (!w || !u.weapons.includes(w.id) || w.kind !== 'ballistic') return 'bad_intent';
                 if (u.ap < this.shotAp(u, w)) return 'no_ap';
                 if ((u.ammo[w.id] ?? 0) < (w.perShot || 1)) return 'no_ammo';
+                if (intent.suppress) return 'bad_intent'; // Suppression is a paid ability, never a shot flag.
                 if (!intent.aim || (!intent.aim.point && !this.unit(intent.aim.unitId))) return 'no_target';
+                if (intent.aim.unitId) {
+                    const target = this.unit(intent.aim.unitId);
+                    if (!target || !alive(target) || !this.visibleTo(u.side).has(target.id)) return 'no_target';
+                }
                 const p = aimPointOf(this, intent.aim);
                 if (Math.hypot(p.x - u.x - 0.5, p.y - u.y - 0.5) > w.maxRange) return 'out_of_range';
                 return null;
@@ -211,18 +218,31 @@ export class Battle {
                 if (u.will < a.wp) return 'no_will';
                 if (u.ap < a.ap) return 'no_ap';
                 if (hasStatus(u, 'panicked')) return 'no_will';
+                if (a.id === 'suppress') {
+                    if (!u.weapons.includes('repeater')) return 'bad_intent';
+                    const target = this.unit(intent.targetId), w = WEAPONS.repeater;
+                    if (!target || !alive(target) || !this.visibleTo(u.side).has(target.id)) return 'no_target';
+                    if ((u.ammo[w.id] ?? 0) < (w.perShot || 1)) return 'no_ammo';
+                    if (Math.hypot(target.x - u.x, target.y - u.y) > w.maxRange) return 'out_of_range';
+                }
                 return null;
             }
             case 'door': {
                 const d = intent.door; if (!d) return 'no_door';
                 const id = this.store.get(d.x, d.y, d.z + 1);
                 if (id !== MAT.door && id !== MAT.door_open) return 'no_door';
-                if (Math.max(Math.abs(d.x - u.x), Math.abs(d.y - u.y)) > 1) return 'not_adjacent';
+                if (Math.max(Math.abs(d.x - u.x), Math.abs(d.y - u.y)) > 1 || Math.abs(d.z - u.z) > 1) return 'not_adjacent';
+                if (id === MAT.door_open && u.ap < 1) return 'no_ap';
                 return null;
             }
             case 'breach': return this.validateBreach(intent);
             case 'formation': return this.formations.validate(intent);
-            case 'formation_break': return null;
+            case 'formation_break': {
+                const f = this.formations.list.get(intent.formationId);
+                if (!f || !f.members.includes(u.id)) return 'formation_invalid';
+                if (intent.by && intent.by !== '*' && this.formations.members(f).some(m => m.owner !== intent.by)) return 'not_your_unit';
+                return null;
+            }
             case 'face': return null;
             default: return 'bad_intent';
         }
@@ -271,7 +291,7 @@ export class Battle {
             // Start-of-turn statuses (burning and bleeding deal damage, durations tick).
             for (const s of [...u.statuses]) {
                 const def = STATUS_DEFS[s.id];
-                if (def?.dotPerRound) this.dealDamage(u, 'torso', s.id === 'burning' ? B.burningDamage : def.dotPerRound, { pierce: 99, element: s.id === 'burning' ? 'pyro' : null, source: s.id });
+                if (def?.dotPerRound) this.dealDamage(u, 'torso', s.id === 'burning' ? B.burningDamage : def.dotPerRound, { pierce: 99, element: s.id === 'burning' ? 'pyro' : null, source: s.id, applyStatuses: false });
             }
             if (!alive(u)) continue;
             let ap = u.maxAp;
@@ -288,13 +308,15 @@ export class Battle {
             if (!first) u.will = Math.min(u.maxWill, u.will + B.willRegen);
             u.movedThisTurn = 0;
             for (const s of u.statuses) s.rounds--;
-            u.statuses = u.statuses.filter(s => s.rounds > 0);
+            // Effects used during this turn survive their final duration tick until the side ends.
+            u.statuses = u.statuses.filter(s => s.rounds > 0 || STATUS_DEFS[s.id]?.noAbilities || STATUS_DEFS[s.id]?.rooted || STATUS_DEFS[s.id]?.accuracyMult);
         }
         this.formations.onSideStart(side);
         this.emit({ t: 'turn', side, round: this.round });
     }
 
     endTurn(side) {
+        for (const u of this.unitsOf(side)) u.statuses = u.statuses.filter(s => s.rounds > 0);
         if (side === 'player') {
             this.formations.onSideEnd('player');
             this.startSide('enemy');
@@ -308,9 +330,11 @@ export class Battle {
     roundEnd() {
         const before = this.store.version;
         const changes = this.store.record(() => {
-            const { changes: ec, burnedOut } = this.field.tick(this.rng, { spreadChance: B.fireSpreadChance });
+            const { changes: ec, burnedOut, explosions } = this.field.tick(this.rng, { spreadChance: B.fireSpreadChance });
             if (ec.length) this.emit({ t: 'elements', changes: ec });
-            if (burnedOut.length) { this.stats.voxelsDestroyed += burnedOut.length; this.settle(); }
+            if (burnedOut.length) this.stats.voxelsDestroyed += burnedOut.length;
+            for (const explosion of explosions) this.explode(explosion);
+            if (burnedOut.length) this.settle();
         });
         if (changes.length) this.emit({ t: 'voxels', changes });
         // Units standing in fire catch it.
@@ -419,7 +443,6 @@ export class Battle {
         const targetIds = intent.aim.unitId ? [intent.aim.unitId] : [];
         this.emit({ t: 'cutin', unitId: u.id, kind: w.cutIn || 'shot', weaponId: w.id, targetIds });
         this.fireWeapon(u, w, intent.aim, {});
-        if (intent.suppress && intent.aim.unitId) { const t = this.unit(intent.aim.unitId); if (t && alive(t)) this.giveStatus(t, 'suppressed', 2); }
         u.buffs.deadeye = false;
     }
 
@@ -490,7 +513,7 @@ export class Battle {
     }
 
     // ---------------------------------------------------------------- damage
-    dealDamage(t, part, amount, { pierce = 0, shred = 0, element = null, source = null } = {}) {
+    dealDamage(t, part, amount, { pierce = 0, shred = 0, element = null, source = null, applyStatuses = true } = {}) {
         if (!alive(t)) return 0;
         if (t.god) amount = 0;
         const p = t.parts[part] || t.parts.torso;
@@ -509,7 +532,7 @@ export class Battle {
             }
         }
         this.emit({ t: 'damage', unitId: t.id, part, amount: dmg, element, source, armor: p.armor });
-        if (element) for (const s of elementStatusesFor(element, t)) this.giveStatus(t, s);
+        if (element && applyStatuses) for (const s of elementStatusesFor(element, t)) this.giveStatus(t, s);
         if (dmg > 0) this.addStress(t, B.stressOnWound, 'wounded');
         if (t.hp <= 0) this.kill(t, source);
         return dmg;
@@ -572,13 +595,13 @@ export class Battle {
         }
         this.detonate(t, centre, u);
     }
-    detonate(t, centre, by) {
+    detonate(t, centre, by, { excludeUnits = [] } = {}) {
         if (t.smoke) {
             const cells = this.field.addSmoke(centre.x - 0.5, centre.y - 0.5, Math.floor(centre.h - 0.5), t.radius, t.smoke);
             this.emit({ t: 'smoke', x: centre.x, y: centre.y, h: centre.h, radius: t.radius, cells });
             return;
         }
-        this.explode({ x: centre.x, y: centre.y, h: centre.h, radius: t.radius, power: (t.power || 0) * (by?.buffs.demolish ? 2 : 1), damage: t.damage, element: t.element, shred: t.shred, knockback: t.knockback, by: by?.id, item: t.id });
+        this.explode({ x: centre.x, y: centre.y, h: centre.h, radius: t.radius, power: (t.power || 0) * (by?.buffs.demolish ? 2 : 1), damage: t.damage, element: t.element, shred: t.shred, knockback: t.knockback, by: by?.id, item: t.id, excludeUnits });
         if (by) by.buffs.demolish = false;
         this.noise(Math.floor(centre.x), Math.floor(centre.y), Math.floor(centre.h), t.noise ?? 14, by);
     }
@@ -599,12 +622,13 @@ export class Battle {
     }
     blastUnits(e, by, item = null) {
         for (const u of this.units.filter(alive)) {
+            if (e.excludeUnits?.includes(u.id)) continue;
             const c = this.chest(u);
             const clustered = this.formations.isClustered(u);
             const r = e.radius + (clustered ? B.clusteredRadiusBonus : 0);
             const d = Math.hypot(c.x - e.x, c.y - e.y, (c.h - e.h) * 0.8);
             if (d > r + 0.5) continue;
-            const shielded = castRay(this.store, { x: e.x, y: e.y, h: e.h + 0.2 }, c, { blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile === 'block' }).hit;
+            const shielded = castRay(this.store, { x: e.x, y: e.y, h: e.h + 0.2 }, c, { blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile !== 'pass' }).hit;
             let dmg = (e.damage || 0) * Math.max(0.25, 1 - d / (r + 0.5)) * (clustered ? B.clusteredDamageMult : 1) * (shielded ? 0.5 : 1);
             dmg = Math.round(dmg);
             if (dmg > 0) {
@@ -729,7 +753,9 @@ export class Battle {
     validateBreach(intent) {
         const d = intent.door; if (!d) return 'no_door';
         const ids = intent.unitIds?.length ? intent.unitIds : [intent.unitId];
+        if (new Set(ids).size !== ids.length || !ids.includes(intent.unitId)) return 'bad_intent';
         const units = ids.map(id => this.unit(id));
+        if (intent.by && intent.by !== '*' && units.some(u => u && u.owner !== intent.by)) return 'not_your_unit';
         if (units.some(u => !u || !alive(u) || u.side !== this.activeSide || u.ap < 1)) return 'no_ap';
         const doorId = this.store.get(d.x, d.y, d.z + 1);
         if (intent.entry === 'charge') {
@@ -752,7 +778,7 @@ export class Battle {
         if (intent.entry === 'charge') {
             const carrier = units.find(u => u.items.breach_charge > 0);
             carrier.items.breach_charge--;
-            this.detonate(THROWABLES.breach_charge, { x: d.x + 0.5, y: d.y + 0.5, h: d.z + 1.5 }, carrier);
+            this.detonate(THROWABLES.breach_charge, { x: d.x + 0.5, y: d.y + 0.5, h: d.z + 1.5 }, carrier, { excludeUnits: ids });
         } else {
             const changes = this.store.record(() => { for (let k = 1; k <= 2; k++) if (this.store.get(d.x, d.y, d.z + k) === MAT.door) this.store.set(d.x, d.y, d.z + k, MAT.door_open); });
             this.emit({ t: 'door', x: d.x, y: d.y, z: d.z, open: true, unitId: units[0].id });
@@ -825,8 +851,13 @@ export class Battle {
 
     /** Hash of everything that matters for lockstep: map, units, field. */
     hash() {
-        const units = this.units.map(u => [u.id, u.x, u.y, u.z, u.hp, u.ap, u.dead ? 1 : 0, u.stress, u.facing, Object.values(u.parts).map(p => p.hp + ':' + p.armor).join(',')].join('|')).join(';');
-        return `${this.store.hash()}:${hashString(units).toString(16)}:${hashString(JSON.stringify(this.field.snapshot())).toString(16)}:${this.seq}`;
+        let voxelHp = 0x811c9dc5;
+        for (const hp of this.store.hp) { voxelHp ^= hp; voxelHp = Math.imul(voxelHp, 0x01000193); }
+        const state = { units: this.units, round: this.round, activeSide: this.activeSide, outcome: this.outcome,
+            revealedRooms: [...this.revealedRooms].sort((a, b) => a - b), field: this.field.snapshot(),
+            formations: this.formations.snapshot(), nextFormationId: this.formations.nextId,
+            rng: this.rng.state, debugEnabled: this.debugEnabled, controllers: this.controllers, seq: this.seq };
+        return `${this.store.hash()}:${(voxelHp >>> 0).toString(16)}:${hashString(JSON.stringify(state)).toString(16)}`;
     }
 }
 

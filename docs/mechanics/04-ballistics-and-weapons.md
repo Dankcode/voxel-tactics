@@ -28,7 +28,7 @@ Spread is the cone's half-angle in degrees. Every modifier multiplies:
 | breach | × 1 ÷ (`B.breachAccuracyMult` 1.15 × 1.1 with an active Breach Stack) | breach shots |
 | Deadeye | × 0.5 | next shot after the ability |
 | height | × 0.85 | aimed at a unit, shooter z − target z ≥ 2 |
-| dim room | × 1.25 | target in an unlit room the shooter is not in (never on current maps) |
+| dim room | × 1.25 | target in an unlit room the shooter is not in (warehouse interiors are dim by default) |
 | Shield Line | × up to 1.3 | target in a Shield Line slot, shooter in its front 90° ([09](09-formations.md)) |
 | smoke | × 1.6 | target's z+1 or z+2 cell has smoke |
 
@@ -42,9 +42,9 @@ with the battle RNG.
 
 - The ray runs up to min(`maxRange`, max(d + 10, 1.6 d)) from the muzzle (`fireWeapon`).
 - Voxels: Amanatides–Woo traversal (`Raycast.castRay`) against each voxel's connected footprint
-  ([03](03-cover-and-sight.md#partial-connected-shapes)). It stops at the first `projectile: 'block'` shape.
-  `pass` materials (hedges, leaves, open doors, water, chain-link, awnings) are ignored. **Glass** (`shatter`) never
-  stops a ray: a crossed pane is destroyed and the ray continues.
+  ([03](03-cover-and-sight.md#partial-connected-shapes)). It stops at the first `block` or `shatter` shape.
+  `pass` materials (hedges, leaves, open doors, water, chain-link, awnings) are ignored. **Glass** absorbs the
+  projectile that breaks its pane; later rays can pass through that opening.
 - Units: every living unit except the shooter is tested against vertical cylinders; the nearest unit hit before the
   voxel hit wins. **Friendly fire is real**: allies in the cone can be hit.
 
@@ -182,7 +182,7 @@ roll. The Sledgehammer knocks the target 2 tiles away. Melee deals no voxel dama
 For every living unit (friend or foe) with its chest point at 3D distance d (Δh × 0.8) from the centre:
 
 - Radius r = item radius, **+1 if the unit is clustered** (2+ allies within 2 tiles, [09](09-formations.md)).
-- Hit if d ≤ r + 0.5. Damage = round(damage × max(0.25, 1 − d ÷ (r + 0.5)) × 1.25 if clustered × 0.5 if a `block`
+- Hit if d ≤ r + 0.5. Damage = round(damage × max(0.25, 1 − d ÷ (r + 0.5)) × 1.25 if clustered × 0.5 if a `block` or `shatter`
   voxel lies between the centre and the chest).
 - Applied to the torso with pierce = ceil(torso armour ÷ 2) (braced armour included) and the item's shred.
 - Element statuses apply even when the damage rounds to 0; knockback, if any, pushes away from the centre.

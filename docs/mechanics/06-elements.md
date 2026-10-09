@@ -69,8 +69,8 @@ Once per round, after the enemy phase, using the battle RNG:
 Burned-out voxels trigger a structural settle and fall checks. Then every unit standing on a `burning` surface or on
 a burning voxel catches `burning`.
 
-Fire and the fuel drum: a burning fuel drum (1 HP, flammable) burns away **without exploding**
-([05](05-destruction.md#explosive-materials)).
+Fire and the fuel drum: a burning fuel drum (1 HP, flammable) detonates when its HP reaches zero, using the
+normal explosion and chain rules ([05](05-destruction.md#explosive-materials)).
 
 ## Units and the elements
 
@@ -104,20 +104,18 @@ tick at the start of the **owner's** turn, after AP is computed ([01](01-turn-fl
 | `burning` | 2 torso damage (pierce 99) at the start of each own turn | pyro hits, fire surfaces / voxels, debug |
 | `wet` | removes and blocks `burning`; pyro damage −1; cryo freezes instead of chilling | hydro, wet surfaces |
 | `chilled` | −1 AP per stack on the next turn (max 2 stacks) | cryo on a dry unit |
-| `frozen` | tiles per AP = 0 (cannot move; a move in progress stops) until it expires at the start of its own turn | cryo on a wet unit |
+| `frozen` | tiles per AP = 0 (cannot move; a move in progress stops) through its affected own turn, removed at side end | cryo on a wet unit |
 | `stunned` | −2 AP on the next turn | geo hits (Frag Grenade, Breaching Charge) |
-| `suppressed` | accuracy × 0.6 (spread ×1.67) | Suppressive Fire, or any shot carrying `suppress` ([07](07-units-and-classes.md)); 2 rounds |
+| `suppressed` | accuracy × 0.6 (spread ×1.67) | Suppressive Fire ability ([07](07-units-and-classes.md)); 2 rounds |
 | `braced` | +4 armour on every part | Shield Wall (1 round: through the opponent's phase) |
 | `surprised` | −1 AP on the next turn; cannot take overwatch reactions | unalerted defenders of a breached room (1 round) |
 | `panicked` | next turn's AP halved (rounded up); abilities refused while present | stress breakdown (1 round) |
 | `bleeding` | 1 damage per own turn | nothing in play (debug `status` op only) |
 
-Known quirks, from the code:
+Duration details:
 
-- **`burning` never expires.** Its damage tick is dealt as `pyro`, which re-applies `burning` and refreshes it to 2
-  rounds before the tick takes one off. Verified: a burning Gunman stays burning and loses 2 HP every turn for as
-  long as it lives. Only water / `wet` ends it.
-- **`panicked` mostly expires before it matters for abilities.** It is given for 1 round at breakdown. AP halving
-  happens at the start of the unit's next turn, and the same start-of-turn tick removes the status, so abilities are
-  only blocked for the rest of the turn in which the breakdown happened.
-- `apMult` and `noAbilities` / `noReaction` in the data are documentation; the rules are hard-coded in `Battle.js`.
+- Burning DOT retains its pyro damage type and wet damage reduction, but does not apply fresh element statuses.
+  Burning therefore ends after two own-turn damage ticks unless a new hit or burning surface refreshes it.
+- Panic halves AP on the next own turn and prevents abilities throughout that turn. Its final zero-round entry
+  remains until side end, as do rooted and accuracy statuses (freezing and suppression).
+- `braced` still expires at the next own-turn start, protecting the preceding opponent phase.

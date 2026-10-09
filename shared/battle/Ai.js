@@ -13,7 +13,7 @@ export const DEFAULT_POLICY = Object.freeze({ formations: false, breach: true, g
 export function runAiSide(battle, side, policy = DEFAULT_POLICY, { maxActions = 80 } = {}) {
     const start = battle.log.length;
     policy = { ...DEFAULT_POLICY, ...policy };
-    if (policy.formations) tryFormations(battle, side);
+    if (policy.formations) for (const intent of formationIntents(battle, side)) battle.apply(intent);
     let actions = 0;
     for (const u of battle.unitsOf(side)) {
         let guard = 0;
@@ -37,6 +37,7 @@ function knownEnemies(battle, u) {
 }
 
 export function decide(battle, u, policy = DEFAULT_POLICY) {
+    policy = { ...DEFAULT_POLICY, ...policy };
     if (u.side === 'enemy' && !u.alerted) return null;
     if (u.ap <= 0 && u.moveOnlyAp <= 0) return null;
     const known = knownEnemies(battle, u);
@@ -215,12 +216,13 @@ function approach(battle, u, target, keepAp) {
  * Sim/autopilot formation policy. Form a Shield Line only when enemies are known and the leader and its
  * slots already have cover toward them; break formations when nothing is in sight (to advance freely).
  */
-function tryFormations(battle, side) {
+export function formationIntents(battle, side) {
+    const intents = [];
     const known = [...battle.visibleTo(side)].map(id => battle.unit(id)).filter(Boolean);
     for (const f of battle.formations.snapshot().filter(f => f.side === side)) {
-        if (!known.length && f.template === 'shield_line') battle.apply({ type: 'formation_break', unitId: f.leaderId, formationId: f.id });
+        if (!known.length && f.template === 'shield_line') intents.push({ type: 'formation_break', unitId: f.leaderId, formationId: f.id });
     }
-    if (!known.length) return;
+    if (!known.length) return intents;
     const units = battle.unitsOf(side).filter(u => !u.formationId && u.ap >= 2);
     const cx = known.reduce((s, e) => s + e.x, 0) / known.length, cy = known.reduce((s, e) => s + e.y, 0) / known.length;
     for (const leader of units) {
@@ -233,6 +235,7 @@ function tryFormations(battle, side) {
         const f = { template: 'shield_line', facing, members: intent.memberIds, leaderId: leader.id };
         const slots = battle.formations.slotsFor(f, leader);
         if (!slots || slots.some(sl => coverAgainst(battle.store, sl.x, sl.y, sl.z, Math.round(cx), Math.round(cy)) === COVER.NONE)) continue;
-        if (battle.apply(intent).ok) return;
+        if (!battle.validate(intent)) return [...intents, intent];
     }
+    return intents;
 }

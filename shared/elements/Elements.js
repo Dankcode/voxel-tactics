@@ -133,7 +133,7 @@ export class ElementField {
      * fade. `rng` is the battle RNG. Returns change events and voxels destroyed by fire.
      */
     tick(rng, { spreadChance = 0.3, maxFires = 220 } = {}) {
-        const store = this.store, changes = [], burnedOut = [];
+        const store = this.store, changes = [], burnedOut = [], explosions = [];
         const keys = [...this.fires.keys()].sort();
         for (const k of keys) {
             const [x, y, z] = parse(k);
@@ -144,6 +144,7 @@ export class ElementField {
                 this.fires.delete(k);
                 if (m.burnTo) store.set(x, y, z, MAT[m.burnTo]); else destroyVoxel(store, x, y, z);
                 burnedOut.push([x, y, z, m.key]);
+                if (m.explosive) explosions.push({ x: x + 0.5, y: y + 0.5, h: z + 0.5, ...m.explosive, source: m.key });
                 changes.push({ t: 'burned', x, y, z });
             } else {
                 store.hp[store.index(x, y, z)] = hp;
@@ -158,7 +159,7 @@ export class ElementField {
         }
         for (const [k, s] of [...this.surfaces]) { if (--s.rounds <= 0) { this.surfaces.delete(k); const [x, y, z] = parse(k); changes.push({ t: 'surface', x, y, z, effect: null }); } }
         for (const [k, r] of [...this.smoke]) { if (r - 1 <= 0) this.smoke.delete(k); else this.smoke.set(k, r - 1); }
-        return { changes, burnedOut };
+        return { changes, burnedOut, explosions };
     }
 
     snapshot() {

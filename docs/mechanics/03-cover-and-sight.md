@@ -68,19 +68,12 @@ band otherwise). Consequences of the 5-ray rule, all from the code:
 
 More background, including the audit of rating vs geometry, is in `docs/CONNECTED-SURFACES.md`.
 
-## Glass: readout and ballistics disagree
+## Glass: fragile physical cover
 
-- The readout counts glass as weight 1 (`projectile: 'shatter'`), so windows rate as cover: a two-high pane is FULL,
-  a window over a sill wall is FULL, a full-height storefront is FULL.
-- The tracer (`Ballistics.traceProjectile`) only stops on `projectile: 'block'`. A ray that crosses a pane
-  **shatters it and keeps going**; the estimate never counts glass as cover. Verified: a target behind a two-high
-  glass wall is rated FULL cover yet shows a 100 % hit chance with the Sniper Rifle, and the live shot hits and
-  breaks one pane.
-- Blast shielding (`Battle.blastUnits`) and the lean-out check (`chooseMuzzle`) also ignore glass. Grenade arcs
-  (`Raycast.traceArc`, default `blocksProjectile` = anything not `'pass'`) **are** blocked by glass.
-- Glass is not opaque, so it never blocks sight.
-
-`docs/LEVELS.md` ("Glass is real cover until it is shot out") describes the readout, not the ballistics.
+The readout counts glass as weight 1. Bullet rays, grenade arcs, blast shielding and muzzle checks all treat its
+actual pane as an obstruction. The projectile that hits a pane stops there and deals voxel damage; glass has
+1 HP, so an ordinary bullet destroys it. Later projectiles in the same burst see the opening. The Monte Carlo
+preview samples the current intact geometry without mutating panes. Glass remains transparent to sight.
 
 ## Concealment (hedges, leaves)
 
@@ -95,8 +88,8 @@ A hedge is solid (blocks movement; vaultable). Their `concealment: 2` value is o
 - Blocked by any opaque voxel's real shape (walls, closed doors, hedges, leaves, furniture, ground …) and by smoke
   cells. Transparent: glass, open doors, chain-link, water, ice, crystal.
 - Facing does not matter (no vision cone).
-- **Shooting does not require sight.** `validate` for `shoot` checks only weapon, AP, ammo and range; the client
-  offers only visible targets, but an intent can name any unit.
+- **Unit targeting requires squad sight.** `validate` rejects a dead or unseen unit target. A teammate may spot
+  for the shooter. Free-aim points remain available for firing at walls and other terrain.
 
 ## Fog of war
 
@@ -116,5 +109,5 @@ Wind (`anemo`) clears it.
 
 - **Height**: spread × `B.heightAccuracyBonus` = 0.85 when the shooter stands 2+ voxels above the target.
 - **Dim rooms**: spread × `B.dimRoomSpreadMult` = 1.25 when the target is in a room with `lit: false` and the
-  shooter is not in that room. `ModernBuilder` sets every room `lit: true`, so this never applies on the current
-  maps (the legacy `BuildingBuilder`, used only by its own test, made unlit rooms).
+  shooter is not in that room. `ModernBuilder` defaults warehouse rooms to dim while offices remain lit. Building specs may
+  override a room kind with `lighting: { warehouse: true }` or all rooms with `lit: false`.

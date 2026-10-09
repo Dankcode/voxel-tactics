@@ -35,7 +35,7 @@ export const ABILITIES = Object.freeze({
     dash: { id: 'dash', name: 'Sprint', wp: 2, ap: 0, text: '+1 AP that can only be spent moving.' },
     rally: { id: 'rally', name: 'Rally', wp: 2, ap: 1, radius: 6, text: 'Allies within 6 lose 25 stress and gain 1 WP.' },
     demolish: { id: 'demolish', name: 'Demolition', wp: 1, ap: 0, text: 'Next shot or blast deals double damage to walls and cover.' },
-    suppress: { id: 'suppress', name: 'Suppressive Fire', wp: 2, ap: 2, text: 'Burst at a target; it is Suppressed (spread ×1.6) until its next turn.' },
+    suppress: { id: 'suppress', name: 'Suppressive Fire', wp: 2, ap: 2, text: 'Burst at a visible target; it is Suppressed (accuracy ×0.6) for two own turns.' },
     quick_aim: { id: 'quick_aim', name: 'Snap Shot', wp: 2, ap: 0, text: 'Next shot costs 1 AP less.' },
     deadeye: { id: 'deadeye', name: 'Deadeye', wp: 3, ap: 0, text: 'Next shot has half the spread.' },
     brace: { id: 'brace', name: 'Shield Wall', wp: 1, ap: 1, text: '+4 armour on every part until your next turn.' }

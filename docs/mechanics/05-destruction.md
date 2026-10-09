@@ -79,8 +79,9 @@ Worked examples (from running `explodeVoxels` on a flat test map):
 
 - A fuel drum goes off from any bullet that stops on it (1 HP); a pump needs 4 voxel damage (two Sniper Rifle hits,
   or a nearby blast).
-- **Fire alone does not detonate them.** A burning fuel drum burns down to air without exploding (fire burn-out uses
-  `destroyVoxel`, not `damageVoxel`; verified). Only damage (shots, blasts) triggers the explosion.
+- **Fire detonates explosive materials when they burn down.** `ElementField.tick` removes the destroyed voxel
+  and queues its material explosion; `Battle.roundEnd` resolves it with the same chain, damage and element rules
+  as a shot-triggered explosion. Each destroyed drum detonates once.
 - Pyro explosions ignite flammable voxels and set burning surfaces in their radius; the water drum douses and wets.
 
 ## Structural collapse (`Destruction.settleUnsupported`, `Battle.settle`)

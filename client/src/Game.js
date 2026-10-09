@@ -28,7 +28,7 @@ import { MAT, AIR, materialById } from '../../shared/voxel/Materials.js';
 import { nodeKey, pathTo } from '../../shared/world/PathSearch.js';
 import { estimateShot, partCentre } from '../../shared/battle/Ballistics.js';
 import { coverAgainst, COVER } from '../../shared/voxel/Cover.js';
-import { decide } from '../../shared/battle/Ai.js';
+import { decide, formationIntents } from '../../shared/battle/Ai.js';
 import { alive } from '../../shared/battle/Units.js';
 import { WEAPONS, THROWABLES } from '../../shared/content/weapons.js';
 import { ABILITIES } from '../../shared/content/units.js';
@@ -310,7 +310,7 @@ export class Game {
     }
     declareFormation(template) {
         const u = this.selectedUnit(); if (!u) return;
-        const others = this.battle.unitsOf(u.side).filter(o => o.id !== u.id && !o.formationId).sort((a, b) => Math.hypot(a.x - u.x, a.y - u.y) - Math.hypot(b.x - u.x, b.y - u.y));
+        const others = this.battle.unitsOf(u.side).filter(o => o.id !== u.id && !o.formationId && this.controllable(o)).sort((a, b) => Math.hypot(a.x - u.x, a.y - u.y) - Math.hypot(b.x - u.x, b.y - u.y));
         const n = template === 'crossfire' ? 1 : Math.min(3, others.length);
         const facing = this.hoverFacing(u);
         this.intent({ type: 'formation', template, leaderId: u.id, memberIds: [u.id, ...others.slice(0, n).map(o => o.id)], facing });
@@ -324,7 +324,7 @@ export class Game {
     }
     breachStack(u, pt) {
         if (!pt) return [u.id];
-        return [u.id, ...this.battle.unitsOf(u.side).filter(o => o.id !== u.id && o.ap >= 1 && Math.max(Math.abs(o.x - pt.x), Math.abs(o.y - pt.y)) <= 2 && Math.abs(o.z - pt.z) <= 1).map(o => o.id)];
+        return [u.id, ...this.battle.unitsOf(u.side).filter(o => o.id !== u.id && this.controllable(o) && o.ap >= 1 && Math.max(Math.abs(o.x - pt.x), Math.abs(o.y - pt.y)) <= 2 && Math.abs(o.z - pt.z) <= 1).map(o => o.id)];
     }
     doBreach(i, entry) {
         const u = this.selectedUnit(); if (!u) return;
@@ -340,7 +340,7 @@ export class Game {
     }
     toggleNearestDoor() { const u = this.selectedUnit(); const d = u && this.nearestDoor(u); if (d) this.intent({ type: 'door', door: d }); }
     setAimPart(part) {
-        if (this.mode.kind !== 'shoot' || !this.targetInfo) return;
+        if (this.mode.kind !== 'shoot' || !this.targetInfo || this.mode.suppress) return;
         const u = this.selectedUnit(); if (!u) return;
         this.aimAt(u, this.targetInfo.target, part);
     }
@@ -348,7 +348,9 @@ export class Game {
         const u = this.selectedUnit(); if (!u) return;
         this.lastTargetId = target.id;
         this.lastPreview = { unitId: u.id, hit: this.targetInfo?.byPart?.[part] };
-        this.intent({ type: 'shoot', weaponId: this.mode.weaponId, aim: { unitId: target.id, part }, suppress: this.mode.suppress });
+        this.intent(this.mode.suppress
+            ? { type: 'ability', abilityId: 'suppress', targetId: target.id }
+            : { type: 'shoot', weaponId: this.mode.weaponId, aim: { unitId: target.id, part } });
     }
     async endTurn() {
         if (!this.canAct()) return;
@@ -371,6 +373,10 @@ export class Game {
                 const side = this.battle.activeSide;
                 const aiSide = (side === 'enemy' && !this.debug.manualEnemy) || (side === 'player' && this.autoPlayer);
                 if (!aiSide) break;
+                if (side === 'player') for (const intent of formationIntents(this.battle, side)) {
+                    const r = await this.session.submit(intent);
+                    if (r.ok) { this.player.enqueue(r.events); await this.player.whenIdle(); }
+                }
                 for (const u of this.battle.unitsOf(side)) {
                     let looked = false;
                     for (let k = 0; k < 6 && alive(u) && !this.battle.outcome; k++) {
@@ -581,9 +587,10 @@ export class Game {
         }
     }
     aimAt(u, target, part, { frame = false } = {}) {
+        if (this.mode.suppress) part = 'torso';
         const w = WEAPONS[this.mode.weaponId];
         if (!w) return;
-        const key = `${u.id}:${u.x},${u.y},${u.z}:${target.id}:${target.x},${target.y},${target.z}:${w.id}:${this.battle.seq}`;
+        const key = `${u.id}:${u.x},${u.y},${u.z}:${target.id}:${target.x},${target.y},${target.z}:${w.id}:${!!this.mode.suppress}:${this.battle.seq}`;
         if (!this.targetInfo || this.targetInfo.key !== key) {
             const { spread, mods } = this.battle.spreadFor(u, w, partCentre(target, 'torso'), { target });
             const byPart = {};
@@ -594,7 +601,7 @@ export class Game {
                 if (p === 'torso') { any = est.hit; blocked = est.cover; friendly = est.friendly; muzzle = est.muzzle; lean = est.lean; distance = est.distance; }
             }
             const cover = coverAgainst(this.battle.store, target.x, target.y, target.z, u.x, u.y);
-            this.targetInfo = { key, target, part, byPart, anyHit: any, blocked, friendly, spread, mods, muzzle, lean, distance, cover, flanked: cover === COVER.NONE, ap: this.battle.shotAp(u, w), inRange: distance <= w.maxRange };
+            this.targetInfo = { key, target, part, byPart, anyHit: any, blocked, friendly, spread, mods, muzzle, lean, distance, cover, flanked: cover === COVER.NONE, ap: this.mode.suppress ? ABILITIES.suppress.ap : this.battle.shotAp(u, w), inRange: distance <= w.maxRange };
         }
         this.targetInfo.part = part;
         this.overlays.showCone(this.targetInfo.muzzle, partCentre(target, part), this.targetInfo.spread);

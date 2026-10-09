@@ -65,7 +65,9 @@ test('glass shatters only when the projectile crosses its actual pane',()=>{
     const s=fresh();s.set(5,5,2,MAT.glass);
     const battle={store:s,units:[]};
     assert.equal(traceProjectile(battle,{x:2,y:5.1,h:2.5},[1,0,0],8).glass.length,0);
-    assert.equal(traceProjectile(battle,{x:5.5,y:2,h:2.5},[0,1,0],8).glass.length,1);
+    const hit = traceProjectile(battle,{x:5.5,y:2,h:2.5},[0,1,0],8);
+    assert.equal(hit.kind, 'voxel');
+    assert.deepEqual([hit.voxel.x, hit.voxel.y, hit.voxel.z], [5,5,2]);
 });
 
 test('connected water has no cover, freezes to physical ice and melts while preserving shoreline joins',()=>{

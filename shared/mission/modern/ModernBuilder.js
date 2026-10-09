@@ -61,7 +61,7 @@ export const PROGRAMS = {
         entry: 'sales', back: ['storeroom'], side: ['sales']
     },
     warehouse: {
-        wall: 'siding', floor: 'concrete', wet: 'concrete', roof: 'metal',
+        wall: 'siding', floor: 'concrete', wet: 'concrete', roof: 'metal', dim: ['warehouse'],
         rows: [{ depth: 4, rooms: [{ kind: 'office', w: 0.35 }, { kind: 'loading', w: 0.65 }] }, { depth: 1, rooms: [{ kind: 'warehouse', w: 1 }] }],
         entry: 'loading', back: ['warehouse'], side: ['warehouse', 'office'], rollers: true
     },
@@ -223,7 +223,7 @@ export function buildModern(store, spec, ctx) {
         const recs = roomsW.map(room => {
             const kind = s > 0 && prog.upper ? (prog.upper[room.kind] || room.kind) : room.kind;
             const id = ctx.nextRoomId();
-            const rec = { id, buildingId: spec.id, storey: s, kind, cells: room.cells, floorZ: fz, lit: true, doors: [] };
+            const rec = { id, buildingId: spec.id, storey: s, kind, cells: room.cells, floorZ: fz, lit: spec.lighting?.[kind] ?? spec.lit ?? !(prog.dim || []).includes(kind), doors: [] };
             for (const [x, y] of room.cells) {
                 for (let h = 1; h < STOREY; h++) store.rooms[store.index(x, y, fz + h)] = id;
                 if (WET.has(kind)) store.set(x, y, fz, MAT[prog.wet || 'ceramic']);

@@ -38,9 +38,10 @@ export class Formations {
         const tpl = FORMATIONS[intent.template];
         if (!tpl) return 'formation_invalid';
         const ids = intent.memberIds || [];
-        if (ids.length < tpl.min || ids.length > tpl.max) return 'formation_invalid';
+        if (new Set(ids).size !== ids.length || !ids.includes(intent.unitId) || (intent.leaderId && !ids.includes(intent.leaderId)) || ids.length < tpl.min || ids.length > tpl.max) return 'formation_invalid';
         const units = ids.map(id => this.battle.unit(id));
         if (units.some(u => !u || !alive(u) || u.side !== this.battle.activeSide || u.formationId)) return 'formation_invalid';
+        if (intent.by && intent.by !== '*' && units.some(u => u.owner !== intent.by)) return 'not_your_unit';
         const side = units[0].side;
         const squad = this.battle.units.filter(u => u.side === side).length;
         const active = [...this.list.values()].filter(f => f.side === side).length;
@@ -58,7 +59,7 @@ export class Formations {
         for (let i = 0; i < f.members.length; i++) {
             const u = this.battle.unit(f.members[i]), slot = slots[i];
             if (this.battle.store.surfaces(slot.x, slot.y).every(s => Math.abs(s.z - leader.z) > 1 || s.headroom < 2)) return 'formation_invalid';
-            if (this.inSlot(u, slot)) continue;
+            if (u.x === slot.x && u.y === slot.y && u.z === slot.z) continue;
             if (cheb(u, slot) > 3 || u.ap < 1) return 'formation_invalid';
         }
         if (tpl.requiresDoor && !this.battle.breachPoints(leader).length) return 'formation_invalid';
@@ -75,7 +76,7 @@ export class Formations {
             const slots = this.slotsFor(f);
             f.members.forEach((id, i) => {
                 const u = b.unit(id), slot = slots[i];
-                if (u.x === slot.x && u.y === slot.y) return;
+                if (u.x === slot.x && u.y === slot.y && u.z === slot.z) return;
                 const search = b.reach(u, 4 * b.mobility(u));
                 const target = [slot, ...neighbours(slot)].find(c => search.costs.has(nodeKey(c)) && !b.occupant(c.x, c.y, c.z));
                 if (!target) return;

@@ -56,7 +56,7 @@ Data: `shared/content/units.js` (classes, Syndicate types, abilities, squads), `
 | `dash` | Sprint | 2 | 0 | +1 AP that can only be spent moving. | Assault |
 | `rally` | Rally | 2 | 1 | Allies within 6 lose 25 stress and gain 1 WP. | Assault, Breacher |
 | `demolish` | Demolition | 1 | 0 | Next shot or blast deals double damage to walls and cover. | Grenadier |
-| `suppress` | Suppressive Fire | 2 | 2 | Burst at a target; it is Suppressed (spread ×1.6) until its next turn. | Grenadier |
+| `suppress` | Suppressive Fire | 2 | 2 | Burst at a visible target; it is Suppressed (accuracy ×0.6) for two own turns. | Grenadier |
 | `quick_aim` | Snap Shot | 2 | 0 | Next shot costs 1 AP less. | Sharpshooter |
 | `deadeye` | Deadeye | 3 | 0 | Next shot has half the spread. | Sharpshooter |
 | `brace` | Shield Wall | 1 | 1 | +4 armour on every part until your next turn. | Breacher, Riot Guard |
@@ -72,15 +72,13 @@ What the code actually does (`Battle.doAbility`; Will and AP are paid when the i
 | Demolition (`demolish`) | next shot's voxel damage × 2, or next throw's voxel power × 2 | the next shot of any kind (reactions and breach shots included) or detonation, or the next own turn start |
 | Shield Wall (`brace`) | `braced`: +4 armour on every part against shots and melee; against blasts it nets +2 on the torso, because blast pierce is half the (braced) torso armour, rounded up | through the opponent's phase |
 | Rally | every ally within 6 tiles (3D, Δz × 0.8; includes the user) loses 25 stress and gains 1 Will (cap) | instant |
-| Suppressive Fire (`suppress`) | if the user carries the Assault Rifle: a normal Assault Rifle shot at the target's torso (uses 3 rounds), then `suppressed` for 2 rounds (accuracy × 0.6). With fewer than 3 rounds loaded the shot is skipped but the status still applies | 2 rounds of the target's status |
+| Suppressive Fire (`suppress`) | if the user carries the Assault Rifle: a normal Assault Rifle shot at the target's torso (uses 3 rounds), then `suppressed` for 2 rounds (accuracy × 0.6). Requires 3 rounds loaded, a living visible target and weapon range; rejected uses spend nothing | 2 rounds of the target's status |
 
 Ability use is refused with `no_will` while `panicked`. The AI never uses abilities.
 
-**Suppression through the HUD is free.** The HUD's Suppressive Fire button does not send the `ability` intent: it
-switches to targeting and sends a normal `shoot` intent with `suppress: true` (`Game.useAbility`, `Game.fire`).
-`Battle.doShoot` applies `suppressed` (2 rounds) for any shot that carries the flag, and `validate` does not check
-the ability. So in play Suppressive Fire costs the weapon's shot AP and **no Will**, and any unit could send the flag
-with any weapon (verified with a Sharpshooter).
+**Suppression through the HUD uses the paid ability.** The button enters torso targeting; confirmation sends
+`{ type: 'ability', abilityId: 'suppress', targetId }`. It costs 2 AP and 2 Will, consumes 3 Assault Rifle rounds,
+and applies suppression only after the shot. A normal `shoot` carrying `suppress: true` is rejected.
 
 ## Items
 
@@ -103,8 +101,7 @@ Stress runs 0–`B.breakdownAt` (100) for every unit, squad and Syndicate alike 
 
 - **Stress ≥ 75**: accuracy × 0.9 (`Units.accuracyMult`).
 - **Breakdown** at 100: stress resets to **60**, the unit gets `panicked` for 1 round, loses overwatch and leaves
-  its formation. `panicked` halves the next turn's AP (rounded up) and blocks abilities while present; see the
-  timing quirk in [06](06-elements.md#statuses).
+  its formation. `panicked` halves the next turn's AP (rounded up) and blocks abilities throughout the next own turn ([06](06-elements.md#statuses)).
 
 ## Will
 

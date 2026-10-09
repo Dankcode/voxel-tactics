@@ -10,8 +10,8 @@ XCOM-style breach. Code: `Battle.doMove` / `openDoorsOnStep` / `doDoor` / `revea
   of every room cell, per storey. Partitions and doorway cells belong to no room (−1); outdoors is −1.
 - A unit's room is the room id at its z + 1 (`Battle.roomOf`). Room records live in `mission.rooms`:
   `{ id, buildingId, storey, kind, cells, floorZ, lit, doors }`.
-- Every room is `lit: true` today, so the dim-room spread penalty never applies
-  ([03](03-cover-and-sight.md#other-modifiers-tied-to-position)).
+- Warehouse rooms default to dim; other rooms default to lit. Specs can override lighting by room kind or for
+  the whole building ([03](03-cover-and-sight.md#other-modifiers-tied-to-position)).
 - Building layout (programs, partitions, door placement so most rooms have two ways in, glazing, furniture with a
   connectivity guard, stairs) is described in `docs/LEVELS.md` and [11](11-maps-and-level-design.md).
 
@@ -54,6 +54,7 @@ building with |dx|, |dy| ≤ 2 and |dz| ≤ 1 from the unit, that has a room on 
 unit's own room.
 
 **Validation** (`validateBreach`): every participant (`unitIds`, default just `unitId`) is alive, on the active side,
+is owned by the commanding player (or local hot-seat), appears once in the list,
 has **≥ 1 AP** and stands within Chebyshev 2 (|dz| ≤ 1) of the door; there is a room beyond. Door entry needs a
 closed door; charge entry needs some participant carrying a Breaching Charge and any non-air voxel at the target
 (intent level: a wall works too; the HUD only offers doors).
@@ -78,10 +79,9 @@ closed door; charge entry needs some participant carrying a Breaching Charge and
 Consequences worth knowing:
 
 - `surprised` = −1 AP on the defender's next turn and no reactions until then.
-- **A Breaching Charge hits the breachers too.** Blast damage and statuses apply to every unit in range, and the
-  stack is usually clustered (radius +1, damage ×1.25). Verified on the Training Facility bunker door: a Breacher
-  alone, or a Breacher + Assault, take 0 damage (armour) but are **stunned** (−2 AP next turn); a stack of three
-  took 7, 2 and 2 damage and were all stunned.
+- **The initial charge blast protects the participating breachers** from damage, element statuses and knockback.
+  Other nearby units are still affected, including squadmates outside the participant list. Chained explosive
+  props, falls and defender reactions remain dangerous. A charge placed with an ordinary `throw` has friendly fire.
 - Entrants do not reveal rooms step by step and make no move noise during the entry.
 - Units with a melee weapon selected, or an empty magazine, enter without shooting.
 

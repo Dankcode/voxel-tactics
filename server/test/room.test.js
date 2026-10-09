@@ -69,3 +69,33 @@ test('two players share a squad in lockstep and stay in sync through an AI turn'
         await roomA.leave(); await roomB.leave();
     } finally { await srv.close(); }
 });
+
+test('debug co-op is opt-in, host-only, and broadcasts replayable debug intents', { timeout: 30000 }, async () => {
+    const srv = await startServer();
+    try {
+        const client = new Client.Client(`ws://127.0.0.1:${srv.port}`);
+        const host = await client.create('mission', { desc: { scenario: 'proving-grounds', seed: 2, debug: true } });
+        host.onMessage('players', () => {}); host.onMessage('votes', () => {});
+        const hostState = await next(host, 'init');
+        assert.equal(hostState.desc.debug, true);
+        const mirror = createBattle(hostState.desc);
+        for (const entry of hostState.log) assert.ok(mirror.apply(entry.intent).ok);
+        const hashes = []; host.onMessage('hash', m => hashes.push(m));
+        host.onMessage('intent', m => { assert.ok(mirror.apply(m.intent).ok); });
+        const guest = await client.joinById(host.roomId, { name: 'Guest' });
+        guest.onMessage('intent', () => {}); guest.onMessage('hash', () => {}); guest.onMessage('players', () => {});
+        const guestState = await next(guest, 'init');
+        assert.equal(guestState.desc.debug, true);
+        const rejected = next(guest, 'reject');
+        guest.send('intent', { nonce: 'guest-debug', intent: { type: 'debug', op: 'status', unitId: 'p0', status: 'wet' } });
+        assert.equal((await rejected).reason, 'not_your_unit');
+        const accepted = next(host, 'intent');
+        host.send('intent', { nonce: 'host-debug', intent: { type: 'debug', op: 'status', unitId: 'p0', status: 'wet' } });
+        const entry = await accepted;
+        assert.equal(entry.intent.type, 'debug'); assert.equal(entry.intent.by, 'P1');
+        await new Promise(r => setTimeout(r, 100));
+        assert.ok(mirror.unit('p0').statuses.some(s => s.id === 'wet'));
+        assert.equal(mirror.hash(), hashes.at(-1).hash);
+        await host.leave(); await guest.leave();
+    } finally { await srv.close(); }
+});

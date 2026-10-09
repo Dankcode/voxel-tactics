@@ -129,7 +129,7 @@ anything else that stops bullets.
 - `hedge` is solid, opaque and `pass`: blocks movement and sight, not bullets.
 - Flammable materials without `burnTo` (`door`, `hedge`, `leaves`, `cloth`, `barrel_powder`, `cabinet`, `bed`,
   `desk`, `privacy_fence`, `bin`) turn to air when they burn out instead of ash (none of them has `debris`). The fuel
-  drum does not explode when it burns out.
+  drum detonates when fire consumes it.
 - No present-day map builder (the five maps, `MapKit`, `ModernBuilder`, the theme catalogues) places `city_wall`,
   `furniture`, `shelf`, `lantern`, `crystal`, `road`, `cobble`, `plank` or `stairs_wood`; they come from the earlier
   medieval content (the legacy `BuildingBuilder`, the unused `Props.js`, the generic `PROP_CATALOG`) and can still

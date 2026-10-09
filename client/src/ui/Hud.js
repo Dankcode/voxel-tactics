@@ -139,7 +139,7 @@ export class Hud {
         const ow = WEAPONS[u.weapons.find(id => WEAPONS[id].kind === 'ballistic')];
         if (ow) s.push({ act: 'overwatch', icon: ICONS.overwatch, name: 'Overwatch', cost: 'all', disabled: ap < ow.ap, on: mode.kind === 'overwatch', tip: '<b>Overwatch</b> · spend the rest of your AP to fire at the first enemy that moves in your cone' });
         if (ow?.ammo) s.push({ act: 'reload', icon: ICONS.reload, name: 'Reload', cost: `${ow.reloadAp}`, disabled: ap < ow.reloadAp || u.ammo[ow.id] === ow.ammo, tip: `<b>Reload</b> · ${ow.reloadAp} AP` });
-        for (const a of u.abilities) { const ab = ABILITIES[a]; s.push({ act: 'ability', arg: a, icon: ICONS[a] || ICONS.ability, name: ab.name, cost: `${ab.ap || 0}`, sub: `${ab.wp} WP`, disabled: u.will < ab.wp || ap < (ab.ap || 0), tip: `<b>${ab.name}</b> · ${ab.wp} Will${ab.ap ? ` · ${ab.ap} AP` : ''}<br>${esc(ab.text)}` }); }
+        for (const a of u.abilities) { const ab = ABILITIES[a]; s.push({ act: 'ability', arg: a, icon: ICONS[a] || ICONS.ability, name: ab.name, on: a === 'suppress' && !!mode.suppress, cost: `${ab.ap || 0}`, sub: `${ab.wp} WP`, disabled: u.will < ab.wp || ap < (ab.ap || 0) || u.statuses.some(s => s.id === 'panicked') || (a === 'suppress' && (u.ammo.repeater ?? 0) < (WEAPONS.repeater.perShot || 1)), tip: `<b>${ab.name}</b> · ${ab.wp} Will${ab.ap ? ` · ${ab.ap} AP` : ''}<br>${esc(ab.text)}` }); }
         const f = b.formations.of(u);
         s.push(f ? { act: 'formBreak', arg: f.id, icon: ICONS.formation, name: `Break ${FORMATIONS[f.template].name}`, cost: '0', tip: 'Dissolve the formation' }
             : { act: 'formation', icon: ICONS.formation, name: 'Formation', cost: '1', tip: '<b>Formation</b> (F) · Shield Line, Breach Stack, Crossfire' });
@@ -235,11 +235,11 @@ export class Hud {
         const main = t.byPart[t.part] ?? 0;
         el.innerHTML = `<div class="thead"><img src="/assets/characters/${u.art}/portrait.png" alt=""><div><div class="tname">${esc(u.name)}</div><div class="thp seg">${segs(u.hp, u.maxHp)}</div></div><div class="bigpct ${main < 0.35 ? 'low' : main < 0.65 ? 'mid' : 'high'}">${pct(main)}</div></div>
             <div class="tcover">${t.flanked ? '<b class="flank">FLANKED</b>' : `<b class="cov">${['NO COVER', 'HALF COVER', 'FULL COVER'][t.cover] || ''}</b>`} · ${t.distance.toFixed(1)} tiles${t.lean ? ` · lean ${t.lean}` : ''}${t.inRange ? '' : ' · <b class="flank">OUT OF RANGE</b>'}</div>
-            <div class="parts">${PARTS.map(([k, label, key]) => `<button data-act="part" data-arg="${k}" class="${t.part === k ? 'on' : ''} ${u.parts[k].disabled ? 'dis' : ''}">
+            <div class="parts">${(g.mode.suppress ? PARTS.filter(([k]) => k === 'torso') : PARTS).map(([k, label, key]) => `<button data-act="part" data-arg="${k}" class="${t.part === k ? 'on' : ''} ${u.parts[k].disabled ? 'dis' : ''}">
                 <b>${label}</b><span>${pct(t.byPart[k] ?? 0)}</span><small>armor ${u.parts[k].armor} · ${u.parts[k].hp}/${u.parts[k].max}</small><kbd>${key}</kbd></button>`).join('')}</div>
             <div class="tsum">Any hit ${pct(t.anyHit)} · cover blocks ${pct(t.blocked)}${t.friendly > 0.01 ? ` · <b class="warn">friendly ${pct(t.friendly)}</b>` : ''}</div>
             <div class="mods">${t.mods.map(([k, v]) => `<span>${k} ×${v}</span>`).join('')}</div>
-            <div class="tbtns"><button data-act="cancel" class="ghost">BACK <kbd>Esc</kbd></button><button data-act="fire" class="firebtn">${esc(w?.name?.toUpperCase() || 'FIRE')} · ${t.ap} AP <kbd>Space</kbd></button></div>`;
+            <div class="tbtns"><button data-act="cancel" class="ghost">BACK <kbd>Esc</kbd></button><button data-act="fire" class="firebtn">${esc(g.mode.suppress ? 'SUPPRESSIVE FIRE' : w?.name?.toUpperCase() || 'FIRE')} · ${t.ap} AP${g.mode.suppress ? ` · ${ABILITIES.suppress.wp} WP` : ''} <kbd>Space</kbd></button></div>`;
         this.renderTargets();
     }
     showFormationPanel() {

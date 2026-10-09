@@ -28,8 +28,7 @@ event log slice the client animates.
 
 ## The room (`MissionRoom`)
 
-- `onCreate`: the server sanitises the descriptor to `{ scenario: scenarioId(...), seed: Number(seed) || 1, squad }`
-  (the `debug` flag is **dropped**), builds the authoritative `Battle`, max **4** clients.
+- `onCreate`: the server sanitises the descriptor to `{ scenario: scenarioId(...), seed: Number(seed) || 1, squad, debug: debug === true }`, builds the authoritative `Battle`, max **4** clients.
 - **Seats** (`reassignOwners`): on every join and leave, squad units are dealt round-robin to the connected players
   (`P1`, `P2`, …) in roster order. The deal includes dead units, so the living split can be uneven. It is committed
   as an `owners` intent so every peer agrees; clients may not send `owners`.
@@ -58,18 +57,19 @@ event log slice the client animates.
 
 ## What the hash covers (`Battle.hash`)
 
-Materials of every voxel (FNV-1a), each unit's id, position, HP, AP, dead flag, stress, facing and per-part HP and
-armour, the element field (surfaces, fires, smoke), and the event sequence number. **Not covered**: voxel HP, ammo,
-items, Will, statuses, overwatch, buffs, formations, alert state, revealed rooms and the RNG state. A divergence in
-those is only caught once it changes something hashed.
+Materials and HP of every voxel; complete unit state (including ownership, body parts, ammo, items, Will,
+statuses, overwatch, buffs, alert state and formations); round, active side and outcome; revealed rooms; element
+field; formation records and next ID; RNG state; controllers; debug mode; event sequence. Render caches and
+presentation-only data are excluded. State divergence is detected before it affects damage or position.
 
 ## Debug intents
 
 `{ type: 'debug', op, … }` intents (`DebugOps.js`: ap, heal, kill, god, stress, status, refill, teleport, spawn,
 destroy, place, explode, element, smoke, reveal, alert, endSide, controlSide) go through `apply` like any other and
 stay deterministic, but `validate` refuses them with `debug_disabled` unless the battle was built with
-`debug: true`. Locally that is `?debug=1` or the menu checkbox. Online it is currently **never**: `MissionRoom`
-drops the flag. Debug intents skip the ownership check.
+`debug: true`. Locally that is `?debug=1` or the menu checkbox. Online the creator must explicitly enable debug in the descriptor; only the original host (`P1`) can submit
+debug intents. Guests are rejected before mutation. Accepted debug intents are broadcast and replayed normally.
+Debug operations intentionally bypass individual soldier ownership for the host.
 
 ## What is and isn't cheat-proof
 
@@ -78,10 +78,10 @@ further than allowed, fire without ammo, act out of turn, command a unit whose `
 squad's turn alone. It is **not** cheat-proof:
 
 - Every peer holds the full state: enemy positions, unrevealed rooms and fog of war are client-side presentation.
-- A `shoot` intent may target a unit nobody can see (no line-of-sight check) and may carry `suppress: true` for free
-  ([07](07-units-and-classes.md)).
-- Only the acting `unitId` is ownership-checked: `breach.unitIds` and `formation.memberIds` can include teammates'
-  soldiers, and `formation_break` with no `unitId` passes validation and dissolves any formation by id.
+- Free-aim points can be fired at without a sight requirement, preserving terrain destruction. Unit-targeted shots
+  require squad sight and suppression must use the paid ability.
+- Group formation and breach intents check all participant ownership. A formation breakup resolves its acting
+  soldier and checks both turn and ownership of every member.
 - Desyncs are detected, not corrected.
 
 PvP would need server-filtered state (PLAN-01 M13); the README says the same.

@@ -1,6 +1,6 @@
 # Fireteam mechanics reference
 
-How the game actually plays, written from the code (2026-10-08). Where a number or rule here disagrees with another
+How the game actually plays, written from the code (2026-10-09). Where a number or rule here disagrees with another
 doc, the code wins and this page should match it. Every rule cites where it lives as `file:function`.
 
 ## Design pillars
@@ -70,20 +70,22 @@ node tools/docs/gen_mechanics_tables.mjs --write    # refresh every generated bl
 Re-run `--write` after changing `shared/content/*.js`, `Materials.js`, `ConnectedShapes.js`, the prop catalogues,
 the gates or a map. The hand-written rule text around the tables is not regenerated; check it when rules change.
 
-## Quirks found while writing this (code behaviour, verified)
+## Mechanics corrections (2026-10-09)
 
-Documented on their pages; listed here so they are easy to find and fix or keep on purpose.
+The eleven issues identified by the original mechanics audit are now addressed:
 
-1. `burning` never expires: its damage tick re-applies it ([06](06-elements.md#statuses)).
-2. Glass rates as cover in the readout but never stops a projectile ([03](03-cover-and-sight.md#glass-readout-and-ballistics-disagree)).
-3. Suppressive Fire from the HUD is a `shoot` intent with `suppress: true`: no Will is spent, and any shot can carry
-   the flag ([07](07-units-and-classes.md#abilities)).
-4. Shots do not require line of sight ([03](03-cover-and-sight.md#line-of-sight-battlesees-sightline)).
-5. Fuel drums burn away without exploding ([05](05-destruction.md#explosive-materials)).
-6. A Breaching Charge stuns (and can wound) the breaching stack ([08](08-interiors-and-breaching.md#breach)).
-7. `panicked` is removed at the start of the turn it should affect, so it only halves AP
-   ([06](06-elements.md#statuses)).
-8. The squad autopilot's `formations: true` policy has no effect; only the sim forms up ([10](10-ai.md)).
-9. Online rooms drop the `debug` flag, so debug intents are always refused online ([12](12-co-op-and-determinism.md#debug-intents)).
-10. Formation declare can drive a member's AP to −1 ([09](09-formations.md#declaring-formationsvalidate-declare)).
-11. Every room is lit, so the dim-room modifier never applies ([03](03-cover-and-sight.md#other-modifiers-tied-to-position)).
+1. Burning damage ticks do not reapply burning; it expires after two own-turn ticks unless another fire refreshes it.
+2. Glass stops the projectile that destroys its pane; later projectiles can pass through the opening.
+3. Suppressive Fire uses the ability intent and pays 2 AP, 2 Will and 3 rounds of ammunition.
+4. Unit-targeted shots require squad sight. Free aim remains available for shooting terrain and cover.
+5. Fuel drums destroyed by fire queue their material explosion, including chain reactions.
+6. A charge breach protects its participants from the initial charge blast; defender reactions, falls and chained explosions remain dangerous.
+7. Panic remains active throughout the affected own turn. Freezing and suppression also retain their final turn's effects.
+8. Client autopilot and the simulator share the same pure formation-intent planner.
+9. Online rooms preserve explicit debug opt-in; only their original host (P1) may submit debug intents.
+10. Formation alignment requires AP whenever a member must relocate; duplicate members and invalid leaders are rejected.
+11. Warehouse interiors can be dim; building specs can override lighting by room kind or for the whole building.
+
+Co-op additionally checks ownership of every group-action participant, and its hash includes voxel HP,
+ammo, items, Will, statuses, formations, turn state, reveal state and RNG state. Regression coverage is in
+`shared/battle/mechanics.test.js` and `server/test/room.test.js`.
