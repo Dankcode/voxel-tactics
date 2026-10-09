@@ -1,0 +1,68 @@
+{
+  "version": 2,
+  "id": "signal-house",
+  "name": "Signal House",
+  "theme": "Downtown",
+  "timeOfDay": "overcast",
+  "frame": {
+    "width": 52,
+    "height": 36
+  },
+  "style": "Modern urban surveillance office, muted concrete and teal signage. Authored overhead design reference.",
+  "buildings": [
+    {
+      "id": "command",
+      "bounds": [
+        0.18,
+        0.15,
+        0.64,
+        0.55
+      ],
+      "program": "office",
+      "front": "e",
+      "storeys": 4
+    }
+  ],
+  "surfaces": [
+    {
+      "bounds": [
+        0,
+        0,
+        1,
+        1
+      ],
+      "material": "concrete"
+    },
+    {
+      "bounds": [
+        0,
+        0.72,
+        1,
+        0.84
+      ],
+      "material": "asphalt"
+    }
+  ],
+  "insertion": [
+    0.1,
+    0.92
+  ],
+  "flow": [
+    [
+      0.78,
+      0.66
+    ],
+    [
+      0.78,
+      0.4
+    ],
+    [
+      0.78,
+      0.1
+    ]
+  ],
+  "storyHooks": [
+    "The fourth-floor surveillance room controls the Syndicate roadblock. Recover its command records."
+  ],
+  "imageSha256": "e4ced4f7812f04e7e4e75949cbfcf782b45e3e19fde78d6d1be0d62654ba4776"
+}

@@ -1,12 +1,13 @@
 // Recorded analysis of docs/design/cedar-close-concept.png, viewed and transcribed for an offline regression.
 // Footprints are intentionally adapted to combat scale; flow follows sidewalk → shared drive → back gardens.
 export const CEDAR_IMAGE_SITE = {
-    version: 1, id: 'cedar-image', name: 'Cedar Close · Image Study', theme: 'Suburbs', timeOfDay: 'dusk',
+    version: 2, id: 'cedar-image', name: 'Cedar Close · Image Study', theme: 'Suburbs', timeOfDay: 'dusk',
+    frame:{width:48,height:40},
     source: 'docs/design/cedar-close-concept.png',
     imageSha256: 'a2b8126b2f2f4d677739fc305d69b47accc94a2f43662ac97b95149e6eeea012',
     buildings: [
-        { id:'home-left', bounds:[0.06,0.22,0.39,0.55], program:'house',front:'s' },
-        { id:'home-right',bounds:[0.56,0.22,0.88,0.55],program:'house',front:'s' }
+        { id:'home-left', bounds:[0.06,0.22,0.39,0.55], program:'house',front:'s',storeys:2 },
+        { id:'home-right',bounds:[0.56,0.22,0.88,0.55],program:'house',front:'s',storeys:2 }
     ],
     surfaces: [
         { bounds:[0,0.8,1,0.91],material:'asphalt' },

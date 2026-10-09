@@ -16,7 +16,7 @@ test('image study preserves combat flow while locking non-gameplay rooms', () =>
     assert.deepEqual(slate.matrix,Array.from(m.store.mat));
     for(const layer of slate.layers) for(let y=0;y<slate.depth;y++) for(let x=0;x<slate.width;x++) assert.equal(layer.tiles[y][x],m.store.get(x,y,layer.z));
     assert.ok(m.metrics.pass,JSON.stringify(m.metrics));
-    const closed=m.rooms.filter(r=>!r.gameplay);assert.equal(closed.length,2);
+    const closed=m.rooms.filter(r=>!r.gameplay);assert.equal(closed.length,4);
     for(const room of closed) assert.ok(room.cells.every(([x,y])=>!search.costs.has(nodeKey({x,y,z:room.floorZ}))));
     for(const b of m.buildings) for(const d of b.doors.filter(d=>d.locked)) {
         assert.equal(m.store.get(d.x,d.y,d.z+1),MAT.door_locked);
@@ -30,7 +30,8 @@ test('author may promote a bathroom to gameplay; image geometry and blocked flow
     assert.ok(p.rooms.find(r=>r.kind==='bathroom').gameplay);
     assert.ok(!p.doors.some(d=>d.locked));
     const overlap=structuredClone(CEDAR_IMAGE_SITE);overlap.buildings[1].bounds=overlap.buildings[0].bounds;
-    assert.throws(()=>validateSite(overlap),/overlapping/);
+    assert.doesNotThrow(()=>validateSite(overlap));
+    assert.throws(()=>buildImageMap(overlap),/site.contact|site.congruence/);
     const blocked=structuredClone(CEDAR_IMAGE_SITE);blocked.flow[0]=[0.07,0.23];
     assert.throws(()=>buildImageMap(blocked),/waypoint.*blocked/);
 });

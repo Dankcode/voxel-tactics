@@ -1,0 +1,12 @@
+{
+  "site": "87f6aa40e2345979d24c73913e0db700708a4567ac33a6f8d46a1130d1ec227e",
+  "design": "d7ca5e0992bdebde6dc6d30c3eccf868f20f1bf443e3ae854450fa4da3229757",
+  "concept/command-0": "ed45ea6159ba5d89175e40b7dbe92555db266bed62b5dc7f109a7e557d29f4af",
+  "floorspec/command-0": "a837489b654b978bd1bbff3a5d62a1046e98e2340d73eb450a5aa9a58a41f46c",
+  "concept/command-1": "fcd179085b1cc2d1fd7a7000ea512a3b6dcff123fb782e1cd852066d68c598bf",
+  "floorspec/command-1": "559a4f17ddaac028c5e2db96ad35556fac921603788cec7e400825da11d024d6",
+  "concept/command-2": "4d427bd490f75d56dd86f299cf9b725e58075bf5074286000598034876bc6b88",
+  "floorspec/command-2": "54b1a18f121c2bce7b402aa6156e9e0515aa71ff8b2b878a168336f79ef4a165",
+  "concept/command-3": "676ffbb2e4871475934c9daaa828c4f43c0c2c6cea873f3deb1c21942b347ae3",
+  "floorspec/command-3": "075fa596006a4067662a6d541559bbca5cfe903ff82e41f06d2ad21d8326d31c"
+}

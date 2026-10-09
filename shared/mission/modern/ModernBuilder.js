@@ -525,7 +525,7 @@ export function connected(floorSet, blocked, start) {
 }
 
 // ------------------------------------------------------------------------------------------------ furnish
-function furnish(store, { floorSet, rooms, fz, keepFree, obstacles, rng, hints, decor }) {
+export function furnish(store, { floorSet, rooms, fz, keepFree, obstacles, rng, hints, decor }) {
     const blocked = new Set(obstacles);
     let parts = components(floorSet, blocked);
     for (const room of rooms) {

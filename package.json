@@ -13,8 +13,8 @@
     "dev:all": "concurrently --kill-others-on-fail --names client,server \"npm run dev --workspace=client\" \"npm start --workspace=server\"",
     "server": "npm start --workspace=server",
     "build": "npm run build --workspace=client",
-    "test": "node --test shared/voxel/*.test.js shared/elements/*.test.js shared/battle/*.test.js shared/mission/*.test.js client/src/render/kit/*.test.js server/test/*.test.js",
-    "test:fast": "node --test shared/voxel/*.test.js shared/elements/*.test.js shared/battle/*.test.js shared/mission/*.test.js client/src/render/kit/*.test.js",
+    "test": "node --test shared/voxel/*.test.js shared/elements/*.test.js shared/battle/*.test.js shared/mission/*.test.js shared/mapgen/*.test.js client/src/render/kit/*.test.js server/test/*.test.js",
+    "test:fast": "node --test shared/voxel/*.test.js shared/elements/*.test.js shared/battle/*.test.js shared/mission/*.test.js shared/mapgen/*.test.js client/src/render/kit/*.test.js",
     "sim": "node tools/sim/battle_sim.mjs --seeds 24",
     "sim:formations": "node tools/sim/battle_sim.mjs --seeds 100 --formations-compare --gate",
     "art:placeholders": "python3 tools/art/make_placeholders.py",
@@ -30,6 +30,6 @@
     "concurrently": "^8.2.2"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.10"
   }
 }

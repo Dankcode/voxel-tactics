@@ -140,7 +140,7 @@ export class Battle {
                 const aimPoint = aimPointOf(this, intent.aim);
                 const { spread, mods } = this.spreadFor(u, w, aimPoint, { target });
                 const est = estimateShot(this, u, intent.aim, { weapon: w, spread, samples: B.estimateSamples });
-                const cover = target ? coverAgainst(this.store, target.x, target.y, target.z, u.x, u.y) : null;
+                const cover = target ? coverAgainst(this.store, target.x, target.y, target.z, u.x, u.y, u.z) : null;
                 return { ok: true, ap: this.shotAp(u, w), estimate: est, mods, cover, flanked: target ? cover === COVER.NONE : false };
             }
             case 'throw': {
@@ -926,6 +926,6 @@ export class Battle {
 
 function coverAgainstAll(battle, to, u) {
     let worst = 2;
-    for (const e of battle.enemiesOf(u)) if (battle.visible?.has(e.id) || u.side !== 'player') worst = Math.min(worst, coverAgainst(battle.store, to.x, to.y, to.z, e.x, e.y));
+    for (const e of battle.enemiesOf(u)) if (battle.visible?.has(e.id) || u.side !== 'player') worst = Math.min(worst, coverAgainst(battle.store, to.x, to.y, to.z, e.x, e.y, e.z));
     return worst;
 }

@@ -18,7 +18,7 @@ async function startServer() {
 }
 const next = (room, type) => new Promise(r => room.onMessage(type, r));
 
-test('two players share a squad in lockstep and stay in sync through an AI turn', { timeout: 60000 }, async () => {
+for (const scenario of ['proving-grounds', 'signal-house']) test(`two players share a squad in lockstep through an AI turn on ${scenario}`, { timeout: 60000 }, async () => {
     const srv = await startServer();
     try {
         const url = `ws://127.0.0.1:${srv.port}`;
@@ -37,7 +37,7 @@ test('two players share a squad in lockstep and stay in sync through an AI turn'
             return p;
         };
         const apply = (p, m) => { if (m.seq > p.seq) { p.seq = m.seq; p.battle.apply(m.intent); } };
-        const roomA = await a.create('mission', { desc: { scenario: 'proving-grounds', seed: 4, squad: 'standard' }, name: 'A' });
+        const roomA = await a.create('mission', { desc: { scenario, seed: 4, squad: 'standard' }, name: 'A' });
         const pa = mirror(roomA); const initA = await pa.init;
         const roomB = await b.joinById(roomA.roomId, { name: 'B' });
         const pb = mirror(roomB); const initB = await pb.init;
@@ -51,10 +51,13 @@ test('two players share a squad in lockstep and stay in sync through an AI turn'
         roomB.send('intent', { nonce: 'x1', intent: { type: 'move', unitId: 'p0', to: { x: 22, y: 40, z: 1 } } });
         await new Promise(r => setTimeout(r, 200));
         assert.equal(peers[1].rejects[0]?.reason, 'not_your_unit');
-        // P1 moves its own soldier.
-        roomA.send('intent', { nonce: 'x2', intent: { type: 'move', unitId: 'p0', to: { x: 22, y: 40, z: 1 } } });
+        // P1 moves its own soldier to a reachable, unoccupied cell on either map.
+        const soldier=peers[0].battle.unit('p0');
+        const destination=[...peers[0].battle.reach(soldier,3).nodes.values()].find(n=>(n.x!==soldier.x||n.y!==soldier.y)&&!peers[0].battle.occupant(n.x,n.y,n.z));
+        assert.ok(destination);
+        roomA.send('intent', { nonce: 'x2', intent: { type: 'move', unitId: 'p0', to: { x:destination.x,y:destination.y,z:destination.z } } });
         await new Promise(r => setTimeout(r, 300));
-        assert.deepEqual([peers[0].battle.unit('p0').y, peers[1].battle.unit('p0').y], [40, 40]);
+        assert.deepEqual(peers.map(p=>[p.battle.unit('p0').x,p.battle.unit('p0').y,p.battle.unit('p0').z]),[[destination.x,destination.y,destination.z],[destination.x,destination.y,destination.z]]);
         // End turn needs both votes; then the server streams the AI turn.
         roomA.send('intent', { nonce: 'e1', intent: { type: 'endTurn', side: 'player' } });
         await new Promise(r => setTimeout(r, 200));

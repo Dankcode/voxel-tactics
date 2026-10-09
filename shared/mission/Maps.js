@@ -6,13 +6,11 @@ import { buildMainStreet, MAIN_STREET_ID } from './MainStreet.js';
 import { buildHarbor, HARBOR_ID } from './Harbor.js';
 import { buildRoute9, ROUTE9_ID } from './Route9.js';
 
-import { buildImageMap } from '../mapgen/PackageBuilder.js';
-import { GENERATED_SITES } from './generated/GeneratedSites.js';
-import { CEDAR_IMAGE_SITE } from './generated/CedarImage.js';
+import { buildPackagedMap } from '../mapgen/PackageBuilder.js';
+import { MAP_PACKAGES } from './generated/PackageCatalog.js';
 
 export const MAPS = Object.freeze([
-    ...GENERATED_SITES.map(site => ({id:site.id,name:site.name || site.id,theme:site.theme || 'Generated',text:'Reference design adapted to connected combat flow.',build: options => buildImageMap(site, options)})),
-    { id: CEDAR_IMAGE_SITE.id, name: CEDAR_IMAGE_SITE.name, theme: 'Suburbs', text: 'Screenshot study: sidewalk approach, driveway flank and back-garden route at dusk.', build: options => buildImageMap(CEDAR_IMAGE_SITE, options) },
+    ...MAP_PACKAGES.map(pkg => ({id:pkg.manifest.id,name:pkg.manifest.name,theme:pkg.manifest.theme,text:pkg.design.mission.briefing,concept:`/maps/${pkg.manifest.id}/${pkg.manifest.reference}`,build: options => buildPackagedMap(pkg, options)})),
     { id: CEDAR_CLOSE_ID, name: 'Cedar Close', theme: 'Suburbs', text: 'Two modern homes on a quiet close. Glass walls, gardens, a residential street.', build: buildCedarClose },
     { id: MAIN_STREET_ID, name: 'Main Street', theme: 'Downtown', text: 'Shops, a diner and an office block on a main road. Storefront glass, roadworks, a parking lot.', build: buildMainStreet },
     { id: HARBOR_ID, name: 'Harbor Yard', theme: 'Industrial', text: 'A container yard on the quay at night: stacked containers, a warehouse with roller doors, fuel drums.', build: buildHarbor },

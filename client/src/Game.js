@@ -606,7 +606,7 @@ export class Game {
                 byPart[p] = est.parts[p];
                 if (p === 'torso') { any = est.hit; blocked = est.cover; friendly = est.friendly; muzzle = est.muzzle; lean = est.lean; distance = est.distance; }
             }
-            const cover = coverAgainst(this.battle.store, target.x, target.y, target.z, u.x, u.y);
+            const cover = coverAgainst(this.battle.store, target.x, target.y, target.z, u.x, u.y, u.z);
             this.targetInfo = { key, target, part, byPart, anyHit: any, blocked, friendly, spread, mods, muzzle, lean, distance, cover, flanked: cover === COVER.NONE, ap: this.mode.suppress ? ABILITIES.suppress.ap : this.battle.shotAp(u, w), inRange: distance <= w.maxRange };
         }
         this.cameraDirector.prepare(new THREE.Vector3(u.x+0.5,u.z+1,u.y+0.5), new THREE.Vector3(target.x+0.5,target.z+1,target.y+0.5));

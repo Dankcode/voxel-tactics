@@ -16,7 +16,8 @@ Measured on seed 1:
 <!-- generated:maps -->
 | id | name | theme | size W×D×H | buildings | rooms | enemies | pods | lighting | cover density | cover gap | killing field | sightline median | lanes | breachability | spawn safe | gates (seed 1) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `cedar-image` | Cedar Close · Image Study | Suburbs | 48×40×12 | 2 | 8 | 4 | 2 | dusk | 45% | 5 | 4 | 9.8 | 4 | 100% | yes | PASS |
+| `cedar-image` | Cedar Close · Image Study | Suburbs | 54×46×18 | 2 | 16 | 6 | 4 | dusk | 44% | 5 | 10 | 10.3 | 4 | 100% | yes | PASS |
+| `signal-house` | Signal House | Downtown | 58×42×18 | 1 | 16 | 3 | 2 | overcast | 43% | 6 | 12 | 11.0 | 4 | 100% | yes | PASS |
 | `cedar-close` | Cedar Close | Suburbs | 48×40×12 | 2 | 8 | 7 | 4 | day | 47% | 4 | 5 | 6.3 | 4 | 100% | yes | PASS |
 | `main-street` | Main Street | Downtown | 52×42×14 | 4 | 17 | 8 | 4 | dusk | 46% | 4 | 6 | 8.4 | 4 | 94% | yes | PASS |
 | `harbor-yard` | Harbor Yard | Industrial | 54×44×14 | 2 | 5 | 8 | 4 | night | 36% | 6 | 6 | 7.0 | 2 | 100% | yes | PASS |
@@ -213,3 +214,11 @@ breachability ≥ 70 %, first contact 12–20); the code's `DEFAULT_GATES` are a
 Mission metadata `timeOfDay` selects day, dawn, dusk, overcast or night. Route 9 starts at dawn, Harbor Yard at night, and Training Facility under overcast light. A visual neighborhood backdrop and distance haze frame the battlefield without adding gameplay collision or cover.
 
 Preparing a shot activates a close shoulder camera; committing shooting or a skill activates a lower, tighter back-shot camera through action playback. The camera checks voxel occupancy and the shoulder-to-lens ray, tries both shoulders, and returns to the tactical camera on cancellation or playback completion. Picking and target projections use the active camera. Character cut-in art can be disabled independently of these action angles.
+
+## Multi-storey package mechanics
+
+The shared map builder now compiles saved two-to-four-storey layouts into the same voxel store used by movement, cover, shots, elements and destruction. `Signal House` is a four-storey mechanical test fixture: three indoor stair flights plus independent ladder access to each upper floor and the roof, locked service rooms, seeded connected furniture, and an upper-floor recover objective. The registered `Cedar Image` fixture has two two-storey houses. Their floor designs are provisional schematics; visual design is deferred.
+
+Packages under `client/public/maps/<id>/` carry the reference/site read, objective/beat/pod programme, floor priors and solved layout. `PackageCatalog.js` imports those files for both clients and server. Runtime compilation never calls a model or resolves a new architectural layout. Generated-map gates verify every active room through stairs, independent upper-floor escape access, inaccessible closed rooms, reachable objective/enemies, building count, storeys and footprint IoU ≥ .85. See [MAPGEN.md](../MAPGEN.md) for authoring and limitations.
+
+Cover against a known attacker now includes its height (see [03](03-cover-and-sight.md)): low cover loses its rating against an attacker two or more voxels above when it is below the chest; real upper walls and bands still protect. Tile-face shields retain their neutral rating.

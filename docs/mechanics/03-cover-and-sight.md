@@ -114,6 +114,7 @@ Wind (`anemo`) clears it.
 
 ## Other modifiers tied to position
 
+- **Height-aware cover**: `coverAgainst` accepts the shooter surface z. Its body-width samples follow the pitched line of fire through the same connected collision shapes. From 2+ voxels above, low cover below the chest gives no rating; intersected full walls and upper window/overhang bands still protect. Target previews, the flanked indicator, movement previews and AI scoring pass the shooter height. Per-face tile shields remain the neutral horizontal `coverAt` rating. This changes the readout/scoring only; physical projectiles and their hit estimates still trace actual voxels.
 - **Height**: spread × `B.heightAccuracyBonus` = 0.85 when the shooter stands 2+ voxels above the target.
 - **Dim rooms**: spread × `B.dimRoomSpreadMult` = 1.25 when the target is in a room with `lit: false` and the
   shooter is not in that room. `ModernBuilder` defaults warehouse rooms to dim while offices remain lit. Building specs may

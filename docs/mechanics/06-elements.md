@@ -92,7 +92,7 @@ normal explosion and chain rules ([05](05-destruction.md#explosive-materials)).
 | `bleeding` | 3 | dotPerRound: 2 | wound |
 | `suppressed` | 1 | accuracyMult: 0.6 | fear |
 | `braced` | 1 | armorBonus: 4 | buff |
-| `staggered` | 1 | accuracyMult: 0.8 | move |
+| `staggered` | 1 | accuracyMult: 0.8; untilOwnTurn: true | move |
 | `surprised` | 1 | apPenalty: -1; noReaction: true | breach |
 | `panicked` | 1 | apMult: 0.5; noAbilities: true | stress |
 <!-- /generated:statuses -->

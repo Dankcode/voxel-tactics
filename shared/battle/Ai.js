@@ -89,7 +89,7 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
             if (Math.hypot(e.x - u.x, e.y - u.y) > t.range) continue;
             const hits = known.filter(o => Math.hypot(o.x - e.x, o.y - e.y) <= t.radius).length;
             const friendly = battle.unitsOf(u.side).filter(o => Math.hypot(o.x - e.x, o.y - e.y) <= t.radius + 0.5).length;
-            const dug = coverAgainst(battle.store, e.x, e.y, e.z, u.x, u.y) === COVER.FULL ? 1 : 0;
+            const dug = coverAgainst(battle.store, e.x, e.y, e.z, u.x, u.y, u.z) === COVER.FULL ? 1 : 0;
             const score = hits + dug * 0.6 - friendly * 3;
             if (score >= policy.grenadeMinTargets - 0.5 && (!best || score > best.score)) best = { e, score };
         }
@@ -168,9 +168,9 @@ function bestTile(battle, u, w, threats, budgetAp, goal = null) {
         for (const e of threats) {
             const d = Math.hypot(e.x - n.x, e.y - n.y);
             if (d > 30) continue;
-            const c = coverAgainst(battle.store, n.x, n.y, n.z, e.x, e.y);
+            const c = coverAgainst(battle.store, n.x, n.y, n.z, e.x, e.y, e.z);
             s += c === COVER.FULL ? 14 : c === COVER.HALF ? 8 : -9;
-            if (d <= w.range && coverAgainst(battle.store, e.x, e.y, e.z, n.x, n.y) === COVER.NONE) s += 10;  // flanks it
+            if (d <= w.range && coverAgainst(battle.store, e.x, e.y, e.z, n.x, n.y, n.z) === COVER.NONE) s += 10;  // flanks it
         }
         const nearestD = Math.min(...threats.map(e => Math.hypot(e.x - n.x, e.y - n.y)), 99);
         s -= Math.abs(nearestD - w.range * 0.7) * 0.7;
@@ -196,6 +196,7 @@ function bestTile(battle, u, w, threats, budgetAp, goal = null) {
 
 function advance(battle, u, target) {
     // Follow the real path (stairs, doors) toward the target as far as this turn's budget allows.
+    const available = (u.ap + u.moveOnlyAp) * battle.mobility(u);
     const budget = Math.max(1, u.ap + u.moveOnlyAp - 1) * battle.mobility(u);
     const full = battle.reach(u, Infinity);
     let goal = null, gd = Infinity;
@@ -205,13 +206,16 @@ function advance(battle, u, target) {
     }
     if (!goal) return null;
     const path = pathTo(full, nodeKey(goal));
-    let best = null;
-    for (const p of path) {
-        const c = full.costs.get(nodeKey(p));
-        if (c > budget) break;
-        if (!battle.occupant(p.x, p.y, p.z)) best = p;
-    }
-    return best && (best.x !== u.x || best.y !== u.y || best.z !== u.z) ? best : null;
+    const stepWithin = limit => {
+        let best = null;
+        for (const p of path) {
+            if (full.costs.get(nodeKey(p)) > limit) break;
+            if (!battle.occupant(p.x, p.y, p.z)) best = p;
+        }
+        return best && (best.x !== u.x || best.y !== u.y || best.z !== u.z) ? best : null;
+    };
+    // Ladders are atomic moves. If reserving an AP prevents any progress, allow a full-turn climb/dash.
+    return stepWithin(Math.min(budget,available)) || stepWithin(available);
 }
 
 function nearest(u, list) { let b = null, bd = Infinity; for (const e of list) { const d = Math.hypot(e.x - u.x, e.y - u.y); if (d < bd) { bd = d; b = e; } } return b; }
@@ -240,9 +244,9 @@ export function formationIntents(battle, side) {
     }
     if (!known.length) return intents;
     const units = battle.unitsOf(side).filter(u => !u.formationId && u.ap >= 2);
-    const cx = known.reduce((s, e) => s + e.x, 0) / known.length, cy = known.reduce((s, e) => s + e.y, 0) / known.length;
+    const cx = known.reduce((s, e) => s + e.x, 0) / known.length, cy = known.reduce((s, e) => s + e.y, 0) / known.length, cz = known.reduce((s,e)=>s+e.z,0)/known.length;
     for (const leader of units) {
-        if (coverAgainst(battle.store, leader.x, leader.y, leader.z, Math.round(cx), Math.round(cy)) === COVER.NONE) continue;
+        if (coverAgainst(battle.store, leader.x, leader.y, leader.z, Math.round(cx), Math.round(cy), cz) === COVER.NONE) continue;
         const dx = cx - leader.x, dy = cy - leader.y;
         const facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : (dy > 0 ? 's' : 'n');
         const mates = units.filter(o => o !== leader && !o.formationId && Math.max(Math.abs(o.x - leader.x), Math.abs(o.y - leader.y)) <= 3).slice(0, 2);
@@ -250,7 +254,7 @@ export function formationIntents(battle, side) {
         const intent = { type: 'formation', template: 'shield_line', unitId: leader.id, leaderId: leader.id, memberIds: [leader.id, ...mates.map(m => m.id)], facing };
         const f = { template: 'shield_line', facing, members: intent.memberIds, leaderId: leader.id };
         const slots = battle.formations.slotsFor(f, leader);
-        if (!slots || slots.some(sl => coverAgainst(battle.store, sl.x, sl.y, sl.z, Math.round(cx), Math.round(cy)) === COVER.NONE)) continue;
+        if (!slots || slots.some(sl => coverAgainst(battle.store, sl.x, sl.y, sl.z, Math.round(cx), Math.round(cy), cz) === COVER.NONE)) continue;
         if (!battle.validate(intent)) return [...intents, intent];
     }
     return intents;

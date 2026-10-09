@@ -1,0 +1,39 @@
+{
+  "building": "command",
+  "floor": 2,
+  "source": "offline-schematic",
+  "rooms": [
+    {
+      "kind": "restroom",
+      "center": [
+        0.24,
+        0.1875
+      ]
+    },
+    {
+      "kind": "office",
+      "center": [
+        0.72,
+        0.1875
+      ]
+    },
+    {
+      "kind": "open_office",
+      "center": [
+        0.24,
+        0.78125
+      ]
+    },
+    {
+      "kind": "meeting",
+      "center": [
+        0.72,
+        0.78125
+      ]
+    }
+  ],
+  "doors": [],
+  "windows": [],
+  "stairs": [],
+  "furniture": []
+}

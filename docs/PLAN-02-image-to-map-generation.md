@@ -1,6 +1,6 @@
 # PLAN-02 — From one picture to a playable multi-storey map
 
-Status: **first playable authoring implementation** (2026-10-09). See [MAPGEN.md](MAPGEN.md) for the working screenshot/reference compiler, exact voxel slate, validation, installation and regression command. Cedar Close is one recorded test reference, not the default design for all missions. The multi-storey WFC and floor-concept-art stages below remain future work.
+Status: **mechanics first; visual design deferred** (Leon, 2026-10-09). The restored WFC, 2–4-storey compiler, uniform-scale site solver, repair/congruence checks and manifest-backed packages are implemented. The four-storey Signal House fixture exercises traversal, escape routes, collapse, objectives and co-op. Authoring providers, floor concept generation/read-back and caches are implemented and contract-tested; live model/art acceptance is unverified without an API key. Final art direction and briefing UI are deferred to the later map-builder design pass. See [MAPGEN.md](MAPGEN.md).
 Leon also decided §16.2–4 and asked for them to be built; they are implemented (see §8 and the M0 / M5 / M8 rows
 of §12): glass is aesthetic, jump-down and ladders, and extract / recover / hold objectives, plus 30 HP for every
 character with caliber-based damage (§8.6).
@@ -210,7 +210,7 @@ gameplay piece gets a material and a connected footprint where it is a wall or c
 ## 8. Rule changes multi-storey play needs
 
 1. **Height and cover**: a shooter 2+ voxels above the target ignores half cover that is lower than the target's
-   chest (XCOM high ground). Today the cover readout ignores shooter height (`docs/mechanics/03`).
+   chest (XCOM high ground) — **done**. Shooter-aware readouts and AI scoring sample the pitched line of fire; full walls and upper bands still count when intersected (`docs/mechanics/03`).
 2. **Glass** — *done, decided: glass is aesthetic.* It gives no cover and never stops a shot or sight; a pane a
    bullet crosses still breaks (`shatters`). Readout and ballistics agree.
 3. **Moves** — *done.* Jump down 2–4 voxels off a ledge (cost 3, no fall damage, `staggered` until the next turn;
@@ -249,9 +249,9 @@ gameplay piece gets a material and a connected footprint where it is a wall or c
 
 ```
 tools/mapgen/cli.mjs                      npm run mapgen -- --image <file> --id <id> [--seed n] [--redo <stage|item>]
-tools/mapgen/providers/vision.mjs         site read + concept read-back (Claude API, JSON schema output)
-tools/mapgen/providers/text.mjs           level design (Claude API)
-tools/mapgen/providers/image.mjs          concept art (provider chosen in Q1)
+tools/mapgen/providers/vision.mjs         site read + concept read-back (configurable OpenAI vision, validated JSON)
+tools/mapgen/providers/text.mjs           level design (configurable OpenAI text model)
+tools/mapgen/providers/image.mjs          concept art (configurable OpenAI image model)
 tools/mapgen/prompts/*.md                 versioned prompts and the design brief
 tools/mapgen/schemas/*.json               site, design, floorspec, layout, manifest JSON schemas
 shared/generation/WaveFunctionCollapse.js restored solver (from vibe-game, cf16d62)
@@ -281,7 +281,7 @@ docs/MAPGEN.md                            how to make a map from a picture
 | M8 | Objectives (§8.4 — **done**) and story decor; briefing UI with concept art | an extract or recover mission plays to completion in the sim |
 | M9 | Three more maps from three pictures; docs | `docs/MAPGEN.md`; every map passes the gates |
 
-M0–M5 need no AI provider, so they can start as soon as this plan is approved.
+Current acceptance evidence: M1 has a saved four-storey fixture passing four seeds and local-collapse/access tests; M2 registers separate Cedar Image and Signal House packages (the original hand-built Cedar Close remains separate); M3 passes 20 seeds × house/office/warehouse including required adjacency checks; M4 checks count and IoU after uniform scaling and contact repair. M5 movement and height-aware cover work with the existing kit. M6/M7 providers and cached concept/read-back stages have schema and injected-provider coverage; real model calls/art review are pending. M8 recover completion and replay hashes are tested; new story art and briefing UI are deferred. M9's three new picture-derived artistic maps remain deferred. Rectangular floor bays are the present WFC vocabulary; polygon floors and new facade/detail modules remain future work.
 
 ## 13. Tests
 

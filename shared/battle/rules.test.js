@@ -14,6 +14,7 @@ import { createRng } from '../util/Rng.js';
 import { reachable, pathTo, nodeKey, stepKind, canJumpDown } from '../world/PathSearch.js';
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
 import { buildMission } from '../session/Scenarios.js';
+import { decide, runAiSide } from './Ai.js';
 
 function arena({ build = () => {}, enemies = [{ type: 'cultist', pos: { x: 20, y: 2, z: 1 } }], squad = ['marksman'], player = [{ x: 10, y: 16, z: 1 }], objective = { kind: 'eliminate' } } = {}) {
     const s = new VoxelStore(24, 24, 12);
@@ -25,6 +26,44 @@ function arena({ build = () => {}, enemies = [{ type: 'cultist', pos: { x: 20, y
 }
 /** A 5×3 concrete platform whose top surface is z = 4 (one storey up). */
 const platform = s => { for (let y = 10; y <= 12; y++) for (let x = 8; x <= 12; x++) for (let z = 2; z <= 4; z++) s.set(x, y, z, MAT.concrete); };
+
+test('high ground ignores low cover below the chest; full walls and upper bands still protect',()=> {
+    const b=arena({enemies:[{type:'cultist',pos:{x:10,y:6,z:1}}]}),s=b.store;
+    for(const x of [9,10,11])s.set(x,7,2,MAT.stucco);
+    assert.equal(coverAgainst(s,10,6,1,10,16,1),COVER.HALF);
+    assert.equal(coverAgainst(s,10,6,1,10,16,4),COVER.NONE);
+    for(const x of [9,10,11])s.set(x,7,3,MAT.stucco);
+    assert.equal(coverAgainst(s,10,6,1,10,16,4),COVER.FULL);
+    for(const x of [9,10,11])s.set(x,7,2,MAT.air);
+    assert.equal(coverAgainst(s,10,6,1,10,16,4),COVER.HALF,'an upper band still hides the head/shoulders');
+    assert.equal(coverAgainst(s,10,6,1,10,8,10),COVER.NONE,'a steep shot passes over the actual wall footprint');
+});
+
+test('elevated shot preview shares the height-aware cover readout and still traces physical cover',()=> {
+    const low=arena({player:[{x:10,y:16,z:4}],enemies:[{type:'cultist',pos:{x:10,y:6,z:1}}],build:s=> {
+        for(let z=2;z<=4;z++)s.set(10,16,z,MAT.concrete);
+        for(const x of [9,10,11])s.set(x,7,2,MAT.stucco);
+    }});
+    const target=low.units.find(u=>u.side==='enemy');
+    const shot={type:'shoot',unitId:'p0',aim:{unitId:target.id,part:'torso'}};
+    const pv=low.preview(shot);assert.ok(pv.ok,pv.reason);assert.equal(pv.cover,COVER.NONE);assert.ok(pv.flanked);assert.equal(pv.estimate.cover,0);
+    assert.ok(pv.mods.some(([kind])=>kind==='height'));
+    for(const x of [9,10,11])low.store.set(x,7,3,MAT.stucco);
+    const est=estimateShot(low,low.unit('p0'),shot.aim,{weapon:WEAPONS.longrifle,spread:0,samples:16});
+    assert.equal(coverAgainst(low.store,10,6,1,10,16,4),COVER.FULL);assert.equal(est.cover,1,'the solid upper wall still stops the downward shot');
+});
+
+test('autopilot spends a full movement turn on an affordable tall ladder instead of stalling',()=> {
+    const b=arena({squad:['grenadier'],enemies:[],player:[{x:10,y:14,z:1}],objective:{kind:'recover',item:{x:10,y:13,z:8}},build:s=> {
+        for(let z=2;z<=8;z++){s.set(10,13,z,MAT.concrete);s.set(10,14,z,MAT.ladder);}
+    }});
+    const u=b.unit('p0'),intent=decide(b,u);
+    assert.equal(intent?.type,'move');assert.deepEqual(intent.to,{x:10,y:13,z:8});
+    const preview=b.preview(intent);assert.ok(preview.ok,preview.reason);assert.equal(preview.ap,4);
+    assert.ok(b.apply(intent).ok);assert.equal(u.ap,0);assert.equal(u.z,8);assert.equal(u.hp,30);
+    b.apply({type:'endTurn',side:'player'});b.apply({type:'endTurn',side:'enemy'});
+    runAiSide(b,'player');assert.equal(b.outcome?.reason,'recovered');
+});
 
 test('every character has 30 HP and every gun takes its damage from its caliber', () => {
     for (const def of [...Object.values(CLASSES), ...Object.values(ENEMIES)]) assert.equal(def.hp, UNIT_HP, def.id);

@@ -1,0 +1,233 @@
+{
+  "version": 1,
+  "id": "signal-house",
+  "name": "Signal House",
+  "theme": "Downtown",
+  "seed": 1,
+  "generatorVersion": "2.0.0",
+  "sourceAnalysis": "recorded",
+  "conceptSource": "offline-schematic",
+  "models": {},
+  "files": {
+    "site": "site.json",
+    "design": "design.json",
+    "layout": "layout.json"
+  },
+  "concepts": [
+    "concept/command-0.png",
+    "concept/command-1.png",
+    "concept/command-2.png",
+    "concept/command-3.png"
+  ],
+  "reference": "concept/reference.png",
+  "size": [
+    58,
+    42,
+    18
+  ],
+  "storeys": [
+    {
+      "id": "command",
+      "storeys": 4
+    }
+  ],
+  "validation": [
+    {
+      "seed": 1,
+      "metrics": {
+        "reachableTiles": 2995,
+        "coverDensity": 0.4337228714524207,
+        "outdoorCover": 0.33605072463768115,
+        "coverGap": 6,
+        "fullCoverShare": 0.18030050083472454,
+        "interiorShare": 0.262771285475793,
+        "killingField": 12,
+        "sightlineMedian": 11.030865786510143,
+        "lanes": 4,
+        "breachability": 1,
+        "destructibleCover": 0.8911022576361222,
+        "spawnSafe": 1,
+        "firstContact": 25.495097567963924,
+        "rooms": 16,
+        "buildings": 1,
+        "gates": {
+          "coverDensity": true,
+          "outdoorCover": true,
+          "coverGap": true,
+          "fullCoverShare": true,
+          "killingField": true,
+          "sightlineMedian": true,
+          "lanes": true,
+          "breachability": true,
+          "destructibleCover": true,
+          "spawnSafe": true,
+          "buildingCount": true,
+          "footprintOverlap": true,
+          "storeys": true,
+          "floorsReachable": true,
+          "secondEscape": true,
+          "closedRooms": true,
+          "storyBeats": true,
+          "objectiveReachable": true,
+          "windowLines": true,
+          "firstContact": true,
+          "heightBudget": true,
+          "enemiesReachable": true
+        },
+        "pass": true
+      },
+      "buildMs": 279.98633300000006
+    },
+    {
+      "seed": 2,
+      "metrics": {
+        "reachableTiles": 2989,
+        "coverDensity": 0.4416192706590833,
+        "outdoorCover": 0.34150772025431425,
+        "coverGap": 6,
+        "fullCoverShare": 0.20040147206423553,
+        "interiorShare": 0.26329876212780196,
+        "killingField": 12,
+        "sightlineMedian": 8.117941502192958,
+        "lanes": 4,
+        "breachability": 1,
+        "destructibleCover": 0.9014454664914586,
+        "spawnSafe": 1,
+        "firstContact": 25.238858928247925,
+        "rooms": 16,
+        "buildings": 1,
+        "gates": {
+          "coverDensity": true,
+          "outdoorCover": true,
+          "coverGap": true,
+          "fullCoverShare": true,
+          "killingField": true,
+          "sightlineMedian": true,
+          "lanes": true,
+          "breachability": true,
+          "destructibleCover": true,
+          "spawnSafe": true,
+          "buildingCount": true,
+          "footprintOverlap": true,
+          "storeys": true,
+          "floorsReachable": true,
+          "secondEscape": true,
+          "closedRooms": true,
+          "storyBeats": true,
+          "objectiveReachable": true,
+          "windowLines": true,
+          "firstContact": true,
+          "heightBudget": true,
+          "enemiesReachable": true
+        },
+        "pass": true
+      },
+      "buildMs": 271.8248329999999
+    },
+    {
+      "seed": 3,
+      "metrics": {
+        "reachableTiles": 2988,
+        "coverDensity": 0.4397590361445783,
+        "outdoorCover": 0.34302589731940025,
+        "coverGap": 6,
+        "fullCoverShare": 0.1961178045515395,
+        "interiorShare": 0.2633868808567604,
+        "killingField": 12,
+        "sightlineMedian": 8.117941502192958,
+        "lanes": 2,
+        "breachability": 1,
+        "destructibleCover": 0.8948751642575559,
+        "spawnSafe": 1,
+        "firstContact": 22.671568097509265,
+        "rooms": 16,
+        "buildings": 1,
+        "gates": {
+          "coverDensity": true,
+          "outdoorCover": true,
+          "coverGap": true,
+          "fullCoverShare": true,
+          "killingField": true,
+          "sightlineMedian": true,
+          "lanes": true,
+          "breachability": true,
+          "destructibleCover": true,
+          "spawnSafe": true,
+          "buildingCount": true,
+          "footprintOverlap": true,
+          "storeys": true,
+          "floorsReachable": true,
+          "secondEscape": true,
+          "closedRooms": true,
+          "storyBeats": true,
+          "objectiveReachable": true,
+          "windowLines": true,
+          "firstContact": true,
+          "heightBudget": true,
+          "enemiesReachable": true
+        },
+        "pass": true
+      },
+      "buildMs": 262.6847500000001
+    },
+    {
+      "seed": 4,
+      "metrics": {
+        "reachableTiles": 2999,
+        "coverDensity": 0.4321440480160053,
+        "outdoorCover": 0.3286618444846293,
+        "coverGap": 6,
+        "fullCoverShare": 0.19073024341447148,
+        "interiorShare": 0.26242080693564523,
+        "killingField": 12,
+        "sightlineMedian": 7.778174593052021,
+        "lanes": 2,
+        "breachability": 1,
+        "destructibleCover": 0.8731642189586115,
+        "spawnSafe": 1,
+        "firstContact": 21.18962010041709,
+        "rooms": 16,
+        "buildings": 1,
+        "gates": {
+          "coverDensity": true,
+          "outdoorCover": true,
+          "coverGap": true,
+          "fullCoverShare": true,
+          "killingField": true,
+          "sightlineMedian": true,
+          "lanes": true,
+          "breachability": true,
+          "destructibleCover": true,
+          "spawnSafe": true,
+          "buildingCount": true,
+          "footprintOverlap": true,
+          "storeys": true,
+          "floorsReachable": true,
+          "secondEscape": true,
+          "closedRooms": true,
+          "storyBeats": true,
+          "objectiveReachable": true,
+          "windowLines": true,
+          "firstContact": true,
+          "heightBudget": true,
+          "enemiesReachable": true
+        },
+        "pass": true
+      },
+      "buildMs": 257.14066600000024
+    }
+  ],
+  "repairs": [
+    {
+      "kind": "reseed-layout",
+      "from": 1,
+      "to": 3
+    }
+  ],
+  "credits": "Reference supplied by author; generated interiors are art direction.",
+  "checksums": {
+    "site": "86665b08876a7755d7be3898a74674ba0231261c751c77097b1c6c51ab6919dc",
+    "design": "e50f28d58c93f1c47ae1e136a1620773d3804e59570c5439e2d1bb71fd2dfd21",
+    "layout": "1fdb5ff02c866dbbc81f9772f641a0de961030a2b44606baf422b8b9eafe5f34"
+  }
+}

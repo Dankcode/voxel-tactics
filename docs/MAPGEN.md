@@ -1,43 +1,58 @@
-# Screenshot/reference map authoring
+# Deterministic map builder
 
-Architecture comes from the supplied reference. Gameplay flow takes priority over reconstructing every room. Cedar Close is only a recorded regression image; industrial, downtown and roadside references use their own building programs and cover catalogs.
+The current priority is **mechanics**, per Leon's 2026-10-09 direction. Final visual design, new art assets, and briefing/gallery UI are deferred. The builder's saved data provides voxel test maps for vertical traversal, cover, destruction, objectives and co-op. Cedar Close is a reference fixture, not a template imposed on every mission.
 
-The authoring sequence is image analysis → footprints and combat flow → voxel placement → exact design slate → connectivity and combat-quality validation. The shared compiler places the buildings, partitions, cover and terrain, then records integer slate layers and the complete flattened 3D material matrix directly from the voxels (`index = x + y*width + z*width*depth`). One slate tile is one world unit and one voxel cell. No separately scaled overlay can drift from the placed tiles. The exported SVG uses the same coordinates, with walkable approach routes and locked-room labels over the placed floors and cover. Routes are traced through outdoor voxel cells after architecture and fixed props are placed, reserved from cover scatter, and verified again after scatter; preview lines follow these exact routes instead of passing through walls. In-game surface finishes use continuous world coordinates and omit repeated per-tile texture motifs.
-
-## Run the recorded regression
+## Build and play the offline mechanical fixtures
 
 ```sh
-npm run mapgen -- --image docs/design/cedar-close-concept.png --site cedar --out /tmp/cedar-image.json
+npm run mapgen -- --image docs/design/cedar-close-concept.png --site cedar --offline --out /tmp/mapgen --install
+npm run mapgen -- --image docs/design/mapgen/signal-house-reference.png --site docs/design/mapgen/signal-house-site.json --offline --install
 ```
 
-This writes a JSON package (site analysis, exact slate, seed, metrics and analysis provenance) and `/tmp/cedar-image.svg`. The image hash must match the recorded analysis. Launch **Cedar Close · Image Study** from the mission menu, or use `?play=cedar-image&seed=1`. The ordinary Cedar Close mission remains separate.
+Play `?play=cedar-image&seed=1` (two two-storey houses), or `?play=signal-house&seed=1` (a four-storey office and recover objective). The Signal House input is an authored overhead **schematic**, not a reconstructed photograph. `--offline` produces clearly labelled schematic floor previews; it does not claim to generate or analyse AI concept art. Regenerate that reference with `node tools/mapgen/fixture.mjs`.
 
-## Analyze another reference
+## Pipeline and packages
+
+The authoring sequence is site read → level programme/objective/beats/pods → per-floor concept generation → vision read-back → site/floor/facade WFC → voxel compilation and validation → package installation. Each stage is cached, and a failed run preserves its intermediate JSON/PNG files without an installable manifest. Model outputs are checked against `tools/mapgen/schemas/*.json` plus semantic constraints. No model runs in the game or server.
+
+`client/public/maps/<id>/` contains:
+
+- `manifest.json`: identity, dimensions, seeds, generator version, provenance, checksums, repairs and gate results.
+- `site.json`: source extents, buildings, explicit storeys, surfaces, insertion and flow.
+- `design.json`: per-floor programmes, objective, located story beats and enemy groups.
+- `concept/reference.*` and `concept/<building>-<floor>.png`: retained input and floor previews/art.
+- `floorspec/<building>-<floor>.json`: normalized room and detail priors from read-back.
+- `layout.json`: saved parcel assignment, building footprints, room-cell assignment, walls, doors, core and facade choices.
+- `slate.svg`: a review preview of the compiled voxel matrix and actual outdoor paths.
+
+Installation validates the selected seed and seeds 1–4 before replacing the map directory, then refreshes `shared/mission/generated/PackageCatalog.js`, an import-only index. It never writes map data into `GeneratedSites.js`. Both peers and the server compile the same saved layout and mission seed; runtime seeds vary furnishing and cover, not the saved architecture. The hand-built maps retain their identities.
+
+## Geometry and mechanical guarantees
+
+- A single scale applies to the reference's top-down source frame. Grid dimensions are derived from those extents plus a perimeter margin, within 64×64×18. The 48×40 frame is only a compatibility fallback for older recorded reads; fresh reads must provide a frame.
+- Small footprints trigger a global resolution increase. Small overlaps are repaired by trimming the larger contact. Count, storeys and per-building footprint IoU ≥ .85 are checked after repair; unrepairable geometry fails explicitly without dropping buildings.
+- Buildings have 2–4 floors with three-voxel storey spacing. Parallel alternating stair flights share a fixed corridor/core; upper slab openings and stair headroom are carved explicitly. Independent exterior ladder bays reach each upper floor and the roof.
+- WFC assigns connected room regions within supported rectangular footprints. Required adjacencies constrain the assignment. Area tolerance starts at ±25% and relaxes to ±40% with a repair record. Windows align vertically and omit service-room stacks. The current vocabulary uses rectangular bays and a central hall; arbitrary polygon interiors, setbacks and bespoke facade modules are deferred.
+- Bathroom/restroom/utility doors stay locked and opaque. Those rooms have no window openings, spawns, objectives or stair routes. Furniture is keyed by map/building/floor/seed, excludes door/core cells, and preserves floor connectivity.
+- Outdoor flow is traced after architecture, reserved before cover scatter and checked again afterward. The design slate is copied directly from the material matrix: `index=x+y*width+z*width*depth`, one world unit per voxel.
+- Validation covers the existing combat gates, all floors via indoor stairs, independent escapes, locked rooms, window lines, located beats/objective, enemy access/count, footprint fidelity, first-contact distance ≥12 cells, grid/height budgets and authoring build time ≤1.5 seconds. Failed layouts get at most eight deterministic reseeds and cannot be installed.
+
+## Optional live authoring, for the later design phase
 
 ```sh
-# Set OPENAI_API_KEY in the shell; never put credentials in browser code or committed files.
-npm run mapgen -- --image /path/to/reference.png --out /tmp/reference-map.json
+# Keep credentials in the shell environment, never in browser code or the repo.
+npm run mapgen -- --image /path/to/reference.png --id new-mission --out /tmp/mapgen
+npm run mapgen -- --image /path/to/reference.png --id new-mission --out /tmp/mapgen --redo command/floor-3
 ```
 
-The authoring-only CLI sends the image to the [OpenAI vision API](https://developers.openai.com/api/docs/guides/images-vision?api-mode=chat). `MAPGEN_MODEL` overrides the default `gpt-4.1`. Fresh image extraction needs a credential and network access; the saved-analysis compiler works offline. The recorded regression and rendered gameplay were tested locally; a live model call was not tested in this environment.
+`OPENAI_API_KEY` is required only for new model calls. Vision and design use configurable defaults `gpt-6.1-sol`; image generation uses `gpt-image-2.5-flare`. Override them with `MAPGEN_VISION_MODEL`, `MAPGEN_TEXT_MODEL` and `MAPGEN_IMAGE_MODEL`; `MAPGEN_MODEL` remains a vision compatibility alias. These are based on the [official model catalog](https://developers.openai.com/api/docs/models) and [image API contract](https://developers.openai.com/api/reference/resources/images/methods/generate).
 
-Inspect the JSON metrics and exact SVG slate. A fresh vision analysis is also saved as `<output>.analysis.json` before validation; if compilation rejects its geometry, repair that saved analysis and rerun offline. Edit the package's `site` when an inferred footprint or route is wrong, then recompile using `--site /tmp/reference-map.json`. Coordinates in the site are normalized top-down coordinates, not perspective image pixels. Buildings must leave space for combat rooms and approaches. Flow waypoints represent insertion, covered approach, flank and objective approach; blocked waypoints and inaccessible combat rooms reject compilation.
+`--redo` accepts `site`, `design`, `concepts`, `floorspec`, `building/<zero-based-floor>`, or `building/floor-<one-based-floor>`. Inputs, prompt versions, model settings and image hashes invalidate dependent caches; redoing one floor regenerates and rereads just that floor. Correct an extracted site in its saved JSON and supply it through `--site`; use `--offline` to exercise deterministic stages without model calls. Schema validation rejects invalid output before compilation.
 
-```sh
-npm run mapgen -- --image /path/to/reference.png --site /tmp/reference-map.json --out /tmp/reviewed-map.json --install
-```
+The live-provider path is implemented and contract-tested with injected responses. No live API request was verified in this environment because a key is not configured. Final visual design and a genuine generated-art golden reference remain deferred; the offline previews are not a substitute for that acceptance check.
 
-`--install` adds a unique map ID to `shared/mission/generated/GeneratedSites.js`, making it available in the mission menu and shared co-op scenario registry. Installation rejects maps failing the existing cover, sightline, lanes, breachability and spawn-safety gates for the selected seed and regression seeds 1–4 before changing the registry. The exported package records each validated seed. Run the map tests after installation. Both client and server rebuild the same package with the same mission seed; neither runs a model during play.
+## Regression coverage
 
-## Room and layout rules
+`npm test` includes WFC contradiction/determinism checks, 20 seeds × three programmes, uniform scaling, overlap repair, four-storey package rebuilding, alternate access, locked rooms, local collapse, recover completion, schema/checksum checks, cached stages and selective redo, plus real two-client lockstep on the four-storey package. The production build also checks shared package imports in the browser bundle. Runtime mechanics continue to use the existing collision, elemental and ballistic matrix.
 
-- Combat spaces form connected room routes with alternate entrances where adjacency allows them. Cover is placed around approaches, with two-cell outdoor lanes reserved from scatter.
-- Bathrooms, baths, restrooms and utility rooms stay closed by default, with locked doors and opaque façades. They are excluded from enemy room selection, stair placement and combat-room connectivity metrics. Authors may explicitly promote a needed room kind with `gameplayRooms` or close other kinds with `closedRooms` in building specs.
-- Material colors and continuous finishes preserve terrain identity. Cover, elemental reactions, destruction and navigation still read the exact voxel matrix.
-- `timeOfDay` is saved per mission: day, dawn, dusk, overcast or night. The backdrop is visual context only.
-
-This first compiler uses connected program layouts and seeded cover placement. It does not yet implement the proposed nested WFC solver, generated floor artwork or arbitrary 2–4-storey reconstruction from PLAN-02. The initial reference package is a single-storey combat study.
-
-## Validation record
-
-The full suite passed 82 tests, including deterministic/co-op rebuilding, multi-seed combat gates, inaccessible service rooms, exact slate/matrix identity, non-suburban programs and collision-safe camera frames. Production build passed. Saved-image compilation, package round-trip and registry installation/rebuild were exercised. Browser plugin not available; bundled Playwright checked the desktop mission, preparation, actual firing, skill cut-in, cancellation and console health. A 390×844 capture was also inspected; the existing HUD remains designed for desktop and overflows a narrow phone viewport.
+The vertical-combat pass also fixes autopilot AP reservation on tall ladders. In the four-seed Signal House simulation, all four missions recovered the objective within the 40-round limit after the fix (the previous planner stalled in three). This is a traversal/completion regression check, not a claim that the provisional fixture is difficulty-balanced.

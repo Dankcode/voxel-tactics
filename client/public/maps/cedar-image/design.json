@@ -1,0 +1,255 @@
+{
+  "version": 1,
+  "mission": {
+    "kind": "recover",
+    "title": "Cedar Close · Image Study",
+    "briefing": "The Syndicate has occupied this Suburbs block. Advance through cover and use the flank to reach home-left. Its upper floors control the approach. Secure the objective and withdraw.",
+    "timeOfDay": "dusk",
+    "target": {
+      "building": "home-left",
+      "floor": 1,
+      "room": "living"
+    }
+  },
+  "programs": [
+    {
+      "building": "home-left",
+      "floor": 0,
+      "rooms": [
+        {
+          "id": "living",
+          "kind": "living",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "kitchen",
+          "kind": "kitchen",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "study",
+          "kind": "study",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "bathroom",
+          "kind": "bathroom",
+          "areaShare": 0.25,
+          "gameplay": false
+        }
+      ],
+      "adjacencies": [
+        [
+          "living",
+          "hall"
+        ],
+        [
+          "kitchen",
+          "hall"
+        ],
+        [
+          "study",
+          "hall"
+        ]
+      ]
+    },
+    {
+      "building": "home-left",
+      "floor": 1,
+      "rooms": [
+        {
+          "id": "living",
+          "kind": "living",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "kitchen",
+          "kind": "kitchen",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "study",
+          "kind": "study",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "bathroom",
+          "kind": "bathroom",
+          "areaShare": 0.25,
+          "gameplay": false
+        }
+      ],
+      "adjacencies": [
+        [
+          "living",
+          "hall"
+        ],
+        [
+          "kitchen",
+          "hall"
+        ],
+        [
+          "study",
+          "hall"
+        ]
+      ]
+    },
+    {
+      "building": "home-right",
+      "floor": 0,
+      "rooms": [
+        {
+          "id": "living",
+          "kind": "living",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "kitchen",
+          "kind": "kitchen",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "study",
+          "kind": "study",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "bathroom",
+          "kind": "bathroom",
+          "areaShare": 0.25,
+          "gameplay": false
+        }
+      ],
+      "adjacencies": [
+        [
+          "living",
+          "hall"
+        ],
+        [
+          "kitchen",
+          "hall"
+        ],
+        [
+          "study",
+          "hall"
+        ]
+      ]
+    },
+    {
+      "building": "home-right",
+      "floor": 1,
+      "rooms": [
+        {
+          "id": "living",
+          "kind": "living",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "kitchen",
+          "kind": "kitchen",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "study",
+          "kind": "study",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "bathroom",
+          "kind": "bathroom",
+          "areaShare": 0.25,
+          "gameplay": false
+        }
+      ],
+      "adjacencies": [
+        [
+          "living",
+          "hall"
+        ],
+        [
+          "kitchen",
+          "hall"
+        ],
+        [
+          "study",
+          "hall"
+        ]
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "approach",
+      "text": "Reach cover beneath the lookout.",
+      "building": "home-left",
+      "floor": 0,
+      "room": "hall"
+    },
+    {
+      "id": "escalation",
+      "text": "Push past the guarded stair core.",
+      "building": "home-left",
+      "floor": 1,
+      "room": "hall"
+    },
+    {
+      "id": "climax",
+      "text": "Secure the Syndicate command room.",
+      "building": "home-left",
+      "floor": 1,
+      "room": "living"
+    }
+  ],
+  "encounters": [
+    {
+      "group": 0,
+      "building": "home-left",
+      "floor": 1,
+      "room": "hall",
+      "types": [
+        "cultist",
+        "warden_foe"
+      ]
+    },
+    {
+      "group": 1,
+      "building": "home-left",
+      "floor": 1,
+      "room": "living",
+      "types": [
+        "archer"
+      ]
+    },
+    {
+      "group": 2,
+      "building": "home-right",
+      "floor": 1,
+      "room": "hall",
+      "types": [
+        "cultist",
+        "warden_foe"
+      ]
+    },
+    {
+      "group": 3,
+      "building": "home-right",
+      "floor": 1,
+      "room": "living",
+      "types": [
+        "archer"
+      ]
+    }
+  ]
+}

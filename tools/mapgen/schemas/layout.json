@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "version",
+    "id",
+    "width",
+    "depth",
+    "height",
+    "transform",
+    "buildings",
+    "surfaces",
+    "flow",
+    "reference",
+    "congruence",
+    "parcels"
+  ],
+  "properties": {
+    "version": {
+      "enum": [
+        2
+      ]
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "maxLength": 64
+    },
+    "width": {
+      "type": "integer",
+      "minimum": 12,
+      "maximum": 64
+    },
+    "depth": {
+      "type": "integer",
+      "minimum": 12,
+      "maximum": 64
+    },
+    "height": {
+      "type": "integer",
+      "minimum": 16,
+      "maximum": 18
+    },
+    "buildings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "x0",
+          "y0",
+          "w",
+          "d",
+          "storeys",
+          "floors",
+          "facade"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "maxLength": 64
+          },
+          "storeys": {
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 4
+          },
+          "floors": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "minItems": 2,
+            "maxItems": 4
+          },
+          "facade": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "minItems": 1
+          }
+        }
+      },
+      "minItems": 1
+    }
+  }
+}

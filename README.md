@@ -5,8 +5,7 @@ A 2D-character XCOM 2-style game in the browser with co-op multiplayer and PvP. 
 `voxel-tactics` repo is in it.
 
 Spun off from [Dankcode/vibe-game](https://github.com/Dankcode/vibe-game) (path search, traversal, RNG and the tile-set
-contract came from there; see `PROVENANCE.md`). Next: [PLAN-02](docs/PLAN-02-image-to-map-generation.md), maps
-generated from a single picture.
+contract came from there; see `PROVENANCE.md`). Current focus: **mechanics**. Final visual design is deferred to the map builder. [PLAN-02](docs/PLAN-02-image-to-map-generation.md) and [MAPGEN.md](docs/MAPGEN.md) cover the deterministic multi-storey builder and its mechanical fixtures.
 
 A present-day, turn-based co-op tactics game in three.js: **XCOM 2** side phases, cover, overwatch, breaching and
 an XCOM-style camera, and **Phoenix Point** free-aim ballistics with body parts, on fully destructible maps.
@@ -29,7 +28,7 @@ are drawn as whole objects. The block-world look stays in vibe-game.
 ```bash
 npm install            # on macOS run this natively (don't copy node_modules between machines)
 npm run dev            # http://localhost:5173  → menu
-npm test               # 71 tests: voxels, cover, elements, ballistics, battle, buildings, maps, tile set, co-op room
+npm test               # 106 tests: voxels, cover, elements, ballistics, battle, buildings, maps, tile set, co-op room
 ```
 
 Deep links for testing:
@@ -38,6 +37,7 @@ Deep links for testing:
 |---|---|
 | `/?play=cedar-close&seed=3` | Suburbs: two modern homes and a street |
 | `/?play=main-street` · `harbor-yard` · `route-9` | Downtown (dusk) · Industrial docks (night) · Roadside gas station and motel (dusk) |
+| `/?play=signal-house&seed=1` | Four-storey mechanical fixture: stairs, independent ladder escapes, locked service rooms and upper-floor intel recovery |
 | `/?play=proving-grounds` | Training Facility: the test map with every system in it |
 | `…&auto=1` | Squad plays itself (AI vs AI), useful to watch balance |
 | `…&cutins=off` | Skip back shots (`always` / `first` / `off`) |
@@ -163,6 +163,6 @@ npm run kit:bake                # re-bake the tile set (assets/kit/tileset.glb +
 - Decor (rugs, lamps, street lights …) is visual only: it never blocks, and it disappears with the floor under it.
 - Online co-op is lockstep: every peer runs the battle, so it is not cheat-proof and fog of war is client-side.
   PvP needs server-filtered state (PLAN-01 M13).
-- Map gates are reported, not yet enforced with a repair pass (PLAN-01 §13.4).
-- Roof access exists where a map asks for it (the Training Facility watchtower); other flat roofs have no stair yet.
+- Generated packages enforce combat, vertical and reference-congruence gates before installation, with bounded repairs/reseeds; hand-built maps retain their existing reported gates.
+- Generated packages have indoor stairs between storeys and ladder access to upper floors and the roof. Hand-built maps provide roof access where specified.
 - Aliens and their themes are not in yet.

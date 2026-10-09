@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "version",
+    "mission",
+    "programs",
+    "beats",
+    "encounters"
+  ],
+  "properties": {
+    "version": {
+      "enum": [
+        1
+      ]
+    },
+    "mission": {
+      "type": "object",
+      "required": [
+        "kind",
+        "title",
+        "briefing",
+        "target"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "eliminate",
+            "recover",
+            "extract",
+            "hold"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "briefing": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 5000
+        },
+        "target": {
+          "type": "object",
+          "required": [
+            "building",
+            "floor",
+            "room"
+          ],
+          "properties": {
+            "building": {
+              "type": "string",
+              "pattern": "^[a-z0-9_-]+$",
+              "maxLength": 64
+            },
+            "floor": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            },
+            "room": {
+              "type": "string",
+              "pattern": "^[a-z0-9_-]+$",
+              "maxLength": 64
+            }
+          }
+        }
+      }
+    },
+    "programs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "building",
+          "floor",
+          "rooms",
+          "adjacencies"
+        ],
+        "properties": {
+          "building": {
+            "type": "string",
+            "pattern": "^[a-z0-9_-]+$",
+            "maxLength": 64
+          },
+          "floor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "rooms": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "kind",
+                "gameplay",
+                "areaShare"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9_-]+$",
+                  "maxLength": 64
+                },
+                "kind": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9_-]+$",
+                  "maxLength": 64
+                },
+                "gameplay": {
+                  "type": "boolean"
+                },
+                "areaShare": {
+                  "type": "number",
+                  "minimum": 0.01,
+                  "maximum": 1
+                }
+              }
+            },
+            "minItems": 2,
+            "maxItems": 8
+          },
+          "adjacencies": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z0-9_-]+$",
+                "maxLength": 64
+              },
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "minItems": 0
+          }
+        }
+      },
+      "minItems": 1
+    },
+    "beats": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "text",
+          "building",
+          "floor",
+          "room"
+        ],
+        "properties": {
+          "building": {
+            "type": "string",
+            "pattern": "^[a-z0-9_-]+$",
+            "maxLength": 64
+          },
+          "floor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "room": {
+            "type": "string",
+            "pattern": "^[a-z0-9_-]+$",
+            "maxLength": 64
+          },
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9_-]+$",
+            "maxLength": 64
+          },
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 5000
+          }
+        }
+      },
+      "minItems": 3,
+      "maxItems": 6
+    },
+    "encounters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "group",
+          "building",
+          "floor",
+          "room",
+          "types"
+        ],
+        "properties": {
+          "building": {
+            "type": "string",
+            "pattern": "^[a-z0-9_-]+$",
+            "maxLength": 64
+          },
+          "floor": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "room": {
+            "type": "string",
+            "pattern": "^[a-z0-9_-]+$",
+            "maxLength": 64
+          },
+          "group": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "cultist",
+                "archer",
+                "warden_foe",
+                "pyromancer",
+                "brute"
+              ]
+            },
+            "minItems": 1,
+            "maxItems": 4
+          }
+        }
+      },
+      "minItems": 1
+    }
+  }
+}

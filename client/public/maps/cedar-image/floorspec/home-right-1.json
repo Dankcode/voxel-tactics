@@ -1,0 +1,39 @@
+{
+  "building": "home-right",
+  "floor": 1,
+  "source": "offline-schematic",
+  "rooms": [
+    {
+      "kind": "living",
+      "center": [
+        0.25,
+        0.17857142857142858
+      ]
+    },
+    {
+      "kind": "bathroom",
+      "center": [
+        0.71875,
+        0.17857142857142858
+      ]
+    },
+    {
+      "kind": "kitchen",
+      "center": [
+        0.25,
+        0.7857142857142857
+      ]
+    },
+    {
+      "kind": "study",
+      "center": [
+        0.71875,
+        0.7857142857142857
+      ]
+    }
+  ],
+  "doors": [],
+  "windows": [],
+  "stairs": [],
+  "furniture": []
+}

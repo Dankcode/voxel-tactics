@@ -5,6 +5,7 @@ import { SQUADS } from '../../shared/content/units.js';
 import { SCENARIOS } from '../../shared/session/Scenarios.js';
 
 const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const params = new URLSearchParams(location.search);
 const menu = $('#menu');
 let game = null;
@@ -18,8 +19,8 @@ async function showMenu() {
       <div class="menu-card">
         <h1>FIRETEAM</h1>
         <p class="tag">Present-day tactical operations · co-op</p>
-        <div class="maps" id="m-maps">${themes.map(t => `<div class="theme"><h4>${t}</h4>${SCENARIOS.filter(s => s.theme === t).map(s =>
-            `<button class="map ${s.id === pick ? 'on' : ''}" data-map="${s.id}"><b>${s.name}</b><span>${s.text}</span></button>`).join('')}</div>`).join('')}</div>
+        <div class="maps" id="m-maps">${themes.map(t => `<div class="theme"><h4>${esc(t)}</h4>${SCENARIOS.filter(s => s.theme === t).map(s =>
+            `<button class="map ${s.id === pick ? 'on' : ''}" data-map="${s.id}"><b>${esc(s.name)}</b><span>${esc(s.text)}</span></button>`).join('')}</div>`).join('')}</div>
         <div class="row">
           <label>Seed <input id="m-seed" type="number" value="1" min="1"></label>
           <label>Squad <select id="m-squad">${Object.keys(SQUADS).map(k => `<option>${k}</option>`).join('')}</select></label>

@@ -1,4 +1,7 @@
 // Offline image analysis becomes data. Runtime compilation is deterministic and shares the gameplay voxel matrix.
+import { solveLayout } from './LayoutSolver.js';
+import { compileBuilding } from './StoreyCompiler.js';
+import { checkGeneratedGates } from './Gates.js';
 import { createMap } from '../mission/modern/MapKit.js';
 import { designSlate } from './DesignSlate.js';
 import { SUBURB_PROPS, DOWNTOWN_PROPS, DOCKS_PROPS, FORECOURT_PROPS } from '../mission/PropCatalog.js';
@@ -9,16 +12,16 @@ export function validateSite(site) {
     const fail = reason => { throw new Error(`Invalid image map: ${reason}`); };
     if (site.name != null && (typeof site.name !== 'string' || site.name.length > 80 || /[<>]/.test(site.name))) fail('plain-text mission name required');
     if (site.theme != null && !['Suburbs','Downtown','Industrial','Roadside'].includes(site.theme)) fail('theme');
-    if (site.version !== 1 || !/^[a-z0-9-]+$/.test(site.id || '')) fail('version/id');
+    if (![1,2].includes(site.version) || !/^[a-z0-9-]+$/.test(site.id || '')) fail('version/id');
     if (!['day', 'dusk', 'night', 'dawn', 'overcast'].includes(site.timeOfDay)) fail('timeOfDay');
-    if (!Array.isArray(site.buildings) || !site.buildings.length || site.buildings.length > 8) fail('1–8 buildings required');
+    if (!Array.isArray(site.buildings) || !site.buildings.length) fail('buildings required');
     const box = b => Array.isArray(b) && b.length === 4 && b.every(n => Number.isFinite(n) && n >= 0 && n <= 1) && b[2] > b[0] && b[3] > b[1];
+    if(site.version===2&&(!site.frame||![site.frame.width,site.frame.height].every(n=>Number.isFinite(n)&&n>0)))fail('frame: source extents required');
     const ids = new Set();
     for (const b of site.buildings) {
         if (typeof b.id !== 'string' || !/^[a-z0-9-]+$/.test(b.id) || ids.has(b.id) || !box(b.bounds) || !['house','shop','office','warehouse','diner','garage'].includes(b.program) || !['n','s','e','w'].includes(b.front)) fail('building footprint/program/front/id');
         ids.add(b.id);
-        if ((b.bounds[2]-b.bounds[0])*48 < 12 || (b.bounds[3]-b.bounds[1])*40 < 11) fail('building too small for connected combat rooms');
-        for (const other of site.buildings) if (other !== b && b.bounds[0] < other.bounds[2] && b.bounds[2] > other.bounds[0] && b.bounds[1] < other.bounds[3] && b.bounds[3] > other.bounds[1]) fail('overlapping buildings');
+        if (b.storeys != null && (!Number.isInteger(b.storeys) || b.storeys < 1 || b.storeys > 4)) fail('storeys must be 1–4 before policy clamp');
     }
     for (const s of site.surfaces || []) if (!box(s.bounds) || !['lawn','concrete','paving','asphalt','deck'].includes(s.material)) fail('surface');
     const point = p => Array.isArray(p) && p.length === 2 && p.every(n => Number.isFinite(n) && n > 0 && n < 1);
@@ -26,28 +29,26 @@ export function validateSite(site) {
     return site;
 }
 
-export function buildImageMap(site, { seed = 1 } = {}) {
+export function buildImageMap(site, { seed = 1, design = null, floorSpecs = [] } = {}) {
     validateSite(site);
-    const width = 48, depth = 40;
-    const m = createMap({ id: site.id, width, depth, height: 12, seed });
-    const point = p => [Math.round(p[0]*(width-1)), Math.round(p[1]*(depth-1))];
-    const rect = b => [...point(b.slice(0,2)), ...point(b.slice(2))];
-    for (const surface of site.surfaces || []) m.ground(...rect(surface.bounds), surface.material);
-    for (const b of site.buildings) {
-        const [x0,y0,x1,y1] = rect(b.bounds);
-        m.building({ id: b.id, program: b.program, x0,y0,w:x1-x0+1,d:y1-y0+1,front:b.front });
+    return buildPackagedMap({site,...solveLayout(site,{seed,design,floorSpecs})},{seed});
+}
+
+export function buildPackagedMap({site,layout,design,manifest}, { seed = 1 } = {}) {
+    validateSite(site);
+    const {width,depth,height}=layout;
+    const m = createMap({ id: site.id, width, depth, height, seed });
+    for(const parcel of layout.parcels)if(parcel.kind==='sidewalk') {
+        const [px,py]=parcel.id.split(',').map(Number);m.ground(px*4,py*4,px*4+3,py*4+3,'concrete');
     }
-    const flow = [site.insertion, ...site.flow].map(point);
+    for(const s of layout.surfaces)m.ground(s.x0,s.y0,s.x0+s.w-1,s.y0+s.d-1,s.material);
+    for(const b of layout.buildings)compileBuilding(m,b);
+    const flow=layout.flow;
     const [sx,sy] = flow[0];
     m.reserve(sx-2,sy-1,sx+3,sy+1);
     m.line(Math.max(1,sx-3),Math.max(1,sy-2),2,'x','planter');
-    for (const [i,b] of m.buildings.entries()) {
-        const e=b.entry;
-        m.line(Math.max(1,e.x-3),Math.min(depth-2,e.y+2),2,'x','planter');
-        if (b.x0 > 1) m.tree(b.x0-1,b.y0,'conifer');
-        const carY=Math.min(depth-4,b.y0+b.d+3);
-        m.car(Math.min(width-5,b.x0+4),carY,'x',i%2 ? -1 : 1);
-    }
+    // Reserve architecture and escape aprons before placing optional outdoor props.
+    for(const b of m.buildings)for(const e of b.exits)m.line(e.side==='w'?e.x-1:e.x+1,e.y+2,2,'y','planter');
     // Boundary cover matters too: the scatter pass excludes edge cells and reserved approach lanes.
     const edge=[];
     for(let y=4;y<depth-2;y+=8) edge.push([1,y],[width-2,y]);
@@ -77,11 +78,18 @@ export function buildImageMap(site, { seed = 1 } = {}) {
     for (const route of traceFlow()) for (const {x,y} of route) m.reserve(x,y,x+1,y);
     m.scatter(catalog,{ maxGap:3,targetShare:0.34 });
     const flowRoutes = traceFlow();
-    const enemies=m.buildings.flatMap((b,i) => b.rooms.filter(r=>r.gameplay && r.storey===0).filter(r=>['living','study','sales','open_office','warehouse','dining','workshop'].includes(r.kind)).slice(0,2).map((r,j)=>({type:j?'archer':'cultist',group:i,room:{building:b.id,kind:r.kind}})));
-    const mission=m.finish({ name:site.name || site.id, spawns:{ player:[[-1,0],[1,0],[0,0],[-1,1],[1,1],[0,1]].map(([dx,dy])=>({x:sx+dx,y:sy+dy,z:1})), enemy:enemies }, objective:{kind:'eliminate',text:'Advance through the approach lanes and clear the occupied buildings.'}, meta:{theme:site.theme || 'Suburbs',lighting:site.timeOfDay,timeOfDay:site.timeOfDay,defaultCut:4,imageGenerated:true,source:site.source,flow,flowRoutes} });
+    const enemies=design.encounters.flatMap(e=>e.types.map(type=>({type,group:e.group,room:{building:e.building,storey:e.floor,kind:e.room}})));
+    const target=design.mission.target,targetRoom=m.ctx.rooms.find(r=>r.buildingId===target.building&&r.storey===target.floor&&r.kind===target.room);
+    if(!targetRoom)throw Error('design.objective: target room does not exist');
+    const item={room:{building:target.building,storey:target.floor,kind:target.room},label:'Syndicate intelligence'};
+    const zone={x0:Math.min(...targetRoom.cells.map(c=>c[0])),y0:Math.min(...targetRoom.cells.map(c=>c[1])),x1:Math.max(...targetRoom.cells.map(c=>c[0])),y1:Math.max(...targetRoom.cells.map(c=>c[1])),z:targetRoom.floorZ,dz:0};
+    const kind=design.mission.kind;
+    const objective=kind==='recover'?{kind,item,text:'Recover the intelligence from the upper command room.'}:kind==='hold'?{kind,zone,rounds:3,needed:2,text:'Take and hold the command room.'}:kind==='extract'?{kind,zone,needed:3,text:'Reach the upper rendezvous with three soldiers.'}:{kind,text:'Clear the occupied buildings.'};
+    const mission=m.finish({ name:design.mission.title, spawns:{ player:[[-1,0],[1,0],[0,0],[-1,1],[1,1],[0,1]].map(([dx,dy])=>({x:sx+dx,y:sy+dy,z:1})), enemy:enemies }, objective, meta:{theme:site.theme || 'Suburbs',lighting:site.timeOfDay,timeOfDay:site.timeOfDay,defaultCut:4,imageGenerated:true,source:site.source,flow,flowRoutes,briefing:design.mission.briefing,storyBeats:design.beats,congruence:layout.congruence,repairs:layout.repairs,packageId:manifest?.id,concepts:manifest?.concepts||[]} });
     const search=reachable(mission.store,mission.spawns.player[0],Infinity,AGENT_PROFILES.player);
     for (const [x,y] of flow) if (!search.costs.has(nodeKey({x,y,z:1}))) throw new Error(`Gameplay waypoint ${x},${y} is blocked; revise image analysis flow`);
     for (const room of mission.rooms.filter(r=>r.gameplay)) if (!room.cells.some(([x,y])=>search.costs.has(nodeKey({x,y,z:room.floorZ})))) throw new Error(`Combat room ${room.buildingId}/${room.kind} is unreachable`);
+    checkGeneratedGates(mission,{site,layout,design});
     mission.visual.slate = designSlate(mission);
     return mission;
 }

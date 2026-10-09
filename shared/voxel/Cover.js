@@ -9,11 +9,14 @@ export const DIRS4 = Object.freeze([
 export const COVER = Object.freeze({ NONE: 0, HALF: 1, FULL: 2 });
 
 /** Cover a unit standing on surface (x, y, z) gets from the neighbour in direction d. */
-export function coverToward(store, x, y, z, d, travel = null) {
+export function coverToward(store, x, y, z, d, travel = null, elevated = false) {
     const nx = x + d.dx, ny = y + d.dy;
     const low = travel ? protectionAlong(store, x, y, nx, ny, z + 1, travel) : protection(store, nx, ny, z + 1, d);
     const high = travel ? protectionAlong(store, x, y, nx, ny, z + 2, travel) : protection(store, nx, ny, z + 2, d);
     if (low >= 0.8 && high >= 0.8) return COVER.FULL;
+    // From two voxels above, low protection below the chest no longer rates as half cover.
+    // Upper protection (an overhang/window band) still counts, and the pitched samples can see over a wall.
+    if (elevated) return high >= 0.4 ? COVER.HALF : COVER.NONE;
     if (low >= 0.4) return COVER.HALF;
     if (high >= 0.4) return COVER.HALF;          // window gap / overhang still hides the upper body
     return COVER.NONE;
@@ -27,7 +30,7 @@ export function coverAt(store, x, y, z) {
 }
 
 /** Cover against a shooter at (sx, sy): the best cover among the faces that look toward the shooter. */
-export function coverAgainst(store, x, y, z, sx, sy) {
+export function coverAgainst(store, x, y, z, sx, sy, sz = z) {
     const dx = sx - x, dy = sy - y;
     let best = COVER.NONE;
     for (const d of DIRS4) {
@@ -38,14 +41,14 @@ export function coverAgainst(store, x, y, z, sx, sy) {
         if (dot / len < 0.5) continue;
         // Sample along the actual line of fire, so an oblique shot that comes round a wall end or corner post is
         // rated by what it would really cross (the HUD shields per face still use the straight-on rating).
-        best = Math.max(best, coverToward(store, x, y, z, d, [-dx / len, -dy / len]));
+        best = Math.max(best, coverToward(store, x, y, z, d, [-dx / len, -dy / len, -(sz-z)/len], sz-z>=2));
     }
     return best;
 }
 
 /** True when no face toward the attacker has cover (XCOM "flanked"). */
-export function isFlanked(store, x, y, z, sx, sy) {
-    return coverAgainst(store, x, y, z, sx, sy) === COVER.NONE;
+export function isFlanked(store, x, y, z, sx, sy, sz = z) {
+    return coverAgainst(store, x, y, z, sx, sy, sz) === COVER.NONE;
 }
 
 // Sample a body-width band through the actual footprint. A narrow end post cannot claim full cover.
@@ -69,10 +72,10 @@ function protection(store, x, y, z, d) {
 function protectionAlong(store, ux, uy, x, y, z, travel) {
     const weight = coverWeight(materialById(store.get(x, y, z)));
     if (weight < 1) return 0;
-    const [tx, ty] = travel, px = -ty, py = tx;
+    const [tx, ty, tz = 0] = travel, px = -ty, py = tx;
     let hits = 0;
     for (const offset of [-0.38, -0.19, 0, 0.19, 0.38]) {
-        const ox = ux + 0.5 + px * offset - tx * 2.5, oy = uy + 0.5 + py * offset - ty * 2.5;
+        const ox = ux + 0.5 + px * offset - tx * 2.5, oy = uy + 0.5 + py * offset - ty * 2.5, oh=z+0.5-tz*2.5;
         // Interval of the ray inside the neighbour cell (2D slab test).
         let t0 = 0, t1 = 2.5, ok = true;
         for (const [o, d, lo] of [[ox, tx, x], [oy, ty, y]]) {
@@ -81,9 +84,14 @@ function protectionAlong(store, ux, uy, x, y, z, travel) {
             if (a > b) [a, b] = [b, a];
             t0 = Math.max(t0, a); t1 = Math.min(t1, b);
         }
+        // Clip against the voxel's vertical slab as well as its horizontal footprint.
+        if(Math.abs(tz)>1e-9) {
+            let a=(z-oh)/tz,b=(z+1-oh)/tz;if(a>b)[a,b]=[b,a];
+            t0=Math.max(t0,a);t1=Math.min(t1,b);
+        }
         if (!ok || t0 > t1) continue;
         if (!collisionFootprint(store, x, y, z)) { hits++; continue; }
-        if (intersectCellShape(store, x, y, z, [ox, oy, z + 0.5], [tx, ty, 0], t0, t1)) hits++;
+        if (intersectCellShape(store, x, y, z, [ox, oy, oh], [tx, ty, tz], t0, t1)) hits++;
     }
     return hits / 5 * Math.min(1, weight);
 }
