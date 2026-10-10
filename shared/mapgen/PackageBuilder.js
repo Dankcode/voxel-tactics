@@ -47,6 +47,8 @@ export function buildPackagedMap({site,layout,design,manifest}, { seed = 1, stri
     }
     for(const s of layout.surfaces)m.ground(s.x0,s.y0,s.x0+s.w-1,s.y0+s.d-1,s.material);
     for(const b of layout.buildings)compileBuilding(m,b);
+    // Exterior dressing uses the image-derived roof and insertion positions; collision stays in voxels.
+    for (const b of m.buildings) m.decorAt('rooftop_vent', b.x0+2, b.y0+2, {z:b.top+1});
     const underground=compileUnderground(m,layout.layers);
     const flow=layout.flow;
     const [sx,sy] = flow[0];
@@ -82,6 +84,8 @@ export function buildPackagedMap({site,layout,design,manifest}, { seed = 1, stri
     };
     for (const route of traceFlow()) for (const {x,y} of route) m.reserve(x,y,x+1,y);
     m.scatter(catalog,{ maxGap:3,targetShare:0.34 });
+    for (const [x,y] of [[sx-3,sy],[sx+3,sy]]) if (m.store.inBounds(x,y,m.G+1) && !m.keep.has(`${x},${y}`) && !m.store.isSolid(x,y,m.G+1)) m.decorAt('checkpoint_sign',x,y,{z:m.G+1});
+    if(site.theme==='Industrial') for(const [x,y] of edge.slice(0,4)) if(!m.keep.has(`${x},${y}`)&&!m.store.isSolid(x,y,m.G+1)) m.decorAt('cable_spool',x,y,{z:m.G+1});
     const flowRoutes = traceFlow();
     const enemies=design.encounters.flatMap(e=>e.types.map(type=>({type,group:e.group,room:{building:e.building,storey:e.floor,kind:e.room}})));
     if(underground)enemies.push({type:'cultist',group:99,pos:underground.guard});

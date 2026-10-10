@@ -62,6 +62,13 @@ export function compileV3Map({ site, layout, design, manifest }, { seed = 1, gat
     compileEdges(m, layout.edges || []);
     // Street dressing that never blocks: street lights along sidewalks every ~10 cells, drains on the carriageway.
     const ins = layout.insertion, [sx, sy] = [ins.x, ins.y];
+    // Visual-only dressing from the authored packages: checkpoint signs either side of the insertion, cable spools
+    // inside industrial edges.
+    for (const [x, y] of [[sx - 3, sy], [sx + 3, sy]]) if (m.store.inBounds(x, y, G + 1) && !m.keep.has(`${x},${y}`) && !m.store.isSolid(x, y, G + 1)) m.decorAt('checkpoint_sign', x, y, { z: G + 1 });
+    if (layout.plot?.family === 'industrial') {
+        const spots = (layout.edges || []).filter(e => e.kind === 'chainlink').flatMap(e => e.cells.filter((_, i) => i % 9 === 4).map(([x, y]) => [x + Math.sign(width / 2 - x) * (x === 0 || x === width - 1), y + Math.sign(depth / 2 - y) * (y === 0 || y === depth - 1)]));
+        for (const [x, y] of spots.slice(0, 4)) if (!m.keep.has(`${x},${y}`) && !m.store.isSolid(x, y, G + 1)) m.decorAt('cable_spool', x, y, { z: G + 1 });
+    }
     // Spawns, pods and the objective.
     const enemies = [];
     for (const e of design.encounters) for (const type of e.types) enemies.push(e.at ? { type, group: e.group, at: { x: e.at.x, y: e.at.y, z: G } } : { type, group: e.group, room: { building: e.building, storey: e.floor, kind: e.room } });

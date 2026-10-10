@@ -1,3 +1,4 @@
+import { normalizeInventory } from '../inventory/Inventory.js';
 // Scenario descriptors → missions. The same descriptor builds the same mission on every client and on the
 // server (lockstep), so a descriptor + the ordered intent list fully describes a battle.
 //
@@ -21,6 +22,7 @@ export function sanitizeDesc(d = {}) {
     const seed = Number.isInteger(Number(d.seed)) && Number(d.seed) >= 0 && Number(d.seed) <= 0xffffffff ? Number(d.seed) : 1;
     const out = { scenario, seed: seed || 1, squad: d.squad || 'standard', debug: d.debug === true };
     if (scenario === OPERATION_ID) out.operation = operationOptions(d.operation);
+    if (Array.isArray(d.inventories)) out.inventories = d.inventories;   // normalised per unit in squadFor
     return out;
 }
 
@@ -46,7 +48,7 @@ export function buildMission(desc) {
 
 export function squadFor(desc) {
     const list = Array.isArray(desc.squad) ? desc.squad : (SQUADS[desc.squad] || SQUADS.standard);
-    return list.map((type, i) => ({ type, owner: 'player', name: CALLSIGNS[i % CALLSIGNS.length] }));
+    return list.map((type, i) => ({ type, owner: 'player', name: CALLSIGNS[i % CALLSIGNS.length], ...(desc.inventories?.[i] ? {inventory:normalizeInventory(desc.inventories[i])} : {}) }));
 }
 
 export function createBattle(desc) {

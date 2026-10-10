@@ -30,3 +30,25 @@ test('continuous finishes preserve material identity and do not repeat image tex
     const wall=kit.material('self','stucco',[]);
     assert.equal(wall.map,null);assert.equal(wall.color.getHex(),materialByKey('stucco').color);
 });
+
+test('tactical pitch stays at 45 degrees across zoom; reset restores framing after orbit', async()=>{
+    const {CameraRig}=await import('../CameraRig.js');
+    const rig=new CameraRig(1.6);rig.target.set(12,2,12);
+    for(const distance of [12,36,80,110]) {
+        rig.distance=rig.distanceTarget=distance;rig.apply();
+        assert.ok(Math.abs(rig.pitch()-Math.PI/4)<1e-9);
+        const delta=rig.camera.position.clone().sub(rig.target);
+        assert.ok(Math.abs(Math.atan2(delta.y,Math.hypot(delta.x,delta.z))-Math.PI/4)<1e-9);
+    }
+    rig.orbit(300,200);rig.resetTactical();
+    assert.equal(rig.mode,'perspective');assert.equal(rig.distance,36);assert.equal(rig.pitchOffset,0);
+    assert.equal(rig.yaw,Math.PI/4);assert.equal(rig.camera.fov,38);
+});
+
+test('CAD presets select plan and compass views while pan stays screen-relative',async()=>{
+ const {CameraRig}=await import('../CameraRig.js');const r=new CameraRig();
+ r.setPreset('plan');assert.ok(Math.abs(r.pitch()*180/Math.PI-85)<1e-9);
+ r.setPreset('E');r.update(0);assert.equal(r.yaw,Math.PI/2);assert.equal(r.pitch(),Math.PI/4);
+ r.moveBy(2,0);assert.ok(Math.abs(r.target.x)<1e-9);assert.equal(r.target.z,-2);
+ r.setPreset('iso');r.update(0);assert.equal(r.yaw,Math.PI/4);
+});

@@ -1,3 +1,4 @@
+import { buildWatchPreview, WATCH_COLORS } from '../../../shared/battle/WatchPreview.js';
 // Tactical overlays in the XCOM idiom: blue (move and still act) and yellow (dash) zones drawn as glowing
 // outlines with a faint fill, a path ribbon to the hovered tile with a destination marker, cover shields on the
 // destination's faces, aim cone, blast radius, throw arc, overwatch cones, plus debug layers.
@@ -70,7 +71,7 @@ export class Overlays {
         g.userData = { ring, inner, beam };
         return g;
     }
-    clearRange() { for (const c of [...this.rangeGroup.children]) { this.rangeGroup.remove(c); c.geometry.dispose(); } }
+    clearRange() { for (const c of [...this.rangeGroup.children]) { this.rangeGroup.remove(c); c.geometry.dispose(); c.material.dispose(); } }
     /** Mark every overlay mesh so the AO pass skips it (they are added and removed all the time). */
     static flag(o) { o.traverse?.(c => { c.userData.noAO = true; }); return o; }
     /**
@@ -134,7 +135,7 @@ export class Overlays {
             this.shields.add(s);
         }
     }
-    clearAim() { for (const c of [...this.aim.children]) { this.aim.remove(c); c.geometry?.dispose?.(); } }
+    clearAim() { const owned=new Set();for (const c of [...this.aim.children]) { this.aim.remove(c); c.geometry?.dispose?.();if(c.userData.watch)owned.add(c.material); }for(const m of owned)m.dispose();this.watchPreview=null; }
     /** Accuracy cone: lines from the muzzle to a ring of radius r at the aim point. */
     showCone(muzzle, aimPoint, spreadDeg) {
         this.clearAim();
@@ -170,21 +171,50 @@ export class Overlays {
             this.aim.add(ring, disc);
         }
     }
-    /** Overwatch cones of units (wedges on the ground). */
-    showOverwatch(units) {
-        for (const c of [...this.debug.children].filter(c => c.userData.ow)) { this.debug.remove(c); c.geometry.dispose(); }
-        for (const u of units) {
-            if (!u.overwatch) continue;
-            const ow = u.overwatch, a0 = Math.atan2(ow.dy, ow.dx) - ow.halfAngle, a1 = Math.atan2(ow.dy, ow.dx) + ow.halfAngle;
-            const shape = new THREE.Shape();
-            shape.moveTo(0, 0);
-            for (let i = 0; i <= 24; i++) { const a = a0 + (a1 - a0) * i / 24; shape.lineTo(Math.cos(a) * ow.range, Math.sin(a) * ow.range); }
-            shape.lineTo(0, 0);
-            const geo = new THREE.ShapeGeometry(shape); geo.rotateX(Math.PI / 2);
-            const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: u.side === 'player' ? ZONE.blue : ZONE.red, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
-            m.position.set(u.x + 0.5, u.z + 1.05, u.y + 0.5);
-            m.userData.ow = true; this.debug.add(m);
+    showAbilityTile(cell, valid) {
+        this.clearAim();
+        if (!cell) return;
+        const m = tileMesh([cell], glowMaterial(valid ? ZONE.teal : ZONE.red, 0.3));
+        this.aim.add(m);
+    }
+    showWatchPreview(battle, unit, sector, {hidden,cutZ=Infinity} = {}) {
+        this.clearAim();
+        if(!sector)return;
+        const key=`${battle.seq}:${JSON.stringify(unit)}:${sector.weaponId}`;
+        if(this.watchBattle!==battle || this.watchCacheKey!==key) {
+            this.watchBattle=battle;this.watchCacheKey=key;this.watchCache=new Map();
         }
+        const data=buildWatchPreview(battle,unit,sector,{hidden,cutZ,cache:this.watchCache});
+        this.watchPreview=data;
+        for(const mesh of this.watchMeshes(data))this.aim.add(mesh);
+        Overlays.flag(this.aim);
+        return data;
+    }
+    watchMeshes(data,opacity=.38) {
+        const meshes=[];
+        for(const band of ['high','low']) {
+            const material=new THREE.MeshBasicMaterial({color:WATCH_COLORS[band],transparent:true,opacity,depthWrite:false,side:THREE.DoubleSide,toneMapped:false,clippingPlanes:this.scene.clipping,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1});
+            const cells=data.tiles.filter(c=>c.band===band),faces=data.faces.filter(f=>f.band===band);
+            if(cells.length)meshes.push(tileMesh(cells,material));
+            if(faces.length)meshes.push(watchFaceMesh(faces,material));
+            if(!cells.length&&!faces.length)material.dispose();
+        }
+        for(const mesh of meshes)mesh.userData.watch=true;
+        return meshes;
+    }
+    /** Committed watches keep the same filled accuracy field as selection. */
+    showOverwatch(battle,units,options={}) {
+        const materials=new Set();
+        for(const c of [...this.debug.children].filter(c=>c.userData.ow)) {
+            this.debug.remove(c);c.geometry.dispose();materials.add(c.material);
+        }
+        for(const material of materials)material.dispose();
+        for(const u of units) {
+            if(!u.overwatch)continue;
+            const data=buildWatchPreview(battle,u,u.overwatch,options);
+            for(const mesh of this.watchMeshes(data,.24)) {mesh.userData.ow=true;this.debug.add(mesh);}
+        }
+        Overlays.flag(this.debug);
     }
     // ------------------------------------------------------------------ debug layers
     /** The mission objective: its zone (teal tiles, outlined) and the item to recover (a case with a beacon). */
@@ -195,14 +225,14 @@ export class Overlays {
             const cells = [], inside = new Set();
             for (let y = o.zone.y0; y <= o.zone.y1; y++) for (let x = o.zone.x0; x <= o.zone.x1; x++) {
                 const s = battle.store.surfaceNear(x, y, o.zone.z ?? Infinity);
-                if (s && (o.zone.z == null || Math.abs(s.z - o.zone.z) <= (o.zone.dz ?? 1))) { cells.push(s); inside.add(`${x},${y}`); }
+                if (s && (!this.visibleCell || this.visibleCell(s)) && (o.zone.z == null || Math.abs(s.z - o.zone.z) <= (o.zone.dz ?? 1))) { cells.push(s); inside.add(`${x},${y}`); }
             }
             const edges = [];
             for (const n of cells) for (const [dx, dy] of DIRS) if (!inside.has(`${n.x + dx},${n.y + dy}`)) edges.push([n, dx, dy]);
             if (cells.length) this.objectiveGroup.add(tileMesh(cells, this.mats.objFill), edgeMesh(edges, this.mats.objLine));
         }
         const it = o.item;
-        if (it && !it.carrier && !it.secured) {
+        if (it && !it.carrier && !it.secured && (!this.visibleCell || this.visibleCell(it))) {
             const y = it.z + 1 - dropAt(it.x, it.y, it.z);
             const box = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.3, 0.16), this.mats.objCase);
             box.position.set(it.x + 0.5, y + 0.15, it.y + 0.5); box.castShadow = true;
@@ -284,4 +314,18 @@ function ribbonGeometry(pts, width, vertical = false) {
     }
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
     return g;
+}
+
+function watchFaceMesh(faces,material) {
+    const positions=[],indices=[];
+    for(const face of faces) {
+        const base=positions.length/3;
+        for(const [x,y,z] of face.points)positions.push(x,z,y);
+        if(face.points.every(p=>Math.abs(p[2]-face.points[0][2])<.0001)) {
+            const triangles=THREE.ShapeUtils.triangulateShape(face.points.map(p=>new THREE.Vector2(p[0],p[1])),[]);
+            for(const triangle of triangles)indices.push(...triangle.map(i=>base+i));
+        } else for(let i=1;i<face.points.length-1;i++)indices.push(base,base+i,base+i+1);
+    }
+    const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geometry.setIndex(indices);
+    const mesh=new THREE.Mesh(geometry,material);mesh.renderOrder=6;return mesh;
 }

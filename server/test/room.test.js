@@ -37,12 +37,13 @@ for (const scenario of ['proving-grounds', 'signal-house']) test(`two players sh
             return p;
         };
         const apply = (p, m) => { if (m.seq > p.seq) { p.seq = m.seq; p.battle.apply(m.intent); } };
-        const roomA = await a.create('mission', { desc: { scenario, seed: 4, squad: 'standard' }, name: 'A' });
+        const roomA = await a.create('mission', { desc: { scenario, seed: 4, squad: 'standard', inventories:[[{id:'kit',itemId:'medkit',x:0,y:0,rotated:true}]] }, name: 'A' });
         const pa = mirror(roomA); const initA = await pa.init;
         const roomB = await b.joinById(roomA.roomId, { name: 'B' });
         const pb = mirror(roomB); const initB = await pb.init;
         assert.equal(initA.playerId, 'P1'); assert.equal(initB.playerId, 'P2');
         const peers = [pa, pb];
+        for(const peer of peers){assert.equal(peer.battle.unit('p0').items.medkit,1);assert.equal(peer.battle.unit('p0').inventory[0].rotated,true);}
         await new Promise(r => setTimeout(r, 300));
         // Ownership was dealt round-robin: P1 has p0,p2; P2 has p1,p3.
         assert.equal(peers[0].battle.unit('p0').owner, 'P1');

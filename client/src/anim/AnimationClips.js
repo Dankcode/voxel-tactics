@@ -9,6 +9,8 @@
 
 /** Logical clips every character must provide (field.json `clips`). */
 export const CLIPS = Object.freeze({
+    vault: { loop: false, fallback: 'walk', next: 'walk' },
+    climb: { loop: true, fallback: 'walk' },
     idle: { loop: true, fallback: null },
     walk: { loop: true, fallback: 'idle' },
     aim: { loop: true, fallback: 'idle' },

@@ -1,6 +1,7 @@
-// DOM HUD in the XCOM 2 layout: turn indicator on top, squad column on the left, the selected soldier's
-// panel bottom-left, the ability bar bottom-centre with numbered slots, enemy target icons above it, the
-// target panel (Phoenix Point body-part aim) on the right, banners, toasts, a cursor tooltip and the log.
+import { packMarkup } from './InventoryPrep.js';
+import { MAT } from '../../../shared/voxel/Materials.js';
+import { watchWeapon, visionProfile } from '../../../shared/battle/WatchSector.js';
+// Squad status, equipment workspace, skill dock and precision targeting.
 import { WEAPONS, THROWABLES } from '../../../shared/content/weapons.js';
 import { CALIBERS } from '../../../shared/content/calibers.js';
 import { ABILITIES, CLASSES, ENEMIES } from '../../../shared/content/units.js';
@@ -30,6 +31,12 @@ export class Hud {
                     <button data-act="debug" class="debug-btn" title="Debug mode (F1)">${ICONS.bug}</button>
                     <button data-act="menu" title="Menu">${ICONS.menu}</button>
                 </div></div>
+            <div class="camera-nav" aria-label="Camera rotation and floor controls">
+                <button class="nav-up" data-act="lvlUp" aria-label="Floor up" title="Floor up · Page Up">↑</button>
+                <button class="nav-left" data-act="rotL" aria-label="Rotate camera left" title="Rotate left · Q">←</button>
+                <button class="nav-right" data-act="rotR" aria-label="Rotate camera right" title="Rotate right · E">→</button>
+                <button class="nav-down" data-act="lvlDown" aria-label="Floor down" title="Floor down · Page Down">↓</button>
+            </div>
             <div class="squad"></div>
             <div class="unitpanel hidden"></div>
             <div class="targets"></div>
@@ -45,6 +52,7 @@ export class Hud {
             <div class="outcome hidden"></div>
             `;
         this.el = sel => root.querySelector(sel);
+        root.addEventListener('keydown',e=>{if(e.target.closest('.camera-nav'))e.stopPropagation();});
         root.addEventListener('click', e => this.onClick(e));
         root.addEventListener('mouseover', e => { const b = e.target.closest('.slot'); if (b) this.el('.slotname').innerHTML = b.dataset.tip || ''; });
         root.addEventListener('mouseout', e => { if (e.target.closest('.slot')) this.el('.slotname').innerHTML = this.activeSlotName || ''; });
@@ -58,7 +66,17 @@ export class Hud {
         const g = this.game, act = b.dataset.act, arg = b.dataset.arg;
         e.stopPropagation();
         switch (act) {
-            case 'rotL': g.scene.rotate(-1); break; case 'rotR': g.scene.rotate(1); break;
+            case 'floorFollow': {g.levelLocked=false;const u=g.selectedUnit();g.setLevel(u&&g.battle.roomOf(u)>=0?u.z+3:Infinity);break;}
+            case 'equipmentTab': this.equipmentTab=arg;break;
+            case 'view': g.cameraDirector.end();g.scene.rig.setPreset(arg); break;
+            case 'pan': g.scene.rig.glide=null;g.scene.rig.moveBy(...arg.split(',').map(Number));break;
+            case 'tilt': g.cameraDirector.end();g.scene.rig.orbit(0,Number(arg)*40);break;
+            case 'home': g.focusUnit(g.selectedUnit());break;
+            case 'weapon': this.chooseWeapon(arg);break;
+            case 'reloadWeapon': g.intent({type:'reload',weaponId:arg});break;
+            case 'item': g.setMode({kind:THROWABLES[arg].kind==='gadget'?'gadget':THROWABLES[arg].placed?'breach':'throw',itemId:arg});if(THROWABLES[arg].placed)this.showBreachPanel();break;
+            case 'equip': g.intent({type:'switchWeapon',weaponId:arg}); break;
+            case 'rotL': g.cameraDirector.end();g.scene.rotate(-1); break; case 'rotR': g.cameraDirector.end();g.scene.rotate(1); break;
             case 'lvlUp': g.changeLevel(1); break; case 'lvlDown': g.changeLevel(-1); break;
             case 'cutins': g.cycleCutins(); break;
             case 'debug': g.debug.toggle(); break;
@@ -83,6 +101,11 @@ export class Hud {
             case 'restart': g.restart(); break;
         }
         this.refresh();
+    }
+    async chooseWeapon(id) {
+        const g=this.game,u=g.selectedUnit();if(!u||!g.canAct())return;
+        if(u.weapon!==id){const result=await g.intent({type:'switchWeapon',weaponId:id});if(!result.ok)return;}
+        if(g.selected===u.id&&g.canAct())g.setMode({kind:WEAPONS[id].kind==='melee'?'melee':'shoot',weaponId:id});
     }
     hidePanel() { this.el('.panel').classList.add('hidden'); }
     toggleOptions() { this.el('.options').classList.toggle('hidden'); this.renderOptions(); }
@@ -122,26 +145,18 @@ export class Hud {
         if (x == null || !html) { el.classList.add('hidden'); return; }
         el.classList.remove('hidden');
         el.innerHTML = html;
-        el.style.transform = `translate(${x + 18}px, ${y + 14}px)`;
+        const bounds=this.root.getBoundingClientRect();
+        const left=Math.max(8,Math.min(x+18,bounds.width-el.offsetWidth-8));
+        const top=Math.max(8,Math.min(y+14,bounds.height-el.offsetHeight-8));
+        el.style.transform = `translate(${left}px, ${top}px)`;
     }
     /** Build the ability slots for a unit (also used by number keys). */
     slotsFor(u) {
         const b = this.game.battle, mode = this.game.mode, s = [];
         const ap = u.ap;
-        u.weapons.forEach(id => {
-            const w = WEAPONS[id];
-            if (w.kind === 'melee') s.push({ act: 'melee', arg: id, icon: ICONS.melee, name: w.name, cost: `${w.ap}`, disabled: ap < w.ap, on: mode.kind === 'melee' && mode.weaponId === id, tip: `<b>${w.name}</b> · ${w.ap} AP · melee an adjacent enemy` });
-            else {
-                const empty = (u.ammo[id] ?? 0) < (w.perShot || 1);
-                s.push({ act: 'weapon', arg: id, icon: w.spread > 4 ? ICONS.shotgun : (w.range >= 14 ? ICONS.rifle : ICONS.fire), name: w.name, cost: `${b.shotAp(u, w)}`, sub: `${u.ammo[id] ?? 0}/${w.ammo}`, disabled: ap < b.shotAp(u, w) || empty,
-                    on: mode.kind === 'shoot' && mode.weaponId === id && !mode.suppress, tip: `<b>${w.name}</b>${w.caliber ? ` · ${CALIBERS[w.caliber].name}` : ''} · ${b.shotAp(u, w)} AP · ${w.damage} dmg${w.projectiles > 1 ? ` ×${w.projectiles}` : ''}${w.pierce ? ` · pierce ${w.pierce}` : ''} · range ${w.range}${empty ? ' · <i class="flank">EMPTY — reload</i>' : ''}` });
-            }
-        });
-        for (const [id, n] of Object.entries(u.items)) if (n > 0) { const t = THROWABLES[id]; s.push({ act: 'throw', arg: id, icon: ICONS.grenade, name: t.name, cost: `${t.ap}`, sub: `×${n}`, disabled: ap < t.ap, on: mode.kind === 'throw' && mode.itemId === id, tip: `<b>${t.name}</b> · ${t.ap} AP · radius ${t.radius}${t.element ? ` · ${t.element}` : ''}` }); }
-        const ow = WEAPONS[u.weapons.find(id => WEAPONS[id].kind === 'ballistic')];
-        if (ow) s.push({ act: 'overwatch', icon: ICONS.overwatch, name: 'Overwatch', cost: 'all', disabled: ap < ow.ap, on: mode.kind === 'overwatch', tip: '<b>Overwatch</b> · spend the rest of your AP to fire at the first enemy that moves in your cone' });
-        if (ow?.ammo) s.push({ act: 'reload', icon: ICONS.reload, name: 'Reload', cost: `${ow.reloadAp}`, disabled: ap < ow.reloadAp || u.ammo[ow.id] === ow.ammo, tip: `<b>Reload</b> · ${ow.reloadAp} AP` });
-        for (const a of u.abilities) { const ab = ABILITIES[a]; s.push({ act: 'ability', arg: a, icon: ICONS[a] || ICONS.ability, name: ab.name, on: a === 'suppress' && !!mode.suppress, cost: `${ab.ap || 0}`, sub: `${ab.wp} WP`, disabled: u.will < ab.wp || ap < (ab.ap || 0) || u.statuses.some(s => s.id === 'panicked') || (a === 'suppress' && (u.ammo.repeater ?? 0) < (WEAPONS.repeater.perShot || 1)), tip: `<b>${ab.name}</b> · ${ab.wp} Will${ab.ap ? ` · ${ab.ap} AP` : ''}<br>${esc(ab.text)}` }); }
+        const ow = WEAPONS[watchWeapon(u)];
+        if (ow) s.push({ act: 'overwatch', icon: ICONS.overwatch, name: 'Overwatch', cost: 'all', disabled: ap < ow.ap || (u.ammo[ow.id] ?? 0) < (ow.perShot || 1), on: mode.kind === 'overwatch', tip: '<b>Overwatch</b> · choose direction · all AP · <span style="color:#5ff2d6">Teal ≥65%</span> / <span style="color:#ffb347">Amber &lt;65%</span> estimated hit' });
+        for (const a of u.abilities) { const ab = ABILITIES[a]; s.push({ act: 'ability', arg: a, icon: ICONS[a] || ICONS.ability, name: ab.name, on: mode.abilityId === a || (a === 'suppress' && !!mode.suppress), cost: `${ab.ap || 0}`, sub: `${ab.wp} WP`, disabled: u.will < ab.wp || ap < (ab.ap || 0) || u.statuses.some(s => s.id === 'panicked') || (a === 'suppress' && (u.ammo.repeater ?? 0) < (WEAPONS.repeater.perShot || 1)), tip: `<b>${ab.name}</b> · ${ab.wp} Will${ab.ap ? ` · ${ab.ap} AP` : ''}<br>${esc(ab.text)}` }); }
         const f = b.formations.of(u);
         s.push(f ? { act: 'formBreak', arg: f.id, icon: ICONS.formation, name: `Break ${FORMATIONS[f.template].name}`, cost: '0', tip: 'Dissolve the formation' }
             : { act: 'formation', icon: ICONS.formation, name: 'Formation', cost: '1', tip: '<b>Formation</b> (F) · Shield Line, Breach Stack, Crossfire' });
@@ -151,7 +166,9 @@ export class Hud {
             s.push({ act: 'recover', icon: ICONS.ability, name: `Take ${o.item.label}`, cost: '1', disabled: ap < 1, tip: `<b>Recover</b> · 1 AP · pick up the ${esc(o.item.label.toLowerCase())}${o.zone ? ' — then get it to the extraction zone' : ''}` });
         if (o && extractionOpen(o) && inZone(o.zone, u))
             s.push({ act: 'extract', icon: ICONS.ability, name: 'Extract', cost: '1', disabled: ap < 1, tip: '<b>Extract</b> · 1 AP · leave the map from the extraction zone' });
-        if (this.game.nearestDoor(u)) s.push({ act: 'door', icon: ICONS.door, name: 'Door', cost: '0', tip: 'Open / close the adjacent door' });
+        const door=this.game.nearestDoor(u);
+        if(door) { const closed=b.store.get(door.x,door.y,door.z+1)===MAT.door; s.push({act:'door',icon:ICONS.door,name:closed?'Kick door':'Close door',cost:'1',disabled:ap<1,tip:closed?'Kick open the adjacent door · 1 AP · reveal the room':'Close the adjacent door · 1 AP'}); }
+        s.push({act:'wait',icon:ICONS.overwatch,name:'Finish soldier',cost:'all',disabled:ap+u.moveOnlyAp<=0,tip:'Spend remaining AP and select the next ready soldier. End Turn starts the enemy phase.'});
         return s;
     }
     runSlot(i) {
@@ -162,6 +179,7 @@ export class Hud {
             case 'melee': g.setMode({ kind: 'melee', weaponId: s.arg }); break;
             case 'throw': g.setMode({ kind: 'throw', itemId: s.arg }); break;
             case 'overwatch': g.setMode({ kind: 'overwatch' }); break;
+            case 'wait': g.intent({type:'wait'}); break;
             case 'reload': g.intent({ type: 'reload' }); break;
             case 'ability': g.useAbility(s.arg); break;
             case 'formation': this.showFormationPanel(); break;
@@ -195,7 +213,7 @@ export class Hud {
             const f = b.formations.of(u);
             const done = alive(u) && b.activeSide === 'player' && !g.canStillAct(u);
             return `<div class="card ${u.id === g.selected ? 'sel' : ''} ${u.dead ? 'dead' : ''} ${done ? 'done' : ''}" data-act="select" data-arg="${u.id}">
-                <img src="/assets/characters/${u.art}/portrait.png" alt="">
+                <img src="/assets/characters/test-soldier/portrait.png" alt="">
                 <div class="info"><div class="name">${esc(u.name)} <span class="owner">${u.owner !== 'player' ? esc(u.owner) : ''}</span></div>
                 <div class="hp seg">${segs(u.hp, u.maxHp)}</div>
                 <div class="pips">${pips(u.ap + u.moveOnlyAp, u.maxAp, 'ap')}${u.overwatch ? `<em class="ow">${ICONS.overwatch}</em>` : ''}${f ? `<em class="form">${FORMATIONS[f.template].name}</em>` : ''}</div></div>
@@ -207,19 +225,18 @@ export class Hud {
         if (u) {
             up.classList.remove('hidden');
             const def = CLASSES[u.type] || ENEMIES[u.type] || {};
-            const w = WEAPONS[u.weapon];
-            up.innerHTML = `<img src="/assets/characters/${u.art}/portrait.png" alt="">
-                <div class="uinfo"><div class="uname">${esc(u.name)}</div><div class="uclass">${esc(def.name || u.type)}${u.side === 'enemy' ? ' · <i class="flank">HOSTILE (debug)</i>' : ''}</div>
-                <div class="hp seg big">${segs(u.hp, u.maxHp)}</div><div class="nums"><span>HP ${Math.max(0, u.hp)}/${u.maxHp}</span><span>AP ${u.ap}${u.moveOnlyAp ? `+${u.moveOnlyAp}` : ''}/${u.maxAp}</span><span>WILL ${u.will}/${u.maxWill}</span></div>
-                <div class="pips">${pips(u.ap + u.moveOnlyAp, u.maxAp, 'ap big')}</div>
-                <div class="stress" title="Stress ${u.stress}/100"><i style="width:${u.stress}%"></i></div>
-                <div class="tags">${w ? `<span class="wpn">${esc(w.name)} ${w.ammo ? `${u.ammo[w.id] ?? 0}/${w.ammo}` : ''}</span>` : ''}${b.objective?.item?.carrier === u.id ? `<span class="obj">${esc(b.objective.item.label)}</span>` : ''}${u.statuses.map(s => `<span>${s.id}</span>`).join('')}${Object.entries(u.parts).filter(([, p]) => p.disabled).map(([k]) => `<span class="dis">${k} ✕</span>`).join('')}${u.god ? '<span class="dbg">GOD</span>' : ''}</div></div>`;
+            const w = WEAPONS[u.weapon], vision = visionProfile(u, watchWeapon(u));
+            const enabled=g.controllable(u)&&g.canAct();
+            up.innerHTML = `<div class="character-heading"><img src="/assets/characters/test-soldier/portrait.png" alt=""><div><div class="uname">${esc(u.name)}</div><div class="uclass">${esc(def.name||u.type)}</div><div class="nums"><span>HP ${u.hp}/${u.maxHp}</span><span>AP ${u.ap}/${u.maxAp}</span><span>Will ${u.will}</span></div></div></div><div class="hp seg">${segs(u.hp,u.maxHp)}</div>
+            <div class="equipment-tabs"><button data-act="equipmentTab" data-arg="weapons" class="${this.equipmentTab==='weapons'?'on':''}">Weapons</button><button data-act="equipmentTab" data-arg="pack" class="${this.equipmentTab!=='weapons'?'on':''}">Pack · ${u.inventory?.length||0}</button></div><div class="${this.equipmentTab==='weapons'?'':'hidden'}">${u.weapons.map(id=>{const w=WEAPONS[id];return `<div class="weapon-row"><button data-act="weapon" data-arg="${id}" ${!enabled||u.ap<b.shotAp(u,w)||(w.ammo&&(u.ammo[id]||0)<(w.perShot||1))?'disabled':''}><b>${esc(w.name)}</b><small>${w.ammo?`${u.ammo[id]||0}/${w.ammo} rounds · `:''}${w.ap} AP</small></button>${w.ammo?`<button data-act="reloadWeapon" data-arg="${id}" title="Reload ${esc(w.name)}" ${!enabled||u.ap<w.reloadAp||u.ammo[id]===w.ammo?'disabled':''}>↻</button>`:''}</div>`;}).join('')}
+            </div><div class="${this.equipmentTab!=='weapons'?'':'hidden'}">${packMarkup(u.inventory||[],false)}</div><small class="vision-info">Vision ${vision.sightRange} tiles · reaction ${vision.halfAngleDeg*2}° / ${vision.range} tiles · ${vision.armor} armour</small><div class="tags">${u.statuses.map(s=>`<span>${s.id}</span>`).join('')}</div>`;
+            up.querySelectorAll('.pack-item').forEach(el=>{el.dataset.act='item';el.dataset.arg=el.dataset.item;el.disabled=!enabled||u.ap<THROWABLES[el.dataset.item].ap;});
         } else up.classList.add('hidden');
         // Ability bar.
         const canAct = u && g.controllable(u) && !b.outcome && !g.aiRunning;
         this.slots = canAct ? this.slotsFor(u) : [];
-        this.el('.slots').innerHTML = this.slots.map((s, i) => `<button class="slot ${s.on ? 'on' : ''}" data-act="slot" data-arg="${i}" ${s.disabled ? 'disabled' : ''} data-tip="${esc(s.tip || s.name)}">
-            <kbd>${i < 9 ? i + 1 : ''}</kbd>${s.icon}<span class="cost">${s.cost}</span>${s.sub ? `<span class="sub">${s.sub}</span>` : ''}</button>`).join('');
+        this.el('.slots').innerHTML = this.slots.map((s, i) => `<button class="slot ${s.on ? 'on' : ''}" aria-label="${esc(s.name)}" data-act="slot" data-arg="${i}" ${s.disabled ? 'disabled' : ''} data-tip="${esc(s.tip || s.name)}">
+            <kbd>${i < 9 ? i + 1 : ''}</kbd>${s.icon}<span class="slot-label">${esc(s.name)}</span><span class="cost">${s.cost}</span>${s.sub ? `<span class="sub">${s.sub}</span>` : ''}</button>`).join('');
         const active = this.slots.find(s => s.on);
         this.activeSlotName = active ? active.tip : (u && canAct ? `<b>${esc(u.name)}</b> · ${modeText(g.mode)}` : (b.activeSide !== 'player' ? '' : 'Select a soldier'));
         this.el('.slotname').innerHTML = this.activeSlotName;
@@ -234,7 +251,7 @@ export class Hud {
         const cur = g.targetInfo?.target?.id;
         el.innerHTML = list.map(t => {
             const hit = cur === t.id && g.targetInfo ? pct(g.targetInfo.byPart[g.targetInfo.part] ?? 0) : '';
-            return `<button class="tgt ${cur === t.id ? 'on' : ''}" data-act="target" data-arg="${t.id}" title="${esc(t.name)}"><img src="/assets/characters/${t.art}/portrait.png" alt=""><span>${hit}</span></button>`;
+            return `<button class="tgt ${cur === t.id ? 'on' : ''}" data-act="target" data-arg="${t.id}" title="${esc(t.name)}"><img src="/assets/characters/test-soldier/portrait.png" alt=""><span>${hit}</span></button>`;
         }).join('');
     }
     renderTarget() {
@@ -243,7 +260,7 @@ export class Hud {
         el.classList.remove('hidden');
         const u = t.target, w = WEAPONS[g.mode.weaponId];
         const main = t.byPart[t.part] ?? 0;
-        el.innerHTML = `<div class="thead"><img src="/assets/characters/${u.art}/portrait.png" alt=""><div><div class="tname">${esc(u.name)}</div><div class="thp seg">${segs(u.hp, u.maxHp)}</div></div><div class="bigpct ${main < 0.35 ? 'low' : main < 0.65 ? 'mid' : 'high'}">${pct(main)}</div></div>
+        el.innerHTML = `<div class="thead"><img src="/assets/characters/test-soldier/portrait.png" alt=""><div><div class="tname">${esc(u.name)}</div><div class="thp seg">${segs(u.hp, u.maxHp)}</div></div><div class="bigpct ${main < 0.35 ? 'low' : main < 0.65 ? 'mid' : 'high'}">${pct(main)}</div></div>
             <div class="tcover">${t.flanked ? '<b class="flank">FLANKED</b>' : `<b class="cov">${['NO COVER', 'HALF COVER', 'FULL COVER'][t.cover] || ''}</b>`} · ${t.distance.toFixed(1)} tiles${t.lean ? ` · lean ${t.lean}` : ''}${t.inRange ? '' : ' · <b class="flank">OUT OF RANGE</b>'}</div>
             <div class="parts">${(g.mode.suppress ? PARTS.filter(([k]) => k === 'torso') : PARTS).map(([k, label, key]) => `<button data-act="part" data-arg="${k}" class="${t.part === k ? 'on' : ''} ${u.parts[k].disabled ? 'dis' : ''}">
                 <b>${label}</b><span>${pct(t.byPart[k] ?? 0)}</span><small>armor ${u.parts[k].armor} · ${u.parts[k].hp}/${u.parts[k].max}</small><kbd>${key}</kbd></button>`).join('')}</div>
@@ -290,7 +307,9 @@ function modeText(m) {
     switch (m.kind) {
         case 'shoot': return `${WEAPONS[m.weaponId]?.name} — pick a target (Tab cycles, Z X C V G body part), Space fires`;
         case 'melee': return 'melee — click an adjacent enemy';
+        case 'gadget': return 'Medical kit — click an injured adjacent ally';
         case 'throw': return `throw ${THROWABLES[m.itemId].name} — click a tile`;
+        case 'ability': return `${ABILITIES[m.abilityId]?.name} — click ${ABILITIES[m.abilityId]?.targeting === 'ally' ? 'an injured ally (self allowed)' : 'an empty visible tile'}`;
         case 'overwatch': return 'overwatch — click the direction to watch';
         default: return 'click a tile to move · <span class="blue">blue</span> keeps an action · <span class="yellow">yellow</span> is a dash';
     }

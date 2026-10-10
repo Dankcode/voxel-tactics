@@ -1,3 +1,4 @@
+import { InventoryPrep } from './ui/InventoryPrep.js';
 import { Game } from './Game.js';
 import { LocalSession } from './net/LocalSession.js';
 import { OnlineSession } from './net/OnlineSession.js';
@@ -42,6 +43,7 @@ async function showMenu() {
           <label>Squad <select id="m-squad">${Object.keys(SQUADS).map(k => `<option>${k}</option>`).join('')}</select></label>
         </div>
         <label class="check"><input id="m-debug" type="checkbox" ${params.get('debug') ? 'checked' : ''}> Debug mode (F1 in battle: spawn, teleport, destroy, elements, overlays, AI stepping, operation generator)</label>
+        <section id="m-inventory"></section>
         <div class="row buttons">
           <button id="m-local" class="primary">Play vs AI</button>
           <button id="m-host">Host online co-op</button>
@@ -54,6 +56,8 @@ async function showMenu() {
         <p class="status" id="m-status" role="status"></p>
         <p class="small">Online co-op needs <code>npm run server</code> running. Units are dealt to players round-robin; the squad ends its turn when every player has pressed End turn. Generated operations are rebuilt from the seed on every peer.</p>
       </div>`;
+    const prep=new InventoryPrep($('#m-inventory'),$('#m-squad').value);
+    $('#m-squad').onchange=()=>prep.reset($('#m-squad').value);
     let scenario = pick;
     const select = id => {
         scenario = id;
@@ -70,7 +74,7 @@ async function showMenu() {
     $('#m-time').onchange = e => { op.timeOfDay = e.target.value; select(OPERATION_ID); };
     $('#m-dice').onclick = () => { $('#m-seed').value = 1 + Math.floor(Math.random() * 99999); select(OPERATION_ID); if (!$('#m-preview-box').hidden) preview(); };
     const operation = () => ({ plot: op.plot, objective: op.objective || null, timeOfDay: op.timeOfDay || null });
-    const desc = () => ({ scenario, seed: Number($('#m-seed').value) || 1, squad: $('#m-squad').value, debug: $('#m-debug').checked, ...(scenario === OPERATION_ID ? { operation: operation() } : {}) });
+    const desc = () => ({ scenario, seed: Number($('#m-seed').value) || 1, squad: $('#m-squad').value, debug: $('#m-debug').checked, inventories: prep.inventories(), ...(scenario === OPERATION_ID ? { operation: operation() } : {}) });
     const status = t => { $('#m-status').textContent = t; };
     const preview = async () => {
         select(OPERATION_ID);

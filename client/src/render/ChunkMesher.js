@@ -265,6 +265,7 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
     for (let z = z0; z < Math.min(z0 + CHUNK, store.height, cut); z++)
         for (let y = y0; y < Math.min(y0 + CHUNK, store.depth); y++)
             for (let x = x0; x < Math.min(x0 + CHUNK, store.width); x++) {
+                if (options.hidden?.(x,y,z)) continue;
                 const id = store.get(x, y, z);
                 if (id === AIR) continue;
                 const m = MATERIALS[id];

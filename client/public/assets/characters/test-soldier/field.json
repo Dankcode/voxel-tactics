@@ -1,0 +1,98 @@
+{
+  "placeholder": false,
+  "image": "field.png",
+  "frameWidth": 192,
+  "frameHeight": 256,
+  "columns": 21,
+  "rows": 8,
+  "facings": [
+    "s",
+    "sw",
+    "w",
+    "nw",
+    "n",
+    "ne",
+    "e",
+    "se"
+  ],
+  "anchor": [
+    0.5,
+    0.03125
+  ],
+  "worldHeight": 2.4,
+  "clips": {
+    "idle": {
+      "column": 0,
+      "frames": 2,
+      "fps": 2,
+      "loop": true
+    },
+    "walk": {
+      "column": 2,
+      "frames": 4,
+      "fps": 7,
+      "loop": true
+    },
+    "aim": {
+      "column": 6,
+      "frames": 1,
+      "fps": 1,
+      "loop": true
+    },
+    "fire": {
+      "column": 7,
+      "frames": 2,
+      "fps": 12,
+      "loop": false
+    },
+    "throw": {
+      "column": 9,
+      "frames": 2,
+      "fps": 6,
+      "loop": false
+    },
+    "hit": {
+      "column": 11,
+      "frames": 1,
+      "fps": 1,
+      "loop": false
+    },
+    "down": {
+      "column": 12,
+      "frames": 1,
+      "fps": 1,
+      "loop": true
+    },
+    "stacked": {
+      "column": 13,
+      "frames": 1,
+      "fps": 1,
+      "loop": true
+    },
+    "hunker": {
+      "column": 14,
+      "frames": 1,
+      "fps": 1,
+      "loop": true
+    },
+    "vault": {
+      "column": 15,
+      "frames": 3,
+      "fps": 7,
+      "loop": false
+    },
+    "climb": {
+      "column": 18,
+      "frames": 3,
+      "fps": 6,
+      "loop": true
+    }
+  },
+  "events": {
+    "fire": {
+      "frame": 0,
+      "event": "muzzle"
+    }
+  },
+  "notes": "Reference pose test atlas. Mirrored/approximated facings; repeated fire frames; no authored death pose."
+}

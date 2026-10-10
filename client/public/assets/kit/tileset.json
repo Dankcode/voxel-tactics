@@ -943,6 +943,93 @@
    "group": "decor",
    "text": "Crystal cluster"
   },
+  "aid_station": {
+   "slots": [
+    "canvas_white",
+    "red",
+    "frame"
+   ],
+   "tris": 144,
+   "bounds": [
+    [
+     -0.46,
+     0,
+     -0.32
+    ],
+    [
+     0.46,
+     0.89,
+     0.33
+    ]
+   ],
+   "group": "furniture",
+   "text": "Aid supply cabinet; destructible half cover"
+  },
+  "tool_chest": {
+   "slots": [
+    "red",
+    "chrome",
+    "frame"
+   ],
+   "tris": 168,
+   "bounds": [
+    [
+     -0.45,
+     0.08,
+     -0.34
+    ],
+    [
+     0.45,
+     0.91,
+     0.347
+    ]
+   ],
+   "group": "furniture",
+   "text": "Workshop drawers; destructible half cover"
+  },
+  "server_lower": {
+   "slots": [
+    "frame",
+    "screen"
+   ],
+   "tris": 156,
+   "bounds": [
+    [
+     -0.39,
+     0,
+     -0.35
+    ],
+    [
+     0.39,
+     1,
+     0.37
+    ]
+   ],
+   "group": "furniture",
+   "text": "Server rack base; appliance collision"
+  },
+  "server_upper": {
+   "slots": [
+    "frame",
+    "screen",
+    "lamp"
+   ],
+   "tris": 204,
+   "bounds": [
+    [
+     -0.39,
+     0,
+     -0.35
+    ],
+    [
+     0.39,
+     1,
+     0.387
+    ]
+   ],
+   "group": "furniture",
+   "text": "Server rack top; appliance collision"
+  },
   "steel_post": {
    "slots": [
     "self"
@@ -2564,6 +2651,69 @@
    "group": "foliage",
    "text": "Conifer (whole object)",
    "overhang": true
+  },
+  "checkpoint_sign": {
+   "slots": [
+    "iron",
+    "canvas_white",
+    "red"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.4,
+     0,
+     -0.023
+    ],
+    [
+     0.4,
+     0.9,
+     0.023
+    ]
+   ],
+   "group": "decor",
+   "text": "Checkpoint sign; visual only"
+  },
+  "rooftop_vent": {
+   "slots": [
+    "frame"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.35,
+     0,
+     -0.35
+    ],
+    [
+     0.35,
+     0.63,
+     0.35
+    ]
+   ],
+   "group": "decor",
+   "text": "Roof exhaust; visual only"
+  },
+  "cable_spool": {
+   "slots": [
+    "wood",
+    "self_dark"
+   ],
+   "tris": 144,
+   "bounds": [
+    [
+     -0.36,
+     0,
+     -0.36
+    ],
+    [
+     0.36,
+     0.66,
+     0.36
+    ]
+   ],
+   "group": "decor",
+   "text": "Cable spool dressing; visual only"
   },
   "rug": {
    "slots": [

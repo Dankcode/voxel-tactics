@@ -144,7 +144,7 @@ export class DebugTools {
             case 'auto': g.autoPlayer = !g.autoPlayer; if (g.autoPlayer && g.battle.activeSide === 'player') g.maybeRunAi(); break;
             case 'speed': g.player.speed = g.player.speed >= 8 ? 1 : g.player.speed * 2; break;
             case 'cutins': g.cycleCutins(); break;
-            case 'fog': g.fog = !g.fog; g.voxelView.rebuildAll(); g.updateEnemyVisibility(); break;
+            case 'fog': g.fog = !g.fog; g.voxelView.rebuildAll(); g.updateEnemyVisibility();g.overlays.showObjective(g.battle); break;
             case 'reveal': this.op('reveal'); break;
             case 'alert': this.op('alert'); break;
             case 'overlay': this.overlay = this.overlay === arg ? null : arg; this.applyOverlay(); break;

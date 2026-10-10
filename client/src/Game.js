@@ -1,3 +1,5 @@
+import { InteriorVisibility } from './render/InteriorVisibility.js';
+import { watchWeapon, watchSector } from '../../shared/battle/WatchSector.js';
 // Client controller: owns the scene, the battle (through a session), input modes, overlays, the event
 // player and the HUD. Local sessions apply intents directly; online sessions apply the server-ordered
 // intent stream (lockstep) — the Game code is the same.
@@ -55,7 +57,7 @@ export function wearTint(mission) {
 
 export class Game {
     constructor({ canvas, hudRoot, cutinRoot, floatRoot, onExit, options = {} }) {
-        this.options = { autoEndTurn: true, autoNext: true, followCamera: true, edgeScroll: true, ...options };
+        this.options = { autoEndTurn: false, autoNext: true, followCamera: true, edgeScroll: true, ...options };
         this.scene = new Scene(canvas);
         this.library = new MaterialLibrary(this.scene.renderer, this.scene.clipping);
         this.kit = new KitLibrary(this.library);
@@ -92,14 +94,19 @@ export class Game {
         const store = this.battle.store;
         await this.libraryReady;
         this.scene.setBounds(store.width, store.depth, store.height);
+        this.scene.rig.resetTactical();this.scene.syncPassCamera();
         this.scene.setMission(this.battle.mission);
         this.voxelView = new VoxelView(this.scene, store, this.library, this.options.kit === false ? null : this.kit);
+        this.visualRevealedRooms = new Set(this.battle.revealedRooms);
+        this.discoveryVisible = new Set();
+        this.visualInterior=new Set(this.battle.visibleInterior);
+        this.voxelView.interiorVisibility = new InteriorVisibility(this.battle.mission,this.visualRevealedRooms,()=>this.fog,this.visualInterior);
+        this.overlays.visibleCell = c => !this.voxelView.interiorVisibility.hiddenAt(c.x,c.y,c.z+1);
         const wear = wearTint(this.battle.mission);
         this.voxelView.tint = (x, y, z) => {
-            const r = store.roomAt(x, y, z) >= 0 ? store.roomAt(x, y, z) : store.roomAt(x, y, z + 1);
             let light=this.battle.light.tint(x,y,z);
             const w = wear?.(x, y, z); if (w) light = light.map((c, i) => c * w[i]);
-            return r >= 0 && this.fog && !this.battle.revealedRooms.has(r) ? light.map((c,i)=>c*[0.42,0.44,0.55][i]) : light;
+            return this.voxelView.interiorVisibility.hiddenAt(x,y,z) ? light.map((c,i)=>c*[0.18,0.22,0.3][i]) : light;
         };
         setGroundStore(store);
         this.voxelView.setVisual(this.battle.mission?.visual);
@@ -125,12 +132,7 @@ export class Game {
         // Each map has a time of day (Main Street at dusk, the docks at night) unless the player picked one.
         if (!this.options.lighting) this.scene.setLighting(this.battle.mission.meta?.timeOfDay || this.battle.mission.meta?.lighting || 'day');
         this.setLevel(this.battle.mission.meta?.defaultCut ?? Infinity);
-        if (this.battle.mission.meta?.theme === 'modern') {
-            this.scene.viewHeight = 34;
-            this.scene.focus(store.width / 2, 2, 23);
-            this.scene.glide = null;
-            this.scene.updateCamera();
-        }
+
     }
     async addView(u) {
         if (this.views.has(u.id)) return this.views.get(u.id);
@@ -150,7 +152,7 @@ export class Game {
         this.cameraDirector.update(dt);
         const cine = this.cameraDirector.active;
         for (const v of this.views.values()) {
-            v.update(dt, cine ? Math.atan2(this.cameraDirector.cam.position.x - v.pos.x, this.cameraDirector.cam.position.z - v.pos.z) : yaw);
+            v.update(dt, cine ? Math.atan2(this.cameraDirector.cam.position.x - v.pos.x, this.cameraDirector.cam.position.z - v.pos.z) : yaw, this.scene.camera);
             v.bar.visible = !cine && !v.unit.dead && v.group.visible;
             v.sprite.visible = !(cine && this.cameraDirector.hidden?.has(v.id));
             const ground = this.battle?.store.surfaces(Math.floor(v.pos.x), Math.floor(v.pos.z))[0];
@@ -178,7 +180,7 @@ export class Game {
         if (u.side === 'player') return true;
         return this.debug.manualEnemy;
     }
-    isVisible(u) { return u.side === 'player' || !this.fog || this.battle.visible?.has(u.id); }
+    isVisible(u) { return u.side==='player' || !this.fog || (this.battle.visible?.has(u.id) && !this.voxelView.interiorVisibility.hiddenAt(u.x,u.y,u.z+1)); }
     updateEnemyVisibility() {
         for (const v of this.views.values()) {
             const u = v.unit;
@@ -191,7 +193,7 @@ export class Game {
         if (this.voxelView.flush()) this.lanterns.scan(this.battle.store);
         this.fx.syncField(this.battle.field);
         this.updateEnemyVisibility();
-        this.overlays.showOverwatch(this.battle.units.filter(u => alive(u) && (u.side === 'player' || this.isVisible(u))));
+        this.overlays.showOverwatch(this.battle,this.battle.units.filter(u => alive(u) && (u.side === 'player' || this.isVisible(u))),{hidden:(x,y,z)=>this.voxelView.interiorVisibility.hiddenAt(x,y,z),cutZ:this.cutLevel});
         this.overlays.showObjective(this.battle);
         this.refreshRange();
         this.hud.refresh();
@@ -313,7 +315,7 @@ export class Game {
         await this.afterUnitAction(u);
         return r;
     }
-    /** XCOM flow: a spent soldier hands over to the next ready one; a spent squad ends the turn. */
+    /** XCOM flow: a spent soldier hands over to the next ready one; a spent squad prompts the player to end the phase. */
     async afterUnitAction(u) {
         if (this.battle.outcome || !this.options.autoNext) return;
         const side = this.battle.activeSide;
@@ -332,6 +334,7 @@ export class Game {
     }
     useAbility(id) {
         const a = ABILITIES[id];
+        if (a.targeting) { this.setMode({ kind: 'ability', abilityId: id }); return; }
         if (id === 'suppress') { this.setMode({ kind: 'shoot', weaponId: this.selectedUnit()?.weapons.find(w => WEAPONS[w].kind === 'ballistic'), suppress: true }); return; }
         this.intent({ type: 'ability', abilityId: id }).then(r => r.ok && this.hud.log(`${a.name}: ${a.text}`));
     }
@@ -429,14 +432,24 @@ export class Game {
     }
 
     // ------------------------------------------------------------------ battle event hooks (from EventPlayer)
+    onVision(cells) {
+        const next=new Set(cells),changed=[...this.visualInterior].filter(k=>!next.has(k)).concat(cells.filter(k=>!this.visualInterior.has(k)));
+        this.visualInterior.clear();for(const k of cells)this.visualInterior.add(k);
+        for(const k of changed){const [x,y,z]=k.split(',').map(Number);for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(let h=0;h<4;h++)this.battle.store.markDirty(x+dx,y+dy,z+h);}
+        this.voxelView.flush();this.updateEnemyVisibility();
+    }
     onReveal(roomId) {
-        const room = this.battle.mission.rooms[roomId]; if (!room) return;
-        for (const [x, y] of room.cells) for (let h = 0; h <= 3; h++) this.battle.store.markDirty(x, y, room.floorZ + h);
+        const room = this.battle.mission.rooms.find(r=>r.id===roomId); if (!room) return;
+        this.visualRevealedRooms.add(roomId);
+        for (const [x, y] of room.cells) for (let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++) for (let h = 0; h <= 3; h++) this.battle.store.markDirty(x+dx, y+dy, room.floorZ + h);
         this.battle.light.flush();this.voxelView.flush();
+        if(this.options.followCamera && !this.levelLocked) this.setLevel(room.floorZ+3);
+        this.updateEnemyVisibility();this.overlays.showObjective(this.battle);
     }
     onTurn(e) {
         this.cutins.newTurn();
         this.hud.squadSpent(false);
+        this.overlays.clearAim(); this.overlays.clearPath();
         if (e.side === 'player') this.hud.banner(`ROUND ${e.round}`, 'SQUAD PHASE', 'player');
         else this.hud.banner('ENEMY ACTIVITY', 'HOSTILE PHASE', 'enemy');
         this.hud.log(e.side === 'player' ? `Round ${e.round}` : 'Enemy activity…');
@@ -510,7 +523,7 @@ export class Game {
             case 'v': this.scene.toggleProjection(); this.hud.toast(this.scene.projection === 'ortho' ? 'Camera: isometric' : 'Camera: perspective'); break;
             case 'o': this.setMode({ kind: 'overwatch' }); break;
             case 'r': this.intent({ type: 'reload' }); break;
-            case 't': if (u) { const id = Object.keys(u.items).find(k => u.items[k] > 0); if (id) this.setMode({ kind: 'throw', itemId: id }); } break;
+            case 't': if (u) { const id = Object.keys(u.items).find(k => u.items[k] > 0); if (id&& !THROWABLES[id].placed) this.setMode({ kind: THROWABLES[id].kind==='gadget'?'gadget':'throw', itemId: id }); } break;
             case 'f': this.hud.showFormationPanel(); break;
             case 'b': if (u && this.battle.breachPoints(u).length) this.hud.showBreachPanel(); break;
             default:
@@ -609,7 +622,22 @@ export class Game {
                 this.hud.cursorTip(e.clientX, e.clientY, inRange ? `${t.name} · ${t.ap} AP` : '<i class="flank">Out of range</i>');
                 break;
             }
-            case 'overwatch': this.hud.cursorTip(e.clientX, e.clientY, 'Click the direction to watch'); break;
+            case 'gadget': {const reason=this.battle.validate({type:'gadget',unitId:u.id,itemId:this.mode.itemId,targetId:unit?.id,by:'*'});this.overlays.showAbilityTile(unit,!reason);this.hud.cursorTip(e.clientX,e.clientY,reason?`Medical kit · ${reasonText(reason)}`:'Click ally · heal 8 HP · 1 AP');break;}
+            case 'ability': {
+                const a = ABILITIES[this.mode.abilityId];
+                const intent = {type:'ability', unitId:u.id, abilityId:a.id, to:this.hoverCell, targetId:unit?.id, by:'*'};
+                const reason = this.battle.validate(intent);
+                this.overlays.showAbilityTile(a.targeting === 'ally' ? unit : this.hoverCell, !reason);
+                this.hud.cursorTip(e.clientX,e.clientY, reason ? `${a.name} · ${reasonText(reason)}` : `${a.name} · click to cast · ${a.ap} AP / ${a.wp} WP`);
+                break;
+            }
+            case 'overwatch': {
+                const sector = watchSector(u, this.hoverCell || p?.voxel, watchWeapon(u));
+                this.overlays.setHover(null);
+                this.overlays.showWatchPreview(this.battle,u,sector,{hidden:(x,y,z)=>this.voxelView.interiorVisibility.hiddenAt(x,y,z),cutZ:this.cutLevel});
+                this.hud.cursorTip(e.clientX, e.clientY, sector ? `Click to watch · ${Math.round(sector.halfAngle*360/Math.PI)}° wedge · ${sector.range} tiles<br><span style="color:#5ff2d6">Teal ≥65%</span> · <span style="color:#ffb347">Amber &lt;65%</span> · estimated standing-target hit<br>Filled surfaces show aim quality; cover still blocks shots` : 'Choose a direction away from this soldier');
+                break;
+            }
             default: this.overlays.clearPath(); this.hud.cursorTip(null);
         }
     }
@@ -659,7 +687,9 @@ export class Game {
                 break;
             case 'melee': if (unit && unit.side !== u.side) this.intent({ type: 'melee', weaponId: this.mode.weaponId, targetId: unit.id, part: 'torso' }); break;
             case 'throw': if (p?.cell) this.intent({ type: 'throw', itemId: this.mode.itemId, to: p.cell }); break;
-            case 'overwatch': if (p?.cell) this.intent({ type: 'overwatch', weaponId: u.weapons.find(id => WEAPONS[id].kind === 'ballistic'), toward: { x: p.cell.x, y: p.cell.y } }); break;
+            case 'gadget': this.intent({type:'gadget',itemId:this.mode.itemId,targetId:unit?.id});break;
+            case 'ability': this.intent({type:'ability',abilityId:this.mode.abilityId,to:this.hoverCell,targetId:unit?.id}); break;
+            case 'overwatch': { const toward = p?.cell || p?.voxel; if(toward) this.intent({ type: 'overwatch', weaponId: watchWeapon(u), toward: {x:toward.x,y:toward.y} }); break; }
         }
     }
 }

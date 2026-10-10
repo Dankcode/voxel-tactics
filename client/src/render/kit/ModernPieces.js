@@ -384,6 +384,16 @@ const objects = {
 
 // ----------------------------------------------------------------------------------------- decor (visual only)
 const decor = {
+    checkpoint_sign: P({group:'decor',text:'Checkpoint sign; visual only'}, () => [
+        {slot:'iron',geometry:merge([box(.04,.9,.04,-.3),box(.04,.9,.04,.3)])},
+        {slot:'canvas_white',geometry:box(.8,.3,.04,0,.6)},
+        {slot:'red',geometry:box(.72,.05,.045,0,.72)}]),
+    rooftop_vent: P({group:'decor',text:'Roof exhaust; visual only'}, () => [
+        {slot:'frame',geometry:merge([box(.7,.12,.7),box(.4,.45,.4,0,.12),box(.6,.06,.6,0,.57)])}]),
+    cable_spool: P({group:'decor',text:'Cable spool dressing; visual only'}, () => [
+        {slot:'wood',geometry:merge([cyl(.36,.36,.06,12),cyl(.36,.36,.06,12,0,.6)])},
+        {slot:'self_dark',geometry:cyl(.23,.23,.54,12,0,.06)}]),
+
     rug: P({ group: 'decor', text: 'Rug, 1 × 1 (scaled per instance)' }, () => [{ slot: 'rug', geometry: sb(1, 0.02, 1, 0.008, 0, 0.001) }]),
     coffee_table: P({ group: 'decor' }, () => [{ slot: 'wood', geometry: sb(0.9, 0.05, 0.5, 0.02, 0, 0.32) }, { slot: 'frame', geometry: merge(legs4(0.82, 0.42, 0.32, 0.03)) }]),
     floor_lamp: P({ group: 'decor', light: true }, () => [{ slot: 'frame', geometry: merge([cyl(0.12, 0.14, 0.03, 12), cyl(0.012, 0.012, 1.45, 6)]) }, { slot: 'shade', geometry: cyl(0.12, 0.17, 0.24, 14, 0, 1.4) }]),
@@ -442,7 +452,24 @@ const circulation={
     steel_post:P({group:'circulation'},()=>[{slot:'self',geometry:box(.15,1,.15)}]),
     grate:P({group:'circulation'},()=>[{slot:'self',geometry:merge([box(1,.1,.08,0,.9,-.45),box(1,.1,.08,0,.9,.45),...Array.from({length:7},(_,i)=>box(.035,.055,1,-.45+i*.15,.945,0))])}]),
 };
-export const MODERN_PIECES = { ...circulation, ...wallTrims, ...furniture, ...outdoor, ...objects, ...decor };
+const tacticalFurniture = {
+    aid_station: P({group:'furniture',text:'Aid supply cabinet; destructible half cover'}, () => [
+        {slot:'canvas_white',geometry:sb(.9,.85,.62,.025)},
+        {slot:'red',geometry:merge([box(.28,.07,.02,0,.49,.32),box(.07,.28,.02,0,.385,.32)])},
+        {slot:'frame',geometry:box(.92,.04,.64,0,.85)}]),
+    tool_chest: P({group:'furniture',text:'Workshop drawers; destructible half cover'}, () => [
+        {slot:'red',geometry:sb(.86,.78,.64,.02,0,.08)},
+        {slot:'chrome',geometry:merge([.22,.4,.58,.76].map(y=>box(.6,.025,.025,0,y,.335)))},
+        {slot:'frame',geometry:box(.9,.05,.68,0,.86)}]),
+    server_lower: P({group:'furniture',text:'Server rack base; appliance collision'}, () => [
+        {slot:'frame',geometry:sb(.78,1,.7,.02)},
+        {slot:'screen',geometry:merge([.15,.4,.65,.9].map(y=>box(.62,.14,.02,0,y-.07,.36)))}]),
+    server_upper: P({group:'furniture',text:'Server rack top; appliance collision'}, () => [
+        {slot:'frame',geometry:sb(.78,1,.7,.02)},
+        {slot:'screen',geometry:merge([.15,.4,.65,.9].map(y=>box(.62,.14,.02,0,y-.07,.36)))},
+        {slot:'lamp',geometry:merge([.15,.4,.65,.9].map(y=>box(.03,.025,.025,.24,y,.375)))}]),
+};
+export const MODERN_PIECES = { ...tacticalFurniture, ...circulation, ...wallTrims, ...furniture, ...outdoor, ...objects, ...decor };
 /** Pieces allowed to leave their cell (whole objects, tall decor, wall cupboards). */
 export const MODERN_OVERHANG = new Set(Object.entries(MODERN_PIECES).filter(([, p]) => p.meta.overhang || p.meta.group === 'decor').map(([id]) => id));
 /** Decor kinds that carry a light (LanternLights can follow them). */

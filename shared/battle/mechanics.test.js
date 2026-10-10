@@ -145,7 +145,7 @@ test('modern warehouse maps include dim rooms as well as lit offices', () => {
     assert.ok(mission.rooms.some(r => r.kind === 'office' && r.lit));
 });
 
-test('group movement rejects newly reassigned teammates and door closing requires AP', () => {
+test('group movement rejects newly reassigned teammates and both door actions require AP', () => {
     const b = arena(), a = b.unit('p0'), c = b.unit('p1');
     assert.ok(b.apply({ type: 'formation', unitId: a.id, memberIds: [a.id, c.id], template: 'shield_line', facing: 'n' }).ok);
     a.owner = 'P1'; c.owner = 'P2';
@@ -154,5 +154,6 @@ test('group movement rejects newly reassigned teammates and door closing require
     const door = { type: 'door', unitId: a.id, door: { x: 9, y: 16, z: 1 } };
     assert.equal(b.apply(door).reason, 'no_ap'); assert.equal(b.store.get(9, 16, 2), MAT.door_open);
     a.ap = 1; assert.ok(b.apply(door).ok); assert.equal(a.ap, 0); assert.equal(b.store.get(9, 16, 2), MAT.door);
-    assert.ok(b.apply(door).ok); assert.equal(a.ap, 0); assert.equal(b.store.get(9, 16, 2), MAT.door_open);
+    assert.equal(b.apply(door).reason, 'no_ap');
+    a.ap=1; assert.ok(b.apply(door).ok); assert.equal(a.ap, 0); assert.equal(b.store.get(9, 16, 2), MAT.door_open);
 });
