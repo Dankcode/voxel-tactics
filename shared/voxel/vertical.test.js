@@ -31,3 +31,14 @@ test('generated street datum leaves three underground voxels and keeps compilati
  const map=MAPS.find(m=>m.id==='cedar-image'),a=map.build({seed:1}),b=map.build({seed:1});
  assert.equal(a.meta.streetDatum,4);assert.ok(a.spawns.player.every(p=>p.z===4));assert.equal(a.store.hash(),b.store.hash());assert.equal(a.buildings[0].baseZ,4);
 });
+import { createBattle } from '../session/Scenarios.js';
+import { canJumpDown } from '../world/PathSearch.js';
+test('a floor charge consumes one item/AP and opens a 2×2 controlled drop',()=>{
+ const b=createBattle({scenario:'signal-house',seed:1,debug:true}),u=b.units[0];u.items.breach_charge=1;u.ap=4;
+ const room=b.mission.rooms.find(r=>r.gameplay&&r.storey===1&&r.kind!=='hall'),[x,y]=room.cells.find(([x,y])=>b.store.surfaces(x,y).some(s=>s.z===4));
+ // Isolate a clear slab and landing, retaining the rest of the real building.
+ for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++){b.store.set(x+dx,y+dy,7,MAT.oak_floor);for(let z=5;z<=6;z++)b.store.set(x+dx,y+dy,z,0);}
+ u.x=x-1;u.y=y;u.z=7;for(let z=8;z<=9;z++)b.store.set(u.x,u.y,z,0);b.store.set(u.x,u.y,7,MAT.oak_floor);
+ const intent={type:'breach',unitId:u.id,unitIds:[u.id],door:{x,y,z:7},entry:'floor'};assert.equal(b.validate(intent),null);b.doBreach(intent);
+ assert.equal(u.items.breach_charge,0);assert.equal(u.ap,3);assert.deepEqual(canJumpDown(b.store,u,1,0),{x,y,z:4});assert.ok(b.store.isSolid(b.mission.buildings[0].x0+8,b.mission.buildings[0].y0+2,10));
+});

@@ -265,8 +265,8 @@ export class Hud {
         const p = this.el('.panel'); p.classList.remove('hidden');
         const charge = g.battle.unitsOf(u.side).some(o => stack.includes(o.id) && o.items.breach_charge > 0);
         p.innerHTML = `<h3>Breach <button data-act="closePanel">✕</button></h3><p>Stack: ${stack.map(id => esc(g.battle.unit(id).name)).join(', ')} (1 AP each, one free shot each on entry; unalerted defenders are surprised).</p>` +
-            pts.map((pt, i) => `<div class="bp">Door at ${pt.x},${pt.y} → room ${pt.roomId}
-                <button data-act="doBreach" data-arg="${i}:door">Door entry</button>${charge ? `<button data-act="doBreach" data-arg="${i}:charge">Breach charge</button>` : ''}</div>`).join('');
+            pts.map((pt, i) => `<div class="bp">${pt.entry==='floor'?'Floor slab':'Door'} at ${pt.x},${pt.y}${pt.roomId!=null?' → room '+pt.roomId:''}
+                ${pt.entry==='floor'?`<button data-act="doBreach" data-arg="${i}:floor">Floor charge · 2×2 hole</button>`:`<button data-act="doBreach" data-arg="${i}:door">Door entry</button>`}${pt.entry!=='floor'&&charge ? `<button data-act="doBreach" data-arg="${i}:charge">Breach charge</button>` : ''}</div>`).join('');
     }
     showOutcome(o) {
         const el = this.el('.outcome'); el.classList.remove('hidden');

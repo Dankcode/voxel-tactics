@@ -51,7 +51,7 @@ export class Battle {
         this.objective = createObjective(mission.objective);
         this.revealedRooms = new Set();
         this.formations = new Formations(this);
-        this.stats = { weapons: {}, throwables: {}, voxelsDestroyed: 0, fires: 0, breaches: 0, reactions: 0, formations: {} };
+        this.stats = { weapons: {}, throwables: {}, voxelsDestroyed: 0, fires: 0, breaches: 0, reactions: 0, formations: {}, undergroundSteps:0,drops:0 };
         const ps = mission.spawns.player;
         squad.forEach((s, i) => {
             const pos = ps[i % ps.length];
@@ -423,7 +423,8 @@ export class Battle {
             const p = path[i];
             const kind = stepKind(this.store, path[i - 1], p);
             kinds.push(kind);
-            if (kind === 'jump') jumped = true;
+            if (kind === 'jump') {jumped = true;this.stats.drops++;this.noise(p.x,p.y,p.z,8,u);}
+            if(this.mission.meta.streetDatum&&p.z<this.mission.meta.streetDatum)this.stats.undergroundSteps++;
             this.openDoorsOnStep(u, path[i - 1], p);
             u.facing = facingToward(p.x - u.x, p.y - u.y);
             u.x = p.x; u.y = p.y; u.z = p.z;
@@ -803,7 +804,21 @@ export class Battle {
             const room = this.roomBeyond(d, u);
             if (room >= 0) out.push({ x: d.x, y: d.y, z: d.z, roomId: room, entry: 'door' });
         }
+        if(u.items.breach_charge>0)for(const [dx,dy] of [[1,0],[-2,0],[0,1],[0,-2]]) {
+            const d={x:u.x+dx,y:u.y+dy,z:u.z,entry:'floor'};
+            if(this.validFloorBreach(d))out.push(d);
+        }
         return out;
+    }
+    validFloorBreach(d) {
+        if(![d.x,d.y,d.z].every(Number.isInteger)||d.z<3)return false;
+        for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++) {
+            const x=d.x+dx,y=d.y+dy,m=this.store.material(x,y,d.z);
+            if(!this.store.inBounds(x,y,d.z)||!['oak_floor','concrete','ceramic','grate','stone_floor','plank'].includes(m.key)||!Number.isFinite(m.hp))return false;
+            const room=this.mission.rooms[this.store.roomAt(x,y,d.z-1)];if(room?.gameplay===false)return false;
+            if(!this.store.surfaces(x,y).some(s=>s.z>=d.z-4&&s.z<=d.z-2&&s.headroom>=2))return false;
+        }
+        return true;
     }
     roomBeyond(d, u) {
         const mine = this.roomOf(u);
@@ -820,6 +835,12 @@ export class Battle {
         const units = ids.map(id => this.unit(id));
         if (intent.by && intent.by !== '*' && units.some(u => u && u.owner !== intent.by)) return 'not_your_unit';
         if (units.some(u => !u || !alive(u) || u.side !== this.activeSide || u.ap < 1)) return 'no_ap';
+        if(intent.entry==='floor') {
+            if(units.length!==1)return 'bad_intent';
+            if(!units[0].items.breach_charge)return 'no_item';
+            if(Math.max(Math.abs(d.x-units[0].x),Math.abs(d.y-units[0].y))>2||d.z!==units[0].z)return 'not_adjacent';
+            return this.validFloorBreach(d)?null:'no_door';
+        }
         const doorId = this.store.get(d.x, d.y, d.z + 1);
         if (intent.entry === 'charge') {
             if (!units.some(u => u.items.breach_charge > 0)) return 'no_item';
@@ -833,6 +854,11 @@ export class Battle {
         const d = intent.door;
         const ids = intent.unitIds?.length ? intent.unitIds : [intent.unitId];
         const units = ids.map(id => this.unit(id));
+        if(intent.entry==='floor') {
+            const u=units[0];u.ap--;u.items.breach_charge--;this.stats.breaches++;
+            const changes=this.store.record(()=>{for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++)this.store.set(d.x+dx,d.y+dy,d.z,AIR);this.settle();});
+            this.stats.voxelsDestroyed+=4;this.emit({t:'voxels',changes});this.emit({t:'breach',door:d,unitIds:[u.id],entry:'floor'});this.noise(d.x,d.y,d.z,14,u);return;
+        }
         const roomId = this.roomBeyond(d, units[0]);
         const room = this.mission.rooms[roomId];
         this.stats.breaches++;

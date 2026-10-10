@@ -335,7 +335,7 @@ export class Game {
     doBreach(i, entry) {
         const u = this.selectedUnit(); if (!u) return;
         const pt = this.battle.breachPoints(u)[i]; if (!pt) return;
-        this.intent({ type: 'breach', door: pt, unitIds: this.breachStack(u, pt), entry });
+        this.intent({ type: 'breach', door: pt, unitIds: pt.entry==='floor'?[u.id]:this.breachStack(u, pt), entry });
     }
     nearestDoor(u) {
         for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
