@@ -1,3 +1,5 @@
+import { consumeItem, normalizeInventory, inventoryCounts } from '../inventory/Inventory.js';
+import { watchSector, inWatchSector } from './WatchSector.js';
 import { LightField } from '../lighting/LightField.js';
 // The deterministic battle engine (PLAN-01 rev 2 §9–§14).
 //
@@ -57,13 +59,16 @@ export class Battle {
         const ps = mission.spawns.player;
         squad.forEach((s, i) => {
             const pos = ps[i % ps.length];
-            this.units.push(createUnit(s.type, 'player', pos, `p${i}`, { owner: s.owner || 'player', name: s.name }));
+            const u=createUnit(s.type,'player',pos,`p${i}`,{owner:s.owner||'player',name:s.name});
+            if(s.inventory){u.inventory=normalizeInventory(s.inventory);u.items=inventoryCounts(u.inventory);}
+            this.units.push(u);
         });
         (enemies || mission.spawns.enemy).forEach((e, i) => {
             this.units.push(createUnit(e.type, 'enemy', e.pos, `e${i}`, { group: e.group ?? 0, facing: e.facing || 's' }));
         });
         this.startSide('player', true);
-        this.updateVisibility();
+        for(const u of this.unitsOf('player')) this.revealRoom(this.roomOf(u),u);
+        this.updateVisibility({initial:true});
     }
 
     // ---------------------------------------------------------------- queries
@@ -98,7 +103,7 @@ export class Battle {
     mobility(u) { return mobilityPerAp(u, this.formations.mobilityPenalty(u)); }
     reach(u, budget = this.moveBudget(u)) {
         return reachable(this.store, { x: u.x, y: u.y, z: u.z }, budget, PROFILE, {
-            blocked: to => { const o = this.occupant(to.x, to.y, to.z); return o && o.id !== u.id; }
+            blocked: to => { const o = this.occupant(to.x, to.y, to.z); return (o && o.id !== u.id) || (u.side==='player' && (this.store.get(to.x,to.y,to.z+1)===MAT.door)); }
         });
     }
     apForCost(u, cost) { return cost <= 0 ? 0 : Math.ceil(cost / this.mobility(u) - 1e-9); }
@@ -202,7 +207,7 @@ export class Battle {
             }
             case 'throw': {
                 const t = THROWABLES[intent.itemId];
-                if (!t || !(u.items[t.id] > 0)) return 'no_item';
+                if (!t || t.kind==='gadget' || !(u.items[t.id] > 0)) return 'no_item';
                 if (u.ap < t.ap) return 'no_ap';
                 const to = intent.to; if (!to) return 'bad_intent';
                 if (Math.hypot(to.x - u.x, to.y - u.y) > t.range + 0.01) return 'out_of_range';
@@ -210,12 +215,18 @@ export class Battle {
             }
             case 'overwatch': {
                 const w = WEAPONS[intent.weaponId || u.weapon];
-                if (!w || w.kind !== 'ballistic') return 'bad_intent';
+                if (!w || w.kind !== 'ballistic' || !u.weapons.includes(w.id) || !watchSector(u, intent.toward, w.id)) return 'bad_intent';
                 if (u.ap < w.ap) return 'no_ap';
                 if ((u.ammo[w.id] ?? 0) < (w.perShot || 1)) return 'no_ammo';
                 return null;
             }
-            case 'reload': { const w = WEAPONS[intent.weaponId || u.weapon]; if (!w?.ammo) return 'bad_intent'; return u.ap < w.reloadAp ? 'no_ap' : null; }
+            case 'reload': { const w = WEAPONS[intent.weaponId || u.weapon]; if (!w?.ammo || !u.weapons.includes(w.id)) return 'bad_intent'; return u.ap < w.reloadAp ? 'no_ap' : null; }
+            case 'gadget': {const item=THROWABLES[intent.itemId],target=this.unit(intent.targetId);
+                if(item?.kind!=='gadget'||!(u.items[item.id]>0))return 'no_item';
+                if(u.ap<item.ap)return 'no_ap';
+                if(!target||!alive(target)||target.side!==u.side||target.hp>=target.maxHp)return 'no_target';
+                return this.distance(u,target)<=item.range && this.sees(u,target)?null:'out_of_range';}
+            case 'wait': return u.ap + u.moveOnlyAp > 0 ? null : 'no_ap';
             case 'switchWeapon': return u.weapons.includes(intent.weaponId) ? null : 'bad_intent';
             case 'ability': {
                 const a = ABILITIES[intent.abilityId];
@@ -223,6 +234,20 @@ export class Battle {
                 if (u.will < a.wp) return 'no_will';
                 if (u.ap < a.ap) return 'no_ap';
                 if (hasStatus(u, 'panicked')) return 'no_will';
+                if (a.id === 'earth_cover') {
+                    const t = intent.to;
+                    if (!t || ![t.x, t.y, t.z].every(Number.isInteger) || !this.store.inBounds(t.x, t.y, t.z + 2)) return 'bad_intent';
+                    if (this.distance(u, t) > a.range) return 'out_of_range';
+                    if (this.occupant(t.x, t.y, t.z) || this.store.get(t.x,t.y,t.z+1) !== AIR || this.store.get(t.x,t.y,t.z+2) !== AIR) return 'occupied';
+                    if (!this.store.surfaces(t.x,t.y).some(c => c.z === t.z && c.headroom >= 2) || this.store.material(t.x,t.y,t.z).liquid) return 'unreachable';
+                    if (!this.sightLine(this.eye(u), {x:t.x+.5,y:t.y+.5,h:t.z+1.5})) return 'no_target';
+                }
+                if (a.id === 'water_mend') {
+                    const t = this.unit(intent.targetId);
+                    if (!t || !alive(t) || t.side !== u.side || (t.hp >= t.maxHp && !hasStatus(t,'burning'))) return 'no_target';
+                    if (this.distance(u,t) > a.range) return 'out_of_range';
+                    if (!this.sees(u,t)) return 'no_target';
+                }
                 if (a.id === 'suppress') {
                     if (!u.weapons.includes('repeater')) return 'bad_intent';
                     const target = this.unit(intent.targetId), w = WEAPONS.repeater;
@@ -237,7 +262,7 @@ export class Battle {
                 const id = this.store.get(d.x, d.y, d.z + 1);
                 if (id !== MAT.door && id !== MAT.door_open) return 'no_door';
                 if (Math.max(Math.abs(d.x - u.x), Math.abs(d.y - u.y)) > 1 || Math.abs(d.z - u.z) > 1) return 'not_adjacent';
-                if (id === MAT.door_open && u.ap < 1) return 'no_ap';
+                if (u.ap < 1) return 'no_ap';
                 return null;
             }
             case 'breach': return this.validateBreach(intent);
@@ -281,6 +306,8 @@ export class Battle {
             case 'throw': this.doThrow(u, intent); break;
             case 'overwatch': this.doOverwatch(u, intent); break;
             case 'reload': { const w = WEAPONS[intent.weaponId || u.weapon]; u.ap -= w.reloadAp; u.ammo[w.id] = w.ammo; this.emit({ t: 'reload', unitId: u.id, weaponId: w.id }); break; }
+            case 'gadget': {const item=THROWABLES[intent.itemId],target=this.unit(intent.targetId),amount=Math.min(item.heal,target.maxHp-target.hp);u.ap-=item.ap;consumeItem(u,item.id);target.hp+=amount;target.parts.torso.hp=Math.min(target.parts.torso.max,target.parts.torso.hp+amount);this.emit({t:'heal',unitId:target.id,amount});break;}
+            case 'wait': u.ap=0;u.moveOnlyAp=0;this.emit({t:'wait',unitId:u.id});break;
             case 'switchWeapon': u.weapon = intent.weaponId; this.emit({ t: 'weapon', unitId: u.id, weaponId: u.weapon }); break;
             case 'ability': this.doAbility(u, intent); break;
             case 'door': this.doDoor(u, intent.door); break;
@@ -421,6 +448,7 @@ export class Battle {
         u.moveOnlyAp -= fromMoveOnly; ap -= fromMoveOnly;
         u.ap -= ap;
         const walked = [path[0]], kinds = [];
+        const movementEvent=this.emit({t:'move',unitId:u.id,path:walked,kinds,ap:ap+fromMoveOnly});
         let jumped = false;
         for (let i = 1; i < path.length; i++) {
             const p = path[i];
@@ -441,7 +469,7 @@ export class Battle {
             if (before && !alive(u)) break;
             if (u.statuses.some(s => s.id === 'frozen')) break;
         }
-        this.emit({ t: 'move', unitId: u.id, path: walked, kinds: kinds.slice(0, walked.length - 1), ap: ap + fromMoveOnly });
+        movementEvent.kinds = kinds.slice(0,walked.length-1);
         if (alive(u) && jumped) this.giveStatus(u, 'staggered', 1);
         if (alive(u)) {
             const surf = this.field.surfaceAt(u.x, u.y, u.z);
@@ -467,13 +495,13 @@ export class Battle {
     }
     doDoor(u, d) {
         const open = this.store.get(d.x, d.y, d.z + 1) === MAT.door;
-        if (!open) u.ap = Math.max(0, u.ap - 1);
+        u.ap -= 1;
         const changes = this.store.record(() => { for (let k = 1; k <= 2; k++) { const id = this.store.get(d.x, d.y, d.z + k); if (id === MAT.door || id === MAT.door_open) this.store.set(d.x, d.y, d.z + k, open ? MAT.door_open : MAT.door); } });
-        this.emit({ t: 'door', ...d, open, unitId: u.id });
+        this.emit({ t: 'door', ...d, open, kicked:open, unitId: u.id });
         this.emit({ t: 'voxels', changes });
         if (open) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) this.revealRoom(this.store.roomAt(d.x + dx, d.y + dy, d.z + 1), u);
     }
-    revealRoomOf(u) { if (u.side === 'player') this.revealRoom(this.roomOf(u), u); }
+    revealRoomOf(u) { /* Interior discovery is explicit: kick/breach, not walking or window LOS. */ }
     revealRoom(id, by) {
         if (id == null || id < 0 || !by || by.side !== 'player' || this.revealedRooms.has(id)) return;
         this.revealedRooms.add(id);
@@ -486,11 +514,9 @@ export class Battle {
             if (!alive(mover)) return;
             if (!w.overwatch || w.reactionsLeft <= 0 || hasStatus(w, 'surprised')) continue;
             const ow = w.overwatch;
-            const dx = mover.x - w.x, dy = mover.y - w.y, d = Math.hypot(dx, dy);
-            if (d > ow.range || d < 0.5) continue;
-            const cos = (dx * ow.dx + dy * ow.dy) / d;
-            if (cos < Math.cos(ow.halfAngle)) continue;
-            if (!this.sees(w, mover)) continue;
+            if (!inWatchSector(w, ow, mover) || !this.sees(w, mover)) continue;
+            const weapon = WEAPONS[ow.weaponId];
+            if (!w.weapons.includes(ow.weaponId) || (w.ammo[ow.weaponId] ?? 0) < (weapon?.perShot || 1)) { w.overwatch = null; continue; }
             w.reactionsLeft--;
             this.stats.reactions++;
             this.emit({ t: 'reaction', watcherId: w.id, targetId: mover.id });
@@ -640,7 +666,7 @@ export class Battle {
     doThrow(u, intent) {
         const t = THROWABLES[intent.itemId];
         u.ap -= t.ap;
-        u.items[t.id]--;
+        consumeItem(u,t.id);
         const ts = this.stats.throwables[t.id] ||= { thrown: 0, unitDamage: 0, voxels: 0 };
         ts.thrown++;
         this.emit({ t: 'cutin', unitId: u.id, kind: t.cutIn || 'throw', itemId: t.id, targetIds: [] });
@@ -762,10 +788,8 @@ export class Battle {
     // ---------------------------------------------------------------- overwatch, abilities
     doOverwatch(u, intent) {
         const w = WEAPONS[intent.weaponId || u.weapon];
-        const t = intent.toward || { x: u.x + (FACING_VEC[u.facing]?.[0] ?? 0) * 5, y: u.y + (FACING_VEC[u.facing]?.[1] ?? 1) * 5 };
-        const dx = t.x - u.x, dy = t.y - u.y, d = Math.hypot(dx, dy) || 1;
-        u.overwatch = { weaponId: w.id, dx: dx / d, dy: dy / d, halfAngle: (intent.halfAngleDeg ?? 50) * Math.PI / 180, range: w.range * 1.25 };
-        u.facing = facingToward(dx, dy);
+        u.overwatch = watchSector(u, intent.toward, w.id);
+        u.facing = facingToward(u.overwatch.dx, u.overwatch.dy);
         u.ap = 0; u.moveOnlyAp = 0;
         this.emit({ t: 'overwatch', unitId: u.id, ...u.overwatch });
         this.formations.onOverwatch(u);
@@ -773,9 +797,24 @@ export class Battle {
     doAbility(u, intent) {
         const a = ABILITIES[intent.abilityId];
         u.will -= a.wp; u.ap -= a.ap;
-        if (a.id !== 'suppress') this.emit({ t: 'cutin', unitId: u.id, kind: 'skill', abilityId: a.id, targetIds: [] });
+        if (a.id !== 'suppress') this.emit({ t: 'cutin', unitId: u.id, kind: 'skill', abilityId: a.id, targetIds: intent.targetId ? [intent.targetId] : [] });
         this.emit({ t: 'ability', unitId: u.id, abilityId: a.id });
         switch (a.id) {
+            case 'earth_cover': {
+                const t = intent.to;
+                const changes = this.store.record(() => this.store.set(t.x,t.y,t.z+1,MAT.drystone));
+                this.emit({t:'voxels', changes});
+                break;
+            }
+            case 'water_mend': {
+                const t = this.unit(intent.targetId), amount = Math.min(a.heal, t.maxHp-t.hp);
+                t.hp += amount;
+                if (!t.parts.torso.disabled) t.parts.torso.hp = Math.min(t.parts.torso.max, t.hp);
+                removeStatus(t,'burning');
+                this.giveStatus(t,'wet',1);
+                this.emit({t:'heal',unitId:t.id,sourceId:u.id,amount});
+                break;
+            }
             case 'dash': u.moveOnlyAp += 1; break;
             case 'quick_aim': u.buffs.quickAim = true; break;
             case 'deadeye': u.buffs.deadeye = true; break;
@@ -858,7 +897,7 @@ export class Battle {
         const ids = intent.unitIds?.length ? intent.unitIds : [intent.unitId];
         const units = ids.map(id => this.unit(id));
         if(intent.entry==='floor') {
-            const u=units[0];u.ap--;u.items.breach_charge--;this.stats.breaches++;
+            const u=units[0];u.ap--;consumeItem(u,'breach_charge');this.stats.breaches++;
             const changes=this.store.record(()=>{for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++)this.store.set(d.x+dx,d.y+dy,d.z,AIR);this.settle();});
             this.stats.voxelsDestroyed+=4;this.emit({t:'voxels',changes});this.emit({t:'breach',door:d,unitIds:[u.id],entry:'floor'});this.noise(d.x,d.y,d.z,14,u);return;
         }
@@ -869,7 +908,7 @@ export class Battle {
         const formationBonus = this.formations.breachNoiseMult(units[0]);
         if (intent.entry === 'charge') {
             const carrier = units.find(u => u.items.breach_charge > 0);
-            carrier.items.breach_charge--;
+            consumeItem(carrier,'breach_charge');
             this.detonate(THROWABLES.breach_charge, { x: d.x + 0.5, y: d.y + 0.5, h: d.z + 1.5 }, carrier, { excludeUnits: ids });
         } else {
             const changes = this.store.record(() => { for (let k = 1; k <= 2; k++) if (this.store.get(d.x, d.y, d.z + k) === MAT.door) this.store.set(d.x, d.y, d.z + k, MAT.door_open); });
@@ -928,15 +967,51 @@ export class Battle {
         for (const e of this.units) if (alive(e) && !e.alerted && set.has(e.group) && e.side === 'enemy') { e.alerted = true; woke.push(e.id); }
         if (woke.length) this.emit({ t: 'alert', unitIds: woke, why });
     }
-    updateVisibility() {
-        const seen = this.visibleTo('player');
-        const groups = [];
-        for (const id of seen) { const e = this.unit(id); if (e && !e.alerted) groups.push(e.group); }
-        // Enemies who see a player unit wake their pod too.
-        for (const e of this.unitsOf('enemy')) if (!e.alerted && this.unitsOf('player').some(p => this.sees(e, p))) groups.push(e.group);
-        if (groups.length) this.alertGroup(groups, 'spotted');
-        for (const id of seen) { const e = this.unit(id); const r = this.roomOf(e); if (r >= 0 && !this.revealedRooms.has(r)) { this.revealedRooms.add(r); this.emit({ t: 'reveal', roomId: r }); } }
-        this.visible = seen;
+    scatterPod(group) {
+        const enemies=this.unitsOf('enemy').filter(e=>e.group===group&&!e.scattered);
+        if(!enemies.length)return;
+        enemies.forEach(e=>{e.scattered=true;e.alerted=true;e.overwatch=null;});
+        this.emit({t:'discovery',group,unitIds:enemies.map(e=>e.id)});
+        for(const e of enemies) {
+            const target=this.unitsOf('player').sort((a,b)=>this.distance(e,a)-this.distance(e,b)||a.id.localeCompare(b.id))[0];
+            if(!target)continue;
+            const room=this.roomOf(e);
+            const search=reachable(this.store,{x:e.x,y:e.y,z:e.z},6,PROFILE,{vault:false,blocked:c=>{
+                const o=this.occupant(c.x,c.y,c.z),r=this.store.roomAt(c.x,c.y,c.z+1);
+                return (o&&o.id!==e.id)||this.store.get(c.x,c.y,c.z+1)===MAT.door||(r>=0&&r!==room&&!this.revealedRooms.has(r));
+            }});
+            const score=c=>coverAgainst(this.store,c.x,c.y,c.z,target.x,target.y,target.z)*10+Math.min(10,this.distance(c,target))-.2*(search.costs.get(nodeKey(c))||0);
+            const candidates=[...search.nodes.values()].filter(c=>(c.x!==e.x||c.y!==e.y||c.z!==e.z)&&this.distance(c,target)>2)
+                .sort((a,b)=>score(b)-score(a)||a.z-b.z||a.y-b.y||a.x-b.x);
+            const dest=candidates[0];if(!dest)continue;
+            const path=pathTo(search,nodeKey(dest)),walked=[path[0]],kinds=[];
+            const event=this.emit({t:'move',unitId:e.id,path:walked,kinds,ap:0,scatter:true});
+            for(let i=1;i<path.length&&alive(e);i++) {
+                kinds.push(stepKind(this.store,path[i-1],path[i]));e.facing=facingToward(path[i].x-e.x,path[i].y-e.y);Object.assign(e,path[i]);walked.push(path[i]);this.checkReactions(e,walked);
+            }
+            event.kinds=kinds.slice(0,walked.length-1);
+        }
+    }
+    updateVisibility({initial=false}={}) {
+        this.updateInteriorVision();
+        const seen=this.visibleTo('player'),groups=[];
+        for(const id of seen){const e=this.unit(id);if(e&&!e.alerted)groups.push(e.group);if(initial)e.scattered=true;}
+        for(const e of this.unitsOf('enemy'))if(!e.alerted&&this.unitsOf('player').some(p=>this.sees(e,p)))groups.push(e.group);
+        if(groups.length)this.alertGroup(groups,'spotted');
+        this.visible=seen;
+        if(!initial)for(const group of [...new Set([...seen].map(id=>this.unit(id).group))])this.scatterPod(group);
+        this.visible=this.visibleTo('player');
+    }
+
+    updateInteriorVision() {
+        const seen=new Set();
+        for(const room of this.mission.rooms||[])for(const [x,y] of room.cells) {
+            const cell={x,y,z:room.floorZ};
+            if(this.unitsOf('player').some(u=>this.distance(u,cell)<=B.sightRange && (this.sightLine(this.eye(u),{x:x+.5,y:y+.5,h:cell.z+2.05})||this.sightLine(this.eye(u),{x:x+.5,y:y+.5,h:cell.z+1.3}))))seen.add(`${x},${y},${cell.z}`);
+        }
+        const old=this.visibleInterior||new Set();
+        if(old.size!==seen.size||[...seen].some(k=>!old.has(k)))this.emit({t:'vision',cells:[...seen]});
+        this.visibleInterior=seen;
     }
 
     weaponStats(id) { return this.stats.weapons[id] ||= { shots: 0, projectiles: 0, hits: 0, damage: 0, kills: 0, ap: 0, voxels: 0 }; }

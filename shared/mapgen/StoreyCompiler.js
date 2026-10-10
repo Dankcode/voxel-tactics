@@ -76,7 +76,7 @@ export function compileBuilding(m,b) {
             for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)keepFree.add(key(dr.x+dx,dr.y+dy));
         }
         for(const run of out.stairs)if(run.storey===f.floor||run.storey===f.floor-1)for(const c of [run.before,...run.cells,run.after]){keepFree.add(key(c.x,c.y));obstacles.add(key(c.x,c.y));}
-        furnish(store,{floorSet,rooms,fz:m.G+3*f.floor,keepFree,obstacles,rng:createRng(hashString(`${m.id}:${m.seed}:${b.id}:${f.floor}`)),hints:ctx.hints,decor:ctx.decor});
+        furnish(store,{floorSet,rooms,fz:m.G+3*f.floor,keepFree,obstacles,rng:createRng(hashString(`${m.id}:${m.seed}:${b.id}:${f.floor}`)),hints:ctx.hints,decor:ctx.decor,wfc:true});
     }
     out.floorCells=out.rooms.filter(r=>r.storey===0&&r.gameplay).flatMap(r=>r.cells);
     m.buildings.push(out);return out;

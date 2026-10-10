@@ -1,3 +1,4 @@
+import { InventoryPrep } from './ui/InventoryPrep.js';
 import { Game } from './Game.js';
 import { LocalSession } from './net/LocalSession.js';
 import { OnlineSession } from './net/OnlineSession.js';
@@ -26,6 +27,7 @@ async function showMenu() {
           <label>Squad <select id="m-squad">${Object.keys(SQUADS).map(k => `<option>${k}</option>`).join('')}</select></label>
         </div>
         <label class="check"><input id="m-debug" type="checkbox" ${params.get('debug') ? 'checked' : ''}> Debug mode (F1 in battle: spawn, teleport, destroy, elements, overlays, AI stepping)</label>
+        <section id="m-inventory"></section>
         <div class="row buttons">
           <button id="m-local" class="primary">Play vs AI</button>
           <button id="m-host">Host online co-op</button>
@@ -38,12 +40,14 @@ async function showMenu() {
         <p class="status" id="m-status"></p>
         <p class="small">Online co-op needs <code>npm run server</code> running. Units are dealt to players round-robin; the squad ends its turn when every player has pressed End turn.</p>
       </div>`;
+    const prep=new InventoryPrep($('#m-inventory'),$('#m-squad').value);
+    $('#m-squad').onchange=()=>prep.reset($('#m-squad').value);
     let scenario = pick;
     menu.querySelectorAll('[data-map]').forEach(b => b.onclick = () => {
         scenario = b.dataset.map;
         menu.querySelectorAll('[data-map]').forEach(o => o.classList.toggle('on', o === b));
     });
-    const desc = () => ({ scenario, seed: Number($('#m-seed').value) || 1, squad: $('#m-squad').value, debug: $('#m-debug').checked });
+    const desc = () => ({ scenario, seed: Number($('#m-seed').value) || 1, squad: $('#m-squad').value, debug: $('#m-debug').checked, inventories:prep.inventories() });
     const status = t => { $('#m-status').textContent = t; };
     const launch = async make => {
         try {

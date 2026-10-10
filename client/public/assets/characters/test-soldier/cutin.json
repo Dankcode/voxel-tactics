@@ -1,0 +1,13 @@
+{
+  "placeholder": false,
+  "width": 653,
+  "height": 435,
+  "layers": [
+    {
+      "id": "body",
+      "image": "backshot.png",
+      "parallax": 1
+    }
+  ],
+  "screenHeight": 0.72
+}

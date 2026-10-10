@@ -8,9 +8,10 @@ import { FACING_VEC } from '../../../shared/battle/Units.js';
 const loader = new THREE.TextureLoader();
 const atlasCache = new Map();
 export async function loadCharacterArt(art) {
+    art = 'test-soldier'; // One cached atlas for the shared test appearance.
     if (atlasCache.has(art)) return atlasCache.get(art);
     const p = (async () => {
-        const base = `/assets/characters/${art}/`;
+        const base = '/assets/characters/test-soldier/';
         const [field, cutin] = await Promise.all([fetch(base + 'field.json').then(r => r.json()), fetch(base + 'cutin.json').then(r => r.json())]);
         const image = await new Promise((res, rej) => loader.load(base + field.image, res, undefined, rej));
         image.colorSpace = THREE.SRGBColorSpace;
@@ -33,6 +34,7 @@ export class UnitView {
         this.texture.needsUpdate = true;
         this.material = new THREE.MeshBasicMaterial({ map: this.texture, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide, clippingPlanes: scene.clipping });
         this.sprite = new THREE.Mesh(geo, this.material);
+        this.spriteHeight=h;this.billboardUp=new THREE.Vector3();
         this.sprite.userData.unitId = unit.id;
         // The billboard casts a sun shadow through its alpha (same animated texture as the colour pass).
         this.sprite.castShadow = true;
@@ -88,8 +90,14 @@ export class UnitView {
         if (u.stress > 0) { c.fillStyle = '#b58cff'; c.fillRect(W - 2 - Math.round(40 * u.stress / 100), 19, Math.round(40 * u.stress / 100), 5); }
         this.barTex.needsUpdate = true;
     }
-    update(dt, yaw) {
-        this.sprite.rotation.y = yaw;
+    update(dt, yaw, camera = this.scene.camera) {
+        // Screen-facing art retains its drawn proportions; the transparent foot baseline stays at local zero.
+        // Only the sprite tilts. Ground rings, collision position and elevation cues stay on the world grid.
+        if(camera) {
+            this.sprite.quaternion.copy(camera.quaternion);
+            this.billboardUp.set(0,1,0).applyQuaternion(camera.quaternion);
+            this.bar.position.copy(this.billboardUp).multiplyScalar(this.spriteHeight+.18);
+        } else this.sprite.rotation.y=yaw;
         this.animator.setScreenAngle(Math.atan2(this.facingVec[0], this.facingVec[1]) - yaw);
         this.animator.update(dt);
         this.bar.visible = !this.unit.dead;

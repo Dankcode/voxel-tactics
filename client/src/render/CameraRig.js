@@ -1,6 +1,6 @@
 // XCOM 2-style tactical camera rig. Owns a perspective camera (default) and an orthographic one (the old
 // isometric look, toggled with V) that share one state: a ground target, a yaw (45° + 90° steps, eased; free
-// while orbiting with the middle mouse), an eased zoom distance whose pitch rises when zoomed out, smooth
+// while orbiting with the middle mouse), an eased zoom distance with a stable tactical pitch, smooth
 // key / edge panning with momentum, grab-the-ground drag panning, the follow glide and the hit shake.
 //
 // World coords: three x = grid x, three y = height, three z = grid y.
@@ -8,10 +8,10 @@ import * as THREE from 'three';
 
 const DEG = Math.PI / 180;
 export const FOV = 38;                                       // vertical, degrees
-const ORTHO_PITCH = Math.atan2(28, Math.hypot(20, 26));      // the old fixed ortho elevation (~40.5°)
+const TACTICAL_PITCH = 45 * DEG;
+const ORTHO_PITCH = TACTICAL_PITCH;
 const MIN_DIST = 12, MAX_DIST = 110, DEFAULT_DIST = 36;
-const PITCH_NEAR = 43 * DEG, PITCH_FAR = 65 * DEG;            // zoom-driven base pitch (XCOM: higher when zoomed out)
-const PITCH_MIN = 35 * DEG, PITCH_MAX = 75 * DEG;             // clamp for the orbit tilt
+const PITCH_MIN = 30 * DEG, PITCH_MAX = 85 * DEG;             // clamp for the orbit tilt
 const VH_PER_DIST = 22 / DEFAULT_DIST;                        // ortho frustum height per unit of distance (default = old 22)
 const STEP = Math.PI / 2, BASE = Math.PI / 4;
 const MARGIN = 2;                                             // how far the target may leave the map
@@ -46,9 +46,16 @@ export class CameraRig {
     set viewHeight(h) { this.distance = this.distanceTarget = clampN(h / VH_PER_DIST, MIN_DIST, MAX_DIST); }
 
     pitch() {
-        if (this.isOrtho) return clampN(ORTHO_PITCH + this.pitchOffset, PITCH_MIN, PITCH_MAX);
-        const t = Math.sqrt(clampN((this.distance - MIN_DIST) / (MAX_DIST - MIN_DIST), 0, 1));
-        return clampN(PITCH_NEAR + (PITCH_FAR - PITCH_NEAR) * t + this.pitchOffset, PITCH_MIN, PITCH_MAX);
+        return clampN((this.isOrtho ? ORTHO_PITCH : TACTICAL_PITCH) + this.pitchOffset, PITCH_MIN, PITCH_MAX);
+    }
+    setPreset(name) {
+        this.pitchOffset=(name==='plan'?85:45)*DEG-TACTICAL_PITCH;
+        const yaw={N:0,E:90,S:180,W:270,iso:45}[name];if(yaw!==undefined)this.yawTarget=yaw*DEG;this.apply();
+    }
+    resetTactical() {
+        this.mode='perspective';this.yaw=this.yawTarget=BASE;
+        this.distance=this.distanceTarget=DEFAULT_DIST;this.pitchOffset=0;
+        this.panIntent.set(0,0);this.panVel.set(0,0,0);this.glide=null;this.shake=0;this.apply();
     }
     /** Q/E: 90° steps on the 45° grid. After a free orbit the next press snaps to the next step that way. */
     rotate(steps) {

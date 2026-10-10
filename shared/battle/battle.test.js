@@ -137,3 +137,98 @@ test('AI plays a full Proving Grounds battle to completion or the round cap with
     assert.ok(b.log.some(e => e.t === 'shot'));
     assert.ok(b.round > 1);
 });
+
+test('earth cover targets an empty supported tile, costs resources once and changes cover', () => {
+    const b = arena({squad:['vanguard']}); const u=b.unit('p0');
+    const cast={type:'ability',unitId:u.id,abilityId:'earth_cover',to:{x:10,y:15,z:1}};
+    const before=[u.ap,u.will];
+    const r=b.apply(cast); assert.ok(r.ok); assert.equal(b.store.get(10,15,2),MAT.drystone);
+    assert.equal(u.ap,before[0]-1); assert.equal(u.will,before[1]-2);
+    assert.ok(r.events.some(e=>e.t==='voxels'&&e.changes.length===1));
+    assert.equal(b.apply(cast).reason,'occupied');
+    assert.equal(b.apply({...cast,to:{x:u.x,y:u.y,z:u.z}}).reason,'occupied');
+    assert.equal(b.apply({...cast,to:{x:1,y:1,z:1}}).reason,'out_of_range');
+    assert.equal(b.apply({...cast,to:{x:NaN,y:15,z:1}}).reason,'bad_intent');
+    assert.equal(b.apply({...cast,to:{x:11,y:15,z:3}}).reason,'unreachable');
+});
+
+test('water mend heals and extinguishes but cannot revive or repair a disabled limb', () => {
+    const b=arena({squad:['grenadier','vanguard'],player:[{x:10,y:16,z:1},{x:11,y:16,z:1}]});
+    const u=b.unit('p0'),t=b.unit('p1'); t.hp=25; t.parts.armL.hp=0;t.parts.armL.disabled=true; b.giveStatus(t,'burning',2);
+    const cast={type:'ability',unitId:u.id,abilityId:'water_mend',targetId:t.id};
+    assert.ok(b.apply(cast).ok);assert.equal(t.hp,30);assert.equal(t.parts.armL.disabled,true);assert.ok(!t.statuses.some(s=>s.id==='burning'));
+    assert.equal(b.apply(cast).reason,'no_target');
+    t.hp=20;t.down=true;assert.equal(b.apply(cast).reason,'no_target');
+    assert.equal(b.apply({...cast,targetId:'e0'}).reason,'no_target');
+});
+
+test('overwatch rejects forged weapons and invalid directions, ignores enemies behind the wedge', () => {
+    const b=arena({squad:['marksman']});const u=b.unit('p0');
+    const intent={type:'overwatch',unitId:u.id,weaponId:'handcannon',toward:{x:10,y:6}};
+    for(const toward of [{x:u.x,y:u.y},{x:Infinity,y:1},null]) assert.equal(b.apply({...intent,toward}).reason,'bad_intent');
+    assert.equal(b.apply({...intent,weaponId:'repeater'}).reason,'bad_intent');
+    assert.ok(b.apply(intent).ok);b.apply({type:'endTurn',side:'player'});
+    const e=b.unit('e0');e.x=10;e.y=18;e.alerted=true;b.checkReactions(e,[e]);assert.equal(b.stats.reactions,0);
+    e.x=10;e.y=12;b.checkReactions(e,[e]);assert.equal(b.stats.reactions,1);assert.equal(u.overwatch,null);
+    b.checkReactions(e,[e]);assert.equal(b.stats.reactions,1);
+});
+
+test('elemental intents replay deterministically and blocked cover casts never spend resources', () => {
+    const run=()=>{
+        const b=arena({squad:['vanguard','grenadier'],player:[{x:10,y:16,z:1},{x:11,y:16,z:1}]});
+        b.unit('p0').hp=18;
+        assert.ok(b.apply({type:'ability',unitId:'p1',abilityId:'water_mend',targetId:'p0'}).ok);
+        assert.ok(b.apply({type:'ability',unitId:'p0',abilityId:'earth_cover',to:{x:10,y:15,z:1}}).ok);
+        return b.hash();
+    };
+    assert.equal(run(),run());
+    const b=arena({squad:['vanguard'],walls:[[10,15,2,'stone'],[10,15,3,'stone']]});
+    const u=b.unit('p0'),before=b.hash();
+    assert.equal(b.apply({type:'ability',unitId:u.id,abilityId:'earth_cover',to:{x:10,y:14,z:1}}).reason,'no_target');
+    assert.equal(b.hash(),before);
+});
+
+test('closed rooms require a kick, cost one AP, and remain revealed after closing', () => {
+    const mission=buildProvingGrounds({seed:1});
+    const b=new Battle({mission,squad:[{type:'vanguard'}],seed:2});
+    const d=mission.buildings.find(x=>x.id==='bunker').doors.find(d=>d.exterior&&d.side==='s');
+    const u=b.unit('p0');Object.assign(u,{x:d.x,y:d.y+1,z:d.z});
+    const room=mission.store.roomAt(d.x,d.y-1,d.z+1);
+    assert.ok(room>=0);assert.ok(!b.revealedRooms.has(room));
+    assert.ok(!b.reach(u).costs.has(`${d.x},${d.y},${d.z}`),'movement cannot silently open door');
+    const defender=b.unitsOf('enemy').find(e=>b.roomOf(e)===room);
+    if(defender)assert.equal(b.sees(u,defender),false,'unrevealed room conceals enemies');
+    const r=b.apply({type:'door',unitId:u.id,door:d});
+    assert.ok(r.ok,r.reason);assert.equal(u.ap,3);assert.ok(b.revealedRooms.has(room));
+    assert.ok(r.events.find(e=>e.t==='door').kicked);
+    assert.ok(r.events.findIndex(e=>e.t==='reveal')>r.events.findIndex(e=>e.t==='door'));
+    assert.ok(b.apply({type:'door',unitId:u.id,door:d}).ok);assert.equal(u.ap,2);
+    assert.ok(b.revealedRooms.has(room));
+    u.ap=0;assert.equal(b.apply({type:'door',unitId:u.id,door:d}).reason,'no_ap');
+});
+
+test('first contact scatters a pod once, deterministically, without spending its turn AP', () => {
+    const run=()=>{
+        const b=arena({player:[{x:2,y:22,z:1}],enemies:[{type:'cultist',pos:{x:22,y:2,z:1}}]});
+        const e=b.unit('e0');assert.ok(!e.scattered);
+        Object.assign(b.unit('p0'),{x:12,y:12,z:1});const ap=e.ap;
+        b.updateVisibility();
+        assert.ok(e.scattered);assert.equal(e.ap,ap);
+        assert.equal(b.log.filter(e=>e.t==='discovery').length,1);
+        const movement=b.log.find(e=>e.t==='move'&&e.scatter&&e.path.length>1);assert.ok(movement);
+        assert.deepEqual(movement.path[0],{x:22,y:2,z:1},'scatter origin remains a snapshot');
+        const origin={...movement.path[0]};e.x++;assert.deepEqual(movement.path[0],origin);e.x--;
+        b.updateVisibility();assert.equal(b.log.filter(e=>e.t==='discovery').length,1);
+        return b.hash();
+    };
+    assert.equal(run(),run());
+});
+
+test('finishing a soldier spends its remaining AP without ending the squad phase',()=>{
+    const b=arena({squad:['vanguard','warden'],player:[{x:10,y:16,z:1},{x:11,y:16,z:1}]});
+    b.unit('p0').moveOnlyAp=2;
+    assert.ok(b.apply({type:'wait',unitId:'p0'}).ok);
+    assert.equal(b.unit('p0').ap,0);assert.equal(b.unit('p0').moveOnlyAp,0);
+    assert.equal(b.unit('p1').ap,4);assert.equal(b.activeSide,'player');
+    assert.equal(b.apply({type:'wait',unitId:'p0'}).reason,'no_ap');
+});

@@ -194,9 +194,47 @@ button { text-transform: none; letter-spacing: .015em; border-radius: 3px; }
 .maps .map.on b { color: #f4f7ef; } .maps .map.on span { color: #cfdcd2; }
 
 /* Keep the soldier readout clear of the action strip on laptop-sized battle views. */
-@media (min-width: 901px) and (max-width: 1500px) {
-    .unitpanel { bottom: 112px; width: 245px; }
+@media (max-width: 1500px) {
+    .unitpanel { bottom: 124px; width: 245px; max-height: 55vh; overflow-y: auto; }
     .unitpanel img { width: 56px; height: 56px; }
     .unitpanel .uname { font-size: 16px; }
     .unitpanel .nums { flex-wrap: wrap; gap: 2px 8px; }
 }
+
+.loadout { margin: 6px 0; font-size: 11px; color: var(--dim); }
+.loadout summary { cursor: pointer; color: #7bdcff; }
+.loadout button { display: block; width: 100%; margin-top: 4px; text-align: left; font-size: 11px; padding: 4px; }
+.loadout small { display: block; line-height: 1.4; margin: 3px 0; }
+
+@media (max-width: 1000px) {
+    .squad { max-height: 26vh; overflow-y: auto; }
+    .unitpanel { max-height: max(140px, calc(100vh - 400px)); }
+    .actionbar .slotname { max-width: calc(100vw - 24px); }
+}
+/* Equipment workspace and readable tactical controls. */
+button {text-transform:none;letter-spacing:0;border-radius:8px;}
+.turnbox,.card,.slots,.unitpanel,.target,.panel {clip-path:none;border-radius:12px;}
+.topbar .tools [data-act="rotL"],.topbar .tools [data-act="rotR"],.topbar .tools [data-act="lvlUp"],.topbar .tools [data-act="lvlDown"],.topbar .tools .level{display:none;}
+.camera-nav {position:absolute;right:14px;top:78px;width:280px;padding:10px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;}
+.nav-heading {font-size:12px;color:var(--dim);margin-bottom:5px;}
+.nav-row {display:flex;gap:4px;margin-top:4px;}.nav-row button{flex:1;padding:4px;}.floor-picker{min-width:0;flex:2;background:#152820;color:var(--ink);border:1px solid var(--line);border-radius:6px;}
+.unitpanel {left:auto;right:14px;top:253px;bottom:auto;width:280px;display:block;max-height:calc(100vh - 380px);overflow:auto;padding:12px;}
+.character-heading {display:flex;gap:10px;align-items:center;}.character-heading img{width:52px;height:58px;border-radius:9px;}.unitpanel .uname{font-size:17px;text-transform:none;letter-spacing:0;}.unitpanel .uclass{font-size:11px;letter-spacing:0;text-transform:none;}.unitpanel .nums{gap:8px;font-size:10px;}
+.unitpanel h4{margin:12px 0 6px;font-size:12px;font-weight:600;}.unitpanel h4 small{display:block;color:var(--dim);font-size:10px;font-weight:400;}.weapon-row{display:flex;gap:5px;margin:4px 0;}.weapon-row button:first-child{flex:1;text-align:left;}.weapon-row b{font-size:12px;}.weapon-row small{font-size:10px;}.vision-info{display:block;color:var(--dim);font-size:10px;line-height:1.5;margin-top:8px;}
+.pack-grid{display:grid;grid-template-columns:repeat(var(--cols),1fr);grid-template-rows:repeat(var(--rows),1fr);gap:3px;aspect-ratio:6/5;width:100%;position:relative;}
+.pack-cell{grid-column:auto;grid-row:auto;background:#0e1916;border:1px solid #ffffff16;padding:0;min-width:0;border-radius:4px;opacity:1!important;}
+.pack-item{z-index:1;min-width:0;overflow:hidden;display:flex;flex-direction:column;justify-content:center;padding:4px;background:#244e43;border-color:#5fa995;border-radius:6px;color:#e5fff4;}.pack-item.gadget{background:#364257;border-color:#839bc0;}.pack-item b{font-size:10px;line-height:1.15;overflow-wrap:anywhere;}.pack-item small{font-size:9px;color:#c1d9d1;}.pack-item:disabled{opacity:.5;}
+.squad{width:185px;}.card img{width:36px;height:42px;border-radius:7px;}.card .name{font-size:12px;text-transform:none;}.card.sel{transform:none;}
+.actionbar{max-width:calc(100vw - 28px);bottom:12px;gap:5px;}.slots{padding:6px;gap:4px;max-width:calc(100vw - 170px);overflow-x:auto;}.slot{width:85px;min-width:85px;height:67px;border-radius:9px;display:flex;flex-direction:column;justify-content:center;gap:3px;padding:10px 4px 6px;}.slot svg{width:21px;height:21px;}.slot-label{font-size:10px;line-height:1.1;}.slot .sub{font-size:8px;}.slotname{max-width:800px;font-size:12px!important;}.endturn{height:67px;border-radius:10px;}.targets{bottom:115px;right:310px;}.target{right:310px;top:90px;width:300px;max-height:calc(100vh - 220px);overflow:auto;}
+.menu-card{max-height:94vh;overflow-y:auto;width:min(920px,94vw);}.menu-card h3{color:#304e3d;margin:16px 0 8px;}.menu-card h3 small{font-size:12px;font-weight:400;color:#62766b;}.prep-members{display:flex;gap:6px;margin-bottom:10px;}.prep-layout{display:grid;grid-template-columns:260px 1fr;gap:16px;}.pack-catalog{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;}.pack-catalog button{text-align:left;font-size:12px;}.pack-catalog small{font-size:10px;color:#52685a;}.menu-card .pack-cell{background:#dce4d9;border-color:#b6c4b8;}.menu-card .pack-item{background:#355b4b;color:#f2fff6;}.menu-card .pack-item.gadget{background:#465d78;}.menu-card button.on{box-shadow:inset 0 0 0 2px #53846b;}.prep-tools{display:flex;gap:8px;align-items:center;margin-top:8px;color:#52685a;font-size:11px;}.pack-message{flex:1;}
+@media(max-width:1000px){.camera-nav{width:250px;top:78px;}.unitpanel{width:250px;top:253px;bottom:auto;left:auto;right:14px;max-height:calc(100vh - 380px);}.target{right:280px;width:270px;}.targets{right:280px;}.slot{width:73px;min-width:73px;}.squad{width:160px;}.topbar .tools .cutin-mode{font-size:9px;}}
+@media(max-width:600px){.prep-layout{grid-template-columns:1fr;}.prep-layout .pack-grid{max-width:280px;margin:auto;}.prep-members,.prep-tools{flex-wrap:wrap;}.camera-nav{width:180px;}.unitpanel{width:180px;}.squad{width:125px;}.character-heading img{display:none;}.target{right:205px;width:220px;}}
+.character-heading img{height:48px;width:48px;}.equipment-tabs{display:flex;gap:5px;margin:8px 0;}.equipment-tabs button{flex:1;font-size:12px;padding:6px;}.unitpanel .pack-grid{max-width:204px;margin:0 auto;}.unitpanel .vision-info{font-size:9px;margin-top:6px;}.slot.on{background:#42695d;color:#f0fff8;}
+.actionbar{width:max-content;grid-template-columns:minmax(0,1fr) auto;}.slots{min-width:0;}
+
+/* Four direct camera / elevation arrows. */
+.camera-nav{top:90px;right:24px;width:112px;height:112px;padding:0;background:none;border:0;border-radius:0;display:grid;grid-template:repeat(3,36px)/repeat(3,36px);gap:2px;filter:drop-shadow(0 2px 4px #0009);}
+.camera-nav button{border:0;border-radius:6px;background:#15221e55;color:#e5f6ee;padding:0;font-size:27px;line-height:1;}
+.camera-nav button:hover,.camera-nav button:focus-visible{background:#35574bdd;color:#91ffcf;outline:1px solid #91ffcf;}
+.nav-up{grid-area:1/2;}.nav-left{grid-area:2/1;}.nav-right{grid-area:2/3;}.nav-down{grid-area:3/2;}
+.pack-grid{gap:1px;}.pack-cell,.pack-item{border-radius:2px;}.pack-item{padding:2px;}.unitpanel .pack-grid{max-width:none;margin:0;}

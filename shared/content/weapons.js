@@ -33,6 +33,7 @@ export const WEAPONS = Object.freeze(Object.fromEntries(Object.entries({
 }).map(([id, w]) => [id, Object.freeze(withCaliber({ id, ...w }))])));
 
 export const THROWABLES = Object.freeze({
+    medkit: {id:'medkit',name:'Medical Kit',kind:'gadget',ap:1,range:1.5,heal:8},
     fire_flask: { id: 'fire_flask', name: 'Incendiary Grenade', ap: 2, range: 12, radius: 2.2, damage: 6, power: 2, element: 'pyro', noise: 10, cutIn: 'throw' },
     frost_flask: { id: 'frost_flask', name: 'Cryo Canister', ap: 2, range: 12, radius: 2.5, damage: 5, power: 1, element: 'cryo', noise: 8, cutIn: 'throw' },
     water_flask: { id: 'water_flask', name: 'Extinguisher Grenade', ap: 1, range: 12, radius: 2.6, damage: 0, power: 0, element: 'hydro', noise: 4, cutIn: 'throw' },

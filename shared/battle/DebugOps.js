@@ -1,3 +1,4 @@
+import { packItems, inventoryCounts } from '../inventory/Inventory.js';
 // Debug intents: `{ type: 'debug', op, ... }`. They go through Battle.apply like every other intent, so the
 // event player animates them and lockstep peers stay in sync, but Battle only accepts them when it was
 // created with `debug: true` (local sessions with ?debug=1, or an online room created in debug mode).
@@ -67,7 +68,7 @@ export function applyDebug(b, i) {
         case 'status': b.giveStatus(u, i.status, i.rounds ?? 2); break;
         case 'refill':
             for (const w of u.weapons) if (WEAPONS[w]?.ammo) u.ammo[w] = WEAPONS[w].ammo;
-            for (const k of Object.keys(u.items)) u.items[k] = Math.max(u.items[k], 2);
+            for (const k of Object.keys(u.items)) while((u.items[k]||0)<2){const counts={...u.items,[k]:(u.items[k]||0)+1};try{const slots=packItems(counts);u.inventory=slots;u.items=inventoryCounts(slots);}catch{break;}}
             u.will = u.maxWill; note({}); break;
         case 'teleport': {
             const from = { x: u.x, y: u.y, z: u.z };

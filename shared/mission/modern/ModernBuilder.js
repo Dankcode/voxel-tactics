@@ -1,3 +1,4 @@
+import { solveDressing } from '../../mapgen/DressingSolver.js';
 // Present-day buildings on the tactical grid.
 //
 // A building is a PROGRAM (house, shop, diner, warehouse, motel, station, office …) laid out as rows of rooms from
@@ -119,6 +120,9 @@ const ITEMS = {
         decor: (f, add) => { add('nightstand', f.beside(-1)); add('rug', f.front(2.2), { w: 2.4, d: 1.2 }); } },
     bed_single: { mat: 'bed', len: 1, dep: 2, h: 1, place: 'wall', piece: (i, j) => (j === 0 ? 'bed_head_single' : 'bed_foot_single'), across: true },
     wardrobe: { mat: 'cabinet', len: 2, dep: 1, h: 2, place: 'wall', piece: (i, j, n, h) => (h === 0 ? 'wardrobe_lower' : 'wardrobe_upper') },
+    aid_station: { mat: 'cabinet', len: 1, dep: 1, h: 1, place: 'wall', piece: () => 'aid_station' },
+    tool_chest: { mat: 'cabinet', len: 1, dep: 1, h: 1, place: 'wall', piece: () => 'tool_chest' },
+    server_rack: { mat: 'appliance', len: 1, dep: 1, h: 2, place: 'wall', piece: (i,j,n,h) => h === 0 ? 'server_lower' : 'server_upper' },
     desk: { mat: 'desk', len: 2, dep: 1, h: 1, place: 'wall', piece: (i, j, n) => (i === 0 ? 'desk_end_l' : 'desk_end_r'),
         decor: (f, add) => { add('office_chair', f.front(1, 0)); add('monitor', f.top(0)); } },
     desk_pair: { mat: 'desk', len: 2, dep: 1, h: 1, place: 'center', piece: (i) => (i === 0 ? 'desk_end_l' : 'desk_end_r'),
@@ -525,7 +529,8 @@ export function connected(floorSet, blocked, start) {
 }
 
 // ------------------------------------------------------------------------------------------------ furnish
-export function furnish(store, { floorSet, rooms, fz, keepFree, obstacles, rng, hints, decor }) {
+export function furnish(store, { floorSet, rooms, fz, keepFree, obstacles, rng, hints, decor, wfc = false }) {
+    const kits = wfc ? solveDressing(rooms, ROOM_FURNITURE, `dressing:${fz}:${rng.next()}`) : null;
     const blocked = new Set(obstacles);
     let parts = components(floorSet, blocked);
     for (const room of rooms) {
@@ -535,7 +540,7 @@ export function furnish(store, { floorSet, rooms, fz, keepFree, obstacles, rng, 
         const wallAt = (x, y) => !roomSet.has(k2(x, y)) && store.isSolid(x, y, fz + 1) && store.get(x, y, fz + 1) !== MAT.door;
         const cap = Math.ceil(room.cells.length * 0.38);
         let used = 0;
-        const list = ROOM_FURNITURE[room.kind] || [];
+        const list = kits ? kits.get(room).items : (ROOM_FURNITURE[room.kind] || []);
         // Long axis of the room (centre items run along it).
         const xs = room.cells.map(c => c[0]), ys = room.cells.map(c => c[1]);
         const longX = Math.max(...xs) - Math.min(...xs) >= Math.max(...ys) - Math.min(...ys);

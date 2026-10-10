@@ -107,6 +107,7 @@ export class KitView {
         const inst = new Map();          // `${piece}|${part}|${selfKey}` → { part, selfKey, mats: [], cols: [] }
         const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(1, 1, 1), p = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
         const add = (piece, x, y, z, yaw = 0, selfKey = 'stone', { scale = 1, sx = 1, sz = 1, dx = 0, dy = 0, dz = 0, tint = null, tintSlots = null } = {}) => {
+            if (opts.hidden?.(x,y,z)) return false;
             const parts = this.kit.piece(piece); if (!parts) return false;
             q.setFromAxisAngle(up, yaw); s.set(scale * sx, scale, scale * sz); p.set(x + 0.5 + dx, z + dz, y + 0.5 + dy);
             m4.compose(p, q, s);
@@ -138,6 +139,7 @@ export class KitView {
         for (let z = z0; z < Math.min(z0 + CHUNK, store.height, cut); z++)
             for (let y = y0; y < Math.min(y0 + CHUNK, store.depth); y++)
                 for (let x = x0; x < Math.min(x0 + CHUNK, store.width); x++) {
+                    if(opts.hidden?.(x,y,z))continue;
                     const id = store.get(x, y, z);
                     if (id === AIR) continue;
                     const h = kitHandler(store, x, y, z, id);

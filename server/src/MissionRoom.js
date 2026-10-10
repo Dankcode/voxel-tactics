@@ -16,7 +16,7 @@ export class MissionRoom extends Room {
     onCreate(options = {}) {
         this.maxClients = 4;
         const d = options.desc || {};
-        this.desc = { scenario: scenarioId(d.scenario), seed: Number(d.seed) || 1, squad: d.squad || 'standard', debug: d.debug === true };
+        this.desc = { scenario: scenarioId(d.scenario), seed: Number(d.seed) || 1, squad: d.squad || 'standard', debug: d.debug === true, inventories:d.inventories };
         this.battle = createBattle(this.desc);
         this.log = [];             // [{ seq, intent, nonce }]
         this.players = [];         // [{ id, sessionId, name }]

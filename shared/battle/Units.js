@@ -1,3 +1,4 @@
+import { packItems } from '../inventory/Inventory.js';
 // Units: Phoenix Point body parts on an XCOM-style squad member, plus Will and Stress.
 import { CLASSES, ENEMIES, PARTS, BODY } from '../content/units.js';
 import { ARMOR, WEAPONS, THROWABLES } from '../content/weapons.js';
@@ -30,7 +31,7 @@ export function createUnit(typeId, side, pos, id, overrides = {}) {
         x: pos.x, y: pos.y, z: pos.z, facing: overrides.facing || (side === 'player' ? 'n' : 's'),
         hp: def.hp, maxHp: def.hp, parts, accuracy: def.accuracy, mobility: def.mobility + (armor.mobility || 0),
         ap: B.apPerTurn, maxAp: B.apPerTurn, moveOnlyAp: 0, will: def.will, maxWill: def.will, stress: 0,
-        weapons: def.weapons.slice(), weapon: def.weapons[0], ammo, items: { ...def.items }, abilities: def.abilities.slice(),
+        weapons: def.weapons.slice(), weapon: def.weapons[0], ammo, items: { ...def.items }, inventory:packItems(def.items), abilities: def.abilities.slice(),
         statuses: [], overwatch: null, reactionsLeft: 1, alerted: side === 'player', group: overrides.group ?? null,
         down: false, dead: false, formationId: null, buffs: {}, stats: { shots: 0, hits: 0, damage: 0, kills: 0 },
         ...overrides.extra
