@@ -84,3 +84,10 @@ test('an impossible adjacency reports a named constraint without silently changi
     p.adjacencies=[['living','kitchen'],['living','study'],['living','bathroom']];
     assert.throws(()=>solveFloor(layout.buildings[0],p),/floor.constraints/);
 });
+test('picture-driven 1/2/4-storey policy preserves observations and varies floor programmes',()=>{
+ const site=structuredClone(CEDAR_IMAGE_SITE);site.frame={width:58,height:58};
+ site.buildings=[{...site.buildings[0],id:'filler',bounds:[.08,.08,.28,.28],storeys:1},{...site.buildings[0],id:'home',bounds:[.45,.08,.65,.28],storeys:2},{...site.buildings[0],id:'landmark',bounds:[.08,.55,.28,.75],storeys:4}];
+ const layout=solveSite(site),design=designLevel(site,layout);assert.deepEqual(layout.buildings.map(b=>b.storeys),[1,2,4]);
+ assert.equal(design.mission.target.building,'landmark');
+ const programmes=design.programs.filter(p=>p.building==='landmark').map(p=>p.rooms.map(r=>r.kind).join(','));assert.equal(new Set(programmes).size,4);
+});

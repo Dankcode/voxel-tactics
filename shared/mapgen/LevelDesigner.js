@@ -1,5 +1,8 @@
 const KINDS={house:['living','kitchen','study','bathroom'],shop:['sales','stock','office','restroom'],office:['open_office','meeting','office','restroom'],warehouse:['warehouse','loading','office','utility'],garage:['workshop','storage','office','utility'],diner:['dining','kitchen','office','restroom']};
 const ROOM_KINDS=new Set([...Object.values(KINDS).flat(),'bedroom','lobby','unit','galley','barracks','storeroom','armory']);
+const upperKinds=(b,floor)=>floor===0?KINDS[b.program]||KINDS.office:
+ b.program==='house'?[['bedroom','study','living','bathroom'],['unit','galley','study','bathroom'],['bedroom','armory','office','bathroom']][(floor-1)%3]:
+ [['office','meeting','stock','restroom'],['barracks','storeroom','office','utility'],['armory','study','office','restroom']][(floor-1)%3];
 export function designLevel(site,layout,proposal=null) {
     if(proposal) {
         if(!['eliminate','recover','extract','hold'].includes(proposal.mission?.kind))throw Error('design.objective: unsupported mission kind');
@@ -18,10 +21,10 @@ export function designLevel(site,layout,proposal=null) {
         return proposal;
     }
     const target=layout.buildings.slice().sort((a,b)=>b.storeys-a.storeys)[0];
-    const programmes=layout.buildings.flatMap(b=>Array.from({length:b.storeys},(_,floor)=>({building:b.id,floor,rooms:(KINDS[b.program]||KINDS.office).map(kind=>({id:kind,kind,areaShare:0.25,gameplay:!['bathroom','restroom','utility'].includes(kind)})),adjacencies:(KINDS[b.program]||KINDS.office).filter(k=>!['bathroom','restroom','utility'].includes(k)).map(kind=>[kind,'hall'])})));
+    const programmes=layout.buildings.flatMap(b=>Array.from({length:b.storeys},(_,floor)=>({building:b.id,floor,rooms:upperKinds(b,floor).map(kind=>({id:kind,kind,areaShare:0.25,gameplay:!['bathroom','restroom','utility'].includes(kind)})),adjacencies:upperKinds(b,floor).filter(k=>!['bathroom','restroom','utility'].includes(k)).map(kind=>[kind,'hall'])})));
     const primary=programmes.find(p=>p.building===target.id&&p.floor===target.storeys-1).rooms.find(r=>r.gameplay).kind;
     const kind=site.objective || (site.storyHooks?.some(s=>/hostage|evac/i.test(s))?'extract':site.storyHooks?.some(s=>/defend|alarm/i.test(s))?'hold':'recover');
     return {version:1,mission:{kind,title:site.name || site.id,briefing:`The Syndicate has occupied this ${site.theme || 'urban'} block. Advance through cover and use the flank to reach ${target.id}. Its upper floors control the approach. Secure the objective and withdraw.`,timeOfDay:site.timeOfDay,target:{building:target.id,floor:target.storeys-1,room:primary}},programs:programmes,
         beats:[{id:'approach',text:'Reach cover beneath the lookout.',building:target.id,floor:0,room:'hall'}, {id:'escalation',text:'Push past the guarded stair core.',building:target.id,floor:Math.min(1,target.storeys-1),room:'hall'}, {id:'climax',text:'Secure the Syndicate command room.',building:target.id,floor:target.storeys-1,room:primary}],
-        encounters:layout.buildings.flatMap((b,group)=>[{group:group*2,building:b.id,floor:Math.min(1,b.storeys-1),room:'hall',types:['cultist','warden_foe']},{group:group*2+1,building:b.id,floor:b.storeys-1,room:(KINDS[b.program]||KINDS.office)[0],types:['archer']}])};
+        encounters:layout.buildings.flatMap((b,group)=>[{group:group*2,building:b.id,floor:Math.min(1,b.storeys-1),room:'hall',types:['cultist','warden_foe']},{group:group*2+1,building:b.id,floor:b.storeys-1,room:upperKinds(b,b.storeys-1)[0],types:['archer']}])};
 }

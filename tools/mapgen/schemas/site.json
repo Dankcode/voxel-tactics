@@ -91,7 +91,7 @@
           },
           "storeys": {
             "type": "integer",
-            "minimum": 2,
+            "minimum": 1,
             "maximum": 4
           },
           "program": {

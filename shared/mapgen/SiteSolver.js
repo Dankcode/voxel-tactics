@@ -13,7 +13,7 @@ export function solveSite(site,seed=1) {
     const width=Math.ceil(frame.width*scale)+margin*2,depth=Math.ceil(frame.height*scale)+margin*2;
     const point=p=>[margin+Math.round(p[0]*frame.width*scale),margin+Math.round(p[1]*frame.height*scale)];
     const rect=b=>{const [x0,y0]=point(b.slice(0,2)),[x1,y1]=point(b.slice(2));return{x0,y0,w:x1-x0+1,d:y1-y0+1};};
-    const buildings=site.buildings.map(b=>({...b,...rect(b.bounds),storeys:Math.max(2,Math.min(4,Math.round(b.storeys || 2)))}));
+    const buildings=site.buildings.map(b=>({...b,...rect(b.bounds),storeys:Math.max(1,Math.min(4,Math.round(b.storeys || 1)))}));
     const reference=buildings.map(b=>({id:b.id,x0:b.x0,y0:b.y0,w:b.w,d:b.d,storeys:b.storeys}));
     for(const b of buildings) {
         if(b.w<11||b.d<11) {
@@ -47,5 +47,5 @@ export function solveSite(site,seed=1) {
         else if(surfaces.some(s=>s.material==='asphalt'&&cx>=s.x0&&cy>=s.y0&&cx<s.x0+s.w&&cy<s.y0+s.d))fixed.set(id,'street');
     }
     const assignment=solveWaveFunctionCollapse({nodes,tiles:[{id:'building',weight:0},{id:'street',weight:0},{id:'yard',weight:5},{id:'sidewalk',weight:2}],fixed,seed:`${site.id}:site:${seed}`,compatible:(a,b)=>!((a==='street'&&b==='yard')||(b==='street'&&a==='yard'))});
-    return {version:2,id:site.id,width,depth,height:18,transform:{scale,margin,frame},buildings,surfaces,flow:[site.insertion,...site.flow].map(point),reference,congruence,repairs,parcels:[...assignment].map(([id,kind])=>({id,kind}))};
+    return {version:2,datum:4,id:site.id,width,depth,height:18,transform:{scale,margin,frame},buildings,surfaces,flow:[site.insertion,...site.flow].map(point),reference,congruence,repairs,parcels:[...assignment].map(([id,kind])=>({id,kind}))};
 }

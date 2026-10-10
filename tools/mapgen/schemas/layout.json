@@ -63,7 +63,7 @@
           },
           "storeys": {
             "type": "integer",
-            "minimum": 2,
+            "minimum": 1,
             "maximum": 4
           },
           "floors": {
@@ -71,7 +71,7 @@
             "items": {
               "type": "object"
             },
-            "minItems": 2,
+            "minItems": 1,
             "maxItems": 4
           },
           "facade": {
