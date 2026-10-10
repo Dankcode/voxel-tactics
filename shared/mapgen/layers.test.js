@@ -1,3 +1,4 @@
+import { materialById } from '../voxel/Materials.js';
 import test from 'node:test';import assert from 'node:assert/strict';
 import { CEDAR_IMAGE_SITE } from '../mission/generated/CedarImage.js';
 import { solveLayout } from './LayoutSolver.js';
@@ -18,7 +19,7 @@ import { MAP_PACKAGES } from '../mission/generated/PackageCatalog.js';
 import { checkLayerGates } from './Gates.js';
 test('installed bridge and subway fixture passes flank gates on four seeds and rejects a sealed socket',()=>{
  const pkg=MAP_PACKAGES.find(p=>p.manifest.id==='subway-crossing');assert.ok(pkg);
- for(const seed of [1,2,3,4]){const m=buildPackagedMap(pkg,{seed});assert.ok(m.metrics.pass);assert.ok(Object.values(checkLayerGates(m)).every(Boolean));
+ for(const seed of [1,2,3,4]){const m=buildPackagedMap(pkg,{seed});assert.ok(m.metrics.pass);assert.ok(m.store.mat.some(id=>['lantern','emergency_light'].includes(materialById(id).key)));assert.ok(Object.values(checkLayerGates(m)).every(Boolean));
  const e=m.meta.underground.openings.find(e=>e.kind==='climb');m.store.set(e.to.x,e.to.y,2,1);assert.equal(checkLayerGates(m).twoEntrances,false);}
 });
 test('single-storey fillers omit fire escapes but keep attached roof access; storm drains retain banks',()=>{

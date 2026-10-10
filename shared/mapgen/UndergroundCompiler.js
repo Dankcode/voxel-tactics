@@ -36,6 +36,12 @@ export function compileUnderground(m,layers) {
   for(const offset of index===0?[-1,0]:[0,1])for(let z=2;z<=3;z++)s.set(p.x+dx*offset,p.y+dy*offset,z,MAT.concrete_wall);
  }
  const guard=layers.route[Math.max(4,Math.floor(layers.route.length*.75))];
- for(let i=6;i<layers.route.length-3;i+=8){if([.3,.6].some(f=>Math.abs(i-Math.floor(layers.route.length*f))<3))continue;const p=layers.route[i];s.set(p.x-1,p.y,3,i%16===6?MAT.emergency_light:MAT.lantern);}
+ let lastLight=-6,lights=0;
+ for(let i=3;i<layers.route.length-3;i++) {
+  if(i-lastLight<6||[.3,.6].some(f=>Math.abs(i-Math.floor(layers.route.length*f))<3))continue;
+  const p=layers.route[i],next=layers.route[i+1],dx=next.y!==p.y?-1:0,dy=dx?0:-1;
+  const sides=[[dx*2,dy*2],[-dx*2,-dy*2]],side=sides.find(([ax,ay])=>!cells.has(k(p.x+ax,p.y+ay))&&s.inBounds(p.x+ax,p.y+ay,3));if(!side)continue;
+  s.set(p.x+side[0],p.y+side[1],3,lights++%2===0?MAT.emergency_light:MAT.lantern);lastLight=i;
+ }
  return {cells:[...cells.values()].filter(p=>s.surfaces(p.x,p.y).some(q=>q.z===p.z&&q.headroom>=2)),openings,route:layers.route.map(p=>({...p,z:1})),guard:{...guard,z:1},kind:layers.kind};
 }

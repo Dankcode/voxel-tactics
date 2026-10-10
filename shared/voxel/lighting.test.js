@@ -9,7 +9,7 @@ test('integer light is deterministic, respects opaque walls and updates only dir
 import { createBattle } from '../session/Scenarios.js';import {WEAPONS} from '../content/weapons.js';
 test('distant shots apply darkness once and peers agree after shooting out a light',()=>{
  const a=createBattle({scenario:'subway-crossing',seed:1}),b=createBattle({scenario:'subway-crossing',seed:1});
- for(const battle of [a,b]){const target=battle.units.find(u=>u.side==='enemy'&&u.z===1);const shooter=battle.units[0];shooter.x=target.x-6;shooter.y=target.y;shooter.z=1;
+ for(const battle of [a,b]){const target=battle.units.find(u=>u.side==='enemy'&&u.z===1);target.x=2;target.y=2;target.z=1;const shooter=battle.units[0];shooter.x=target.x+6;shooter.y=target.y;shooter.z=1;
  for(let z=2;z<=3;z++)battle.store.set(target.x,target.y,z,0);
  battle.store.set(target.x+1,target.y,2,MAT.lantern);const aim=battle.chest(target);assert.ok(!battle.spreadFor(shooter,WEAPONS[shooter.weapon],aim,{target}).mods.some(([id])=>id==='darkness'));
  battle.store.set(target.x+1,target.y,2,0);assert.ok(battle.spreadFor(shooter,WEAPONS[shooter.weapon],aim,{target}).mods.some(([id,n])=>id==='darkness'&&n===1.25));}
