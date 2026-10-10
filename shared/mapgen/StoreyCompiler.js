@@ -31,9 +31,11 @@ export function compileBuilding(m,b,{roomById=id=>m.ctx.rooms.find(r=>r.id===id)
     const perStorey=b.facade.some(p=>p.storey!=null);
     for(const f of b.floors) {
         const fz=m.G+STOREY*f.floor;
-        for(const [x,y] of f.walls.map(world))for(let h=1;h<=2;h++)store.set(x,y,fz+h,WALL);
+        // v3 partitions are plaster (breakable drywall); the shell keeps the district's wall material.
+        const PART=f.layout==='v3'?MAT.plaster:WALL;
+        for(const [x,y] of f.walls.map(world))for(let h=1;h<=2;h++)store.set(x,y,fz+h,PART);
         for(const r of f.rooms) {
-            const rec={id:ctx.nextRoomId(),buildingId:b.id,storey:f.floor,kind:r.kind,gameplay:r.gameplay!==false,cells:r.cells.map(world),floorZ:fz,lit:true,doors:[]};
+            const rec={id:ctx.nextRoomId(),name:r.id,buildingId:b.id,storey:f.floor,kind:r.kind,gameplay:r.gameplay!==false,cells:r.cells.map(world),floorZ:fz,lit:true,doors:[]};
             for(const [x,y] of rec.cells) {
                 for(let h=1;h<=2;h++)store.rooms[store.index(x,y,fz+h)]=rec.id;
                 if(['bathroom','restroom','kitchen','utility','galley'].includes(r.kind))store.set(x,y,fz,MAT.ceramic);
@@ -110,7 +112,7 @@ reserveFireEscape(m,f);
     }
     for(const rec of out.access)validateAccessModule(store,rec);
     dressRoof(m,out);
-    if(b.floors.some(f=>f.layout==='v3'))furnishBuilding(m,b,out);
+    if(b.floors.some(f=>f.layout==='v3'))furnishBuilding(m,b,out,{beats:(m.beats||[]).filter(bt=>bt.building===b.id)});
     else for(const f of b.floors) {
         const rooms=out.rooms.filter(r=>r.storey===f.floor),floorSet=new Set(rooms.filter(r=>r.gameplay).flatMap(r=>r.cells.map(c=>key(...c))));
         const keepFree=new Set((rooms.find(r=>r.kind==='hall')?.cells||[]).map(c=>key(...c))),obstacles=new Set();

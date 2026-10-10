@@ -11,10 +11,11 @@ export function layerCompatible(a,b,d) {
  return true;
 }
 /** A single WFC graph spans all three parcel layers. Route priors pin vertical sockets, not isolated buildings. */
-export function solveLayers(layout,site,seed=1) {
+export function solveLayers(layout,site,seed=1,opts={}) {
  const target=layout.buildings.slice().sort((a,b)=>b.storeys-a.storeys)[0],start=layout.flow[0];
- const a={x:start[0],y:start[1]-3},b={x:target.x0-2,y:target.y0+Math.floor(target.d/2)};
- const free=(x,y)=>x>=2&&y>=2&&x<layout.width-2&&y<layout.depth-2&&!layout.buildings.some(b=>x>=b.x0-1&&x<=b.x0+b.w&&y>=b.y0-1&&y<=b.y0+b.d);
+ // v3 layouts name the stairs entrance and the objective-side manhole; v2 keeps its fixed west approach.
+ const a=opts.entrance||{x:start[0],y:start[1]-3},b=opts.approach||{x:target.x0-2,y:target.y0+Math.floor(target.d/2)};
+ const free=(x,y)=>x>=2&&y>=2&&x<layout.width-2&&y<layout.depth-2&&!layout.buildings.some(b=>x>=b.x0-1&&x<=b.x0+b.w&&y>=b.y0-1&&y<=b.y0+b.d)&&!(opts.avoid?.(x,y));
  const queue=[a],prev=new Map([[key(a.x,a.y),null]]);
  for(let i=0;i<queue.length&&!prev.has(key(b.x,b.y));i++)for(const [dx,dy]of dirs){const p={x:queue[i].x+dx,y:queue[i].y+dy},k=key(p.x,p.y);if(free(p.x,p.y)&&!prev.has(k)){prev.set(k,queue[i]);queue.push(p);}}
  if(!prev.has(key(b.x,b.y)))throw Error('layer.socket: no flank corridor from insertion to objective approach');
@@ -32,5 +33,5 @@ export function solveLayers(layout,site,seed=1) {
   else fixed.set(id,l===0?(tunnel.has(k)?'tunnel':'rock'):l===1?(socket.get(k)||prior.get(k)||'yard'):(prior.get(k)==='building'?'rooftop':k===key(Math.floor(drop.x/4),Math.floor(drop.y/4))?'bridge':'air'));
  }
  let assignment;try{assignment=solveWaveFunctionCollapse({nodes,tiles:[...new Set(kinds.flat())].map(id=>({id,weight:id==='yard'?5:2})),domains,fixed,compatible:layerCompatible,seed:`${site.id}:layers:${seed}`});}catch(e){throw Error(`layer.socket: ${e.message}`);}
- return {datum:4,parcels:[...assignment].map(([id,kind])=>({id,kind})),route,entrances:[{...a,kind:'stairs'},{...b,kind:'manhole'}],drop,bridge:site.underground?.kind==='underpass'||!!site.levels?.includes('bridge'),kind:site.underground?.kind||'subway'};
+ return {datum:4,parcels:[...assignment].map(([id,kind])=>({id,kind})),route,entrances:[{...a,kind:'stairs'},{...b,kind:'manhole'}],drop,bridge:opts.bridge??(site.underground?.kind==='underpass'||!!site.levels?.includes('bridge')),kind:opts.kind||site.underground?.kind||'subway'};
 }

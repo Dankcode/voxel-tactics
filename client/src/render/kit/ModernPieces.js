@@ -427,7 +427,15 @@ const decor = {
         { slot: 'red', geometry: box(1.004, 0.12, 1.004, 0, 0.18) },
         { slot: 'lamp', geometry: box(0.7, 0.02, 0.7, 0, 0.02) }
     ]),
-    stepping: P({ group: 'decor' }, () => [{ slot: 'plinth', geometry: sb(0.5, 0.03, 0.4, 0.01, 0, 0.0) }])
+    stepping: P({ group: 'decor' }, () => [{ slot: 'plinth', geometry: sb(0.5, 0.03, 0.4, 0.01, 0, 0.0) }]),
+    // PLAN-04 dressing: story-beat props, clutter, world-edge cordons and facade details.
+    cash_stack: P({ group: 'decor', text: 'Bundled cash on a table (story beat)' }, () => [{ slot: 'flowers', geometry: merge([box(0.18, 0.06, 0.1, -0.12, 0, -0.1), box(0.18, 0.06, 0.1, 0.1, 0, -0.06), box(0.18, 0.06, 0.1, -0.02, 0.06, -0.1)]) }]),
+    rifle_rack: P({ group: 'decor', text: 'Rifles laid on a crate (arms cache beat)' }, () => [{ slot: 'iron', geometry: merge([box(0.8, 0.04, 0.08, 0, 0.02, -0.12), box(0.8, 0.04, 0.08, 0, 0.02, 0.06), box(0.12, 0.08, 0.1, 0.36, 0.02, -0.12), box(0.12, 0.08, 0.1, 0.36, 0.02, 0.06)]) }]),
+    papers: P({ group: 'decor', text: 'Scattered papers (clutter noise)' }, () => [{ slot: 'canvas_white', geometry: merge([box(0.22, 0.004, 0.3, -0.15, 0.002, 0.1).rotateY(0.4), box(0.22, 0.004, 0.3, 0.12, 0.002, -0.12).rotateY(-0.7), box(0.22, 0.004, 0.3, 0.05, 0.006, 0.18).rotateY(1.2)]) }]),
+    debris: P({ group: 'decor', text: 'Broken furniture and plaster (ransacked room)' }, () => [{ slot: 'wood', geometry: merge([box(0.5, 0.05, 0.08, -0.05, 0.02, 0).rotateY(0.6), box(0.36, 0.05, 0.08, 0.12, 0.05, 0.1).rotateY(-0.9)]) }, { slot: 'plinth', geometry: merge([blob(0.09, 0, 41).translate(0.2, 0.04, -0.2), blob(0.07, 0, 43).translate(-0.25, 0.03, 0.22)]) }]),
+    cordon: P({ group: 'decor', text: 'Police sawhorse barrier at a closed road (world edge)' }, () => [{ slot: 'iron', geometry: merge([box(0.04, 0.9, 0.3, -0.42, 0, 0), box(0.04, 0.9, 0.3, 0.42, 0, 0)]) }, { slot: 'red', geometry: merge([box(1, 0.16, 0.04, 0, 0.62, 0.02), box(1, 0.12, 0.04, 0, 0.34, 0.02)]) }, { slot: 'lamp', geometry: box(0.1, 0.08, 0.1, -0.42, 0.92, 0) }]),
+    wall_sign: P({ group: 'decor', light: true, text: 'Shop or street sign on a facade (+Z faces out)' }, () => [{ slot: 'self_dark', geometry: sb(0.9, 0.36, 0.08, 0.02, 0, 0.3, 0) }, { slot: 'lamp', geometry: box(0.8, 0.22, 0.02, 0, 0.37, 0.045) }]),
+    wall_vent: P({ group: 'decor', text: 'Louvred wall vent (+Z faces out)' }, () => [{ slot: 'frame', geometry: merge([box(0.5, 0.4, 0.04, 0, 0.2, 0), ...[0, 1, 2, 3].map(i => box(0.44, 0.03, 0.05, 0, 0.27 + i * 0.08, 0.02).rotateX(0.5))]) }])
 };
 
 const circulation={

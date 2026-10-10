@@ -103,7 +103,7 @@ export class Scene {
     setMission(mission) {
         this.backdrop?.userData.dispose();
         if (this.backdrop) this.scene.remove(this.backdrop);
-        this.backdrop = missionBackdrop(this.bounds.w, this.bounds.d, mission.id);
+        this.backdrop = missionBackdrop(this.bounds.w, this.bounds.d, mission.id, mission.meta?.backdrop);
         this.scene.add(this.backdrop);
     }
     /** Fit the sun's shadow camera to the battlefield. */

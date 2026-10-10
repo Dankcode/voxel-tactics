@@ -66,7 +66,8 @@ export function finalizeMission({ id, name, store, rooms, buildings, spawns, rng
 
 /** A building room by kind (the index-th of that kind) or by index. */
 function roomFor(list, spec) {
-    const pool = spec.kind ? list.filter(r => r.kind === spec.kind) : list;
+    const named = spec.kind ? list.filter(r => r.name === spec.kind) : [];
+    const pool = named.length ? named : spec.kind ? list.filter(r => r.kind === spec.kind) : list;
     return pool.length ? pool[(spec.index ?? 0) % pool.length] : null;
 }
 

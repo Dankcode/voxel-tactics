@@ -36,6 +36,23 @@ import { ABILITIES } from '../../shared/content/units.js';
 const PART_KEYS = { z: 'head', x: 'torso', c: 'armL', v: 'armR', g: 'legs' };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
+/**
+ * Texture variants by noise (PLAN-04 P8): generated maps carry per-building and per-lot wear tints, so whole streets
+ * age together (clean / worn / dirty) instead of flickering per tile. Visual only. Returns null for other maps.
+ */
+export function wearTint(mission) {
+    const wear = mission?.visual?.wear; if (!wear) return null;
+    const { width: W, depth: D } = mission.store, G = mission.meta?.streetDatum ?? 1;
+    const ground = new Float32Array(W * D * 3).fill(1), walls = new Float32Array(W * D * 3).fill(1), built = new Uint8Array(W * D);
+    for (const l of wear.lots) for (let y = l.y0; y <= Math.min(D - 1, l.y1); y++) for (let x = l.x0; x <= Math.min(W - 1, l.x1); x++) ground.set(l.tint, (x + y * W) * 3);
+    for (const b of wear.buildings) for (let y = b.y0; y <= b.y1; y++) for (let x = b.x0; x <= b.x1; x++) { walls.set(b.tint, (x + y * W) * 3); built[x + y * W] = 1; }
+    return (x, y, z) => {
+        if (x < 0 || y < 0 || x >= W || y >= D) return null;
+        const i = x + y * W, src = built[i] && z > G ? walls : z <= G ? ground : null;
+        return src ? [src[i * 3], src[i * 3 + 1], src[i * 3 + 2]] : null;
+    };
+}
+
 export class Game {
     constructor({ canvas, hudRoot, cutinRoot, floatRoot, onExit, options = {} }) {
         this.options = { autoEndTurn: true, autoNext: true, followCamera: true, edgeScroll: true, ...options };
@@ -77,9 +94,11 @@ export class Game {
         this.scene.setBounds(store.width, store.depth, store.height);
         this.scene.setMission(this.battle.mission);
         this.voxelView = new VoxelView(this.scene, store, this.library, this.options.kit === false ? null : this.kit);
+        const wear = wearTint(this.battle.mission);
         this.voxelView.tint = (x, y, z) => {
             const r = store.roomAt(x, y, z) >= 0 ? store.roomAt(x, y, z) : store.roomAt(x, y, z + 1);
-            const light=this.battle.light.tint(x,y,z);
+            let light=this.battle.light.tint(x,y,z);
+            const w = wear?.(x, y, z); if (w) light = light.map((c, i) => c * w[i]);
             return r >= 0 && this.fog && !this.battle.revealedRooms.has(r) ? light.map((c,i)=>c*[0.42,0.44,0.55][i]) : light;
         };
         setGroundStore(store);

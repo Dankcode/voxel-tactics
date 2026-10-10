@@ -1,4 +1,5 @@
 import { compileUnderground } from './UndergroundCompiler.js';
+import { compileV3Map } from './ExteriorCompiler.js';
 // Offline image analysis becomes data. Runtime compilation is deterministic and shares the gameplay voxel matrix.
 import { solveLayout } from './LayoutSolver.js';
 import { compileBuilding } from './StoreyCompiler.js';
@@ -37,6 +38,7 @@ export function buildImageMap(site, { seed = 1, design = null, floorSpecs = [] }
 
 export function buildPackagedMap({site,layout,design,manifest}, { seed = 1 } = {}) {
     validateSite(site);
+    if(layout.version===3)return compileV3Map({site,layout,design,manifest},{seed});
     const {width,depth,height}=layout;
     const m = createMap({ id: site.id, width, depth, height, seed, datum:layout.datum??4 });
     for(const parcel of layout.parcels)if(parcel.kind==='sidewalk') {

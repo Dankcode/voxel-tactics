@@ -18,6 +18,7 @@ export class VoxelStore {
         this.mat = new Uint8Array(n);
         this.hp = new Uint16Array(n);
         this.surfaceCache = new Map();
+        this.profileSurfaceCache = new Map();     // agent profile → (x + y·W → admissible surfaces), TraversalRules
         this.dirtyChunks = new Set();
         this.version = 0;
         this.listeners = new Set();
@@ -41,6 +42,7 @@ export class VoxelStore {
             this.version++;
             this.markDirty(x, y, z);
             this.surfaceCache.delete(x + y * this.width);
+            for (const m of this.profileSurfaceCache.values()) m.delete(x + y * this.width);
             if (this.recording) this.recording.push([x, y, z, before, id]);
             for (const l of this.listeners) l(x, y, z, before, id);
         }

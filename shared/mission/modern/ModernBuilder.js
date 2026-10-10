@@ -643,3 +643,6 @@ function footprintApi(o, cells, len, dep, fz, yaw) {
 // Every material a program or furniture recipe names must exist (a typo would silently write air).
 for (const p of Object.values(PROGRAMS)) for (const k of [p.wall, p.floor, p.wet]) if (k && MAT[k] == null) throw new Error(`ModernBuilder: unknown material ${k}`);
 for (const [id, it] of Object.entries(ITEMS)) if (MAT[it.mat] == null) throw new Error(`ModernBuilder: item ${id} uses unknown material ${it.mat}`);
+
+// Shared with the PLAN-04 furnishing WFC (shared/mapgen/FurnishSolver.js), which places the same pre-baked clusters.
+export { ITEMS as FURNITURE_ITEMS, footprintApi, components as floorComponents, PLANTS as PLANT_ROOMS, YAW_OF, SIDES as BUILD_SIDES };

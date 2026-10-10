@@ -111,10 +111,11 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
         return null;
     }
 
-    // Nothing in sight: advance on the objective, else the nearest hostile (patrol / search).
+    // Nothing in sight: advance on the objective, else the nearest hostile (patrol / search). On generated maps a
+    // third of the squad works up a flank of the line of play (PLAN-04 §5.4: the autopilot uses flanks).
     if (!known.length) {
         if (u.movedThisTurn >= 1 && u.ap < 2) return null;
-        const target = goal ? { ...goal, z: goal.z ?? u.z } : nearest(u, battle.enemiesOf(u));
+        const target = (goal && flankTarget(battle, u, goal)) || (goal ? { ...goal, z: goal.z ?? u.z } : nearest(u, battle.enemiesOf(u)));
         if (!target || u.movedThisTurn > 12) return null;
         const step = advance(battle, u, target);
         return step ? { type: 'move', unitId: u.id, to: step, group } : null;
@@ -160,6 +161,7 @@ function bestTile(battle, u, w, threats, budgetAp, goal = null) {
     if (!nodes.length) return null;
     const stride = Math.max(1, Math.floor(nodes.length / 260));
     const allies = battle.unitsOf(u.side).filter(o => o.id !== u.id);
+    const pockets = battle.mission.meta?.pockets || [];
     const scored = [];
     for (let i = 0; i < nodes.length; i += stride) {
         const n = nodes[i];
@@ -178,6 +180,8 @@ function bestTile(battle, u, w, threats, budgetAp, goal = null) {
         if (surf === 'burning' || battle.field.isBurning(n.x, n.y, n.z)) s -= 40;
         s -= allies.filter(o => Math.max(Math.abs(o.x - n.x), Math.abs(o.y - n.y)) <= 2).length * 4;
         if (threats.length) s += Math.max(0, n.z - Math.min(...threats.map(e => e.z))) * 2;
+        // Enemies defend the engagement pockets the generator built along the line of play.
+        if (u.side === 'enemy' && pockets.length && pockets.some(p => Math.hypot(p.x - n.x, p.y - n.y) <= 2.5)) s += 6;
         if (goal) {
             s -= Math.hypot(n.x - goal.x, n.y - goal.y) * pull;
             if (o.zone && inZone(o.zone, n) && o.kind !== 'recover') s += 25;
@@ -216,6 +220,20 @@ function advance(battle, u, target) {
     };
     // Ladders are atomic moves. If reserving an AP prevents any progress, allow a full-turn climb/dash.
     return stepWithin(Math.min(budget,available)) || stepWithin(available);
+}
+
+/** Flankers (every third squad member) follow a flank path ~12 cells ahead of where they stand, then the goal. */
+function flankTarget(battle, u, goal) {
+    const flanks = battle.mission.meta?.flanks;
+    const idx = Number(String(u.id).replace(/\D/g, '')) || 0;
+    if (!flanks?.length || idx % 3 !== 1) return null;
+    const f = flanks[Math.floor(idx / 3) % flanks.length], path = f.cells;
+    if (!path?.length) return null;
+    let at = 0, best = Infinity;
+    for (let i = 0; i < path.length; i++) { const d = Math.hypot(path[i][0] - u.x, path[i][1] - u.y); if (d < best) { best = d; at = i; } }
+    if (at >= path.length - 6) return null;
+    const [x, y] = path[Math.min(path.length - 1, at + 12)];
+    return { x, y, z: battle.mission.meta.streetDatum ?? u.z };
 }
 
 function nearest(u, list) { let b = null, bd = Infinity; for (const e of list) { const d = Math.hypot(e.x - u.x, e.y - u.y); if (d < bd) { bd = d; b = e; } } return b; }

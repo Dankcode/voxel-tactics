@@ -11,6 +11,16 @@ function admissible(s, p) {
         (s.voxel.element !== 2 || p.swim === 'shallow' && s.info.traversal === 'wade');
 }
 export function surfacesAt(world, x, y, profile = AGENT_PROFILES.player) {
+    // Memoised per profile on stores that keep the cache (VoxelStore drops entries on every write to the column;
+    // wide profiles read neighbouring columns too, so only width-1 profiles are cached).
+    const cache = profile.width === 1 ? world.profileSurfaceCache : null;
+    if (cache && x >= 0 && y >= 0 && x < world.width && y < world.depth) {
+        let m = cache.get(profile); if (!m) cache.set(profile, m = new Map());
+        const k = x + y * world.width;
+        let v = m.get(k);
+        if (!v) { v = world.surfaces(x, y).filter(s => admissible(s, profile)); m.set(k, v); }
+        return v;
+    }
     return world.surfaces(x, y).filter(s => admissible(s, profile) &&
         (profile.width === 1 || footprintFits(world, s, profile)));
 }

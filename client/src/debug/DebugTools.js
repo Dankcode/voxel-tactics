@@ -20,6 +20,8 @@ import { STATUS_DEFS } from '../../../shared/elements/Elements.js';
 import { reasonText } from '../ui/Reasons.js';
 import { LocalSession } from '../net/LocalSession.js';
 import { DEBUG_PROGRAMS, DEBUG_TIMES } from '../../../shared/mapgen/DebugGenerator.js';
+import { PLOT_IDS } from '../../../shared/mapgen/PlotCatalogue.js';
+import { OPERATION_OBJECTIVES, OPERATION_TIMES } from '../../../shared/mapgen/Generator.js';
 import { SCENARIOS } from '../../../shared/session/Scenarios.js';
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -29,7 +31,7 @@ const TOOLS = [
     ['geo', 'Quake (geo)', ''], ['smoke', 'Smoke', ''], ['spawn', 'Spawn unit', '']
 ];
 const PLACEABLE = ['sandbag', 'drystone', 'fence', 'hay', 'crate', 'barrel_powder', 'barrel_water', 'cart', 'stall', 'rock', 'hedge', 'stone', 'timber', 'plaster', 'glass', 'water', 'ice', 'rubble', 'plank'];
-const OVERLAYS = [['cover', 'Cover map'], ['los', 'Line of sight'], ['rooms', 'Rooms'], ['reach', 'Reach cost'], ['elements', 'Element field']];
+const OVERLAYS = [['cover', 'Cover map'], ['los', 'Line of sight'], ['rooms', 'Rooms'], ['reach', 'Reach cost'], ['elements', 'Element field'], ['play', 'Line of play']];
 
 export class DebugTools {
     constructor(game, hudRoot) {
@@ -39,6 +41,7 @@ export class DebugTools {
         this.manualEnemy = false; this.paused = false; this.stepResolvers = [];
         this.overlay = null; this.lastOps = [];
         this.builderSeed = 1; this.builderProgram = 'office'; this.builderStoreys = 3; this.builderTime = 'day';
+        this.opPlot = 'downtown'; this.opSeed = 1; this.opObjective = ''; this.opTime = '';
         this.builderBusy = false; this.builderMessage = ''; this.builderError = false;
         this.fps = 0; this.frames = 0; this.fpsT = performance.now();
         this.el = document.createElement('div'); this.el.className = 'dbg-drawer hidden';
@@ -154,6 +157,8 @@ export class DebugTools {
                 break; }
             case 'map': this.restartWith({ ...JSON.parse(arg), debugMap: null }); break;
             case 'generate': this.generateMap(); break;
+            case 'operation': this.generateOperation(); break;
+            case 'operationNext': this.opSeed = (this.opSeed + 1) >>> 0; this.generateOperation(); break;
             case 'generateNext': this.builderSeed = (this.builderSeed + 1) >>> 0; this.generateMap(); break;
             case 'killVisible': for (const id of [...(g.battle.visible || [])]) this.op('kill', { unitId: id }); break;
             case 'healSquad': for (const u of g.battle.units.filter(u => u.side === 'player')) this.op('heal', { unitId: u.id }); break;
@@ -203,6 +208,22 @@ export class DebugTools {
             return null;
         } finally { this.builderBusy = false; this.render(); }
     }
+    /** Generate and load a PLAN-04 operation (same descriptor the menu's game mode uses). */
+    async generateOperation(options = {}) {
+        if (this.builderBusy || !this.game.session?.local) return null;
+        const operation = { plot: this.opPlot, objective: this.opObjective || null, timeOfDay: this.opTime || null, ...options };
+        this.builderBusy = true; this.builderError = false; this.builderMessage = `Generating ${operation.plot} · seed ${this.opSeed}…`; this.render();
+        try {
+            await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+            await this.game.player.whenIdle();
+            const session = await LocalSession.create({ ...this.game.session.desc, scenario: 'operation', operation, seed: this.opSeed, debug: true, debugMap: null });
+            await this.game.start(session);
+            const m = session.battle.mission;
+            this.builderMessage = `${m.name} · critic ${m.meta.critic?.total ?? '–'} · ${m.metrics.pass ? 'all gates pass' : 'gates failing'}`;
+            return m;
+        } catch (error) { this.builderError = true; this.builderMessage = `Operation failed: ${error.message}`; return null; }
+        finally { this.builderBusy = false; this.render(); }
+    }
     refresh() { if (this.enabled) { this.render(); this.applyOverlay(); } }
     render() {
         if (!this.enabled || !this.battle) return;
@@ -240,6 +261,14 @@ export class DebugTools {
             const gates = Object.entries(m.gates || {}).map(([k, ok]) => `<span class="${ok ? 'ok' : 'bad'}">${k}</span>`).join(' ');
             body = `<p><b>${esc(b.mission.name)}</b> · seed ${g.session.desc?.seed ?? '?'} · ${b.store.width}×${b.store.depth}×${b.store.height}</p>
                 <div class="row"><button data-d="restart">Restart</button><button data-d="reseed">New seed</button></div>
+                <h5>Operation generator (PLAN-04)</h5>
+                <p class="hint">Plot → fields → district/lot/bay WFC → interiors → gates with local repair. ${b.mission.meta?.critic ? `Critic <b>${b.mission.meta.critic.total}</b> · ${Object.entries(b.mission.meta.critic.scores).map(([k, v]) => `${k} ${v}`).join(' · ')}` : ''}</p>
+                <label>Plot <select aria-label="Operation plot" data-v="opPlot">${PLOT_IDS.map(p => `<option ${p === this.opPlot ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
+                <label>Seed <input aria-label="Operation seed" data-v="opSeed" type="number" min="0" max="4294967295" step="1" value="${this.opSeed}"></label>
+                <label>Objective <select aria-label="Operation objective" data-v="opObjective"><option value="">auto</option>${OPERATION_OBJECTIVES.map(o => `<option ${o === this.opObjective ? 'selected' : ''}>${o}</option>`).join('')}</select></label>
+                <label>Time <select aria-label="Operation time" data-v="opTime"><option value="">auto</option>${OPERATION_TIMES.map(t => `<option ${t === this.opTime ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+                <div class="row"><button data-d="operation" ${this.builderBusy || !g.session.local ? 'disabled' : ''}>Generate operation</button><button data-d="operationNext" ${this.builderBusy || !g.session.local ? 'disabled' : ''}>Next seed</button></div>
+                ${b.mission.meta?.repairs?.length && b.mission.meta?.generatorVersion ? `<p class="hint">Repairs: ${esc(b.mission.meta.repairs.map(r => r.kind).join(', '))}</p>` : ''}
                 <h5>Map builder (local)</h5>
                 <p class="hint">Fresh architecture through the layout solver and voxel compiler. Restart replays it; new layout changes the seed.</p>
                 <label>Seed <input aria-label="Map builder seed" data-v="builderSeed" type="number" min="0" max="4294967295" step="1" value="${this.builderSeed}"></label>
@@ -312,6 +341,14 @@ export class DebugTools {
                 (r.hit ? blocked : segs).push([a, r.hit ? r.point : z]);
             }
             o.showDebugLines(segs, 0x58e08a); o.showDebugLines(blocked, 0xff5a4a);
+        } else if (this.overlay === 'play') {
+            // PLAN-04: the main route (cyan), flanks (amber), engagement pockets (red) and the tunnel (violet).
+            const meta = b.mission.meta, G = meta.streetDatum ?? 1;
+            for (const [x, y] of meta.lineOfPlay?.main || []) cells.push({ x, y, z: G, color: 0x4fd3ff });
+            for (const f of meta.flanks || []) for (const [x, y] of f.cells) cells.push({ x, y, z: G, color: 0xffb347 });
+            for (const p of meta.pockets || []) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) cells.push({ x: p.x + dx, y: p.y + dy, z: G, color: 0xff5a4a });
+            for (const p of meta.underground?.route || []) if (g.cutLevel <= G) cells.push({ ...p, color: 0xb388ff });
+            o.showDebugTiles(cells, 0.5);
         } else if (this.overlay === 'elements') {
             for (const [k, v] of b.field.surfaces) { const [x, y, z] = k.split(',').map(Number); cells.push({ x, y, z, color: { wet: 0x4fc3f7, frozen: 0xe1f5fe, burning: 0xff7043, oiled: 0x8d6e63, electrified: 0xfff176 }[v.effect] || 0xffffff }); }
             for (const k of b.field.fires.keys()) { const [x, y, z] = k.split(',').map(Number); cells.push({ x, y, z, color: 0xff3d00 }); }

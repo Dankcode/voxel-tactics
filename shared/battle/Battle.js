@@ -53,7 +53,10 @@ export class Battle {
         this.objective = createObjective(mission.objective);
         this.revealedRooms = new Set();
         this.formations = new Formations(this);
-        this.stats = { weapons: {}, throwables: {}, voxelsDestroyed: 0, fires: 0, breaches: 0, reactions: 0, formations: {}, undergroundSteps:0,drops:0 };
+        this.stats = { weapons: {}, throwables: {}, voxelsDestroyed: 0, fires: 0, breaches: 0, reactions: 0, formations: {}, undergroundSteps:0,drops:0,flankSteps:0 };
+        // Flank cells well off the main line of play (PLAN-04): the sim reports how often squads actually flank.
+        const main=(mission.meta?.lineOfPlay?.main||[]);
+        this.flankCells=new Set((mission.meta?.flanks||[]).flatMap(f=>f.cells).filter(([x,y])=>!main.some(([a,b])=>Math.max(Math.abs(a-x),Math.abs(b-y))<3)).map(([x,y])=>`${x},${y}`));
         const ps = mission.spawns.player;
         squad.forEach((s, i) => {
             const pos = ps[i % ps.length];
@@ -428,6 +431,7 @@ export class Battle {
             kinds.push(kind);
             if (kind === 'jump') {jumped = true;this.stats.drops++;this.noise(p.x,p.y,p.z,8,u);}
             if(this.mission.meta?.streetDatum&&p.z<this.mission.meta?.streetDatum)this.stats.undergroundSteps++;
+            if(u.side==='player'&&this.flankCells.has(`${p.x},${p.y}`))this.stats.flankSteps++;
             this.openDoorsOnStep(u, path[i - 1], p);
             u.facing = facingToward(p.x - u.x, p.y - u.y);
             u.x = p.x; u.y = p.y; u.z = p.z;

@@ -231,6 +231,7 @@ export function streetStairTemplate({ x, y, dir, datum }) {
     const cells = [];
     for (let i = 0; i < STREET_STAIR.length; i++) {
         const cx = x + dir[0] * i, cy = y + dir[1] * i, z = 1 + i;
+        for (let h = 2; h < z; h++) cells.push({ x: cx, y: cy, z: h, mat: MAT.stairs_stone, role: 'riser' });
         cells.push({ x: cx, y: cy, z, mat: i ? MAT.stairs_stone : MAT.concrete, role: i ? 'step' : 'foot' });
         for (let h = Math.max(z + 1, 2); h <= datum + 2; h++) cells.push({ x: cx, y: cy, z: h, mat: AIR, role: 'headroom' });
     }

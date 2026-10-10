@@ -50,6 +50,7 @@ function aggregate(runs) {
         battles: runs.length, objective: runs[0]?.objective, reasons: runs.reduce((a, r) => (a[`${r.winner}:${r.reason}`] = (a[`${r.winner}:${r.reason}`] || 0) + 1, a), {}), playerWinRate: runs.filter(r => r.winner === 'player').length / n, draws: runs.filter(r => r.winner === 'draw').length / n,
         avgRounds: runs.reduce((s, r) => s + r.rounds, 0) / n, avgSurvivors: runs.reduce((s, r) => s + r.survivors, 0) / n, avgMs: runs.reduce((s, r) => s + r.ms, 0) / n,
         routeUseRate:runs.filter(r=>r.stats.undergroundSteps>0||r.stats.drops>0).length/n,
+        flankUseRate:runs.filter(r=>r.stats.flankSteps>0).length/n,
         weapons: w, throwables: th, formations: f, perBattle: { voxels: voxels / n, fires: fires / n, breaches: breaches / n, reactions: reactions / n }
     };
 }
@@ -60,7 +61,7 @@ function printReport(title, agg) {
     console.log(`player win ${pct(agg.playerWinRate)} · draws ${pct(agg.draws)} · avg rounds ${agg.avgRounds.toFixed(1)} · survivors ${agg.avgSurvivors.toFixed(2)} · ${agg.avgMs.toFixed(0)} ms/battle`);
     console.log(`objective ${agg.objective} · outcomes ${Object.entries(agg.reasons).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
     console.log(`per battle: voxels ${agg.perBattle.voxels.toFixed(1)} · fires ${agg.perBattle.fires.toFixed(1)} · breaches ${agg.perBattle.breaches.toFixed(2)} · reactions ${agg.perBattle.reactions.toFixed(1)}`);
-    console.log(`underground/drop route use ${pct(agg.routeUseRate)}`);
+    console.log(`underground/drop route use ${pct(agg.routeUseRate)} · flank use ${pct(agg.flankUseRate)}`);
     console.log('weapon            shots  proj-hit  dmg/shot  dmg/AP  kills/shot  voxels');
     for (const [id, s] of Object.entries(agg.weapons).sort((a, b) => b[1].shots - a[1].shots)) {
         console.log(`${(WEAPONS[id]?.name || id).padEnd(16)} ${String(s.shots).padStart(6)}  ${s.projectiles ? pct(s.hits / s.projectiles) : '    –'}    ${(s.damage / Math.max(1, s.shots)).toFixed(2).padStart(6)}  ${(s.damage / Math.max(1, s.ap)).toFixed(2).padStart(6)}      ${(s.kills / Math.max(1, s.shots)).toFixed(3)}  ${String(s.voxels).padStart(6)}`);

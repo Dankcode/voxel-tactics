@@ -8,7 +8,7 @@
 // Squad units are dealt round-robin to connected players; the squad's turn ends when every connected
 // player has voted End Turn. Reconnects get the full intent log and replay it.
 import colyseus from 'colyseus';
-import { createBattle, scenarioId } from '../../shared/session/Scenarios.js';
+import { createBattle, sanitizeDesc } from '../../shared/session/Scenarios.js';
 import { decide } from '../../shared/battle/Ai.js';
 
 const { Room } = colyseus;
@@ -16,7 +16,7 @@ export class MissionRoom extends Room {
     onCreate(options = {}) {
         this.maxClients = 4;
         const d = options.desc || {};
-        this.desc = { scenario: scenarioId(d.scenario), seed: Number(d.seed) || 1, squad: d.squad || 'standard', debug: d.debug === true };
+        this.desc = sanitizeDesc(d);
         this.battle = createBattle(this.desc);
         this.log = [];             // [{ seq, intent, nonce }]
         this.players = [];         // [{ id, sessionId, name }]
