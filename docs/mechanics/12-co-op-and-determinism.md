@@ -1,7 +1,7 @@
 # 12 · Co-op and determinism
 
-Online co-op is deterministic lockstep: every peer builds the same mission from a small descriptor and applies the
-same ordered list of intents. Code: `shared/session/Scenarios.js`, `server/src/MissionRoom.js`,
+Online co-op is deterministic lockstep: the server compiles the mission and sends an RLE voxel snapshot to peers, which apply the
+same ordered list of intents. Code: `shared/session/Scenarios.js`, `shared/session/MissionSnapshot.js`, `server/src/MissionRoom.js`,
 `client/src/net/OnlineSession.js`, `client/src/net/LocalSession.js`, `Battle.hash`.
 
 ## Determinism contract
@@ -14,7 +14,7 @@ same ordered list of intents. Code: `shared/session/Scenarios.js`, `server/src/M
 - Mission generation uses `createRng(hashString(`${mapId}:${seed}`))`; iteration orders are fixed (sorted fire keys,
   sorted explosion cells).
 - **Descriptor** (`Scenarios.createBattle`): `{ scenario, seed, squad, debug? }` → map, squad (`SQUADS` preset or a
-  list of class ids, call signs dealt in order) and `Battle`. Descriptor + ordered intents = the whole battle.
+  list of class ids, call signs dealt in order) and `Battle`. Local sessions use the descriptor to build the map. Co-op uses the authoritative compiled mission + descriptor + ordered intents.
 - Assumption, not enforced: every peer's JS engine produces bit-identical results for `Math.hypot`, `Math.tan`,
   `Math.cos`, `Math.sin`, `Math.atan2` on the same inputs. The spec leaves their precision to the implementation
   (unlike `Math.sqrt`), so mixed browsers could desync in principle; the hash check below would show it.
@@ -28,7 +28,7 @@ event log slice the client animates.
 
 ## The room (`MissionRoom`)
 
-- `onCreate`: the server sanitises the descriptor to `{ scenario: scenarioId(...), seed: Number(seed) || 1, squad, debug: debug === true }`, builds the authoritative `Battle`, max **4** clients.
+- `onCreate`: the server sanitises the descriptor and validates all packs before generation. Invalid packs return error 4211 with the soldier number and placement reason. Mission generation runs in a worker (two active jobs, eight waiting, 30-second timeout), then the server builds the authoritative `Battle`, max **4** clients. The init message carries the RLE compiled mission snapshot, including voxel HP, room tags and support groups.
 - **Seats** (`reassignOwners`): on every join and leave, squad units are dealt round-robin to the connected players
   (`P1`, `P2`, …) in roster order. The deal includes dead units, so the living split can be uneven. It is committed
   as an `owners` intent so every peer agrees; clients may not send `owners`.
@@ -41,13 +41,13 @@ event log slice the client animates.
   makes the count complete) the server commits `endTurn` for the squad and runs the **enemy phase itself**
   (`runEnemyTurn`: every enemy, up to 6 `decide` intents each, then `endTurn` for the enemy), streaming each AI intent.
   Votes cannot be withdrawn.
-- **Join / reconnect**: a joiner receives `init` with the descriptor, its player id, the full intent log and the
+- **Join / reconnect**: a joiner receives `init` with the descriptor, compiled mission snapshot, its player id, the full intent log and the
   player list; `OnlineSession.connect` replays the log. A dropped client gets 60 s to reconnect
   (`allowReconnection`); after that it is removed, its votes dropped, and the squad re-dealt.
 
 ## The client
 
-- `OnlineSession`: builds the battle from `init.desc`, replays the log, then applies every streamed intent in `seq`
+- `OnlineSession`: hydrates `init.mission` and builds the battle with `init.desc`, replays the log, then applies every streamed intent in `seq`
   order (out-of-order arrivals are only logged). Local actions are sent with a nonce and resolve when the server's
   echo or rejection comes back; the client never applies its own intents before the server orders them. A `hash`
   that differs from the local `battle.hash()` at the same `seq` is reported as `desync` in the console; there is no

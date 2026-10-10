@@ -102,6 +102,17 @@ export class Battle {
         return out;
     }
 
+    protectedCoverTile(t) {
+        const s=this.store;
+        // Grated landings and stair approaches are circulation, never combat cover sites.
+        if(s.get(t.x,t.y,t.z)===MAT.grate)return true;
+        for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(let dz=-1;dz<=2;dz++) {
+            const m=s.material(t.x+dx,t.y+dy,t.z+dz);
+            if(m.part===4 || m.id===MAT.ladder || m.id===MAT.door || m.id===MAT.door_open)return true;
+        }
+        return false;
+    }
+
     moveBudget(u) { return (u.ap + u.moveOnlyAp) * this.mobility(u); }
     mobility(u) { return mobilityPerAp(u, this.formations.mobilityPenalty(u)); }
     reach(u, budget = this.moveBudget(u)) {
@@ -243,6 +254,8 @@ export class Battle {
                     if (this.distance(u, t) > a.range) return 'out_of_range';
                     if (this.occupant(t.x, t.y, t.z) || this.store.get(t.x,t.y,t.z+1) !== AIR || this.store.get(t.x,t.y,t.z+2) !== AIR) return 'occupied';
                     if (!this.store.surfaces(t.x,t.y).some(c => c.z === t.z && c.headroom >= 2) || this.store.material(t.x,t.y,t.z).liquid) return 'unreachable';
+                    // The block is non-walkable: vaulting needs two empty voxels above it.
+                    if (this.store.get(t.x,t.y,t.z+3)!==AIR || this.protectedCoverTile(t)) return 'unreachable';
                     if (!this.sightLine(this.eye(u), {x:t.x+.5,y:t.y+.5,h:t.z+1.5})) return 'no_target';
                 }
                 if (a.id === 'water_mend') {
@@ -309,7 +322,7 @@ export class Battle {
             case 'throw': this.doThrow(u, intent); break;
             case 'overwatch': this.doOverwatch(u, intent); break;
             case 'reload': { const w = WEAPONS[intent.weaponId || u.weapon]; u.ap -= w.reloadAp; u.ammo[w.id] = w.ammo; this.emit({ t: 'reload', unitId: u.id, weaponId: w.id }); break; }
-            case 'gadget': {const item=THROWABLES[intent.itemId],target=this.unit(intent.targetId),amount=Math.min(item.heal,target.maxHp-target.hp);u.ap-=item.ap;consumeItem(u,item.id);target.hp+=amount;target.parts.torso.hp=Math.min(target.parts.torso.max,target.parts.torso.hp+amount);this.emit({t:'heal',unitId:target.id,amount});break;}
+            case 'gadget': {const item=THROWABLES[intent.itemId],target=this.unit(intent.targetId),amount=Math.min(item.heal,target.maxHp-target.hp);u.ap-=item.ap;consumeItem(u,item.id);target.hp+=amount;if(!target.parts.torso.disabled)target.parts.torso.hp=Math.min(target.parts.torso.max,target.parts.torso.hp+amount);this.emit({t:'heal',unitId:target.id,amount});break;}
             case 'wait': u.ap=0;u.moveOnlyAp=0;this.emit({t:'wait',unitId:u.id});break;
             case 'switchWeapon': u.weapon = intent.weaponId; this.emit({ t: 'weapon', unitId: u.id, weaponId: u.weapon }); break;
             case 'ability': this.doAbility(u, intent); break;
@@ -467,7 +480,7 @@ export class Battle {
             u.movedThisTurn = (u.movedThisTurn || 0) + 1;
             this.revealRoomOf(u);
             // Spotting: a unit that steps into view of an unalerted pod alerts it.
-            this.updateVisibility();
+            this.updateVisibility({interior:false});
             const before = alive(u);
             this.checkReactions(u, walked);
             if (before && !alive(u)) break;
@@ -813,7 +826,7 @@ export class Battle {
             case 'water_mend': {
                 const t = this.unit(intent.targetId), amount = Math.min(a.heal, t.maxHp-t.hp);
                 t.hp += amount;
-                if (!t.parts.torso.disabled) t.parts.torso.hp = Math.min(t.parts.torso.max, t.hp);
+                if (!t.parts.torso.disabled) t.parts.torso.hp = Math.min(t.parts.torso.max, t.parts.torso.hp + amount);
                 removeStatus(t,'burning');
                 this.giveStatus(t,'wet',1);
                 this.emit({t:'heal',unitId:t.id,sourceId:u.id,amount});
@@ -977,7 +990,7 @@ export class Battle {
         enemies.forEach(e=>{e.scattered=true;e.alerted=true;e.overwatch=null;});
         this.emit({t:'discovery',group,unitIds:enemies.map(e=>e.id)});
         for(const e of enemies) {
-            const target=this.unitsOf('player').sort((a,b)=>this.distance(e,a)-this.distance(e,b)||a.id.localeCompare(b.id))[0];
+            const target=this.unitsOf('player').sort((a,b)=>this.distance(e,a)-this.distance(e,b)||(a.id<b.id?-1:a.id>b.id?1:0))[0];
             if(!target)continue;
             const room=this.roomOf(e);
             const search=reachable(this.store,{x:e.x,y:e.y,z:e.z},6,PROFILE,{vault:false,blocked:c=>{
@@ -996,8 +1009,7 @@ export class Battle {
             event.kinds=kinds.slice(0,walked.length-1);
         }
     }
-    updateVisibility({initial=false}={}) {
-        this.updateInteriorVision();
+    updateVisibility({initial=false,interior=true}={}) {
         const seen=this.visibleTo('player'),groups=[];
         for(const id of seen){const e=this.unit(id);if(e&&!e.alerted)groups.push(e.group);if(initial)e.scattered=true;}
         for(const e of this.unitsOf('enemy'))if(!e.alerted&&this.unitsOf('player').some(p=>this.sees(e,p)))groups.push(e.group);
@@ -1005,13 +1017,14 @@ export class Battle {
         this.visible=seen;
         if(!initial)for(const group of [...new Set([...seen].map(id=>this.unit(id).group))])this.scatterPod(group);
         this.visible=this.visibleTo('player');
+        if(interior)this.updateInteriorVision();
     }
 
     updateInteriorVision() {
-        const seen=new Set();
+        const seen=new Set(),observers=this.unitsOf('player').map(u=>({u,eye:this.eye(u)}));
         for(const room of this.mission.rooms||[])for(const [x,y] of room.cells) {
             const cell={x,y,z:room.floorZ};
-            if(this.unitsOf('player').some(u=>this.distance(u,cell)<=B.sightRange && (this.sightLine(this.eye(u),{x:x+.5,y:y+.5,h:cell.z+2.05})||this.sightLine(this.eye(u),{x:x+.5,y:y+.5,h:cell.z+1.3}))))seen.add(`${x},${y},${cell.z}`);
+            if(observers.some(({u,eye})=>this.distance(u,cell)<=B.sightRange && (this.sightLine(eye,{x:x+.5,y:y+.5,h:cell.z+2.05})||this.sightLine(eye,{x:x+.5,y:y+.5,h:cell.z+1.3}))))seen.add(`${x},${y},${cell.z}`);
         }
         const old=this.visibleInterior||new Set();
         if(old.size!==seen.size||[...seen].some(k=>!old.has(k)))this.emit({t:'vision',cells:[...seen]});

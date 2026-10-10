@@ -1,5 +1,6 @@
-// Online co-op (lockstep): the server owns ordering. Every peer builds the same mission from the
-// descriptor, then applies the server's intent stream in sequence; local intents are sent, validated
+import { unpackMission } from '../../../shared/session/MissionSnapshot.js';
+// Online co-op (lockstep): the server owns ordering. Every peer hydrates the server's compiled mission,
+// then applies the server's intent stream in sequence; local intents are sent, validated
 // by the server's Battle, and come back in the stream. AI turns are decided on the server and arrive
 // as intents too, so every client animates exactly the same battle.
 import * as Colyseus from 'colyseus.js';
@@ -17,7 +18,7 @@ export class OnlineSession {
             room.onError((code, msg) => reject(new Error(`${code} ${msg}`)));
             setTimeout(() => reject(new Error('server did not send init')), 15000);
         });
-        const battle = createBattle(init.desc);
+        const battle = createBattle(init.desc,init.mission?unpackMission(init.mission):null);
         const s = new OnlineSession(room, init, battle);
         for (const m of init.log) s.applyRemote(m, true);
         for (const [type, m] of early) if (type === 'intent' && m.seq > s.seq) s.applyRemote(m, true); else if (type === 'players') s.players = m.players;

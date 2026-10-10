@@ -2,7 +2,7 @@
 
 ## This battle test
 
-Assault carries Earth Cover: choose an empty, supported, visible tile within 6; pay 1 AP / 2 Will to create one destructible dry-stone voxel. It uses the normal collision, cover, raycast and terrain invalidation path. Cover persists until destroyed. Cannot overwrite doors, furniture, liquids or a unit, or create floating cover. The tactical choice is whether to protect an approach or deny an enemy route; vaulting still works normally.
+Assault carries Earth Cover: choose an empty, supported, visible tile within 6; pay 1 AP / 2 Will to create one destructible dry-stone voxel. It uses the normal collision, cover, raycast and terrain invalidation path. Cover persists until destroyed. Cannot overwrite doors, furniture, liquids or a unit, or create floating cover. The tactical choice is whether to protect an approach or deny an enemy route; placement requires two empty voxels above the raised block; stair/ladder approaches, door aprons, and grated landings are excluded so vaulting remains available on valid placements.
 
 Grenadier carries Water Mend: choose a living injured ally (self allowed) within 6 and line of sight; pay 1 AP / 2 Will to restore up to 8 HP, remove burning and apply wet for one own turn. It does not revive, restore disabled limbs or refill Will. Wet remains subject to normal elemental interactions. The test distinguishes terrain manipulation from support rather than adding more gun damage.
 
@@ -85,6 +85,20 @@ Field sprites face the active camera in both axes, keeping the packed atlas foot
 
 The deployment menu now prepares a 6×5 pack for each soldier. Each grenade/gadget has a footprint; placements can rotate and move and must fit without overlaps. The frozen descriptor carries those placements into local and online missions; the server and peers validate the same pack. Using an item removes one footprint. This is mission preparation, separate from the deferred campaign inventory. No economy or persistent ownership is implemented.
 
-The selected soldier panel holds weapons, reload controls, and clickable packed items. The bottom dock holds skills and tactical commands. Medical kits heal an adjacent living ally for 8 HP at 1 AP and cannot repair disabled limbs. Breaching charges route to deliberate breach selection.
+The selected soldier panel holds weapons, reload controls, and clickable packed items. The bottom dock holds skills and tactical commands. Medical kits heal a living ally within 1.5 tiles (including self) for 8 HP at 1 AP and cannot repair disabled limbs. Breaching charges route to deliberate breach selection.
 
 The camera widget contains only four arrows: left/right rotate the camera and up/down change the inspected floor. Keyboard and mouse panning and orbiting remain available. Inventory cells and item footprints use a tight 1-pixel gap in preparation and battle.
+
+## Bug audit corrections (2026-10-11)
+
+Earth Cover checks clearance above its non-walkable block and excludes grated landings, stair/ladder access and door approaches. Rejected casts leave AP, Will, RNG and terrain unchanged. A regression covers the Signal House upper fire-escape landing.
+
+Both Medical Kit and Water Mend restore torso HP only by the actual HP healed, preserve disabled parts, and permit self-healing. Water Mend still extinguishes burning and applies wet.
+
+Inventory choice is intentionally class-independent for the prototype. The 6×5 footprint is the capacity rule; per-item caps and class restrictions are balance decisions not introduced by this audit. Invalid placements are validated before room generation and reported with a soldier-specific error.
+
+Interior vision is computed once at movement completion while per-step spotting, scatter and overwatch continue normally. Rendering uses indexed room membership rather than scanning room/cell lists per voxel. Scatter ID ties use plain code-unit comparison.
+
+Room generation runs in workers with two simultaneous jobs, eight waiting jobs, and a 30-second timeout. Co-op init carries an RLE snapshot of the compiled mission; clients hydrate exact voxel materials, HP, room tags and support groups instead of generating the layout again. Battle math retains the existing cross-engine floating-point assumption and hash checks.
+
+Subway Crossing layer gates now cover seeds 1–16. Optional drops seen by starting enemies are closed and recorded as repairs; stairs and manholes remain open.

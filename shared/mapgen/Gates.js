@@ -1,3 +1,5 @@
+import { MAT } from '../voxel/Materials.js';
+import { measureMission } from '../mission/MissionMetrics.js';
 import { castRay, blocksSight } from '../voxel/Raycast.js';
 import { reachable, nodeKey } from '../world/PathSearch.js';
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
@@ -77,4 +79,15 @@ export function checkLayerGates(mission) {
  return {layerConnectivity:u.cells.every(p=>search.costs.has(nodeKey(p))),twoEntrances:entrances.length>=2&&entrances.every(e=>search.costs.has(nodeKey(e.to))&&search.costs.has(nodeKey(e.from))),
   flankLength:Number.isFinite(cost)&&cost<=direct*1.6,flankHidden:hidden>.5,
   dropSafe:drops.every(d=>!spawns.enemy.some(e=>sees(e,d.from))),flankGuard:spawns.enemy.some(e=>e.pos.z<4&&u.route.some(p=>Math.hypot(e.pos.x-p.x,e.pos.y-p.y)<=3))};
+}
+
+/** Close optional street drops exposed to a starting pod; stairs/manholes remain usable. */
+export function secureStreetDrops(mission) {
+    const u=mission.meta.underground;if(!u)return;
+    const unsafe=u.openings.filter(d=>d.kind==='jump'&&mission.spawns.enemy.some(e=>Math.hypot(e.pos.x-d.from.x,e.pos.y-d.from.y)<24&&!castRay(mission.store,{x:e.pos.x+.5,y:e.pos.y+.5,h:e.pos.z+2.5},{x:d.from.x+.5,y:d.from.y+.5,h:d.from.z+2},{blocks:blocksSight}).hit));
+    if(!unsafe.length)return;
+    for(const d of unsafe)mission.store.set(d.to.x,d.to.y,d.from.z,MAT.concrete);
+    u.openings=u.openings.filter(d=>!unsafe.includes(d));
+    mission.meta.repairs=[...(mission.meta.repairs||[]),...unsafe.map(d=>({kind:'close-exposed-drop',at:{...d.to}}))];
+    mission.metrics={...mission.metrics,...measureMission(mission)};
 }

@@ -31,3 +31,10 @@ test('window reveals interior sightlines and enemies; opaque wall hides them aga
  for(let z=2;z<4;z++)b.store.set(5,5,z,MAT.concrete);
  b.updateVisibility({initial:true});assert.equal(b.sees(u,e),false);assert.equal(b.visible.has(e.id),false);assert.equal(b.visibleInterior.has('7,5,1'),false);
 });
+
+test('medical kits preserve disabled torso state and heal existing torso damage incrementally',()=>{
+ const b=fixture(),u=b.unit('p0');u.hp=20;u.parts.torso.hp=5;
+ assert.ok(b.apply({type:'gadget',unitId:u.id,itemId:'medkit',targetId:u.id}).ok);assert.equal(u.parts.torso.hp,13);
+ const c=fixture(),t=c.unit('p0');t.hp=20;t.parts.torso.hp=0;t.parts.torso.disabled=true;
+ assert.ok(c.apply({type:'gadget',unitId:t.id,itemId:'medkit',targetId:t.id}).ok);assert.equal(t.parts.torso.hp,0);assert.equal(t.parts.torso.disabled,true);
+});

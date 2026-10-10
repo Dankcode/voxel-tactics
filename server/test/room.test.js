@@ -1,3 +1,4 @@
+import { unpackMission } from '../../shared/session/MissionSnapshot.js';
 // Lockstep co-op protocol: two clients join, units are dealt, intents are ordered and validated,
 // both peers' battles reach the server's hash, the squad turn ends on both votes, AI turn streams.
 import test from 'node:test';
@@ -18,7 +19,7 @@ async function startServer() {
 }
 const next = (room, type) => new Promise(r => room.onMessage(type, r));
 
-for (const scenario of ['proving-grounds', 'signal-house']) test(`two players share a squad in lockstep through an AI turn on ${scenario}`, { timeout: 60000 }, async () => {
+for (const scenario of ['proving-grounds', 'signal-house', 'operation']) test(`two players share a squad in lockstep through an AI turn on ${scenario}`, { timeout: 60000 }, async () => {
     const srv = await startServer();
     try {
         const url = `ws://127.0.0.1:${srv.port}`;
@@ -30,7 +31,7 @@ for (const scenario of ['proving-grounds', 'signal-house']) test(`two players sh
             room.onMessage('reject', m => p.rejects.push(m));
             room.onMessage('players', () => {}); room.onMessage('votes', () => {});
             p.init = new Promise(r => room.onMessage('init', init => {
-                p.battle = createBattle(init.desc); p.seq = 0; p.id = init.playerId;
+                p.battle = createBattle(init.desc,unpackMission(init.mission)); p.seq = 0; p.id = init.playerId;
                 for (const m of [...init.log, ...p.early]) apply(p, m);
                 r(init);
             }));
@@ -82,7 +83,7 @@ test('debug co-op is opt-in, host-only, and broadcasts replayable debug intents'
         host.onMessage('players', () => {}); host.onMessage('votes', () => {});
         const hostState = await next(host, 'init');
         assert.equal(hostState.desc.debug, true);
-        const mirror = createBattle(hostState.desc);
+        const mirror = createBattle(hostState.desc,unpackMission(hostState.mission));
         for (const entry of hostState.log) assert.ok(mirror.apply(entry.intent).ok);
         const hashes = []; host.onMessage('hash', m => hashes.push(m));
         host.onMessage('intent', m => { assert.ok(mirror.apply(m.intent).ok); });
@@ -102,4 +103,12 @@ test('debug co-op is opt-in, host-only, and broadcasts replayable debug intents'
         assert.equal(mirror.hash(), hashes.at(-1).hash);
         await host.leave(); await guest.leave();
     } finally { await srv.close(); }
+});
+
+
+test('room creation rejects malformed packs with a readable inventory error', {timeout:15000},async()=>{
+ const srv=await startServer();try{
+  const client=new Client.Client(`ws://127.0.0.1:${srv.port}`);
+  await assert.rejects(client.create('mission',{desc:{scenario:'operation',inventories:[[{id:'kit',itemId:'medkit',x:5,y:4,rotated:false}]]}}),error=>error.code===4211&&/soldier 1: Item outside pack/.test(error.message));
+ }finally{await srv.close();}
 });

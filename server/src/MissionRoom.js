@@ -2,22 +2,27 @@
 //
 // The server builds the mission from the descriptor, keeps the authoritative Battle, validates every
 // intent (ownership, rules) by applying it, and broadcasts accepted intents with a sequence number.
-// Clients rebuild the same mission and apply the same stream, so they reach the same state hash
+// Clients hydrate the server’s compiled mission and apply the same stream, reaching the same state hash
 // (broadcast after each intent for desync detection). AI turns are decided here and streamed too.
 //
 // Squad units are dealt round-robin to connected players; the squad's turn ends when every connected
 // player has voted End Turn. Reconnects get the full intent log and replay it.
 import colyseus from 'colyseus';
 import { createBattle, sanitizeDesc } from '../../shared/session/Scenarios.js';
+import { unpackMission } from '../../shared/session/MissionSnapshot.js';
+import { buildMissionAsync } from './MissionBuilder.js';
 import { decide } from '../../shared/battle/Ai.js';
 
 const { Room } = colyseus;
 export class MissionRoom extends Room {
-    onCreate(options = {}) {
+    async onCreate(options = {}) {
         this.maxClients = 4;
         const d = options.desc || {};
-        this.desc = sanitizeDesc(d);
-        this.battle = createBattle(this.desc);
+        try {
+            this.desc = sanitizeDesc(d);
+            this.initialMission=await buildMissionAsync(this.desc);
+            this.battle=createBattle(this.desc,unpackMission(this.initialMission));
+        }catch(error){throw new colyseus.ServerError(4211,error.message);}
         this.log = [];             // [{ seq, intent, nonce }]
         this.players = [];         // [{ id, sessionId, name }]
         this.votes = new Set();
@@ -31,7 +36,7 @@ export class MissionRoom extends Room {
         this.players.push(player);
         // Deal units first so the joining peer's init log already contains the ownership intent.
         this.reassignOwners();
-        client.send('init', { desc: this.desc, playerId: player.id, log: this.log, players: this.players });
+        client.send('init', { desc: this.desc, mission:this.initialMission, playerId: player.id, log: this.log, players: this.players });
     }
     async onLeave(client, consented) {
         const p = this.playerOf(client);

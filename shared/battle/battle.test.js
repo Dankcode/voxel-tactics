@@ -232,3 +232,28 @@ test('finishing a soldier spends its remaining AP without ending the squad phase
     assert.equal(b.unit('p1').ap,4);assert.equal(b.activeSide,'player');
     assert.equal(b.apply({type:'wait',unitId:'p0'}).reason,'no_ap');
 });
+
+test('Earth Cover rejects low ceilings, landings, stairs and door aprons without spending resources',()=>{
+ for(const setup of [s=>s.set(10,15,4,MAT.concrete),s=>s.set(10,15,1,MAT.grate),s=>s.set(11,15,1,MAT.steel_stair),s=>s.set(11,15,2,MAT.door_open),s=>s.set(11,15,2,MAT.ladder)]) {
+  const b=arena({squad:['vanguard']}),u=b.unit('p0');setup(b.store);const before=b.hash();
+  assert.equal(b.apply({type:'ability',unitId:u.id,abilityId:'earth_cover',to:{x:10,y:15,z:1}}).reason,'unreachable');assert.equal(b.hash(),before);
+ }
+});
+test('movement keeps per-step spotting but computes interior vision only once at the end',()=>{
+ const b=arena(),u=b.unit('p0');let vision=0,spotting=0;const update=b.updateInteriorVision.bind(b),visible=b.visibleTo.bind(b);
+ b.updateInteriorVision=()=>{vision++;update();};b.visibleTo=side=>{spotting++;return visible(side);};
+ const r=b.apply({type:'move',unitId:u.id,to:{x:10,y:9,z:1}});assert.ok(r.ok);assert.equal(vision,1);assert.ok(spotting>2);
+});
+test('Water Mend heals torso by the restored amount instead of resetting existing limb damage',()=>{
+ const b=arena({squad:['grenadier']}),u=b.unit('p0');u.hp=20;u.parts.torso.hp=5;
+ assert.ok(b.apply({type:'ability',unitId:u.id,abilityId:'water_mend',targetId:u.id}).ok);assert.equal(u.hp,28);assert.equal(u.parts.torso.hp,13);
+});
+
+test('Earth Cover cannot seal a real Signal House fire-escape landing or remove upper-floor access',async()=>{
+ const {mapById}=await import('../mission/Maps.js'),{reachable,nodeKey}=await import('../world/PathSearch.js'),{AGENT_PROFILES}=await import('../world/TraversalRules.js');
+ const mission=mapById('signal-house').build({seed:1}),b=new Battle({mission,squad:[{type:'vanguard'}],seed:1});
+ const landing=mission.buildings[0].escapes[1].cells;const [x,y,z]=landing[0],stand=landing[1];Object.assign(b.unit('p0'),{x:stand[0],y:stand[1],z:stand[2]});
+ const search=()=>reachable(b.store,b.unit('p0'),Infinity,AGENT_PROFILES.player),before=search();assert.ok(before.nodes.size>83);
+ const hash=b.hash();assert.equal(b.apply({type:'ability',unitId:'p0',abilityId:'earth_cover',to:{x,y,z}}).reason,'unreachable');assert.equal(b.hash(),hash);
+ assert.deepEqual([...search().costs.keys()].sort(),[...before.costs.keys()].sort());assert.ok(before.costs.has(nodeKey({x,y,z})));
+});

@@ -1,10 +1,10 @@
 import { normalizeInventory } from '../inventory/Inventory.js';
-// Scenario descriptors → missions. The same descriptor builds the same mission on every client and on the
-// server (lockstep), so a descriptor + the ordered intent list fully describes a battle.
+// Scenario descriptors → missions. Local sessions generate from a descriptor; co-op sessions hydrate
+// the server's compiled mission, then replay the ordered intent list.
 //
 // desc: { scenario: map id, seed, squad?: string[] | squadKey, debug? }
 import { MAPS, DEFAULT_MAP, mapById } from '../mission/Maps.js';
-import { SQUADS, CALLSIGNS } from '../content/units.js';
+import { SQUADS, CALLSIGNS, CLASSES } from '../content/units.js';
 import { Battle } from '../battle/Battle.js';
 import { generateOperation, operationOptions } from '../mapgen/Generator.js';
 import { compileV3Map } from '../mapgen/ExteriorCompiler.js';
@@ -22,7 +22,12 @@ export function sanitizeDesc(d = {}) {
     const seed = Number.isInteger(Number(d.seed)) && Number(d.seed) >= 0 && Number(d.seed) <= 0xffffffff ? Number(d.seed) : 1;
     const out = { scenario, seed: seed || 1, squad: d.squad || 'standard', debug: d.debug === true };
     if (scenario === OPERATION_ID) out.operation = operationOptions(d.operation);
-    if (Array.isArray(d.inventories)) out.inventories = d.inventories;   // normalised per unit in squadFor
+    if (d.inventories!==undefined) {
+        const size=Array.isArray(out.squad)?out.squad.length:(SQUADS[out.squad]||SQUADS.standard).length;
+        if(!Array.isArray(d.inventories)||d.inventories.length>size)throw Error('Invalid inventory: expected one pack per soldier');
+        out.inventories=d.inventories.map((p,i)=>{try{return normalizeInventory(p);}catch(e){throw Error(`Invalid inventory for soldier ${i+1}: ${e.message}`);}});
+    }
+    squadFor(out); // Validate unit types before any expensive generation.
     return out;
 }
 
@@ -48,10 +53,12 @@ export function buildMission(desc) {
 
 export function squadFor(desc) {
     const list = Array.isArray(desc.squad) ? desc.squad : (SQUADS[desc.squad] || SQUADS.standard);
+    if(!list.length||list.length>6||list.some(type=>!Object.hasOwn(CLASSES,type)))throw Error('Invalid squad');
     return list.map((type, i) => ({ type, owner: 'player', name: CALLSIGNS[i % CALLSIGNS.length], ...(desc.inventories?.[i] ? {inventory:normalizeInventory(desc.inventories[i])} : {}) }));
 }
 
-export function createBattle(desc) {
-    const mission = buildMission(desc);
-    return new Battle({ mission, squad: squadFor(desc), seed: desc.seed ?? 1, debug: !!desc.debug });
+export function createBattle(desc, mission = null) {
+    const squad=squadFor(desc);
+    mission ||= buildMission(desc);
+    return new Battle({ mission, squad, seed: desc.seed ?? 1, debug: !!desc.debug });
 }

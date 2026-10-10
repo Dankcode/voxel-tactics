@@ -5,7 +5,7 @@ import { createMap } from '../mission/modern/MapKit.js';
 import { MAT } from '../voxel/Materials.js';
 import { compileBuilding } from './StoreyCompiler.js';
 import { compileUnderground } from './UndergroundCompiler.js';
-import { checkGeneratedGates, evaluateGeneratedGates } from './Gates.js';
+import { checkGeneratedGates, evaluateGeneratedGates, secureStreetDrops } from './Gates.js';
 import { designSlate } from './DesignSlate.js';
 import { decodeGround } from './Generator.js';
 import { reachable, nodeKey, pathTo } from '../world/PathSearch.js';
@@ -98,6 +98,7 @@ export function compileV3Map({ site, layout, design, manifest }, { seed = 1, gat
             backdrop: { family: layout.plot?.family, roadExits: (layout.edges || []).filter(e => e.kind === 'barricade').map(e => ({ side: e.side, from: e.cells[0], to: e.cells.at(-1) })) }
         }
     });
+    secureStreetDrops(mission);
     // Outdoor flow between the waypoints, traced on the compiled matrix (the slate shows these).
     const routes = [];
     for (let i = 1; i < flow.length; i++) {
