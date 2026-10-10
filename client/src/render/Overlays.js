@@ -18,6 +18,7 @@ function glowMaterial(color, opacity = 0.95, clipping = null) {
 function shieldTexture(kind) {
     const c = document.createElement('canvas'); c.width = 64; c.height = 72;
     const g = c.getContext('2d');
+    if(kind==='dark'){g.fillStyle='#b9ceff';g.font='56px sans-serif';g.fillText('☾',5,57);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
     const path = () => { g.beginPath(); g.moveTo(32, 4); g.lineTo(58, 14); g.lineTo(56, 40); g.quadraticCurveTo(50, 60, 32, 68); g.quadraticCurveTo(14, 60, 8, 40); g.lineTo(6, 14); g.closePath(); };
     const col = kind === 'flank' ? '#ff5a4a' : '#46c8ff';
     g.lineWidth = 5; g.strokeStyle = '#0b1622'; path(); g.stroke();
@@ -57,7 +58,7 @@ export class Overlays {
         };
         this.hover = new THREE.Mesh(frameGeometry(0.06), this.mats.hover);
         this.hover.visible = false; this.group.add(this.hover);
-        this.shieldTex = { half: shieldTexture('half'), full: shieldTexture('full'), flank: shieldTexture('flank') };
+        this.shieldTex = { half: shieldTexture('half'), full: shieldTexture('full'), flank: shieldTexture('flank'),dark:shieldTexture('dark') };
         this.marker = this.makeMarker(); this.marker.visible = false; this.group.add(this.marker);
     }
     makeMarker() {
@@ -114,7 +115,7 @@ export class Overlays {
         this.hover.visible = true; this.hover.position.set(cell.x + 0.5, cell.z + 1.03 - dropAt(cell.x, cell.y, cell.z), cell.y + 0.5);
     }
     /** XCOM shield icons on the four faces of a standing position; flankedBy: list of {dx, dy} threats. */
-    showCover(store, cell, { flanked = false } = {}) {
+    showCover(store, cell, { flanked = false, dark=false } = {}) {
         for (const c of [...this.shields.children]) { this.shields.remove(c); c.material.dispose(); }
         if (!cell) return;
         const cov = coverAt(store, cell.x, cell.y, cell.z);
@@ -126,6 +127,7 @@ export class Overlays {
             s.renderOrder = 30;
             this.shields.add(s);
         }
+        if(dark){const s=new THREE.Sprite(new THREE.SpriteMaterial({map:this.shieldTex.dark,depthTest:false,transparent:true,toneMapped:false}));s.scale.set(.55,.6,1);s.position.set(cell.x+.5,cell.z+2.2,cell.y+.5);s.renderOrder=31;this.shields.add(s);}
         if (flanked) {
             const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.shieldTex.flank, depthTest: false, transparent: true, toneMapped: false }));
             s.scale.set(0.5, 0.56, 1); s.position.set(cell.x + 0.5, cell.z + 2.75, cell.y + 0.5); s.renderOrder = 31;

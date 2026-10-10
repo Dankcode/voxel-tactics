@@ -1,3 +1,4 @@
+import { LightField } from '../lighting/LightField.js';
 // The deterministic battle engine (PLAN-01 rev 2 §9–§14).
 //
 // Pure shared code: no DOM, no THREE, no Math.random, no Date.now. The client previews with it, the
@@ -39,6 +40,7 @@ export class Battle {
         this.debugEnabled = !!debug;
         this.store = mission.store;
         this.field = new ElementField(this.store);
+        this.light=new LightField(this.store,{timeOfDay:mission.meta?.timeOfDay||'day',decor:mission.visual?.decor||[],fires:this.field.fires});
         this.seed = seed;
         this.rng = createRng(hashString(`battle:${seed}:${mission.id || mission.name || ''}`));
         this.controllers = { ...controllers };
@@ -114,7 +116,8 @@ export class Battle {
         if (target) {
             if (shooter.z - target.z >= 2) { s *= B.heightAccuracyBonus; mods.push(['height', B.heightAccuracyBonus]); }
             const room = this.roomOf(target), rec = this.mission.rooms?.[room];
-            if (room >= 0 && rec && !rec.lit && this.roomOf(shooter) !== room) { s *= B.dimRoomSpreadMult; mods.push(['dim room', B.dimRoomSpreadMult]); }
+            if(this.mission.meta?.imageGenerated&&dist>4&&this.light.dark(target.x,target.y,target.z)){s*=B.darkSpreadMult;mods.push(['darkness',B.darkSpreadMult]);}
+            if (!this.mission.meta?.imageGenerated && room >= 0 && rec && !rec.lit && this.roomOf(shooter) !== room) { s *= B.dimRoomSpreadMult; mods.push(['dim room', B.dimRoomSpreadMult]); }
             const k = this.formations.defenseSpreadMult(target, shooter);
             if (k !== 1) { s *= k; mods.push(['formation', +k.toFixed(2)]); }
             if (this.field.isSmoke(target.x, target.y, target.z + 1) || this.field.isSmoke(target.x, target.y, target.z + 2)) { s *= B.smokeSpreadMult; mods.push(['smoke', B.smokeSpreadMult]); }
@@ -424,7 +427,7 @@ export class Battle {
             const kind = stepKind(this.store, path[i - 1], p);
             kinds.push(kind);
             if (kind === 'jump') {jumped = true;this.stats.drops++;this.noise(p.x,p.y,p.z,8,u);}
-            if(this.mission.meta.streetDatum&&p.z<this.mission.meta.streetDatum)this.stats.undergroundSteps++;
+            if(this.mission.meta?.streetDatum&&p.z<this.mission.meta?.streetDatum)this.stats.undergroundSteps++;
             this.openDoorsOnStep(u, path[i - 1], p);
             u.facing = facingToward(p.x - u.x, p.y - u.y);
             u.x = p.x; u.y = p.y; u.z = p.z;

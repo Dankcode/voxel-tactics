@@ -425,7 +425,11 @@ const decor = {
     stepping: P({ group: 'decor' }, () => [{ slot: 'plinth', geometry: sb(0.5, 0.03, 0.4, 0.01, 0, 0.0) }])
 };
 
-export const MODERN_PIECES = { ...wallTrims, ...furniture, ...outdoor, ...objects, ...decor };
+const circulation={
+    steel_post:P({group:'circulation'},()=>[{slot:'self',geometry:box(.15,1,.15)}]),
+    grate:P({group:'circulation'},()=>[{slot:'self',geometry:merge([box(1,.1,.08,0,.9,-.45),box(1,.1,.08,0,.9,.45),...Array.from({length:7},(_,i)=>box(.035,.055,1,-.45+i*.15,.945,0))])}]),
+};
+export const MODERN_PIECES = { ...circulation, ...wallTrims, ...furniture, ...outdoor, ...objects, ...decor };
 /** Pieces allowed to leave their cell (whole objects, tall decor, wall cupboards). */
 export const MODERN_OVERHANG = new Set(Object.entries(MODERN_PIECES).filter(([, p]) => p.meta.overhang || p.meta.group === 'decor').map(([id]) => id));
 /** Decor kinds that carry a light (LanternLights can follow them). */

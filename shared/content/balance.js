@@ -8,6 +8,7 @@ export const BALANCE = {
     rangeFalloff: { value: 1.0, min: 0.5, max: 2 },               // spread growth per effective range past `range`
     estimateSamples: { value: 96, min: 32, max: 256 },
     sightRange: { value: 24, min: 12, max: 40 },
+    darkSpreadMult: { value:1.25,min:1,max:2 },
     dimRoomSpreadMult: { value: 1.25, min: 1, max: 2 },
     smokeSpreadMult: { value: 1.6, min: 1, max: 3 },
     heightAccuracyBonus: { value: 0.85, min: 0.6, max: 1 },       // spread × this when 2+ voxels above the target

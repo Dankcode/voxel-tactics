@@ -79,7 +79,8 @@ export class Game {
         this.voxelView = new VoxelView(this.scene, store, this.library, this.options.kit === false ? null : this.kit);
         this.voxelView.tint = (x, y, z) => {
             const r = store.roomAt(x, y, z) >= 0 ? store.roomAt(x, y, z) : store.roomAt(x, y, z + 1);
-            return r >= 0 && this.fog && !this.battle.revealedRooms.has(r) ? [0.42, 0.44, 0.55] : null;
+            const light=this.battle.light.tint(x,y,z);
+            return r >= 0 && this.fog && !this.battle.revealedRooms.has(r) ? light.map((c,i)=>c*[0.42,0.44,0.55][i]) : light;
         };
         setGroundStore(store);
         this.voxelView.setVisual(this.battle.mission?.visual);
@@ -167,6 +168,7 @@ export class Game {
     }
     settleViews() {
         for (const v of this.views.values()) { v.snap(); v.drawBar(); if (v.unit.dead) v.animator.play('down'); }
+        this.battle.light.flush();
         if (this.voxelView.flush()) this.lanterns.scan(this.battle.store);
         this.fx.syncField(this.battle.field);
         this.updateEnemyVisibility();
@@ -411,7 +413,7 @@ export class Game {
     onReveal(roomId) {
         const room = this.battle.mission.rooms[roomId]; if (!room) return;
         for (const [x, y] of room.cells) for (let h = 0; h <= 3; h++) this.battle.store.markDirty(x, y, room.floorZ + h);
-        this.voxelView.flush();
+        this.battle.light.flush();this.voxelView.flush();
     }
     onTurn(e) {
         this.cutins.newTurn();
@@ -557,11 +559,11 @@ export class Game {
                     const pv = this.battle.preview({ type: 'move', unitId: u.id, to: c, by: '*' });
                     this.overlays.showPath(pathTo(this.search, k), zone === 'yellow');
                     const flanked = pv.ok && pv.cover === COVER.NONE && this.battle.enemiesOf(u).some(t => this.battle.visible?.has(t.id));
-                    this.overlays.showCover(this.battle.store, c, { flanked });
+                    this.overlays.showCover(this.battle.store, c, { flanked, dark:this.battle.mission.meta.imageGenerated&&this.battle.light.dark(c.x,c.y,c.z) });
                     const coverText = pv.ok ? ['No cover', 'Half cover', 'Full cover'][Math.max(0, Math.min(2, pv.cover))] : '';
                     const dz = c.z - u.z;
                     const height = dz > 0 ? ` · <b class="up">▲ ${dz} up</b>` : dz < 0 ? ` · <b class="down">▼ ${-dz} down</b>` : '';
-                    this.hud.cursorTip(e.clientX, e.clientY, `<b class="${zone}">${pv.ap ?? '?'} AP</b>${zone === 'yellow' ? ' · DASH' : ''}${height}<br><span>${flanked ? '<i class="flank">FLANKED</i>' : coverText}</span>`);
+                    this.hud.cursorTip(e.clientX, e.clientY, `<b class="${zone}">${pv.ap ?? '?'} AP</b>${zone === 'yellow' ? ' · DASH' : ''}${height}${this.battle.mission.meta.imageGenerated&&this.battle.light.dark(c.x,c.y,c.z)?' · ☾ DARK':''}<br><span>${flanked ? '<i class="flank">FLANKED</i>' : coverText}</span>`);
                 } else {
                     this.overlays.clearPath(); this.overlays.showCover(this.battle.store, c);
                     this.hud.cursorTip(unit && unit.side !== u.side && this.isVisible(unit) ? e.clientX : null, e.clientY, unit ? `${unit.name} · ${unit.hp}/${unit.maxHp}<br><span>click a weapon to target</span>` : '');

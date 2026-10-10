@@ -56,6 +56,7 @@ export function kitHandler(store, x, y, z, id = store.get(x, y, z)) {
         case 'trunk': return 'trunk';
         case 'lantern': return 'lantern';
         case 'ladder': return 'ladder';
+        case 'grate': case 'steel_post':return 'circulation';
         case 'furniture': return 'table';
         case 'shelf': return 'shelf';
         case 'cloth': return 'banner';
@@ -240,6 +241,7 @@ export class KitView {
                 } else add('lantern', x, y, z, 0, k);
                 break;
             }
+            case 'circulation': add(k,x,y,z,0,k);break;
             case 'ladder': {
                 // Back against the neighbour it leans on: the side with a solid voxel at this height (or the ledge above).
                 let yaw = 0;
