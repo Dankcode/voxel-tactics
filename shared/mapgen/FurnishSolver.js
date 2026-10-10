@@ -108,14 +108,26 @@ export function furnishBuilding(m, b, out, { beats = [], seed = m.seed } = {}) {
             if (!room.gameplay || room.kind === 'hall') continue;
             const free = new Set(room.cells.filter(([x, y]) => !keep.has(k2(x, y)) && !blocked.has(k2(x, y)) && s.get(x, y, fz + 1) === AIR).map(c => k2(...c)));
             const slots = roomSlots(s, room, free, fz);
-            if (!slots.length) continue;
+            const beatHere = beats.find(bt => bt.floor === f.floor && (bt.room === room.name || bt.room === room.kind) && bt.id !== 'approach');
+            if (!slots.length) {
+                if (beatHere) { const [x, y] = room.cells[Math.floor(room.cells.length / 2)]; decor.push({ kind: beatHere.id === 'climax' ? 'cash_stack' : 'rifle_rack', x, y, z: fz + 1, yaw: 0, room: room.id }); report.push({ kind: 'beat', beat: beatHere.id, item: 'decor', room: room.name }); }
+                continue;
+            }
             const cx = room.cells.reduce((a, c) => a + c[0], 0) / room.cells.length, cy = room.cells.reduce((a, c) => a + c[1], 0) / room.cells.length;
             const clutter = fbm(`${seed}:${b.id}:clutter`, cx, cy + f.floor * 17, NOISE_LAYERS.clutter);
             const roomDoors = doors.filter(d => room.cells.some(([x, y]) => Math.abs(x - d.x) + Math.abs(y - d.y) === 1));
             const fight = cells => Math.min(9, ...cells.map(c => Math.min(9, ...roomDoors.map(d => Math.max(Math.abs(c.x - d.x), Math.abs(c.y - d.y))))));
             // Beat pin: the beat's cluster on the slot that fits it best (largest first).
             const beat = beats.find(bt => bt.floor === f.floor && (bt.room === room.name || bt.room === room.kind) && bt.id !== 'approach');
-            const beatItem = beat ? (beat.id === 'climax' ? BEAT_FOR.climax[b.program] || 'cash_table' : BEAT_FOR.escalation) : null;
+            const beatWanted = beat ? (beat.id === 'climax' ? BEAT_FOR.climax[b.program] || 'cash_table' : BEAT_FOR.escalation) : null;
+            // The beat falls back through the other beat clusters until one fits a slot in this room.
+            const beatItem = beatWanted ? [beatWanted, 'cash_table', 'cctv_bank', 'arms_cache'].find(id => slots.some(sl => [ITEMS[id].len, ITEMS[id].minLen].filter(Boolean).some(len => footprint(sl, id, len, free)))) || null : null;
+            if (beat && !beatItem) {
+                // No slot fits any beat cluster: the beat is dressed as props on the floor (visual), never omitted.
+                const [x, y] = room.cells.filter(([x, y]) => free.has(k2(x, y)))[0] || room.cells[0];
+                decor.push({ kind: beat.id === 'climax' ? 'cash_stack' : 'rifle_rack', x, y, z: fz + 1, yaw: 0, room: room.id });
+                report.push({ kind: 'beat', beat: beat.id, item: 'decor', room: room.name });
+            }
             const pool = [...new Set([...(ROOM_FURNITURE[room.kind] || []), ...(beatItem ? [beatItem] : [])])];
             const order = new Map((ROOM_FURNITURE[room.kind] || []).map((id, i) => [id, i]));
             const geo = new Map(), domains = new Map(), fixed = new Map();

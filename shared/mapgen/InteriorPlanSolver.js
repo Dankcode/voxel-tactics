@@ -139,8 +139,10 @@ export function solveInteriorPlan(b, programme, { seed = 1, core = null, keepGam
     for (const r of placed.filter(r => r.gameplay !== false)) {
         const bays = [...region].filter(([, t]) => t === r.id).map(([id]) => id.split(',').map(Number));
         if (!bays.length) continue;
-        const thin = new Set(bays.map(([i]) => i)).size === 1 || new Set(bays.map(([, j]) => j)).size === 1;
-        if (!thin || bays.length > 4 && Math.min(new Set(bays.map(([i]) => i)).size, new Set(bays.map(([, j]) => j)).size) > 1) continue;
+        // Thin = no 2 × 2 block of its own bays anywhere: every part of the room is a one-cell strip.
+        const own = new Set(bays.map(([i, j]) => k2(i, j)));
+        const thin = !bays.some(([i, j]) => own.has(k2(i + 1, j)) && own.has(k2(i, j + 1)) && own.has(k2(i + 1, j + 1)));
+        if (!thin) continue;
         const counts = new Map();
         for (const [i, j] of bays) for (const [dx, dy] of N4) { const t = region.get(k2(i + dx, j + dy)); if (t && t !== r.id && (t === 'hall' || placed.find(x => x.id === t)?.gameplay !== false)) counts.set(t, (counts.get(t) || 0) + (t === 'hall' ? 0.5 : 1)); }
         const target = [...counts].sort((a, c) => c[1] - a[1] || (a[0] < c[0] ? -1 : 1))[0]?.[0];
