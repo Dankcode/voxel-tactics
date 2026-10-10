@@ -14,3 +14,10 @@ test('three-layer sockets reject rock beneath an entrance and compile 20 determi
   const reach=reachable(m.store,m.spawns.player[0],Infinity,AGENT_PROFILES.player);assert.ok(u.cells.every(p=>reach.costs.has(nodeKey(p))||m.store.isSolid(p.x,p.y,2)));assert.deepEqual(solved.layout,solveLayout(CEDAR_IMAGE_SITE,{seed}).layout);
  }
 });
+import { MAP_PACKAGES } from '../mission/generated/PackageCatalog.js';
+import { checkLayerGates } from './Gates.js';
+test('installed bridge and subway fixture passes flank gates on four seeds and rejects a sealed socket',()=>{
+ const pkg=MAP_PACKAGES.find(p=>p.manifest.id==='subway-crossing');assert.ok(pkg);
+ for(const seed of [1,2,3,4]){const m=buildPackagedMap(pkg,{seed});assert.ok(m.metrics.pass);assert.ok(Object.values(checkLayerGates(m)).every(Boolean));
+ const e=m.meta.underground.openings.find(e=>e.kind==='climb');m.store.set(e.to.x,e.to.y,2,1);assert.equal(checkLayerGates(m).twoEntrances,false);}
+});

@@ -70,7 +70,8 @@ export function measureMission(mission, { search = null, gates = DEFAULT_GATES }
     const longest = lengths.sort((a, b) => a - b);
     const sightlineMedian = longest.length ? longest[Math.floor(longest.length / 2)] : 0;
     // Lanes: shortest route, then block a corridor around it and look again.
-    const enemyCentre = centroid(mission.spawns.enemy.map(e => e.pos));
+    const targetBuilding=mission.meta?.imageGenerated?mission.buildings.find(b=>b.id===mission.objective?.item?.building)||mission.buildings[0]:null;
+    const enemyCentre = targetBuilding?{x:targetBuilding.x0-2,y:targetBuilding.entry.y,z:targetBuilding.baseZ}:centroid(mission.spawns.enemy.map(e => e.pos));
     const goal = nodes.reduce((b, n) => (!b || dist(n, enemyCentre) < dist(b, enemyCentre) ? n : b), null);
     let lanes = 0, shortest = Infinity;
     const blocked = new Set();

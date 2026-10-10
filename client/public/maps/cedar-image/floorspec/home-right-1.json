@@ -4,28 +4,28 @@
   "source": "offline-schematic",
   "rooms": [
     {
-      "kind": "living",
+      "kind": "study",
       "center": [
         0.25,
         0.17857142857142858
       ]
     },
     {
-      "kind": "bathroom",
+      "kind": "bedroom",
       "center": [
         0.71875,
         0.17857142857142858
       ]
     },
     {
-      "kind": "kitchen",
+      "kind": "bathroom",
       "center": [
         0.25,
         0.7857142857142857
       ]
     },
     {
-      "kind": "study",
+      "kind": "living",
       "center": [
         0.71875,
         0.7857142857142857

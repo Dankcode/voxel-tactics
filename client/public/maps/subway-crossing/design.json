@@ -1,0 +1,148 @@
+{
+  "version": 1,
+  "mission": {
+    "kind": "recover",
+    "title": "Subway Crossing",
+    "briefing": "The Syndicate has occupied this Downtown block. Advance through cover and use the flank to reach command. Its upper floors control the approach. Secure the objective and withdraw.",
+    "timeOfDay": "overcast",
+    "target": {
+      "building": "command",
+      "floor": 1,
+      "room": "office"
+    }
+  },
+  "programs": [
+    {
+      "building": "command",
+      "floor": 0,
+      "rooms": [
+        {
+          "id": "open_office",
+          "kind": "open_office",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "meeting",
+          "kind": "meeting",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "office",
+          "kind": "office",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "restroom",
+          "kind": "restroom",
+          "areaShare": 0.25,
+          "gameplay": false
+        }
+      ],
+      "adjacencies": [
+        [
+          "open_office",
+          "hall"
+        ],
+        [
+          "meeting",
+          "hall"
+        ],
+        [
+          "office",
+          "hall"
+        ]
+      ]
+    },
+    {
+      "building": "command",
+      "floor": 1,
+      "rooms": [
+        {
+          "id": "office",
+          "kind": "office",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "meeting",
+          "kind": "meeting",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "stock",
+          "kind": "stock",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "restroom",
+          "kind": "restroom",
+          "areaShare": 0.25,
+          "gameplay": false
+        }
+      ],
+      "adjacencies": [
+        [
+          "office",
+          "hall"
+        ],
+        [
+          "meeting",
+          "hall"
+        ],
+        [
+          "stock",
+          "hall"
+        ]
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "approach",
+      "text": "Reach cover beneath the lookout.",
+      "building": "command",
+      "floor": 0,
+      "room": "hall"
+    },
+    {
+      "id": "escalation",
+      "text": "Push past the guarded stair core.",
+      "building": "command",
+      "floor": 1,
+      "room": "hall"
+    },
+    {
+      "id": "climax",
+      "text": "Secure the Syndicate command room.",
+      "building": "command",
+      "floor": 1,
+      "room": "office"
+    }
+  ],
+  "encounters": [
+    {
+      "group": 0,
+      "building": "command",
+      "floor": 1,
+      "room": "hall",
+      "types": [
+        "cultist",
+        "warden_foe"
+      ]
+    },
+    {
+      "group": 1,
+      "building": "command",
+      "floor": 1,
+      "room": "office",
+      "types": [
+        "archer"
+      ]
+    }
+  ]
+}

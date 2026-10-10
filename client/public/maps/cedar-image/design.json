@@ -8,7 +8,7 @@
     "target": {
       "building": "home-left",
       "floor": 1,
-      "room": "living"
+      "room": "bedroom"
     }
   },
   "programs": [
@@ -61,20 +61,20 @@
       "floor": 1,
       "rooms": [
         {
-          "id": "living",
-          "kind": "living",
-          "areaShare": 0.25,
-          "gameplay": true
-        },
-        {
-          "id": "kitchen",
-          "kind": "kitchen",
+          "id": "bedroom",
+          "kind": "bedroom",
           "areaShare": 0.25,
           "gameplay": true
         },
         {
           "id": "study",
           "kind": "study",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "living",
+          "kind": "living",
           "areaShare": 0.25,
           "gameplay": true
         },
@@ -87,15 +87,15 @@
       ],
       "adjacencies": [
         [
-          "living",
-          "hall"
-        ],
-        [
-          "kitchen",
+          "bedroom",
           "hall"
         ],
         [
           "study",
+          "hall"
+        ],
+        [
+          "living",
           "hall"
         ]
       ]
@@ -149,20 +149,20 @@
       "floor": 1,
       "rooms": [
         {
-          "id": "living",
-          "kind": "living",
-          "areaShare": 0.25,
-          "gameplay": true
-        },
-        {
-          "id": "kitchen",
-          "kind": "kitchen",
+          "id": "bedroom",
+          "kind": "bedroom",
           "areaShare": 0.25,
           "gameplay": true
         },
         {
           "id": "study",
           "kind": "study",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "living",
+          "kind": "living",
           "areaShare": 0.25,
           "gameplay": true
         },
@@ -175,15 +175,15 @@
       ],
       "adjacencies": [
         [
-          "living",
-          "hall"
-        ],
-        [
-          "kitchen",
+          "bedroom",
           "hall"
         ],
         [
           "study",
+          "hall"
+        ],
+        [
+          "living",
           "hall"
         ]
       ]
@@ -209,7 +209,7 @@
       "text": "Secure the Syndicate command room.",
       "building": "home-left",
       "floor": 1,
-      "room": "living"
+      "room": "bedroom"
     }
   ],
   "encounters": [
@@ -227,7 +227,7 @@
       "group": 1,
       "building": "home-left",
       "floor": 1,
-      "room": "living",
+      "room": "bedroom",
       "types": [
         "archer"
       ]
@@ -246,7 +246,7 @@
       "group": 3,
       "building": "home-right",
       "floor": 1,
-      "room": "living",
+      "room": "bedroom",
       "types": [
         "archer"
       ]

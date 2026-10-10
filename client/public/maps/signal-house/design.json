@@ -8,7 +8,7 @@
     "target": {
       "building": "command",
       "floor": 3,
-      "room": "open_office"
+      "room": "armory"
     }
   },
   "programs": [
@@ -61,8 +61,8 @@
       "floor": 1,
       "rooms": [
         {
-          "id": "open_office",
-          "kind": "open_office",
+          "id": "office",
+          "kind": "office",
           "areaShare": 0.25,
           "gameplay": true
         },
@@ -73,8 +73,8 @@
           "gameplay": true
         },
         {
-          "id": "office",
-          "kind": "office",
+          "id": "stock",
+          "kind": "stock",
           "areaShare": 0.25,
           "gameplay": true
         },
@@ -87,7 +87,7 @@
       ],
       "adjacencies": [
         [
-          "open_office",
+          "office",
           "hall"
         ],
         [
@@ -95,7 +95,7 @@
           "hall"
         ],
         [
-          "office",
+          "stock",
           "hall"
         ]
       ]
@@ -105,14 +105,14 @@
       "floor": 2,
       "rooms": [
         {
-          "id": "open_office",
-          "kind": "open_office",
+          "id": "barracks",
+          "kind": "barracks",
           "areaShare": 0.25,
           "gameplay": true
         },
         {
-          "id": "meeting",
-          "kind": "meeting",
+          "id": "storeroom",
+          "kind": "storeroom",
           "areaShare": 0.25,
           "gameplay": true
         },
@@ -123,19 +123,19 @@
           "gameplay": true
         },
         {
-          "id": "restroom",
-          "kind": "restroom",
+          "id": "utility",
+          "kind": "utility",
           "areaShare": 0.25,
           "gameplay": false
         }
       ],
       "adjacencies": [
         [
-          "open_office",
+          "barracks",
           "hall"
         ],
         [
-          "meeting",
+          "storeroom",
           "hall"
         ],
         [
@@ -149,14 +149,14 @@
       "floor": 3,
       "rooms": [
         {
-          "id": "open_office",
-          "kind": "open_office",
+          "id": "armory",
+          "kind": "armory",
           "areaShare": 0.25,
           "gameplay": true
         },
         {
-          "id": "meeting",
-          "kind": "meeting",
+          "id": "study",
+          "kind": "study",
           "areaShare": 0.25,
           "gameplay": true
         },
@@ -175,11 +175,11 @@
       ],
       "adjacencies": [
         [
-          "open_office",
+          "armory",
           "hall"
         ],
         [
-          "meeting",
+          "study",
           "hall"
         ],
         [
@@ -209,7 +209,7 @@
       "text": "Secure the Syndicate command room.",
       "building": "command",
       "floor": 3,
-      "room": "open_office"
+      "room": "armory"
     }
   ],
   "encounters": [
@@ -227,7 +227,7 @@
       "group": 1,
       "building": "command",
       "floor": 3,
-      "room": "open_office",
+      "room": "armory",
       "types": [
         "archer"
       ]

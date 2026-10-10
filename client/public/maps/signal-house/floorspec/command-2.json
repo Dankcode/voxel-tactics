@@ -4,28 +4,28 @@
   "source": "offline-schematic",
   "rooms": [
     {
-      "kind": "restroom",
+      "kind": "office",
       "center": [
         0.24,
         0.1875
       ]
     },
     {
-      "kind": "office",
+      "kind": "utility",
       "center": [
         0.72,
         0.1875
       ]
     },
     {
-      "kind": "open_office",
+      "kind": "storeroom",
       "center": [
         0.24,
         0.78125
       ]
     },
     {
-      "kind": "meeting",
+      "kind": "barracks",
       "center": [
         0.72,
         0.78125

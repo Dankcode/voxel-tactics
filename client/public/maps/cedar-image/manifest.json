@@ -39,19 +39,19 @@
     {
       "seed": 1,
       "metrics": {
-        "reachableTiles": 2576,
-        "coverDensity": 0.4429347826086957,
-        "outdoorCover": 0.38114754098360654,
-        "coverGap": 5,
-        "fullCoverShare": 0.14285714285714285,
-        "interiorShare": 0.14751552795031056,
+        "reachableTiles": 2701,
+        "coverDensity": 0.442428730099963,
+        "outdoorCover": 0.3875268817204301,
+        "coverGap": 6,
+        "fullCoverShare": 0.16660496112550907,
+        "interiorShare": 0.13920770085153647,
         "killingField": 10,
-        "sightlineMedian": 10.282725902777743,
+        "sightlineMedian": 9.929878533060464,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.9977528089887641,
+        "destructibleCover": 0.9349240780911063,
         "spawnSafe": 1,
-        "firstContact": 19.6468827043885,
+        "firstContact": 17.11724276862369,
         "rooms": 16,
         "buildings": 2,
         "gates": {
@@ -76,28 +76,41 @@
           "windowLines": true,
           "firstContact": true,
           "heightBudget": true,
-          "enemiesReachable": true
+          "enemiesReachable": true,
+          "layerConnectivity": true,
+          "twoEntrances": true,
+          "flankLength": true,
+          "flankHidden": true,
+          "dropSafe": true,
+          "flankGuard": true
         },
-        "pass": true
+        "pass": true,
+        "flank": {
+          "cost": 31.57,
+          "direct": 22.414,
+          "tunnelCost": 21.656,
+          "approach": 5.414,
+          "ratio": 1.4084946908182385
+        }
       },
-      "buildMs": 346.63354200000003
+      "buildMs": 363.40016699999995
     },
     {
       "seed": 2,
       "metrics": {
-        "reachableTiles": 2572,
-        "coverDensity": 0.4451788491446345,
-        "outdoorCover": 0.38429940666362394,
+        "reachableTiles": 2689,
+        "coverDensity": 0.45258460394198585,
+        "outdoorCover": 0.3986165153480329,
         "coverGap": 5,
-        "fullCoverShare": 0.14307931570762053,
-        "interiorShare": 0.14813374805598756,
+        "fullCoverShare": 0.16772034213462253,
+        "interiorShare": 0.13982893268873187,
         "killingField": 10,
-        "sightlineMedian": 9.200333702485349,
+        "sightlineMedian": 10.606601717798213,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.9977628635346756,
+        "destructibleCover": 0.936124911284599,
         "spawnSafe": 1,
-        "firstContact": 18.439088914585778,
+        "firstContact": 17.11724276862369,
         "rooms": 16,
         "buildings": 2,
         "gates": {
@@ -122,28 +135,41 @@
           "windowLines": true,
           "firstContact": true,
           "heightBudget": true,
-          "enemiesReachable": true
+          "enemiesReachable": true,
+          "layerConnectivity": true,
+          "twoEntrances": true,
+          "flankLength": true,
+          "flankHidden": true,
+          "dropSafe": true,
+          "flankGuard": true
         },
-        "pass": true
+        "pass": true,
+        "flank": {
+          "cost": 31.57,
+          "direct": 22.414,
+          "tunnelCost": 21.656,
+          "approach": 5.414,
+          "ratio": 1.4084946908182385
+        }
       },
-      "buildMs": 280.907667
+      "buildMs": 312.931084
     },
     {
       "seed": 3,
       "metrics": {
-        "reachableTiles": 2590,
-        "coverDensity": 0.43281853281853283,
-        "outdoorCover": 0.3695652173913043,
-        "coverGap": 5,
-        "fullCoverShare": 0.13822393822393822,
-        "interiorShare": 0.14749034749034748,
+        "reachableTiles": 2701,
+        "coverDensity": 0.4435394298407997,
+        "outdoorCover": 0.38838709677419353,
+        "coverGap": 6,
+        "fullCoverShare": 0.1643835616438356,
+        "interiorShare": 0.13920770085153647,
         "killingField": 10,
-        "sightlineMedian": 9.20033370248535,
+        "sightlineMedian": 7.800000000000001,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.9976940814757879,
+        "destructibleCover": 0.9347353154459753,
         "spawnSafe": 1,
-        "firstContact": 18,
+        "firstContact": 17.11724276862369,
         "rooms": 16,
         "buildings": 2,
         "gates": {
@@ -168,28 +194,41 @@
           "windowLines": true,
           "firstContact": true,
           "heightBudget": true,
-          "enemiesReachable": true
+          "enemiesReachable": true,
+          "layerConnectivity": true,
+          "twoEntrances": true,
+          "flankLength": true,
+          "flankHidden": true,
+          "dropSafe": true,
+          "flankGuard": true
         },
-        "pass": true
+        "pass": true,
+        "flank": {
+          "cost": 31.57,
+          "direct": 22.414,
+          "tunnelCost": 21.656,
+          "approach": 5.414,
+          "ratio": 1.4084946908182385
+        }
       },
-      "buildMs": 251.71183299999996
+      "buildMs": 315.906292
     },
     {
       "seed": 4,
       "metrics": {
-        "reachableTiles": 2563,
-        "coverDensity": 0.4553257900897386,
-        "outdoorCover": 0.3962437013284471,
-        "coverGap": 5,
-        "fullCoverShare": 0.14475224346468982,
-        "interiorShare": 0.148263753413968,
+        "reachableTiles": 2700,
+        "coverDensity": 0.44296296296296295,
+        "outdoorCover": 0.38683304647160066,
+        "coverGap": 6,
+        "fullCoverShare": 0.1674074074074074,
+        "interiorShare": 0.13925925925925925,
         "killingField": 10,
-        "sightlineMedian": 10.5,
+        "sightlineMedian": 10.282725902777745,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.9977827050997783,
+        "destructibleCover": 0.9350180505415162,
         "spawnSafe": 1,
-        "firstContact": 18,
+        "firstContact": 17.11724276862369,
         "rooms": 16,
         "buildings": 2,
         "gates": {
@@ -214,18 +253,31 @@
           "windowLines": true,
           "firstContact": true,
           "heightBudget": true,
-          "enemiesReachable": true
+          "enemiesReachable": true,
+          "layerConnectivity": true,
+          "twoEntrances": true,
+          "flankLength": true,
+          "flankHidden": true,
+          "dropSafe": true,
+          "flankGuard": true
         },
-        "pass": true
+        "pass": true,
+        "flank": {
+          "cost": 31.57,
+          "direct": 22.414,
+          "tunnelCost": 21.656,
+          "approach": 5.414,
+          "ratio": 1.4084946908182385
+        }
       },
-      "buildMs": 271.65383299999996
+      "buildMs": 297.8710839999999
     }
   ],
   "repairs": [],
   "credits": "Reference supplied by author; generated interiors are art direction.",
   "checksums": {
     "site": "247078fa8ac60e612e2895a80353750f55f2f3c90577dd8b971e6285f5081deb",
-    "design": "9ec6bf4989607415c2030ee857870da673c4f77cb0e6b8667f1a647d5dfe6f40",
-    "layout": "a9c0b5b7888d1b13b3970e08d83595a0e50e8bc3e6db5caa9aeea1c58ebb3511"
+    "design": "b153497bda982a39c80c5a5be5d4959b1b1d69d94a3f7d51530881afeb353455",
+    "layout": "1df26a8f1abb66f9ffad7a3959f2edc66b3d632189b36625cdc4004e3a9ad45a"
   }
 }
