@@ -90,12 +90,25 @@ Turn it on with `?debug=1`, the menu checkbox, the bug button in the top bar, or
 | **Units** | every unit with HP / AP / position: select, +AP, heal / revive, kill, refill, +stress, burn / chill / stun; heal squad, +AP to the active side, kill visible, god mode |
 | **Turn** | end the active side (`F10`), take control of the enemy side, pause the AI and step it one action at a time (`F9`), autoplay the squad, playback speed, back-shot mode, alert all pods |
 | **View** | fog of war, reveal rooms, overlays (cover map, line of sight from the selected unit, rooms, reach cost, element field), lighting (day / dusk / night), shadows, render stats |
-| **Mission** | restart, new seed, jump to any map, map metrics and gates, weapon stats, battle hash |
+| **Mission** | restart, new seed, generate fresh map-builder layouts, jump to any map, map metrics and gates, weapon stats, battle hash |
 
 A readout at the top of the screen shows the hovered tile: coordinates, materials and voxel HP at ground / +1 /
-+2, cover per side, room id, element state and any unit there. Every debug action is a `{ type: 'debug' }`
++2, cover per side, room id, element state and any unit there. Battlefield editing actions use a `{ type: 'debug' }`
 intent (`shared/battle/DebugOps.js`): it animates like normal play, stays deterministic, and is refused unless
 the battle was created in debug mode (online rooms only when the host ticked debug).
+
+To test the map builder, start a local battle, press **F1 → Mission**, choose a seed,
+building programme, storeys and time, then click **Generate map**. **New layout** increments
+the seed and reruns the site, floor, facade and underground solvers; **Restart** replays
+the same generated map. Gate results appear below the controls. Compiler errors preserve
+the current battle and show the failing seed. These are procedural test sites, with no API key
+or installed-map files required. They do not run screenshot analysis.
+
+The console entry point is `await __game.debug.generateMap({ seed: 3, program: 'office', storeys: 4, timeOfDay: 'night-ops' })`
+while local debug mode is enabled. It returns `{ options, site, layout, design }` on success
+(and `null` with an on-screen error on failure). The same data remains available at
+`__game.battle.mission.meta.debugGeneration` for inspecting or exporting the generated blueprint.
+Map generation replaces the current local battle and resets its progress.
 
 ## What the battle tests
 

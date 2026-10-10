@@ -140,7 +140,7 @@ body.cutin-active #hud { opacity: 0; transition: opacity .15s; } #hud { transiti
 .menu-card .check { display: flex; gap: 8px; align-items: center; } .menu-card .check input { width: auto; display: inline; margin: 0; }
 
 /* Debug drawer */
-.dbg-drawer { position: absolute; right: 14px; top: 74px; width: 440px; max-height: calc(100vh - 220px); overflow: auto; padding: 10px; background: rgba(12, 6, 22, 0.94); border: 1px solid rgba(181, 140, 255, .5); z-index: 6; font-size: 13px; }
+.dbg-drawer { position: absolute; right: 14px; top: 74px; width: min(440px, calc(100vw - 28px)); max-height: calc(100vh - 220px); overflow: auto; padding: 10px; background: rgba(12, 6, 22, 0.94); border: 1px solid rgba(181, 140, 255, .5); z-index: 6; font-size: 13px; }
 .dbg-drawer .dhead { display: flex; justify-content: space-between; align-items: center; color: var(--violet); letter-spacing: .3em; margin-bottom: 6px; } .dbg-drawer .dhead button { padding: 2px 8px; }
 .dbg-drawer .tabs { display: flex; gap: 3px; margin-bottom: 8px; } .dbg-drawer .tabs button { flex: 1; font-size: 12px; padding: 5px; } .dbg-drawer button.on { border-color: var(--violet); background: rgba(80, 50, 130, .9); }
 .dbg-drawer .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 8px; } .dbg-drawer .grid button { text-transform: none; text-align: left; font-size: 13px; }

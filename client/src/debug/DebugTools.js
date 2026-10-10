@@ -19,6 +19,7 @@ import { CLASSES, ENEMIES } from '../../../shared/content/units.js';
 import { STATUS_DEFS } from '../../../shared/elements/Elements.js';
 import { reasonText } from '../ui/Reasons.js';
 import { LocalSession } from '../net/LocalSession.js';
+import { DEBUG_PROGRAMS, DEBUG_TIMES } from '../../../shared/mapgen/DebugGenerator.js';
 import { SCENARIOS } from '../../../shared/session/Scenarios.js';
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -37,6 +38,8 @@ export class DebugTools {
         this.radius = 1; this.height = 1; this.power = 10; this.material = 'sandbag'; this.spawnType = 'cultist'; this.spawnSide = 'enemy';
         this.manualEnemy = false; this.paused = false; this.stepResolvers = [];
         this.overlay = null; this.lastOps = [];
+        this.builderSeed = 1; this.builderProgram = 'office'; this.builderStoreys = 3; this.builderTime = 'day';
+        this.builderBusy = false; this.builderMessage = ''; this.builderError = false;
         this.fps = 0; this.frames = 0; this.fpsT = performance.now();
         this.el = document.createElement('div'); this.el.className = 'dbg-drawer hidden';
         this.info = document.createElement('div'); this.info.className = 'dbg-info hidden';
@@ -122,6 +125,7 @@ export class DebugTools {
     onClick(e) {
         const b = e.target.closest('[data-d]'); if (!b) return;
         e.stopPropagation();
+        if (this.builderBusy) return;
         const g = this.game, a = b.dataset.d, arg = b.dataset.arg;
         const sel = g.selectedUnit() || g.battle?.unit(g.selected);
         switch (a) {
@@ -144,8 +148,13 @@ export class DebugTools {
             case 'lighting': g.scene.setLighting(arg); break;
             case 'shadows': g.scene.renderer.shadowMap.enabled = !g.scene.renderer.shadowMap.enabled; g.scene.scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); break;
             case 'restart': g.restart(); break;
-            case 'reseed': this.restartWith({ seed: (g.session.desc?.seed || 1) + 1 }); break;
-            case 'map': this.restartWith(JSON.parse(arg)); break;
+            case 'reseed': { const seed = ((g.session.desc?.seed ?? 1) + 1) >>> 0;
+                if (g.session.desc?.debugMap) this.generateMap({ ...g.session.desc.debugMap, seed });
+                else this.restartWith({ seed });
+                break; }
+            case 'map': this.restartWith({ ...JSON.parse(arg), debugMap: null }); break;
+            case 'generate': this.generateMap(); break;
+            case 'generateNext': this.builderSeed = (this.builderSeed + 1) >>> 0; this.generateMap(); break;
             case 'killVisible': for (const id of [...(g.battle.visible || [])]) this.op('kill', { unitId: id }); break;
             case 'healSquad': for (const u of g.battle.units.filter(u => u.side === 'player')) this.op('heal', { unitId: u.id }); break;
             case 'apSquad': for (const u of g.battle.unitsOf(g.battle.activeSide)) this.op('ap', { unitId: u.id, amount: 4 }); break;
@@ -156,7 +165,7 @@ export class DebugTools {
     }
     onChange(e) {
         const t = e.target, k = t.dataset.v; if (!k) return;
-        this[k] = t.type === 'number' || t.type === 'range' ? Number(t.value) : t.value;
+        this[k] = t.type === 'number' || t.type === 'range' || k === 'builderStoreys' ? Number(t.value) : t.value;
         this.render();
     }
     async restartWith(patch) {
@@ -164,6 +173,35 @@ export class DebugTools {
         if (!g.session.local) { g.hud.toast('Map switching is local-only', 'warn'); return; }
         const s = await LocalSession.create(desc);
         await g.start(s);
+    }
+    // Public console entry point: await __game.debug.generateMap({ seed: 42, storeys: 4 }).
+    async generateMap(options = {}) {
+        if (this.builderBusy) throw Error('Map generation already in progress');
+        if (!this.enabled || !this.game.session?.local) {
+            this.game.hud.toast('Map builder requires local debug mode', 'warn');
+            return null;
+        }
+        if (this.game.aiRunning || !this.game.player.idle()) {
+            this.game.hud.toast('Wait for the current turn playback before generating a map', 'warn');
+            return null;
+        }
+        const settings = { seed: this.builderSeed, program: this.builderProgram, storeys: this.builderStoreys, timeOfDay: this.builderTime, ...options };
+        this.builderBusy = true; this.builderError = false; this.builderMessage = `Building seed ${settings.seed}…`; this.render();
+        try {
+            // Paint the busy state before the synchronous solver runs; retain the current battle on build failure.
+            await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+            await this.game.player.whenIdle();
+            const session = await LocalSession.create({ ...this.game.session.desc, seed: settings.seed, debug: true, debugMap: settings });
+            await this.game.start(session);
+            this.builderSeed = settings.seed; this.builderProgram = settings.program;
+            this.builderStoreys = settings.storeys; this.builderTime = settings.timeOfDay;
+            const m = session.battle.mission;
+            this.builderMessage = `Generated seed ${settings.seed} · ${m.metrics.pass ? 'all gates pass' : 'combat gates failing; inspect below'}`;
+            return m.meta.debugGeneration;
+        } catch (error) {
+            this.builderError = true; this.builderMessage = `Seed ${settings.seed} failed: ${error.message}`;
+            return null;
+        } finally { this.builderBusy = false; this.render(); }
     }
     refresh() { if (this.enabled) { this.render(); this.applyOverlay(); } }
     render() {
@@ -202,6 +240,14 @@ export class DebugTools {
             const gates = Object.entries(m.gates || {}).map(([k, ok]) => `<span class="${ok ? 'ok' : 'bad'}">${k}</span>`).join(' ');
             body = `<p><b>${esc(b.mission.name)}</b> · seed ${g.session.desc?.seed ?? '?'} · ${b.store.width}×${b.store.depth}×${b.store.height}</p>
                 <div class="row"><button data-d="restart">Restart</button><button data-d="reseed">New seed</button></div>
+                <h5>Map builder (local)</h5>
+                <p class="hint">Fresh architecture through the layout solver and voxel compiler. Restart replays it; new layout changes the seed.</p>
+                <label>Seed <input aria-label="Map builder seed" data-v="builderSeed" type="number" min="0" max="4294967295" step="1" value="${this.builderSeed}"></label>
+                <label>Building <select aria-label="Map builder building" data-v="builderProgram">${DEBUG_PROGRAMS.map(p => `<option ${p === this.builderProgram ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
+                <label>Storeys <select aria-label="Map builder storeys" data-v="builderStoreys">${[1,2,3,4].map(n => `<option ${n === this.builderStoreys ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+                <label>Time <select aria-label="Map builder time" data-v="builderTime">${DEBUG_TIMES.map(t => `<option ${t === this.builderTime ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
+                <div class="row"><button data-d="generate" ${this.builderBusy || !g.session.local ? 'disabled' : ''}>Generate map</button><button data-d="generateNext" ${this.builderBusy || !g.session.local ? 'disabled' : ''}>New layout</button></div>
+                <p role="status" class="${this.builderError ? 'bad' : 'hint'}">${esc(this.builderMessage)}</p>
                 <div class="row">${SCENARIOS.map(m => `<button data-d="map" data-arg='${JSON.stringify({ scenario: m.id })}' class="${b.mission.id === m.id ? 'on' : ''}">${esc(m.name)}</button>`).join('')}</div>
                 <h5>Map metrics ${m.pass ? '<span class="ok">PASS</span>' : '<span class="bad">gates failing</span>'}</h5>
                 <div class="metrics">cover ${pct(m.coverDensity)} · outdoor cover ${pct(m.outdoorCover)} · full ${pct(m.fullCoverShare)} · indoor ${pct(m.interiorShare)} · open square ${m.killingField} · sightline ${(m.sightlineMedian || 0).toFixed(0)} · lanes ${m.lanes} · breachable ${pct(m.breachability)} · destructible ${pct(m.destructibleCover)} · rooms ${m.rooms}</div>
