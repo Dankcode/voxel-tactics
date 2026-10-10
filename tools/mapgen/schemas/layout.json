@@ -13,7 +13,9 @@
     "flow",
     "reference",
     "congruence",
-    "parcels"
+    "parcels",
+    "datum",
+    "layers"
   ],
   "properties": {
     "version": {
@@ -84,6 +86,40 @@
         }
       },
       "minItems": 1
+    },
+    "datum": {
+      "enum": [
+        4
+      ]
+    },
+    "layers": {
+      "type": "object",
+      "required": [
+        "datum",
+        "parcels",
+        "route",
+        "entrances",
+        "drop"
+      ],
+      "properties": {
+        "datum": {
+          "enum": [
+            4
+          ]
+        },
+        "route": {
+          "type": "array",
+          "minItems": 2
+        },
+        "entrances": {
+          "type": "array",
+          "minItems": 2
+        },
+        "parcels": {
+          "type": "array",
+          "minItems": 3
+        }
+      }
     }
   }
 }

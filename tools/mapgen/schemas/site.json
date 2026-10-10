@@ -42,7 +42,8 @@
         "dusk",
         "night",
         "dawn",
-        "overcast"
+        "overcast",
+        "night-ops"
       ]
     },
     "frame": {
@@ -186,6 +187,29 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 5000
+    },
+    "levels": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "underground",
+          "street",
+          "bridge",
+          "elevated"
+        ]
+      }
+    },
+    "underground": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "subway",
+            "storm-drain",
+            "underpass"
+          ]
+        }
+      }
     }
   }
 }

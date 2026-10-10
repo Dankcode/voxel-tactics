@@ -94,6 +94,8 @@ export const RENDER = {
     crystal: { tex: 'crystal', scale: 1, rough: 0.1, normal: 0.6, kind: 'glass', opacity: 0.9, emissive: 0x58b8ff, emissiveIntensity: 0.6 },
     cloth: { tex: 'cloth', scale: 2, rough: 0.95, normal: 0.4 },
     hay: { tex: 'hay', uv: 'face', rough: 1, normal: 1 },
+    emergency_light:{tex:null,emissive:0xff2819,emissiveIntensity:1.4,rough:.5},
+    grate:{tex:null,tint:0x667680,metal:.65,rough:.55},steel_stair:{tex:null,tint:0x667680,metal:.65,rough:.55},steel_post:{tex:null,tint:0x53636f,metal:.7,rough:.5},railing:{tex:null,tint:0x8999a2,metal:.65,rough:.5},
     lantern: { tex: 'lantern', uv: 'face', rough: 0.5, normal: 0.6, emissive: 0xffb347, emissiveIntensity: 1.4 }
 };
 export const FALLBACK = { tex: 'stone', scale: 2, rough: 0.9, normal: 1 };

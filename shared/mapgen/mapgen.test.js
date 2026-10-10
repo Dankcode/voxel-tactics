@@ -91,3 +91,10 @@ test('picture-driven 1/2/4-storey policy preserves observations and varies floor
  assert.equal(design.mission.target.building,'landmark');
  const programmes=design.programs.filter(p=>p.building==='landmark').map(p=>p.rooms.map(r=>r.kind).join(','));assert.equal(new Set(programmes).size,4);
 });
+test('the design stage may adjust observed heights within the budget without changing footprints',()=>{
+ const site=structuredClone(CEDAR_IMAGE_SITE),layout=solveSite(site);const design=designLevel(site,layout);design.heights=[{building:layout.buildings[0].id,storeys:1}];design.programs=design.programs.filter(p=>p.building!==design.heights[0].building||p.floor===0);
+ // Relocate references to the changed building's remaining floor.
+ for(const p of [...design.beats,...design.encounters,design.mission.target])if(p.building===design.heights[0].building){p.floor=0;p.room='hall';}
+ designLevel(site,layout,design);assert.equal(layout.buildings[0].observedStoreys,2);assert.equal(layout.buildings[0].storeys,1);assert.ok(layout.repairs.some(r=>r.kind==='played-height'));
+ assert.throws(()=>designLevel(site,layout,{...design,heights:[{building:layout.buildings[0].id,storeys:6}]}),/height/);
+});

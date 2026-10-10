@@ -21,7 +21,7 @@ test('live-provider contract runs site → design → per-floor image/read-back;
         readFloor:async(image,p)=>{assert.match(image,/^data:image\/png;base64,/);counts.floor++;return JSON.parse(await readFile(`client/public/maps/signal-house/floorspec/command-${p.floor}.json`));}
     };
     try {
-        const options={image:source,id:'signal-house',out,providers};
+        const options={image:source,id:'signal-house',out,providers,buildBudgetMs:10000};
         const first=await runPipeline(options);assert.deepEqual(counts,{site:1,design:1,image:4,floor:4});
         const second=await runPipeline(options);assert.deepEqual(counts,{site:1,design:1,image:4,floor:4});assert.deepEqual(first.layout,second.layout);
         await runPipeline({...options,redo:'command/floor-3'});assert.deepEqual(counts,{site:1,design:1,image:5,floor:5});

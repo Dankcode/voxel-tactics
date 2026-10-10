@@ -24,7 +24,7 @@ export class LanternLights {
         this.decor = decor || [];
         this.spots = [];
         for (let z = 0; z < store.height; z++) for (let y = 0; y < store.depth; y++) for (let x = 0; x < store.width; x++)
-            if (store.get(x, y, z) === MAT.lantern) this.spots.push(new THREE.Vector3(x + 0.5, z + 0.5, y + 0.5));
+            if (store.get(x, y, z) === MAT.lantern || store.get(x,y,z)===MAT.emergency_light) this.spots.push(new THREE.Vector3(x + 0.5, z + 0.5, y + 0.5));
         for (const d of this.decor) {
             const h = DECOR_LIGHT_HEIGHT[d.kind];
             if (h == null) continue;
@@ -41,7 +41,7 @@ export class LanternLights {
         this.t += dt;
         if (this.t < 0.4) return;
         this.t = 0;
-        const night = { day: 0.8, dusk: 1.3, night: 2.2 }[this.scene.lightingName] ?? 1;
+        const night = { day: 0.8, dusk: 1.3, night: 2.2, 'night-ops':2.2 }[this.scene.lightingName] ?? 1;
         const near = this.spots.filter(p => p.y < cut).map(p => [p, p.distanceToSquared(focus)]).filter(([, d]) => d < 26 * 26).sort((a, b) => a[1] - b[1]);
         this.pool.forEach((l, i) => {
             const s = near[i];

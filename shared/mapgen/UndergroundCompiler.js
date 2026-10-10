@@ -5,6 +5,7 @@ export function compileUnderground(m,layers) {
  const s=m.store,cells=new Map(),k=(x,y)=>`${x},${y}`;
  for(const p of layers.route)for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)if(s.inBounds(p.x+dx,p.y+dy,1))cells.set(k(p.x+dx,p.y+dy),{x:p.x+dx,y:p.y+dy,z:1});
  for(const p of cells.values()){s.set(p.x,p.y,1,MAT.concrete);s.set(p.x,p.y,2,0);s.set(p.x,p.y,3,0);m.reserve(p.x,p.y,p.x,p.y);}
+ if(layers.kind==='storm-drain')for(const p of layers.route)s.set(p.x,p.y,1,MAT.water);
  const openings=[];
  for(const e of layers.entrances) {
   if(e.kind==='manhole') {
@@ -21,7 +22,7 @@ export function compileUnderground(m,layers) {
   }
   m.reserve(e.x-2,e.y-2,e.x+2,e.y+2);
  }
- const p=layers.drop;s.set(p.x,p.y,4,0);m.reserve(p.x-2,p.y-2,p.x+2,p.y+2);
+ const p=layers.drop;s.set(p.x,p.y,4,0);s.set(p.x+1,p.y,4,MAT.grate);m.reserve(p.x-2,p.y-2,p.x+2,p.y+2);
  openings.push({from:{x:p.x+1,y:p.y,z:4},to:{x:p.x,y:p.y,z:1},kind:'jump'});
  // A small raised bridge crosses the open underpass. Parallel steps leave the tunnel intact.
  if(layers.bridge) {
@@ -35,6 +36,6 @@ export function compileUnderground(m,layers) {
   for(const offset of index===0?[-1,0]:[0,1])for(let z=2;z<=3;z++)s.set(p.x+dx*offset,p.y+dy*offset,z,MAT.concrete_wall);
  }
  const guard=layers.route[Math.max(4,Math.floor(layers.route.length*.75))];
- for(let i=6;i<layers.route.length-3;i+=8){if([.3,.6].some(f=>Math.abs(i-Math.floor(layers.route.length*f))<3))continue;const p=layers.route[i];s.set(p.x-1,p.y,3,MAT.lantern);}
+ for(let i=6;i<layers.route.length-3;i+=8){if([.3,.6].some(f=>Math.abs(i-Math.floor(layers.route.length*f))<3))continue;const p=layers.route[i];s.set(p.x-1,p.y,3,i%16===6?MAT.emergency_light:MAT.lantern);}
  return {cells:[...cells.values()].filter(p=>s.surfaces(p.x,p.y).some(q=>q.z===p.z&&q.headroom>=2)),openings,route:layers.route.map(p=>({...p,z:1})),guard:{...guard,z:1},kind:layers.kind};
 }

@@ -1,6 +1,7 @@
 import { solveWaveFunctionCollapse } from '../generation/WaveFunctionCollapse.js';
 const dirs=[[1,0],[-1,0],[0,1],[0,-1]],key=(x,y)=>`${x},${y}`;
 export function layerCompatible(a,b,d) {
+ if(d==='side'&&((a==='street'&&b==='yard')||(b==='street'&&a==='yard')))return false;
  if(d==='up'||d==='down') {const pair=d==='up'?[a,b]:[b,a];
   if(['drop','entrance','manhole'].includes(pair[1]))return pair[0]==='tunnel'||pair[0]==='junction';
   if(pair[1]==='bridge')return ['street','sidewalk','drop'].includes(pair[0]);
@@ -27,8 +28,9 @@ export function solveLayers(layout,site,seed=1) {
   const id=`${x},${y},${l}`,neighbors=dirs.filter(([dx,dy])=>x+dx>=0&&y+dy>=0&&x+dx<pw&&y+dy<pd).map(([dx,dy])=>({id:`${x+dx},${y+dy},${l}`,direction:'side'}));
   if(l>0)neighbors.push({id:`${x},${y},${l-1}`,direction:'down'});if(l<2)neighbors.push({id:`${x},${y},${l+1}`,direction:'up'});
   nodes.push({id,neighbors});domains.set(id,kinds[l]);const k=key(x,y);
-  fixed.set(id,l===0?(tunnel.has(k)?'tunnel':'rock'):l===1?(socket.get(k)||prior.get(k)||'yard'):(prior.get(k)==='building'?'rooftop':k===key(Math.floor(drop.x/4),Math.floor(drop.y/4))?'bridge':'air'));
+  if(l===1&&!socket.has(k)&&!['building','street'].includes(prior.get(k)))domains.set(id,['yard','sidewalk']);
+  else fixed.set(id,l===0?(tunnel.has(k)?'tunnel':'rock'):l===1?(socket.get(k)||prior.get(k)||'yard'):(prior.get(k)==='building'?'rooftop':k===key(Math.floor(drop.x/4),Math.floor(drop.y/4))?'bridge':'air'));
  }
- let assignment;try{assignment=solveWaveFunctionCollapse({nodes,tiles:[...new Set(kinds.flat())].map(id=>({id})),domains,fixed,compatible:layerCompatible,seed:`${site.id}:layers:${seed}`});}catch(e){throw Error(`layer.socket: ${e.message}`);}
- return {datum:4,parcels:[...assignment].map(([id,kind])=>({id,kind})),route,entrances:[{...a,kind:'stairs'},{...b,kind:'manhole'}],drop,bridge:!!site.levels?.includes('bridge'),kind:site.underground?.kind||'subway'};
+ let assignment;try{assignment=solveWaveFunctionCollapse({nodes,tiles:[...new Set(kinds.flat())].map(id=>({id,weight:id==='yard'?5:2})),domains,fixed,compatible:layerCompatible,seed:`${site.id}:layers:${seed}`});}catch(e){throw Error(`layer.socket: ${e.message}`);}
+ return {datum:4,parcels:[...assignment].map(([id,kind])=>({id,kind})),route,entrances:[{...a,kind:'stairs'},{...b,kind:'manhole'}],drop,bridge:site.underground?.kind==='underpass'||!!site.levels?.includes('bridge'),kind:site.underground?.kind||'subway'};
 }

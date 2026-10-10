@@ -1,6 +1,6 @@
 {
  "version": "tileset-v1",
- "generated": "2026-10-08",
+ "generated": "2026-10-10",
  "cell": {
   "size": 1,
   "height": 1,
@@ -942,6 +942,44 @@
    ],
    "group": "decor",
    "text": "Crystal cluster"
+  },
+  "steel_post": {
+   "slots": [
+    "self"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.075,
+     0,
+     -0.075
+    ],
+    [
+     0.075,
+     1,
+     0.075
+    ]
+   ],
+   "group": "circulation"
+  },
+  "grate": {
+   "slots": [
+    "self"
+   ],
+   "tris": 108,
+   "bounds": [
+    [
+     -0.5,
+     0.9,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "circulation"
   },
   "mcap_core": {
    "slots": [
@@ -3821,6 +3859,630 @@
     ]
    ],
    "group": "connected-wall"
+  },
+  "joined_railing_0_top": {
+   "slots": [
+    "self"
+   ],
+   "tris": 92,
+   "bounds": [
+    [
+     -0.04,
+     0,
+     -0.04
+    ],
+    [
+     0.04,
+     0.9,
+     0.04
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected railing run, top module"
+  },
+  "joined_railing_0_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 92,
+   "bounds": [
+    [
+     -0.04,
+     0,
+     -0.04
+    ],
+    [
+     0.04,
+     1,
+     0.04
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_railing_1_top": {
+   "slots": [
+    "self"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.04,
+     0,
+     -0.04
+    ],
+    [
+     0.5,
+     0.9,
+     0.04
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected railing run, top module"
+  },
+  "joined_railing_1_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.04,
+     0,
+     -0.04
+    ],
+    [
+     0.5,
+     1,
+     0.04
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_railing_2_top": {
+   "slots": [
+    "self"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.04,
+     0,
+     -0.04
+    ],
+    [
+     0.04,
+     0.9,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected railing run, top module"
+  },
+  "joined_railing_2_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.04,
+     0,
+     -0.04
+    ],
+    [
+     0.04,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_railing_3_top": {
+   "slots": [
+    "self"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.04,
+     0,
+     -0.04
+    ],
+    [
+     0.5,
+     0.9,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected railing run, top module"
+  },
+  "joined_railing_3_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.04,
+     0,
+     -0.04
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_railing_4_top": {
+   "slots": [
+    "self"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.04
+    ],
+    [
+     0.04,
+     0.9,
+     0.04
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected railing run, top module"
+  },
+  "joined_railing_4_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.04
+    ],
+    [
+     0.04,
+     1,
+     0.04
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_railing_5_top": {
+   "slots": [
+    "self"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.04
+    ],
+    [
+     0.5,
+     0.9,
+     0.04
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected railing run, top module"
+  },
+  "joined_railing_5_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.04
+    ],
+    [
+     0.5,
+     1,
+     0.04
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_railing_6_top": {
+   "slots": [
+    "self"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.04
+    ],
+    [
+     0.04,
+     0.9,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected railing run, top module"
+  },
+  "joined_railing_6_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.04
+    ],
+    [
+     0.04,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_railing_7_top": {
+   "slots": [
+    "self"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.04
+    ],
+    [
+     0.5,
+     0.9,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected railing run, top module"
+  },
+  "joined_railing_7_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.04
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_railing_8_top": {
+   "slots": [
+    "self"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.04,
+     0,
+     -0.5
+    ],
+    [
+     0.04,
+     0.9,
+     0.04
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected railing run, top module"
+  },
+  "joined_railing_8_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 50,
+   "bounds": [
+    [
+     -0.04,
+     0,
+     -0.5
+    ],
+    [
+     0.04,
+     1,
+     0.04
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_railing_9_top": {
+   "slots": [
+    "self"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.04,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.9,
+     0.04
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected railing run, top module"
+  },
+  "joined_railing_9_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.04,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.04
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_railing_10_top": {
+   "slots": [
+    "self"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.04,
+     0,
+     -0.5
+    ],
+    [
+     0.04,
+     0.9,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected railing run, top module"
+  },
+  "joined_railing_10_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.04,
+     0,
+     -0.5
+    ],
+    [
+     0.04,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_railing_11_top": {
+   "slots": [
+    "self"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.04,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.9,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected railing run, top module"
+  },
+  "joined_railing_11_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.04,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_railing_12_top": {
+   "slots": [
+    "self"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.04,
+     0.9,
+     0.04
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected railing run, top module"
+  },
+  "joined_railing_12_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 56,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.04,
+     1,
+     0.04
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_railing_13_top": {
+   "slots": [
+    "self"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.9,
+     0.04
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected railing run, top module"
+  },
+  "joined_railing_13_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.04
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_railing_14_top": {
+   "slots": [
+    "self"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.04,
+     0.9,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected railing run, top module"
+  },
+  "joined_railing_14_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 62,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.04,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
+  },
+  "joined_railing_15_top": {
+   "slots": [
+    "self"
+   ],
+   "tris": 116,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.9,
+     0.5
+    ]
+   ],
+   "group": "connected-cover",
+   "text": "Connected railing run, top module"
+  },
+  "joined_railing_15_full": {
+   "slots": [
+    "self"
+   ],
+   "tris": 116,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "connected-cover"
   },
   "joined_hedge_0_top": {
    "slots": [

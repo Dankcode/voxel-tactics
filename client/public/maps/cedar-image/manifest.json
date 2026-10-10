@@ -4,7 +4,7 @@
   "name": "Cedar Close · Image Study",
   "theme": "Suburbs",
   "seed": 1,
-  "generatorVersion": "2.0.0",
+  "generatorVersion": "3.0.0",
   "sourceAnalysis": "recorded",
   "conceptSource": "offline-schematic",
   "models": {},
@@ -39,17 +39,17 @@
     {
       "seed": 1,
       "metrics": {
-        "reachableTiles": 2701,
-        "coverDensity": 0.442428730099963,
-        "outdoorCover": 0.3875268817204301,
-        "coverGap": 6,
-        "fullCoverShare": 0.16660496112550907,
-        "interiorShare": 0.13920770085153647,
+        "reachableTiles": 2690,
+        "coverDensity": 0.4382899628252788,
+        "outdoorCover": 0.38245462402765773,
+        "coverGap": 5,
+        "fullCoverShare": 0.16356877323420074,
+        "interiorShare": 0.13977695167286244,
         "killingField": 10,
-        "sightlineMedian": 9.929878533060464,
+        "sightlineMedian": 9.616652224137047,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.9349240780911063,
+        "destructibleCover": 0.9355762347888332,
         "spawnSafe": 1,
         "firstContact": 17.11724276862369,
         "rooms": 16,
@@ -93,22 +93,22 @@
           "ratio": 1.4084946908182385
         }
       },
-      "buildMs": 363.40016699999995
+      "buildMs": 621.7937079999999
     },
     {
       "seed": 2,
       "metrics": {
-        "reachableTiles": 2689,
-        "coverDensity": 0.45258460394198585,
-        "outdoorCover": 0.3986165153480329,
+        "reachableTiles": 2673,
+        "coverDensity": 0.45417134306023194,
+        "outdoorCover": 0.4000870700914236,
         "coverGap": 5,
-        "fullCoverShare": 0.16772034213462253,
-        "interiorShare": 0.13982893268873187,
+        "fullCoverShare": 0.16161616161616163,
+        "interiorShare": 0.14066591844369622,
         "killingField": 10,
-        "sightlineMedian": 10.606601717798213,
+        "sightlineMedian": 8.8,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.936124911284599,
+        "destructibleCover": 0.9375433726578765,
         "spawnSafe": 1,
         "firstContact": 17.11724276862369,
         "rooms": 16,
@@ -152,22 +152,22 @@
           "ratio": 1.4084946908182385
         }
       },
-      "buildMs": 312.931084
+      "buildMs": 517.1070420000001
     },
     {
       "seed": 3,
       "metrics": {
-        "reachableTiles": 2701,
-        "coverDensity": 0.4435394298407997,
-        "outdoorCover": 0.38838709677419353,
-        "coverGap": 6,
-        "fullCoverShare": 0.1643835616438356,
-        "interiorShare": 0.13920770085153647,
+        "reachableTiles": 2673,
+        "coverDensity": 0.4552936775158997,
+        "outdoorCover": 0.40139312146277756,
+        "coverGap": 5,
+        "fullCoverShare": 0.1608679386457164,
+        "interiorShare": 0.14066591844369622,
         "killingField": 10,
-        "sightlineMedian": 7.800000000000001,
+        "sightlineMedian": 9.929878533060446,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.9347353154459753,
+        "destructibleCover": 0.9372822299651568,
         "spawnSafe": 1,
         "firstContact": 17.11724276862369,
         "rooms": 16,
@@ -211,22 +211,22 @@
           "ratio": 1.4084946908182385
         }
       },
-      "buildMs": 315.906292
+      "buildMs": 592.3309999999999
     },
     {
       "seed": 4,
       "metrics": {
-        "reachableTiles": 2700,
-        "coverDensity": 0.44296296296296295,
-        "outdoorCover": 0.38683304647160066,
-        "coverGap": 6,
-        "fullCoverShare": 0.1674074074074074,
-        "interiorShare": 0.13925925925925925,
+        "reachableTiles": 2691,
+        "coverDensity": 0.4358974358974359,
+        "outdoorCover": 0.37840172786177106,
+        "coverGap": 5,
+        "fullCoverShare": 0.16648086213303603,
+        "interiorShare": 0.1397250092902267,
         "killingField": 10,
-        "sightlineMedian": 10.282725902777745,
+        "sightlineMedian": 10.5,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.9350180505415162,
+        "destructibleCover": 0.9352983465132998,
         "spawnSafe": 1,
         "firstContact": 17.11724276862369,
         "rooms": 16,
@@ -270,7 +270,7 @@
           "ratio": 1.4084946908182385
         }
       },
-      "buildMs": 297.8710839999999
+      "buildMs": 490.974792
     }
   ],
   "repairs": [],
@@ -278,6 +278,6 @@
   "checksums": {
     "site": "247078fa8ac60e612e2895a80353750f55f2f3c90577dd8b971e6285f5081deb",
     "design": "b153497bda982a39c80c5a5be5d4959b1b1d69d94a3f7d51530881afeb353455",
-    "layout": "1df26a8f1abb66f9ffad7a3959f2edc66b3d632189b36625cdc4004e3a9ad45a"
+    "layout": "36ba82f342646adc9b5c5ebc9082329c1a7c44ab14159104840e397e2189af85"
   }
 }

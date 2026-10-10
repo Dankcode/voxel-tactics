@@ -29,6 +29,8 @@
       "y0": 8,
       "w": 25,
       "d": 16,
+      "observedStoreys": 2,
+      "heightRole": "landmark",
       "floors": [
         {
           "floor": 0,
@@ -3296,126 +3298,58 @@
   "parcels": [
     {
       "id": "0,0",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "1,0",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "2,0",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "3,0",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "4,0",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "5,0",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "6,0",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "7,0",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "8,0",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "9,0",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "10,0",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "11,0",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "12,0",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "13,0",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "14,0",
-      "kind": "sidewalk"
+      "kind": "yard"
     },
     {
       "id": "0,1",
-      "kind": "sidewalk"
+      "kind": "yard"
     },
     {
-      "id": "1,1",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "2,1",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "3,1",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "4,1",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "5,1",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "6,1",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "7,1",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "8,1",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "9,1",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "10,1",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "11,1",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "12,1",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "13,1",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "14,1",
+      "id": "0,10",
       "kind": "sidewalk"
     },
     {
       "id": "0,2",
+      "kind": "yard"
+    },
+    {
+      "id": "0,3",
+      "kind": "yard"
+    },
+    {
+      "id": "0,4",
+      "kind": "yard"
+    },
+    {
+      "id": "0,5",
+      "kind": "yard"
+    },
+    {
+      "id": "0,6",
+      "kind": "yard"
+    },
+    {
+      "id": "0,7",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "0,8",
+      "kind": "yard"
+    },
+    {
+      "id": "0,9",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "1,0",
+      "kind": "yard"
+    },
+    {
+      "id": "1,1",
+      "kind": "yard"
+    },
+    {
+      "id": "1,10",
       "kind": "sidewalk"
     },
     {
@@ -3423,299 +3357,19 @@
       "kind": "sidewalk"
     },
     {
-      "id": "2,2",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "3,2",
-      "kind": "building"
-    },
-    {
-      "id": "4,2",
-      "kind": "building"
-    },
-    {
-      "id": "5,2",
-      "kind": "building"
-    },
-    {
-      "id": "6,2",
-      "kind": "building"
-    },
-    {
-      "id": "7,2",
-      "kind": "building"
-    },
-    {
-      "id": "8,2",
-      "kind": "building"
-    },
-    {
-      "id": "9,2",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "10,2",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "11,2",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "12,2",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "13,2",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "14,2",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "0,3",
-      "kind": "sidewalk"
-    },
-    {
       "id": "1,3",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "2,3",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "3,3",
-      "kind": "building"
-    },
-    {
-      "id": "4,3",
-      "kind": "building"
-    },
-    {
-      "id": "5,3",
-      "kind": "building"
-    },
-    {
-      "id": "6,3",
-      "kind": "building"
-    },
-    {
-      "id": "7,3",
-      "kind": "building"
-    },
-    {
-      "id": "8,3",
-      "kind": "building"
-    },
-    {
-      "id": "9,3",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "10,3",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "11,3",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "12,3",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "13,3",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "14,3",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "0,4",
-      "kind": "sidewalk"
+      "kind": "yard"
     },
     {
       "id": "1,4",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "2,4",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "3,4",
-      "kind": "building"
-    },
-    {
-      "id": "4,4",
-      "kind": "building"
-    },
-    {
-      "id": "5,4",
-      "kind": "building"
-    },
-    {
-      "id": "6,4",
-      "kind": "building"
-    },
-    {
-      "id": "7,4",
-      "kind": "building"
-    },
-    {
-      "id": "8,4",
-      "kind": "building"
-    },
-    {
-      "id": "9,4",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "10,4",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "11,4",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "12,4",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "13,4",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "14,4",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "0,5",
-      "kind": "sidewalk"
+      "kind": "yard"
     },
     {
       "id": "1,5",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "2,5",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "3,5",
-      "kind": "building"
-    },
-    {
-      "id": "4,5",
-      "kind": "building"
-    },
-    {
-      "id": "5,5",
-      "kind": "building"
-    },
-    {
-      "id": "6,5",
-      "kind": "building"
-    },
-    {
-      "id": "7,5",
-      "kind": "building"
-    },
-    {
-      "id": "8,5",
-      "kind": "building"
-    },
-    {
-      "id": "9,5",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "10,5",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "11,5",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "12,5",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "13,5",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "14,5",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "0,6",
-      "kind": "sidewalk"
+      "kind": "yard"
     },
     {
       "id": "1,6",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "2,6",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "3,6",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "4,6",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "5,6",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "6,6",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "7,6",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "8,6",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "9,6",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "10,6",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "11,6",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "12,6",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "13,6",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "14,6",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "0,7",
       "kind": "sidewalk"
     },
     {
@@ -3723,119 +3377,7 @@
       "kind": "street"
     },
     {
-      "id": "2,7",
-      "kind": "street"
-    },
-    {
-      "id": "3,7",
-      "kind": "street"
-    },
-    {
-      "id": "4,7",
-      "kind": "street"
-    },
-    {
-      "id": "5,7",
-      "kind": "street"
-    },
-    {
-      "id": "6,7",
-      "kind": "street"
-    },
-    {
-      "id": "7,7",
-      "kind": "street"
-    },
-    {
-      "id": "8,7",
-      "kind": "street"
-    },
-    {
-      "id": "9,7",
-      "kind": "street"
-    },
-    {
-      "id": "10,7",
-      "kind": "street"
-    },
-    {
-      "id": "11,7",
-      "kind": "street"
-    },
-    {
-      "id": "12,7",
-      "kind": "street"
-    },
-    {
-      "id": "13,7",
-      "kind": "street"
-    },
-    {
-      "id": "14,7",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "0,8",
-      "kind": "sidewalk"
-    },
-    {
       "id": "1,8",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "2,8",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "3,8",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "4,8",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "5,8",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "6,8",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "7,8",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "8,8",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "9,8",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "10,8",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "11,8",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "12,8",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "13,8",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "14,8",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "0,9",
       "kind": "sidewalk"
     },
     {
@@ -3843,35 +3385,43 @@
       "kind": "sidewalk"
     },
     {
-      "id": "2,9",
+      "id": "10,0",
       "kind": "sidewalk"
     },
     {
-      "id": "3,9",
+      "id": "10,1",
+      "kind": "yard"
+    },
+    {
+      "id": "10,10",
+      "kind": "yard"
+    },
+    {
+      "id": "10,2",
       "kind": "sidewalk"
     },
     {
-      "id": "4,9",
+      "id": "10,3",
       "kind": "sidewalk"
     },
     {
-      "id": "5,9",
+      "id": "10,4",
+      "kind": "yard"
+    },
+    {
+      "id": "10,5",
+      "kind": "yard"
+    },
+    {
+      "id": "10,6",
       "kind": "sidewalk"
     },
     {
-      "id": "6,9",
-      "kind": "sidewalk"
+      "id": "10,7",
+      "kind": "street"
     },
     {
-      "id": "7,9",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "8,9",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "9,9",
+      "id": "10,8",
       "kind": "sidewalk"
     },
     {
@@ -3879,7 +3429,87 @@
       "kind": "sidewalk"
     },
     {
+      "id": "11,0",
+      "kind": "yard"
+    },
+    {
+      "id": "11,1",
+      "kind": "yard"
+    },
+    {
+      "id": "11,10",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "11,2",
+      "kind": "yard"
+    },
+    {
+      "id": "11,3",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "11,4",
+      "kind": "yard"
+    },
+    {
+      "id": "11,5",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "11,6",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "11,7",
+      "kind": "street"
+    },
+    {
+      "id": "11,8",
+      "kind": "sidewalk"
+    },
+    {
       "id": "11,9",
+      "kind": "yard"
+    },
+    {
+      "id": "12,0",
+      "kind": "yard"
+    },
+    {
+      "id": "12,1",
+      "kind": "yard"
+    },
+    {
+      "id": "12,10",
+      "kind": "yard"
+    },
+    {
+      "id": "12,2",
+      "kind": "yard"
+    },
+    {
+      "id": "12,3",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "12,4",
+      "kind": "yard"
+    },
+    {
+      "id": "12,5",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "12,6",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "12,7",
+      "kind": "street"
+    },
+    {
+      "id": "12,8",
       "kind": "sidewalk"
     },
     {
@@ -3887,43 +3517,363 @@
       "kind": "sidewalk"
     },
     {
-      "id": "13,9",
+      "id": "13,0",
+      "kind": "yard"
+    },
+    {
+      "id": "13,1",
       "kind": "sidewalk"
+    },
+    {
+      "id": "13,10",
+      "kind": "yard"
+    },
+    {
+      "id": "13,2",
+      "kind": "yard"
+    },
+    {
+      "id": "13,3",
+      "kind": "yard"
+    },
+    {
+      "id": "13,4",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "13,5",
+      "kind": "yard"
+    },
+    {
+      "id": "13,6",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "13,7",
+      "kind": "street"
+    },
+    {
+      "id": "13,8",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "13,9",
+      "kind": "yard"
+    },
+    {
+      "id": "14,0",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "14,1",
+      "kind": "yard"
+    },
+    {
+      "id": "14,10",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "14,2",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "14,3",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "14,4",
+      "kind": "yard"
+    },
+    {
+      "id": "14,5",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "14,6",
+      "kind": "yard"
+    },
+    {
+      "id": "14,7",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "14,8",
+      "kind": "yard"
     },
     {
       "id": "14,9",
       "kind": "sidewalk"
     },
     {
-      "id": "0,10",
-      "kind": "sidewalk"
+      "id": "2,0",
+      "kind": "yard"
     },
     {
-      "id": "1,10",
+      "id": "2,1",
       "kind": "sidewalk"
     },
     {
       "id": "2,10",
+      "kind": "yard"
+    },
+    {
+      "id": "2,2",
       "kind": "sidewalk"
+    },
+    {
+      "id": "2,3",
+      "kind": "yard"
+    },
+    {
+      "id": "2,4",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "2,5",
+      "kind": "yard"
+    },
+    {
+      "id": "2,6",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "2,7",
+      "kind": "street"
+    },
+    {
+      "id": "2,8",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "2,9",
+      "kind": "yard"
+    },
+    {
+      "id": "3,0",
+      "kind": "yard"
+    },
+    {
+      "id": "3,1",
+      "kind": "yard"
     },
     {
       "id": "3,10",
+      "kind": "yard"
+    },
+    {
+      "id": "3,2",
+      "kind": "building"
+    },
+    {
+      "id": "3,3",
+      "kind": "building"
+    },
+    {
+      "id": "3,4",
+      "kind": "building"
+    },
+    {
+      "id": "3,5",
+      "kind": "building"
+    },
+    {
+      "id": "3,6",
       "kind": "sidewalk"
     },
     {
-      "id": "4,10",
+      "id": "3,7",
+      "kind": "street"
+    },
+    {
+      "id": "3,8",
       "kind": "sidewalk"
+    },
+    {
+      "id": "3,9",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "4,0",
+      "kind": "yard"
+    },
+    {
+      "id": "4,1",
+      "kind": "yard"
+    },
+    {
+      "id": "4,10",
+      "kind": "yard"
+    },
+    {
+      "id": "4,2",
+      "kind": "building"
+    },
+    {
+      "id": "4,3",
+      "kind": "building"
+    },
+    {
+      "id": "4,4",
+      "kind": "building"
+    },
+    {
+      "id": "4,5",
+      "kind": "building"
+    },
+    {
+      "id": "4,6",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "4,7",
+      "kind": "street"
+    },
+    {
+      "id": "4,8",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "4,9",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "5,0",
+      "kind": "yard"
+    },
+    {
+      "id": "5,1",
+      "kind": "yard"
     },
     {
       "id": "5,10",
       "kind": "sidewalk"
     },
     {
-      "id": "6,10",
+      "id": "5,2",
+      "kind": "building"
+    },
+    {
+      "id": "5,3",
+      "kind": "building"
+    },
+    {
+      "id": "5,4",
+      "kind": "building"
+    },
+    {
+      "id": "5,5",
+      "kind": "building"
+    },
+    {
+      "id": "5,6",
       "kind": "sidewalk"
     },
     {
+      "id": "5,7",
+      "kind": "street"
+    },
+    {
+      "id": "5,8",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "5,9",
+      "kind": "yard"
+    },
+    {
+      "id": "6,0",
+      "kind": "yard"
+    },
+    {
+      "id": "6,1",
+      "kind": "yard"
+    },
+    {
+      "id": "6,10",
+      "kind": "yard"
+    },
+    {
+      "id": "6,2",
+      "kind": "building"
+    },
+    {
+      "id": "6,3",
+      "kind": "building"
+    },
+    {
+      "id": "6,4",
+      "kind": "building"
+    },
+    {
+      "id": "6,5",
+      "kind": "building"
+    },
+    {
+      "id": "6,6",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "6,7",
+      "kind": "street"
+    },
+    {
+      "id": "6,8",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "6,9",
+      "kind": "yard"
+    },
+    {
+      "id": "7,0",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "7,1",
+      "kind": "yard"
+    },
+    {
       "id": "7,10",
+      "kind": "yard"
+    },
+    {
+      "id": "7,2",
+      "kind": "building"
+    },
+    {
+      "id": "7,3",
+      "kind": "building"
+    },
+    {
+      "id": "7,4",
+      "kind": "building"
+    },
+    {
+      "id": "7,5",
+      "kind": "building"
+    },
+    {
+      "id": "7,6",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "7,7",
+      "kind": "street"
+    },
+    {
+      "id": "7,8",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "7,9",
+      "kind": "yard"
+    },
+    {
+      "id": "8,0",
+      "kind": "yard"
+    },
+    {
+      "id": "8,1",
       "kind": "sidewalk"
     },
     {
@@ -3931,28 +3881,80 @@
       "kind": "sidewalk"
     },
     {
+      "id": "8,2",
+      "kind": "building"
+    },
+    {
+      "id": "8,3",
+      "kind": "building"
+    },
+    {
+      "id": "8,4",
+      "kind": "building"
+    },
+    {
+      "id": "8,5",
+      "kind": "building"
+    },
+    {
+      "id": "8,6",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "8,7",
+      "kind": "street"
+    },
+    {
+      "id": "8,8",
+      "kind": "sidewalk"
+    },
+    {
+      "id": "8,9",
+      "kind": "yard"
+    },
+    {
+      "id": "9,0",
+      "kind": "yard"
+    },
+    {
+      "id": "9,1",
+      "kind": "sidewalk"
+    },
+    {
       "id": "9,10",
+      "kind": "yard"
+    },
+    {
+      "id": "9,2",
       "kind": "sidewalk"
     },
     {
-      "id": "10,10",
+      "id": "9,3",
+      "kind": "yard"
+    },
+    {
+      "id": "9,4",
+      "kind": "yard"
+    },
+    {
+      "id": "9,5",
+      "kind": "yard"
+    },
+    {
+      "id": "9,6",
       "kind": "sidewalk"
     },
     {
-      "id": "11,10",
+      "id": "9,7",
+      "kind": "street"
+    },
+    {
+      "id": "9,8",
       "kind": "sidewalk"
     },
     {
-      "id": "12,10",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "13,10",
-      "kind": "sidewalk"
-    },
-    {
-      "id": "14,10",
-      "kind": "sidewalk"
+      "id": "9,9",
+      "kind": "yard"
     }
   ],
   "layers": {
@@ -3964,7 +3966,7 @@
       },
       {
         "id": "0,0,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "0,0,2",
@@ -3976,7 +3978,7 @@
       },
       {
         "id": "0,1,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "0,1,2",
@@ -4000,7 +4002,7 @@
       },
       {
         "id": "0,2,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "0,2,2",
@@ -4012,7 +4014,7 @@
       },
       {
         "id": "0,3,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "0,3,2",
@@ -4024,7 +4026,7 @@
       },
       {
         "id": "0,4,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "0,4,2",
@@ -4036,7 +4038,7 @@
       },
       {
         "id": "0,5,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "0,5,2",
@@ -4048,7 +4050,7 @@
       },
       {
         "id": "0,6,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "0,6,2",
@@ -4072,7 +4074,7 @@
       },
       {
         "id": "0,8,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "0,8,2",
@@ -4096,7 +4098,7 @@
       },
       {
         "id": "1,0,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "1,0,2",
@@ -4108,7 +4110,7 @@
       },
       {
         "id": "1,1,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "1,1,2",
@@ -4144,7 +4146,7 @@
       },
       {
         "id": "1,3,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "1,3,2",
@@ -4156,7 +4158,7 @@
       },
       {
         "id": "1,4,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "1,4,2",
@@ -4168,7 +4170,7 @@
       },
       {
         "id": "1,5,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "1,5,2",
@@ -4240,7 +4242,7 @@
       },
       {
         "id": "10,1,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "10,1,2",
@@ -4252,7 +4254,7 @@
       },
       {
         "id": "10,10,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "10,10,2",
@@ -4288,7 +4290,7 @@
       },
       {
         "id": "10,4,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "10,4,2",
@@ -4300,7 +4302,7 @@
       },
       {
         "id": "10,5,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "10,5,2",
@@ -4360,7 +4362,7 @@
       },
       {
         "id": "11,0,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "11,0,2",
@@ -4372,7 +4374,7 @@
       },
       {
         "id": "11,1,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "11,1,2",
@@ -4396,7 +4398,7 @@
       },
       {
         "id": "11,2,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "11,2,2",
@@ -4420,7 +4422,7 @@
       },
       {
         "id": "11,4,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "11,4,2",
@@ -4480,7 +4482,7 @@
       },
       {
         "id": "11,9,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "11,9,2",
@@ -4492,7 +4494,7 @@
       },
       {
         "id": "12,0,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "12,0,2",
@@ -4504,7 +4506,7 @@
       },
       {
         "id": "12,1,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "12,1,2",
@@ -4516,7 +4518,7 @@
       },
       {
         "id": "12,10,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "12,10,2",
@@ -4528,7 +4530,7 @@
       },
       {
         "id": "12,2,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "12,2,2",
@@ -4552,7 +4554,7 @@
       },
       {
         "id": "12,4,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "12,4,2",
@@ -4624,7 +4626,7 @@
       },
       {
         "id": "13,0,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "13,0,2",
@@ -4648,7 +4650,7 @@
       },
       {
         "id": "13,10,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "13,10,2",
@@ -4660,7 +4662,7 @@
       },
       {
         "id": "13,2,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "13,2,2",
@@ -4672,7 +4674,7 @@
       },
       {
         "id": "13,3,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "13,3,2",
@@ -4696,7 +4698,7 @@
       },
       {
         "id": "13,5,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "13,5,2",
@@ -4744,7 +4746,7 @@
       },
       {
         "id": "13,9,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "13,9,2",
@@ -4768,7 +4770,7 @@
       },
       {
         "id": "14,1,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "14,1,2",
@@ -4816,7 +4818,7 @@
       },
       {
         "id": "14,4,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "14,4,2",
@@ -4840,7 +4842,7 @@
       },
       {
         "id": "14,6,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "14,6,2",
@@ -4864,7 +4866,7 @@
       },
       {
         "id": "14,8,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "14,8,2",
@@ -4888,7 +4890,7 @@
       },
       {
         "id": "2,0,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "2,0,2",
@@ -4912,7 +4914,7 @@
       },
       {
         "id": "2,10,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "2,10,2",
@@ -4936,7 +4938,7 @@
       },
       {
         "id": "2,3,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "2,3,2",
@@ -4960,7 +4962,7 @@
       },
       {
         "id": "2,5,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "2,5,2",
@@ -5008,7 +5010,7 @@
       },
       {
         "id": "2,9,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "2,9,2",
@@ -5020,7 +5022,7 @@
       },
       {
         "id": "3,0,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "3,0,2",
@@ -5032,7 +5034,7 @@
       },
       {
         "id": "3,1,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "3,1,2",
@@ -5044,7 +5046,7 @@
       },
       {
         "id": "3,10,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "3,10,2",
@@ -5152,7 +5154,7 @@
       },
       {
         "id": "4,0,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "4,0,2",
@@ -5164,7 +5166,7 @@
       },
       {
         "id": "4,1,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "4,1,2",
@@ -5176,7 +5178,7 @@
       },
       {
         "id": "4,10,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "4,10,2",
@@ -5284,7 +5286,7 @@
       },
       {
         "id": "5,0,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "5,0,2",
@@ -5296,7 +5298,7 @@
       },
       {
         "id": "5,1,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "5,1,2",
@@ -5404,7 +5406,7 @@
       },
       {
         "id": "5,9,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "5,9,2",
@@ -5416,7 +5418,7 @@
       },
       {
         "id": "6,0,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "6,0,2",
@@ -5428,7 +5430,7 @@
       },
       {
         "id": "6,1,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "6,1,2",
@@ -5440,7 +5442,7 @@
       },
       {
         "id": "6,10,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "6,10,2",
@@ -5536,7 +5538,7 @@
       },
       {
         "id": "6,9,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "6,9,2",
@@ -5560,7 +5562,7 @@
       },
       {
         "id": "7,1,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "7,1,2",
@@ -5572,7 +5574,7 @@
       },
       {
         "id": "7,10,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "7,10,2",
@@ -5668,7 +5670,7 @@
       },
       {
         "id": "7,9,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "7,9,2",
@@ -5680,7 +5682,7 @@
       },
       {
         "id": "8,0,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "8,0,2",
@@ -5800,7 +5802,7 @@
       },
       {
         "id": "8,9,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "8,9,2",
@@ -5812,7 +5814,7 @@
       },
       {
         "id": "9,0,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "9,0,2",
@@ -5836,7 +5838,7 @@
       },
       {
         "id": "9,10,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "9,10,2",
@@ -5860,7 +5862,7 @@
       },
       {
         "id": "9,3,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "9,3,2",
@@ -5872,7 +5874,7 @@
       },
       {
         "id": "9,4,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "9,4,2",
@@ -5884,7 +5886,7 @@
       },
       {
         "id": "9,5,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "9,5,2",
@@ -5932,7 +5934,7 @@
       },
       {
         "id": "9,9,1",
-        "kind": "sidewalk"
+        "kind": "yard"
       },
       {
         "id": "9,9,2",

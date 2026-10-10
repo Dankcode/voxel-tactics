@@ -1,3 +1,4 @@
+import { ladderAttachment } from './LadderAttachment.js';
 import { MinHeap } from '../util/MinHeap.js';
 import { AGENT_PROFILES, surfacesAt, stepCost } from './TraversalRules.js';
 import { materialById, MAT } from '../voxel/Materials.js';
@@ -38,7 +39,7 @@ export function ladderMoves(world, from, profile = AGENT_PROFILES.player) {
     const out = [];
     if (profile.width !== 1) return out;
     const L = MAT.ladder, at = (x, y, z) => world.get(x, y, z) === L;
-    if (at(from.x, from.y, from.z + 1)) {                                        // up: the ladder rises from this cell
+    if (at(from.x, from.y, from.z + 1)&&ladderAttachment(world,from.x,from.y,from.z+1)) {                                        // up: the ladder rises from this cell
         let top = from.z + 1; while (at(from.x, from.y, top + 1)) top++;
         if (top - from.z >= 2 && !world.isSolid(from.x, from.y, top + 1)) for (const [dx, dy] of CARDINAL) {
             const s = surfacesAt(world, from.x + dx, from.y + dy, profile).find(q => q.z === top);
@@ -47,7 +48,7 @@ export function ladderMoves(world, from, profile = AGENT_PROFILES.player) {
     }
     for (const [dx, dy] of CARDINAL) {                                             // down: a ladder top beside this ledge
         const lx = from.x + dx, ly = from.y + dy;
-        if (!at(lx, ly, from.z) || at(lx, ly, from.z + 1) || world.isSolid(lx, ly, from.z + 1)) continue;
+        if (!ladderAttachment(world,lx,ly,from.z)||!at(lx, ly, from.z) || at(lx, ly, from.z + 1) || world.isSolid(lx, ly, from.z + 1)) continue;
         let bottom = from.z; while (at(lx, ly, bottom - 1)) bottom--;
         const foot = surfacesAt(world, lx, ly, profile).find(q => q.z === bottom - 1);
         if (foot && from.z - foot.z >= 2) out.push({ x: lx, y: ly, z: foot.z, rise: from.z - foot.z });

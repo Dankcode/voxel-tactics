@@ -54,7 +54,7 @@ export function kitHandler(store, x, y, z, id = store.get(x, y, z)) {
         case 'hedge': return 'hedge';
         case 'leaves': return 'foliage';
         case 'trunk': return 'trunk';
-        case 'lantern': return 'lantern';
+        case 'emergency_light': case 'lantern': return 'lantern';
         case 'ladder': return 'ladder';
         case 'grate': case 'steel_post':return 'circulation';
         case 'furniture': return 'table';

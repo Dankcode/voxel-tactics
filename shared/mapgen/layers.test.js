@@ -21,3 +21,9 @@ test('installed bridge and subway fixture passes flank gates on four seeds and r
  for(const seed of [1,2,3,4]){const m=buildPackagedMap(pkg,{seed});assert.ok(m.metrics.pass);assert.ok(Object.values(checkLayerGates(m)).every(Boolean));
  const e=m.meta.underground.openings.find(e=>e.kind==='climb');m.store.set(e.to.x,e.to.y,2,1);assert.equal(checkLayerGates(m).twoEntrances,false);}
 });
+test('single-storey fillers omit fire escapes but keep attached roof access; storm drains retain banks',()=>{
+ const site=structuredClone(CEDAR_IMAGE_SITE);site.buildings.forEach(b=>b.storeys=1);site.underground={kind:'storm-drain'};
+ const solved=solveLayout(site),m=buildPackagedMap({site,...solved});assert.ok(m.buildings.every(b=>b.storeys===1&&b.escapes.length===0&&b.roofAccess));
+ const reach=reachable(m.store,m.spawns.player[0],Infinity,AGENT_PROFILES.player);assert.ok(m.buildings.every(b=>reach.costs.has(nodeKey({x:b.x0,y:b.y0+1,z:b.top}))));
+ assert.ok(m.meta.underground.route.some(p=>m.store.material(p.x,p.y,p.z).liquid));
+});

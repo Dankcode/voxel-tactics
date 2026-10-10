@@ -82,7 +82,8 @@ export function explodeVoxels(store, blast, { maxChain = 8, maxVoxels = 900 } = 
  * @returns {{ fallen: {x,y,from,to,material}[], removed: number }}
  */
 export function settleUnsupported(store, { maxRubble = 600 } = {}) {
-    for(const group of store.supportGroups||[])if(group.posts.every(p=>store.get(...p)!==MAT.steel_post))for(const p of group.members)store.set(...p,AIR);
+    let standRemoved=0;
+    for(const group of store.supportGroups||[])if(group.posts.every(p=>store.get(...p)!==MAT.steel_post))for(const p of group.members)if(store.get(...p)!==AIR){store.set(...p,AIR);standRemoved++;}
     const { width: W, depth: D, height: H } = store;
     const seen = new Uint8Array(W * D * H);
     const stack = [];
@@ -103,7 +104,7 @@ export function settleUnsupported(store, { maxRubble = 600 } = {}) {
 
     const loose = [];
     for (let i = 0; i < store.mat.length; i++) if (!seen[i] && attached(store.mat[i])) loose.push(i);
-    if (!loose.length) return { fallen: [], removed: 0 };
+    if (!loose.length) return { fallen: [], removed: standRemoved };
     // Remove every loose voxel, then drop a rubble pile per column onto the ground below.
     const columns = new Map();
     for (const i of loose) {
@@ -127,5 +128,5 @@ export function settleUnsupported(store, { maxRubble = 600 } = {}) {
         }
         fallen.push({ x: c.x, y: c.y, from: c.top, to: floor + 1, material: c.material });
     }
-    return { fallen, removed: loose.length };
+    return { fallen, removed: loose.length+standRemoved };
 }

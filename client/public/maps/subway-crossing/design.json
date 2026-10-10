@@ -4,7 +4,7 @@
     "kind": "recover",
     "title": "Subway Crossing",
     "briefing": "The Syndicate has occupied this Downtown block. Advance through cover and use the flank to reach command. Its upper floors control the approach. Secure the objective and withdraw.",
-    "timeOfDay": "overcast",
+    "timeOfDay": "night-ops",
     "target": {
       "building": "command",
       "floor": 1,

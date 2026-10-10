@@ -64,6 +64,10 @@ export function compileBuilding(m,b) {
     }
     for(let y=y0;y<y0+d;y++)for(let x=x0;x<x0+w;x++)if(x===x0||x===x0+w-1||y===y0||y===y0+d-1)store.set(x,y,top+1,MAT.stucco);
     compileFireEscape(m,{...b,...out,floors:b.floors},doorAt);
+    if(storeys===1) {
+        store.set(x0,y0+1,top+1,AIR);
+        out.roofAccess=m.ladder(x0-1,y0+1,1,0);
+    }
     for(const f of b.floors) {
         const rooms=out.rooms.filter(r=>r.storey===f.floor),floorSet=new Set(rooms.filter(r=>r.gameplay).flatMap(r=>r.cells.map(c=>key(...c))));
         const keepFree=new Set(rooms.find(r=>r.kind==='hall').cells.map(c=>key(...c))),obstacles=new Set();

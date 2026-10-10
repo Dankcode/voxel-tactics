@@ -16,7 +16,7 @@ const schema=async name=>jsonRead(new URL(`schemas/${name}.json`,import.meta.url
 const prompt=async name=>readFile(new URL(`prompts/${name}.md`,import.meta.url),'utf8');
 const exists=async path=>{try{await readFile(path);return true;}catch(e){if(e.code==='ENOENT')return false;throw e;}};
 const mime=path=>({'.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.webp':'image/webp'})[extname(path).toLowerCase()];
-export async function runPipeline({image,id,site:recorded=null,out='/tmp/mapgen',seed=1,offline=false,redo='',providers={},onStage=()=>{}}) {
+export async function runPipeline({image,id,site:recorded=null,out='/tmp/mapgen',seed=1,offline=false,redo='',providers={},buildBudgetMs=1500,onStage=()=>{}}) {
     if(!Number.isSafeInteger(seed))throw Error('Seed must be an integer');
     if(id&&!/^[a-z0-9-]+$/.test(id))throw Error('Use a lowercase hyphenated map id');
     const bytes=await readFile(image),sourceHash=digest(bytes);
@@ -38,7 +38,7 @@ export async function runPipeline({image,id,site:recorded=null,out='/tmp/mapgen'
     if(site.imageSha256&&site.imageSha256!==sourceHash)throw Error('Recorded analysis belongs to another image');
     site.id=id||site.id;site.source='concept/reference'+extname(image).toLowerCase();site.imageSha256=sourceHash;
     // Old recorded reads can be upgraded, but fresh reads must provide their own source frame.
-    if(recorded&&site.version===1){site.version=2;site.frame||={width:48,height:40};for(const b of site.buildings)b.storeys=Math.max(2,Math.min(4,b.storeys||2));}
+    if(recorded&&site.version===1){site.version=2;site.frame||={width:48,height:40};for(const b of site.buildings)b.storeys=Math.max(1,Math.min(4,b.storeys||1));}
     validateSchema(site,await schema('site'));validateSite(site);await jsonWrite(resolve(directory,'site.json'),site);await writeFile(resolve(directory,site.source),bytes);
     const siteLayout=solveSite(site,seed),designPrompt=await prompt('design');
     const design=await stage('design',{site,designPrompt,textModel,offline},async()=>offline?designLevel(site,siteLayout):(providers.readDesign||readDesign)(site,siteLayout,designPrompt,await schema('design')),['site','design'].includes(redo));
@@ -70,17 +70,17 @@ export async function runPipeline({image,id,site:recorded=null,out='/tmp/mapgen'
                 const started=performance.now(),m=buildPackagedMap({site,...solved},{seed:s}),buildMs=performance.now()-started;
                 const failures=Object.entries(m.metrics.gates).filter(([,pass])=>!pass).map(([gate])=>gate);
                 if(failures.length)throw Error(`seed ${s}: ${failures.join(', ')}`);
-                if(buildMs>1500)throw Error(`performance.build: ${buildMs.toFixed(0)} ms exceeds 1500 ms`);
+                if(buildMs>buildBudgetMs)throw Error(`performance.build: ${buildMs.toFixed(0)} ms exceeds ${buildBudgetMs} ms`);
                 return {seed:s,metrics:m.metrics,buildMs};
             });
             if(attempt)solved.layout.repairs.push({kind:'reseed-layout',from:seed,to:seed+attempt});
             break;
-        }catch(e){lastError=e;solved=null;onStage(`repair/${attempt+1}: ${e.message}`);}
+        }catch(e){if(e.message.startsWith('performance.build:'))throw e;lastError=e;solved=null;onStage(`repair/${attempt+1}: ${e.message}`);}
     }
     if(!solved)throw Error(`package.validation: repairs exhausted: ${lastError.message}`);
     await jsonWrite(resolve(directory,'layout.json'),solved.layout);
     const m=buildPackagedMap({site,...solved},{seed});await writeFile(resolve(directory,'slate.svg'),slateSvg(m.visual.slate));
-    const manifest={version:1,id:site.id,name:design.mission.title,theme:site.theme,seed,generatorVersion:'2.0.0',sourceAnalysis:recorded?'recorded':'vision',conceptSource:offline?'offline-schematic':'image-provider',models:offline?{}:{vision:visionModel,text:textModel,image:imageModel},files:{site:'site.json',design:'design.json',layout:'layout.json'},concepts,reference:site.source,size:[solved.layout.width,solved.layout.depth,solved.layout.height],storeys:site.buildings.map(b=>({id:b.id,storeys:b.storeys})),validation,repairs:[...solved.layout.repairs,...solved.layout.buildings.flatMap(b=>b.floors.flatMap(f=>f.repairs))],credits:'Reference supplied by author; generated interiors are art direction.',checksums:{site:digest(await readFile(resolve(directory,'site.json'))),design:digest(await readFile(resolve(directory,'design.json'))),layout:digest(await readFile(resolve(directory,'layout.json')))}};
+    const manifest={version:1,id:site.id,name:design.mission.title,theme:site.theme,seed,generatorVersion:'3.0.0',sourceAnalysis:recorded?'recorded':'vision',conceptSource:offline?'offline-schematic':'image-provider',models:offline?{}:{vision:visionModel,text:textModel,image:imageModel},files:{site:'site.json',design:'design.json',layout:'layout.json'},concepts,reference:site.source,size:[solved.layout.width,solved.layout.depth,solved.layout.height],storeys:site.buildings.map(b=>({id:b.id,storeys:b.storeys})),validation,repairs:[...solved.layout.repairs,...solved.layout.buildings.flatMap(b=>b.floors.flatMap(f=>f.repairs))],credits:'Reference supplied by author; generated interiors are art direction.',checksums:{site:digest(await readFile(resolve(directory,'site.json'))),design:digest(await readFile(resolve(directory,'design.json'))),layout:digest(await readFile(resolve(directory,'layout.json')))}};
     validateSchema(manifest,await schema('manifest'));await jsonWrite(resolve(directory,'manifest.json'),manifest);
     return {directory,manifest,site,design,layout:solved.layout};
 }

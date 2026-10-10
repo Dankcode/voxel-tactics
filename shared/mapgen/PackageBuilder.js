@@ -14,7 +14,7 @@ export function validateSite(site) {
     if (site.name != null && (typeof site.name !== 'string' || site.name.length > 80 || /[<>]/.test(site.name))) fail('plain-text mission name required');
     if (site.theme != null && !['Suburbs','Downtown','Industrial','Roadside'].includes(site.theme)) fail('theme');
     if (![1,2].includes(site.version) || !/^[a-z0-9-]+$/.test(site.id || '')) fail('version/id');
-    if (!['day', 'dusk', 'night', 'dawn', 'overcast'].includes(site.timeOfDay)) fail('timeOfDay');
+    if (!['day', 'dusk', 'night', 'dawn', 'overcast','night-ops'].includes(site.timeOfDay)) fail('timeOfDay');
     if (!Array.isArray(site.buildings) || !site.buildings.length) fail('buildings required');
     const box = b => Array.isArray(b) && b.length === 4 && b.every(n => Number.isFinite(n) && n >= 0 && n <= 1) && b[2] > b[0] && b[3] > b[1];
     if(site.version===2&&(!site.frame||![site.frame.width,site.frame.height].every(n=>Number.isFinite(n)&&n>0)))fail('frame: source extents required');
@@ -88,7 +88,7 @@ export function buildPackagedMap({site,layout,design,manifest}, { seed = 1 } = {
     const zone={x0:Math.min(...targetRoom.cells.map(c=>c[0])),y0:Math.min(...targetRoom.cells.map(c=>c[1])),x1:Math.max(...targetRoom.cells.map(c=>c[0])),y1:Math.max(...targetRoom.cells.map(c=>c[1])),z:targetRoom.floorZ,dz:0};
     const kind=design.mission.kind;
     const objective=kind==='recover'?{kind,item,text:'Recover the intelligence from the upper command room.'}:kind==='hold'?{kind,zone,rounds:3,needed:2,text:'Take and hold the command room.'}:kind==='extract'?{kind,zone,needed:3,text:'Reach the upper rendezvous with three soldiers.'}:{kind,text:'Clear the occupied buildings.'};
-    const mission=m.finish({ name:design.mission.title, spawns:{ player:[[-1,0],[1,0],[0,0],[-1,1],[1,1],[0,1]].map(([dx,dy])=>({x:sx+dx,y:sy+dy,z:m.G})), enemy:enemies }, objective, meta:{theme:site.theme || 'Suburbs',lighting:site.timeOfDay,timeOfDay:site.timeOfDay,defaultCut:m.G+3,streetDatum:m.G,cutLevels:[m.G,...Array.from({length:4},(_,s)=>m.G+3*(s+1)),Infinity],imageGenerated:true,underground,source:site.source,flow,flowRoutes,briefing:design.mission.briefing,storyBeats:design.beats,congruence:layout.congruence,repairs:layout.repairs,packageId:manifest?.id,concepts:manifest?.concepts||[]} });
+    const mission=m.finish({ name:design.mission.title, spawns:{ player:[[-1,0],[1,0],[0,0],[-1,1],[1,1],[0,1]].map(([dx,dy])=>({x:sx+dx,y:sy+dy,z:m.G})), enemy:enemies }, objective, meta:{theme:site.theme || 'Suburbs',lighting:design.mission.timeOfDay||site.timeOfDay||'night-ops',timeOfDay:design.mission.timeOfDay||site.timeOfDay||'night-ops',defaultCut:m.G+3,streetDatum:m.G,cutLevels:[m.G,...Array.from({length:Math.max(...layout.buildings.map(b=>b.storeys))},(_,s)=>m.G+3*(s+1)),Infinity],imageGenerated:true,underground,source:site.source,flow,flowRoutes,briefing:design.mission.briefing,storyBeats:design.beats,congruence:layout.congruence,repairs:layout.repairs,packageId:manifest?.id,concepts:manifest?.concepts||[]} });
     const search=reachable(mission.store,mission.spawns.player[0],Infinity,AGENT_PROFILES.player);
     for (const [x,y] of flow) if (!search.costs.has(nodeKey({x,y,z:m.G}))) throw new Error(`Gameplay waypoint ${x},${y} is blocked; revise image analysis flow`);
     for (const room of mission.rooms.filter(r=>r.gameplay)) if (!room.cells.some(([x,y])=>search.costs.has(nodeKey({x,y,z:room.floorZ})))) throw new Error(`Combat room ${room.buildingId}/${room.kind} is unreachable`);

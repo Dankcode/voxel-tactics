@@ -4,7 +4,16 @@ const upperKinds=(b,floor)=>floor===0?KINDS[b.program]||KINDS.office:
  b.program==='house'?[['bedroom','study','living','bathroom'],['unit','galley','study','bathroom'],['bedroom','armory','office','bathroom']][(floor-1)%3]:
  [['office','meeting','stock','restroom'],['barracks','storeroom','office','utility'],['armory','study','office','restroom']][(floor-1)%3];
 export function designLevel(site,layout,proposal=null) {
+    for(const b of layout.buildings)b.observedStoreys??=b.storeys;
+    for(const h of proposal?.heights||[]) {
+        const b=layout.buildings.find(b=>b.id===h.building);
+        if(!b||!Number.isInteger(h.storeys)||h.storeys<1||h.storeys>4)throw Error('design.height: unknown building or height budget exceeded');
+        if(b.storeys!==h.storeys){layout.repairs.push({kind:'played-height',id:b.id,observed:b.observedStoreys,played:h.storeys});b.storeys=h.storeys;}
+    }
+    const landmark=layout.buildings.slice().sort((a,b)=>b.storeys-a.storeys)[0];
+    for(const b of layout.buildings){b.heightRole=b===landmark?'landmark':'filler';if(!proposal&&b!==landmark&&b.storeys>2){layout.repairs.push({kind:'played-height',id:b.id,observed:b.observedStoreys,played:2});b.storeys=2;}}
     if(proposal) {
+        if(proposal.mission?.timeOfDay&&!['day','dawn','dusk','overcast','night','night-ops'].includes(proposal.mission.timeOfDay))throw Error('design.lighting: unsupported mission time');
         if(!['eliminate','recover','extract','hold'].includes(proposal.mission?.kind))throw Error('design.objective: unsupported mission kind');
         if(!Array.isArray(proposal.beats)||proposal.beats.length<3||proposal.beats.length>6)throw Error('design.story: requires 3–6 located beats');
         if(!Array.isArray(proposal.programs)||proposal.programs.some(p=>!layout.buildings.some(b=>b.id===p.building)))throw Error('design.program: unknown building');

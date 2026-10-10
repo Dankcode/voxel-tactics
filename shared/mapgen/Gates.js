@@ -12,7 +12,7 @@ export function checkGeneratedGates(mission,{site,layout,design}) {
     const checks={
         buildingCount:mission.buildings.length===site.buildings.length,
         footprintOverlap:mission.buildings.every(b=>footprintIoU(layout.reference.find(r=>r.id===b.id),b)>=0.85),
-        storeys:mission.buildings.every(b=>b.storeys===layout.reference.find(r=>r.id===b.id).storeys&&b.storeys>=1&&b.storeys<=4),
+        storeys:mission.buildings.every(b=>b.storeys===layout.buildings.find(r=>r.id===b.id).storeys&&b.storeys>=1&&b.storeys<=4),
         floorsReachable:mission.rooms.filter(r=>r.gameplay).every(r=>reaches(r)&&reaches(r,stairs)),
         secondEscape:mission.buildings.filter(b=>b.storeys>=3).every(b=>Array.from({length:b.storeys-1},(_,i)=>mission.rooms.find(r=>r.buildingId===b.id&&r.storey===i+1&&r.kind==='hall')).every(r=>reaches(r,escapes))),
         closedRooms:mission.rooms.filter(r=>!r.gameplay).every(r=>!reaches(r)),

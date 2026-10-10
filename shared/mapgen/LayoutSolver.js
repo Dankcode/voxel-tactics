@@ -12,5 +12,6 @@ export function solveLayout(site,{seed=1,design=null,floorSpecs=[]}={}) {
         b.facade=solveFacade(b,b.floors,seed);
     }
     layout.layers=solveLayers(layout,site,seed);
+    layout.parcels=layout.layers.parcels.filter(p=>p.id.endsWith(',1')).map(p=>({id:p.id.slice(0,-2),kind:['drop','entrance','manhole'].includes(p.kind)?'sidewalk':p.kind}));
     return {layout,design};
 }

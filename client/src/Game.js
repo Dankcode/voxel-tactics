@@ -246,7 +246,7 @@ export class Game {
         this.zones = zones;
         this.overlays.showZones(this.search.nodes, zones);
     }
-    setLevel(top) { this.cutLevel = top; this.scene.setCut(Number.isFinite(top) ? top : Infinity); this.voxelView?.setCut(top); this.scene.rig.minLayerHeight=top===this.battle.mission.meta.streetDatum?2:(this.battle.mission.meta.streetDatum||1)+1;if(top===this.battle.mission.meta.streetDatum)this.scene.rig.target.y=2; this.hud.refresh(); }
+    setLevel(top) { this.cutLevel = top; this.scene.setCut(Number.isFinite(top) ? top : Infinity); this.voxelView?.setCut(top); this.scene.rig.minLayerHeight=top===this.battle.mission.meta.streetDatum?2:(this.battle.mission.meta.streetDatum||1)+1;if(top===this.battle.mission.meta.streetDatum){const u=this.selectedUnit(),route=this.battle.mission.meta.underground?.route,p=u&&u.z<top?u:route?.[Math.floor(route.length/2)];this.scene.glide=null;if(p)this.scene.rig.target.set(p.x+.5,2,p.y+.5);else this.scene.rig.target.y=2;} this.hud.refresh(); }
     changeLevel(d) {
         this.levelLocked = true;
         const levels = this.battle.mission.meta.cutLevels || [4, 7, 10, 13, Infinity];

@@ -4,7 +4,7 @@
   "name": "Subway Crossing",
   "theme": "Downtown",
   "seed": 1,
-  "generatorVersion": "2.0.0",
+  "generatorVersion": "3.0.0",
   "sourceAnalysis": "recorded",
   "conceptSource": "offline-schematic",
   "models": {},
@@ -33,17 +33,17 @@
     {
       "seed": 1,
       "metrics": {
-        "reachableTiles": 2688,
-        "coverDensity": 0.3865327380952381,
-        "outdoorCover": 0.33654266958424506,
+        "reachableTiles": 2686,
+        "coverDensity": 0.3845867460908414,
+        "outdoorCover": 0.334209373631187,
         "coverGap": 6,
-        "fullCoverShare": 0.15550595238095238,
-        "interiorShare": 0.14992559523809523,
+        "fullCoverShare": 0.14743112434847358,
+        "interiorShare": 0.15003723008190617,
         "killingField": 12,
-        "sightlineMedian": 10.282725902777742,
+        "sightlineMedian": 9.20033370248535,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.8273757628596339,
+        "destructibleCover": 0.8349261511728931,
         "spawnSafe": 1,
         "firstContact": 15.231546211727817,
         "rooms": 8,
@@ -87,22 +87,22 @@
           "ratio": 1.3845585519024752
         }
       },
-      "buildMs": 392.00629100000003
+      "buildMs": 432.2511249999998
     },
     {
       "seed": 2,
       "metrics": {
         "reachableTiles": 2673,
-        "coverDensity": 0.40254395809951365,
-        "outdoorCover": 0.3524229074889868,
+        "coverDensity": 0.4010475121586233,
+        "outdoorCover": 0.35066079295154184,
         "coverGap": 6,
-        "fullCoverShare": 0.15413393191170968,
+        "fullCoverShare": 0.15076692854470633,
         "interiorShare": 0.15076692854470633,
         "killingField": 12,
-        "sightlineMedian": 10.282725902777743,
+        "sightlineMedian": 9.200333702485349,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.8553406223717409,
+        "destructibleCover": 0.8200168208578638,
         "spawnSafe": 1,
         "firstContact": 16.0312195418814,
         "rooms": 8,
@@ -146,22 +146,22 @@
           "ratio": 1.3845585519024752
         }
       },
-      "buildMs": 304.88766699999996
+      "buildMs": 654.278292
     },
     {
       "seed": 3,
       "metrics": {
         "reachableTiles": 2677,
-        "coverDensity": 0.4004482629809488,
-        "outdoorCover": 0.3496042216358839,
+        "coverDensity": 0.3974598431079567,
+        "outdoorCover": 0.3460861917326297,
         "coverGap": 6,
-        "fullCoverShare": 0.1423234964512514,
+        "fullCoverShare": 0.1385879716100112,
         "interiorShare": 0.15054165110197984,
         "killingField": 12,
-        "sightlineMedian": 9.616652224137047,
+        "sightlineMedian": 10.282725902777743,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.8096856414613424,
+        "destructibleCover": 0.8283772302463891,
         "spawnSafe": 1,
         "firstContact": 16.0312195418814,
         "rooms": 8,
@@ -205,22 +205,22 @@
           "ratio": 1.3845585519024752
         }
       },
-      "buildMs": 290.84787499999993
+      "buildMs": 540.8730420000002
     },
     {
       "seed": 4,
       "metrics": {
         "reachableTiles": 2674,
-        "coverDensity": 0.4016454749439043,
-        "outdoorCover": 0.3522677234698371,
+        "coverDensity": 0.39902767389678384,
+        "outdoorCover": 0.349185380889476,
         "coverGap": 6,
-        "fullCoverShare": 0.1525804038893044,
+        "fullCoverShare": 0.14884068810770382,
         "interiorShare": 0.15071054599850411,
         "killingField": 12,
         "sightlineMedian": 9.200333702485349,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.7944397641112048,
+        "destructibleCover": 0.8096040438079192,
         "spawnSafe": 1,
         "firstContact": 16.0312195418814,
         "rooms": 8,
@@ -264,14 +264,14 @@
           "ratio": 1.3845585519024752
         }
       },
-      "buildMs": 314.3075410000001
+      "buildMs": 527.8407079999997
     }
   ],
   "repairs": [],
   "credits": "Reference supplied by author; generated interiors are art direction.",
   "checksums": {
-    "site": "46671c8e5d10cf06a1d5e09397db186441c5a2225779c997894cf0c91cbd2c7d",
-    "design": "352e1dcbeed6eaeb43005be7f85d18dc0cde70a92cef9a17fec97eb1d15f6faa",
-    "layout": "a94ae67d144ca5fcbcdae301a15af677ed917eecfdb8f58a4467ba337c5445e0"
+    "site": "706e5f6dd9b3ab1d2da71af55ecd2018bf1952fd144ebbe5e8f7cee99247c09b",
+    "design": "23d4d781899d5890184409edbfcbeebfd74b1e5d8383a61547db5e6c4bf2d868",
+    "layout": "825152789c6cbdb8efbad013d7e19c0d09e072134b194328fe04acba43449966"
   }
 }

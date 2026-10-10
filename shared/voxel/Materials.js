@@ -134,6 +134,8 @@ def('steel_stair', { label:'Steel stairs',color:0x667680,hp:6,part:4,opaque:fals
 def('steel_post', { label:'Steel post',color:0x53636f,hp:12,family:'metal',walkable:false });
 def('railing', { label:'Steel railing',color:0x8999a2,hp:4,opaque:false,projectile:'pass',concealment:2,family:'metal',walkable:false,structural:false });
 
+def('emergency_light',{label:'Emergency light',color:0xff493e,hp:1,light:3,family:'metal',structural:false,walkable:false});
+
 export const MATERIALS = Object.freeze(M);
 export const MAT = Object.freeze(Object.fromEntries(M.map(m => [m.key, m.id])));
 export const materialById = id => M[id] || M[0];

@@ -3,7 +3,7 @@
   "id": "subway-crossing",
   "name": "Subway Crossing",
   "theme": "Downtown",
-  "timeOfDay": "overcast",
+  "timeOfDay": "night-ops",
   "frame": {
     "width": 52,
     "height": 36
