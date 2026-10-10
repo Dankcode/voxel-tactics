@@ -100,7 +100,9 @@ the battle was created in debug mode (online rooms only when the host ticked deb
 To test the map builder, start a local battle, press **F1 → Mission**, choose a seed,
 building programme, storeys and time, then click **Generate map**. **New layout** increments
 the seed and reruns the site, floor, facade and underground solvers; **Restart** replays
-the same generated map. Gate results appear below the controls. Compiler errors preserve
+the same generated map. Gate results appear below the controls. Navigation and structural support are checked before loading: every squad spawn, upper
+escape landing, roof and gameplay room must be reachable. Fire escapes use facade-mounted metal
+platforms and attached ladders, with a reachable stop at each storey and the roof. Compiler errors preserve
 the current battle and show the failing seed. These are procedural test sites, with no API key
 or installed-map files required. They do not run screenshot analysis.
 

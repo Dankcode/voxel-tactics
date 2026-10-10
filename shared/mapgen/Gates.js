@@ -1,6 +1,7 @@
 import { castRay, blocksSight } from '../voxel/Raycast.js';
 import { reachable, nodeKey } from '../world/PathSearch.js';
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
+import { settleUnsupported } from '../voxel/Destruction.js';
 import { footprintIoU } from './SiteSolver.js';
 
 export function checkGeneratedGates(mission,{site,layout,design}) {
@@ -9,7 +10,13 @@ export function checkGeneratedGates(mission,{site,layout,design}) {
     const escapes=reachable(mission.store,mission.spawns.player[0],Infinity,AGENT_PROFILES.player,{jump:false,blocked:p=>mission.buildings.some(b=>b.stairs.some(r=>r.cells.some(c=>c.x===p.x&&c.y===p.y&&c.z===p.z)))});
     const reaches=(r,s=search)=>r?.cells.some(([x,y])=>s.costs.has(nodeKey({x,y,z:r.floorZ})));
     const room=(p)=>mission.rooms.find(r=>r.buildingId===p.building&&r.storey===p.floor&&r.kind===p.room);
+    const stability=settleUnsupported(mission.store.clone());
     const checks={
+        initialSupport:stability.removed===0,
+        spawnConnectivity:mission.spawns.player.every(p=>search.costs.has(nodeKey(p))&&stairs.costs.has(nodeKey(p))),
+        escapeLandings:mission.buildings.every(b=>b.escapes.every(e=>escapes.costs.has(nodeKey(e.landing)))),
+        roofsReachable:mission.buildings.every(b=>search.costs.has(nodeKey({x:b.x0+1,y:b.y0+1,z:b.top}))),
+        facadeAttachment:mission.buildings.every(b=>b.escapes.every(e=>mission.store.isSolid(b.x0+b.w-1,e.landing.y,e.landing.z))),
         buildingCount:mission.buildings.length===site.buildings.length,
         footprintOverlap:mission.buildings.every(b=>footprintIoU(layout.reference.find(r=>r.id===b.id),b)>=0.85),
         storeys:mission.buildings.every(b=>b.storeys===layout.buildings.find(r=>r.id===b.id).storeys&&b.storeys>=1&&b.storeys<=4),

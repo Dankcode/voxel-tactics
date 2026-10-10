@@ -68,20 +68,18 @@ warehouse rooms are unlit.
 
 A fire escape is one connected steel structure on one facade, generated per building that needs a second way out:
 
-- **Stand**: steel posts from the ground to the top landing at the two outer corners of every landing, plus wall
-  brackets. The posts are structural, so destroying them can drop the landings (`settleUnsupported`).
-- **Landings**: a 3×2 grate platform at each upper floor, outside a door (the facade solver turns that window bay
-  into a door). Walkable, with a **railing** on the open sides (a thin band like `chainlink`: half cover, see-through).
-- **Stairs**: a steel switchback flight between landings (one flight of 3 steps per storey, using the existing
-  step rules), not ladders.
-- **Ground access**: a drop ladder from the first landing to the street (a ladder attached to the landing edge), so
-  the ground floor can't be bypassed for free.
-- **Roof**: the top flight or a short ladder over the parapet, attached to the wall.
+- **Attachment**: platforms anchor directly to the building's floor slabs. Every ladder run has continuous
+  facade backing. Fire escapes have no free-standing posts or exterior stair flights.
+- **Landings**: a 3×3 metal grate platform at each upper floor, outside a door, with low outer-edge railing.
+  A small socket extension provides the foot of the next ladder without closing the doorway.
+- **Ladders**: alternating facade sockets between consecutive landings. Each run stops at the next floor,
+  allowing soldiers to enter any storey instead of climbing one continuous column directly to the roof.
+- **Ground access**: the first attached ladder starts on clear street ground; scatter reserves its foot.
+- **Roof**: the final ladder ends on a metal roof landing connected through an open parapet doorway.
 
-New materials: `grate` (walkable, `projectile: 'pass'`, hp 4, metal, structural), `steel_stair` (stair part, so
-`TraversalRules` treats it as stairs), `steel_post` (solid, not walkable, structural), `railing` (a BAND family,
-thickness about 0.08, half cover). New kit pieces: landing, stair flight, post, railing run, drop ladder, wall
-bracket; railing collision comes from `BANDS`, like the other grouped cover.
+Fire-escape materials are `grate` (walkable, `projectile: 'pass'`, hp 4, metal, structural), attached `ladder`,
+and `railing` (thin half cover, see-through). `steel_stair` and `steel_post` remain available for bridges;
+they are not used by the fire escape. Railing collision comes from `BANDS`, like other grouped cover.
 
 Rule fixes that come with it:
 
@@ -205,7 +203,7 @@ docs/MAPGEN.md, docs/mechanics/02, 03, 05, 11            rules and method
 | # | Step | Accept when |
 |---|---|---|
 | N0 | Ladder attachment rule + kit orientation fix; scatter keeps clear of ladder feet | free-standing ladder fails to build; existing ladder maps unchanged; screenshot review |
-| N1 | Fire escape: materials, pieces, `FireEscape.js`, compiler uses it | Signal House: every upper floor and roof reachable by the fire escape only; railings rate HALF; destroying both posts of a landing drops it; screenshot review |
+| N1 | Fire escape: materials, pieces, `FireEscape.js`, compiler uses it | Signal House: every upper floor and roof reachable by the fire escape only; railings rate HALF; destroying its facade anchors drops it; screenshot review |
 | N2 | Storey policy: picture/design-driven heights 1–4, varied floor programmes, landmark/filler rules | a 3-building fixture builds 1, 2 and 4 storeys; no two floors share a programme unless the design says so |
 | N3 | Street datum z = 4 for generated maps; ground mesher, camera and cutaway "below street" | a generated map with an empty underground renders and plays; hand-built maps byte-identical |
 | N4 | `LayerSolver` + `UndergroundCompiler` (tunnel, junction, stairs entrance, manhole, grate drop, underpass under a bridge) | 20 seeds solve or fail with a named socket; drop and climb edges exist where the layout says |
@@ -219,7 +217,7 @@ N0 and N1 fix the reported bug and can go first on their own.
 ## 9. Tests
 
 - Ladders: attached-ladder validation; orientation chosen from the attachment; foot clearance.
-- Fire escape: reachability per floor with stairs disabled; railing cover; post destruction drops the landing.
+- Fire escape: reachability per floor with stairs disabled; railing cover; attached ladder runs stop at every platform; losing facade support drops the landing.
 - Layers: socket compatibility; every drop opening lands on walkable underground; every underground area has two
   ways in; flank gate positive and negative fixtures.
 - Datum: hand-built maps unchanged (hash), generated maps rebuild byte-identically.
@@ -247,8 +245,8 @@ darkness rule is a tunable that defaults to 1 if D2 is declined.
 1. **D1 Street datum**: raise the street to z = 4 on generated maps only (recommended), or on every map (rebuilds
    the hand-built maps)?
 2. **D2 Darkness as a rule**: dark cells raise spread against far shooters (recommended), or lighting is visual only?
-3. **D3 Fire escape**: steel stairs between landings with a drop ladder to the street (recommended), or ladders
-   between landings (cheaper, more XCOM-like)?
+3. **D3 Fire escape**: resolved by the latest request: only attached ladders and metal platforms,
+   with a stop at each floor and the roof, following the XCOM 2 style.
 4. **D4 First underground kinds**: subway tunnel + storm drain + underpass under a bridge (recommended), or start
    with basements and parking?
 5. **D5 Height budget**: keep the 4-storey / store height 18 cap, or raise it (6 storeys needs height ≥ 24 and a
@@ -260,7 +258,7 @@ darkness rule is a tunable that defaults to 1 if D2 is declined.
 
 N0–N7 are implemented: continuous ladder attachment/orientation, supported steel escapes, observed/played 1–4 heights and varied floor programmes, generated datum 4 and BELOW cutaway, one three-layer parcel graph and compiled tunnels/sockets, flank gates and Subway Crossing fixture, 2×2 floor charges, shared incremental integer lighting and the darkness modifier. N8 updates MAPGEN and the mechanics reference.
 
-D1: generated maps only. D2: darkness ×1.25 beyond four cells, tunable to 1 for visual-only lighting. D3: steel switchbacks plus a first-landing drop ladder. D4: subway, wet storm drain and raised-bridge underpass. D5: four storeys/height 18. D6: keep connectivity support; the optional span model and its column placement are deferred. Explicit fire-escape stand dependencies are added so wall contact cannot keep an escape floating after both ground posts are lost.
+D1: generated maps only. D2: darkness ×1.25 beyond four cells, tunable to 1 for visual-only lighting. D3: facade-mounted metal platforms with alternating ladder runs; no exterior stair flights. D4: subway, wet storm drain and raised-bridge underpass. D5: four storeys/height 18. D6: keep connectivity support; the optional span model and its column placement are deferred. Fire escapes now use only facade-mounted metal platforms and attached ladder runs, as requested after implementation. Alternating sockets allow a stop at every floor and the roof. They use the building slabs and continuous wall backing for support, without exterior stair flights or a free-standing tower. Generated-map preflight rejects disconnected squad spawns, escape/roof landings, missing facade anchors and initially unsupported geometry.
 
 The alternate-escape test disables the **indoor** core cells, allowing steel stairs. Disabling every stair material would also disable the escape itself. Geometry/route gates use real voxel surfaces; parcel WFC is constrained by solved route/socket priors. Recorded image fidelity remains count/footprint IoU, with observed and played heights kept separately. Final art, bespoke facade placement, arbitrary polygon interiors and live model/art acceptance remain deferred.
 

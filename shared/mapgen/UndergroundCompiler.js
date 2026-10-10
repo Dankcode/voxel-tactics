@@ -26,7 +26,7 @@ export function compileUnderground(m,layers) {
  openings.push({from:{x:p.x+1,y:p.y,z:4},to:{x:p.x,y:p.y,z:1},kind:'jump'});
  // A small raised bridge crosses the open underpass. Parallel steps leave the tunnel intact.
  if(layers.bridge) {
-  for(let i=-3;i<=3;i++){const x=p.x+i,y=p.y+1,z=7-Math.max(0,Math.abs(i)-1);s.set(x,y,z,Math.abs(i)>1?MAT.steel_stair:MAT.grate);m.reserve(x-1,y-1,x+1,y+1);}
+  for(let i=-3;i<=3;i++){const x=p.x+i,y=p.y+1,z=7-Math.max(0,Math.abs(i)-1);if(Math.abs(i)>=1)s.set(x,y,z-1,MAT.steel_post);s.set(x,y,z,Math.abs(i)>1?MAT.steel_stair:MAT.grate);m.reserve(x-1,y-1,x+1,y+1);}
   for(const dx of [-4,4])s.set(p.x+dx,p.y+1,4,MAT.concrete);
  }
  // Staggered tunnel baffles force a bend and hide most of the flank from its guarding pod.

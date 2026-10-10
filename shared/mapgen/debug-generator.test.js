@@ -29,3 +29,30 @@ test('local debug generation runs real solvers, passes gates, and restarts deter
     assert.notDeepEqual(generateDebugMap({ seed: 4 }).meta.debugGeneration.layout.buildings, data.layout.buildings);
     await assert.rejects(LocalSession.create({ ...desc, debug: false }), /local debug/);
 });
+
+import { checkGeneratedGates } from './Gates.js';
+import { settleUnsupported } from '../voxel/Destruction.js';
+import { reachable, nodeKey } from '../world/PathSearch.js';
+
+test('initial debug maps keep every spawn and escape reachable through a support check', () => {
+    for (const [seed, program, storeys] of [[1,'office',3],[2,'house',2],[3,'warehouse',4],[4,'shop',1],[5,'diner',3],[6,'garage',4]]) {
+        const m = generateDebugMap({ seed, program, storeys }), hash = m.store.hash();
+        assert.equal(settleUnsupported(m.store).removed, 0);
+        assert.equal(m.store.hash(), hash);
+        const reach = reachable(m.store, m.spawns.player[0]);
+        assert.ok(m.spawns.player.every(p => reach.costs.has(nodeKey(p))));
+        assert.ok(m.buildings.every(b => b.escapes.every(e => reach.costs.has(nodeKey(e.landing)))));
+        for (const gate of ['initialSupport','spawnConnectivity','escapeLandings','roofsReachable','facadeAttachment','floorsReachable','objectiveReachable']) assert.equal(m.metrics.gates[gate], true, `${seed}: ${gate}`);
+    }
+});
+
+test('generated-map preflight rejects an invalid squad spawn or missing roof landing', () => {
+    const m = generateDebugMap({ seed: 3, storeys: 4 }), data = m.meta.debugGeneration;
+    const original = m.spawns.player[1];
+    m.spawns.player[1] = { x: 0, y: 0, z: 17 };
+    assert.throws(() => checkGeneratedGates(m, data), /spawnConnectivity/);
+    m.spawns.player[1] = original;
+    const e = m.buildings[0].escapes.at(-1);
+    m.store.set(e.landing.x,e.landing.y,e.landing.z,0);
+    assert.throws(() => checkGeneratedGates(m, data), /escapeLandings/);
+});

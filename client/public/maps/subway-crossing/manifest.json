@@ -33,17 +33,17 @@
     {
       "seed": 1,
       "metrics": {
-        "reachableTiles": 2686,
-        "coverDensity": 0.3845867460908414,
-        "outdoorCover": 0.334209373631187,
+        "reachableTiles": 2662,
+        "coverDensity": 0.40120210368144255,
+        "outdoorCover": 0.35325365205843295,
         "coverGap": 6,
-        "fullCoverShare": 0.14743112434847358,
-        "interiorShare": 0.15003723008190617,
+        "fullCoverShare": 0.14274981217129978,
+        "interiorShare": 0.15138993238166792,
         "killingField": 12,
-        "sightlineMedian": 9.20033370248535,
+        "sightlineMedian": 10.8,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.8349261511728931,
+        "destructibleCover": 0.8147208121827412,
         "spawnSafe": 1,
         "firstContact": 15.231546211727817,
         "rooms": 8,
@@ -59,6 +59,11 @@
           "breachability": true,
           "destructibleCover": true,
           "spawnSafe": true,
+          "initialSupport": true,
+          "spawnConnectivity": true,
+          "escapeLandings": true,
+          "roofsReachable": true,
+          "facadeAttachment": true,
           "buildingCount": true,
           "footprintOverlap": true,
           "storeys": true,
@@ -81,28 +86,28 @@
         "pass": true,
         "flank": {
           "cost": 29.984,
-          "direct": 21.656,
+          "direct": 22.306,
           "tunnelCost": 20.07,
           "approach": 5.414,
-          "ratio": 1.3845585519024752
+          "ratio": 1.3442123195552766
         }
       },
-      "buildMs": 282.4815830000002
+      "buildMs": 285.459875
     },
     {
       "seed": 2,
       "metrics": {
-        "reachableTiles": 2673,
-        "coverDensity": 0.4010475121586233,
-        "outdoorCover": 0.35066079295154184,
+        "reachableTiles": 2660,
+        "coverDensity": 0.4037593984962406,
+        "outdoorCover": 0.3535666814355339,
         "coverGap": 6,
-        "fullCoverShare": 0.15076692854470633,
-        "interiorShare": 0.15076692854470633,
+        "fullCoverShare": 0.1469924812030075,
+        "interiorShare": 0.15150375939849625,
         "killingField": 12,
-        "sightlineMedian": 9.200333702485349,
+        "sightlineMedian": 11.365118103070136,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.8200168208578638,
+        "destructibleCover": 0.7920875420875421,
         "spawnSafe": 1,
         "firstContact": 16.0312195418814,
         "rooms": 8,
@@ -118,6 +123,11 @@
           "breachability": true,
           "destructibleCover": true,
           "spawnSafe": true,
+          "initialSupport": true,
+          "spawnConnectivity": true,
+          "escapeLandings": true,
+          "roofsReachable": true,
+          "facadeAttachment": true,
           "buildingCount": true,
           "footprintOverlap": true,
           "storeys": true,
@@ -140,28 +150,28 @@
         "pass": true,
         "flank": {
           "cost": 29.984,
-          "direct": 21.656,
+          "direct": 22.306,
           "tunnelCost": 20.07,
           "approach": 5.414,
-          "ratio": 1.3845585519024752
+          "ratio": 1.3442123195552766
         }
       },
-      "buildMs": 276.12308299999995
+      "buildMs": 274.890167
     },
     {
       "seed": 3,
       "metrics": {
-        "reachableTiles": 2677,
-        "coverDensity": 0.3974598431079567,
-        "outdoorCover": 0.3460861917326297,
+        "reachableTiles": 2681,
+        "coverDensity": 0.38157403953748603,
+        "outdoorCover": 0.32748024582967517,
         "coverGap": 6,
-        "fullCoverShare": 0.1385879716100112,
-        "interiorShare": 0.15054165110197984,
+        "fullCoverShare": 0.1402461767997016,
+        "interiorShare": 0.15031704587840358,
         "killingField": 12,
-        "sightlineMedian": 10.282725902777743,
+        "sightlineMedian": 10.5,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.8283772302463891,
+        "destructibleCover": 0.8224381625441696,
         "spawnSafe": 1,
         "firstContact": 16.0312195418814,
         "rooms": 8,
@@ -177,6 +187,11 @@
           "breachability": true,
           "destructibleCover": true,
           "spawnSafe": true,
+          "initialSupport": true,
+          "spawnConnectivity": true,
+          "escapeLandings": true,
+          "roofsReachable": true,
+          "facadeAttachment": true,
           "buildingCount": true,
           "footprintOverlap": true,
           "storeys": true,
@@ -199,28 +214,28 @@
         "pass": true,
         "flank": {
           "cost": 29.984,
-          "direct": 21.656,
+          "direct": 22.306,
           "tunnelCost": 20.07,
           "approach": 5.414,
-          "ratio": 1.3845585519024752
+          "ratio": 1.3442123195552766
         }
       },
-      "buildMs": 279.8980419999998
+      "buildMs": 267.7463749999997
     },
     {
       "seed": 4,
       "metrics": {
-        "reachableTiles": 2674,
-        "coverDensity": 0.39902767389678384,
-        "outdoorCover": 0.349185380889476,
+        "reachableTiles": 2666,
+        "coverDensity": 0.3987246811702926,
+        "outdoorCover": 0.34865223155103847,
         "coverGap": 6,
-        "fullCoverShare": 0.14884068810770382,
-        "interiorShare": 0.15071054599850411,
+        "fullCoverShare": 0.14516129032258066,
+        "interiorShare": 0.1511627906976744,
         "killingField": 12,
-        "sightlineMedian": 9.200333702485349,
+        "sightlineMedian": 10.282725902777743,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.8096040438079192,
+        "destructibleCover": 0.8293718166383701,
         "spawnSafe": 1,
         "firstContact": 16.0312195418814,
         "rooms": 8,
@@ -236,6 +251,11 @@
           "breachability": true,
           "destructibleCover": true,
           "spawnSafe": true,
+          "initialSupport": true,
+          "spawnConnectivity": true,
+          "escapeLandings": true,
+          "roofsReachable": true,
+          "facadeAttachment": true,
           "buildingCount": true,
           "footprintOverlap": true,
           "storeys": true,
@@ -258,13 +278,13 @@
         "pass": true,
         "flank": {
           "cost": 29.984,
-          "direct": 21.656,
+          "direct": 22.906000000000002,
           "tunnelCost": 20.07,
           "approach": 5.414,
-          "ratio": 1.3845585519024752
+          "ratio": 1.3090020082074565
         }
       },
-      "buildMs": 282.79012500000044
+      "buildMs": 286.817
     }
   ],
   "repairs": [],

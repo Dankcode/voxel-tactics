@@ -18,12 +18,18 @@ import { reachable, nodeKey } from '../world/PathSearch.js';
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
 import { settleUnsupported } from './Destruction.js';
 import { coverAt, COVER } from './Cover.js';
-test('supported escape reaches every upper floor and roof without the interior stairs; posts can drop it',()=>{
+test('ladder-only escape attaches to the facade and reaches all floors and the roof',()=>{
  const m=MAPS.find(m=>m.id==='signal-house').build({seed:1}),b=m.buildings[0];
  const reach=reachable(m.store,m.spawns.player[0],Infinity,AGENT_PROFILES.player,{blocked:p=>b.stairs.some(r=>r.cells.some(c=>nodeKey(c)===nodeKey(p)))});
  for(const e of b.escapes)assert.ok(reach.costs.has(nodeKey(e.landing)),`landing ${e.floor}`);
- const group=m.store.supportGroups[0];assert.equal(group.posts.length,2);
- for(const p of group.posts)m.store.set(...p,0);settleUnsupported(m.store);
+ const group=m.store.supportGroups[0];assert.equal(group.posts.length,0);
+ assert.ok(group.members.every(p=>m.store.get(...p)!==MAT.steel_stair));
+ for(const e of b.escapes){assert.ok(ladderAttachment(m.store,e.ladder.x,e.ladder.y,e.ladder.fromZ+1));assert.ok(e.platform.every(p=>m.store.get(...p)===MAT.grate));}
+ const hash=m.store.hash();assert.equal(settleUnsupported(m.store).removed,0);assert.equal(m.store.hash(),hash);
+ for(const p of group.members)assert.notEqual(m.store.get(...p),0,`attached escape member ${p}`);
+ const after=reachable(m.store,m.spawns.player[0],Infinity,AGENT_PROFILES.player,{jump:false,blocked:p=>b.stairs.some(r=>r.cells.some(c=>nodeKey(c)===nodeKey(p)))});
+ for(const e of b.escapes)assert.ok(after.costs.has(nodeKey(e.landing)),`supported landing ${e.floor}`);
+ for(const p of group.anchors)m.store.set(...p,0);settleUnsupported(m.store);
  assert.equal(m.store.get(...group.members.at(-1)),0);assert.ok(m.store.isSolid(b.x0+8,b.y0+2,10));
  const t=createMap({id:'rail',width:10,depth:10});t.store.fill(5,3,2,5,5,2,'railing');assert.equal(coverAt(t.store,4,4,1).e,COVER.HALF);
 });
