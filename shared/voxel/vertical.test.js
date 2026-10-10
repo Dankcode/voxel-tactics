@@ -27,3 +27,7 @@ test('supported escape reaches every upper floor and roof without the interior s
  assert.equal(m.store.get(...group.members.at(-1)),0);assert.ok(m.store.isSolid(b.x0+8,b.y0+2,10));
  const t=createMap({id:'rail',width:10,depth:10});t.store.fill(5,3,2,5,5,2,'railing');assert.equal(coverAt(t.store,4,4,1).e,COVER.HALF);
 });
+test('generated street datum leaves three underground voxels and keeps compilation deterministic',()=>{
+ const map=MAPS.find(m=>m.id==='cedar-image'),a=map.build({seed:1}),b=map.build({seed:1});
+ assert.equal(a.meta.streetDatum,4);assert.ok(a.spawns.player.every(p=>p.z===4));assert.equal(a.store.hash(),b.store.hash());assert.equal(a.buildings[0].baseZ,4);
+});

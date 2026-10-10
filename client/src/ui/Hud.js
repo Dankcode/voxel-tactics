@@ -187,7 +187,7 @@ export class Hud {
         phase.textContent = b.outcome ? 'MISSION OVER' : b.activeSide === 'player' ? 'SQUAD PHASE' : 'ENEMY ACTIVITY';
         phase.className = `phase ${b.activeSide}`;
         this.el('.enemyturn').classList.toggle('hidden', !(b.activeSide !== 'player' && !b.outcome && !g.debug.manualEnemy));
-        this.el('.level').textContent = Number.isFinite(g.cutLevel) ? `L${Math.round((g.cutLevel - 1) / 3)}` : 'ALL';
+        this.el('.level').textContent = Number.isFinite(g.cutLevel) ? (g.cutLevel===b.mission.meta.streetDatum?'BELOW':`L${Math.round((g.cutLevel - (b.mission.meta.streetDatum||1)) / 3)}`) : 'ALL';
         this.el('.cutin-mode').textContent = `BACK SHOT · ${g.cutins.mode.toUpperCase()}`;
         this.el('.debug-btn').classList.toggle('on', g.debug.enabled);
         // Squad column.

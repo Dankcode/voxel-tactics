@@ -37,7 +37,7 @@ export function buildImageMap(site, { seed = 1, design = null, floorSpecs = [] }
 export function buildPackagedMap({site,layout,design,manifest}, { seed = 1 } = {}) {
     validateSite(site);
     const {width,depth,height}=layout;
-    const m = createMap({ id: site.id, width, depth, height, seed });
+    const m = createMap({ id: site.id, width, depth, height, seed, datum:layout.datum??4 });
     for(const parcel of layout.parcels)if(parcel.kind==='sidewalk') {
         const [px,py]=parcel.id.split(',').map(Number);m.ground(px*4,py*4,px*4+3,py*4+3,'concrete');
     }
@@ -48,14 +48,14 @@ export function buildPackagedMap({site,layout,design,manifest}, { seed = 1 } = {
     m.reserve(sx-2,sy-1,sx+3,sy+1);
     m.line(Math.max(1,sx-3),Math.max(1,sy-2),2,'x','planter');
     // Reserve architecture and escape aprons before placing optional outdoor props.
-    for(const b of m.buildings)for(const e of b.exits)m.line(e.side==='w'?e.x-1:e.x+1,e.y+2,2,'y','planter');
+    for(const b of m.buildings)for(const e of b.exits) {const x=e.side==='w'?e.x-1:e.x+1;if(!m.keep.has(`${x},${e.y+2}`))m.line(x,e.y+2,2,'y','planter');}
     // Boundary cover matters too: the scatter pass excludes edge cells and reserved approach lanes.
     const edge=[];
     for(let y=4;y<depth-2;y+=8) edge.push([1,y],[width-2,y]);
     for(let x=4;x<width-2;x+=8) edge.push([x,1],[x,depth-2]);
     for(const [x,y] of edge) {
         let clear=true;
-        for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++) if(m.keep.has(`${x+dx},${y+dy}`)||m.store.isSolid(x+dx,y+dy,2))clear=false;
+        for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++) if(m.keep.has(`${x+dx},${y+dy}`)||m.store.isSolid(x+dx,y+dy,m.G+1))clear=false;
         if(clear)m.line(x,y,1,'x','planter');
     }
     const catalog=({Downtown:DOWNTOWN_PROPS,Industrial:DOCKS_PROPS,Roadside:FORECOURT_PROPS})[site.theme] || SUBURB_PROPS;
@@ -63,8 +63,8 @@ export function buildPackagedMap({site,layout,design,manifest}, { seed = 1 } = {
     const traceFlow = () => {
         const routes = [];
         for (let i = 1; i < flow.length; i++) {
-            const start = { x: flow[i-1][0], y: flow[i-1][1], z: 1 };
-            const goal = { x: flow[i][0], y: flow[i][1], z: 1 };
+            const start = { x: flow[i-1][0], y: flow[i-1][1], z: m.G };
+            const goal = { x: flow[i][0], y: flow[i][1], z: m.G };
             const outdoor = p => m.store.roomAt(p.x,p.y,p.z+1) < 0;
             const search = reachable(m.store,start,Infinity,AGENT_PROFILES.player,{
                 vault:false, blocked:p=>!outdoor(p), goal:p=>nodeKey(p)===nodeKey(goal)
@@ -85,9 +85,9 @@ export function buildPackagedMap({site,layout,design,manifest}, { seed = 1 } = {
     const zone={x0:Math.min(...targetRoom.cells.map(c=>c[0])),y0:Math.min(...targetRoom.cells.map(c=>c[1])),x1:Math.max(...targetRoom.cells.map(c=>c[0])),y1:Math.max(...targetRoom.cells.map(c=>c[1])),z:targetRoom.floorZ,dz:0};
     const kind=design.mission.kind;
     const objective=kind==='recover'?{kind,item,text:'Recover the intelligence from the upper command room.'}:kind==='hold'?{kind,zone,rounds:3,needed:2,text:'Take and hold the command room.'}:kind==='extract'?{kind,zone,needed:3,text:'Reach the upper rendezvous with three soldiers.'}:{kind,text:'Clear the occupied buildings.'};
-    const mission=m.finish({ name:design.mission.title, spawns:{ player:[[-1,0],[1,0],[0,0],[-1,1],[1,1],[0,1]].map(([dx,dy])=>({x:sx+dx,y:sy+dy,z:1})), enemy:enemies }, objective, meta:{theme:site.theme || 'Suburbs',lighting:site.timeOfDay,timeOfDay:site.timeOfDay,defaultCut:4,imageGenerated:true,source:site.source,flow,flowRoutes,briefing:design.mission.briefing,storyBeats:design.beats,congruence:layout.congruence,repairs:layout.repairs,packageId:manifest?.id,concepts:manifest?.concepts||[]} });
+    const mission=m.finish({ name:design.mission.title, spawns:{ player:[[-1,0],[1,0],[0,0],[-1,1],[1,1],[0,1]].map(([dx,dy])=>({x:sx+dx,y:sy+dy,z:m.G})), enemy:enemies }, objective, meta:{theme:site.theme || 'Suburbs',lighting:site.timeOfDay,timeOfDay:site.timeOfDay,defaultCut:m.G+3,streetDatum:m.G,cutLevels:[m.G,...Array.from({length:4},(_,s)=>m.G+3*(s+1)),Infinity],imageGenerated:true,source:site.source,flow,flowRoutes,briefing:design.mission.briefing,storyBeats:design.beats,congruence:layout.congruence,repairs:layout.repairs,packageId:manifest?.id,concepts:manifest?.concepts||[]} });
     const search=reachable(mission.store,mission.spawns.player[0],Infinity,AGENT_PROFILES.player);
-    for (const [x,y] of flow) if (!search.costs.has(nodeKey({x,y,z:1}))) throw new Error(`Gameplay waypoint ${x},${y} is blocked; revise image analysis flow`);
+    for (const [x,y] of flow) if (!search.costs.has(nodeKey({x,y,z:m.G}))) throw new Error(`Gameplay waypoint ${x},${y} is blocked; revise image analysis flow`);
     for (const room of mission.rooms.filter(r=>r.gameplay)) if (!room.cells.some(([x,y])=>search.costs.has(nodeKey({x,y,z:room.floorZ})))) throw new Error(`Combat room ${room.buildingId}/${room.kind} is unreachable`);
     checkGeneratedGates(mission,{site,layout,design});
     mission.visual.slate = designSlate(mission);

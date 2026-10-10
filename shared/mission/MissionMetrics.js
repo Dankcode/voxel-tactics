@@ -75,14 +75,14 @@ export function measureMission(mission, { search = null, gates = DEFAULT_GATES }
     let lanes = 0, shortest = Infinity;
     const blocked = new Set();
     for (let attempt = 0; attempt < 4 && goal; attempt++) {
-        const s = reachable(store, start, Infinity, AGENT_PROFILES.player, { blocked: p => blocked.has(`${p.x},${p.y}`) });
+        const s = reachable(store, start, Infinity, AGENT_PROFILES.player, { blocked: p => blocked.has(`${p.x},${p.y},${p.z}`) });
         const cost = s.costs.get(nodeKey(goal));
         if (cost == null) break;
         if (attempt === 0) shortest = cost;
         if (cost > shortest * 1.8) break;
         lanes++;
         const path = pathTo(s, nodeKey(goal));
-        for (const p of path.slice(Math.floor(path.length * 0.2), Math.floor(path.length * 0.8))) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) blocked.add(`${p.x + dx},${p.y + dy}`);
+        for (const p of path.slice(Math.floor(path.length * 0.2), Math.floor(path.length * 0.8))) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) blocked.add(`${p.x + dx},${p.y + dy},${p.z}`);
     }
     // Rooms with two or more ways in.
     const doorsPerRoom = new Map();

@@ -2,14 +2,14 @@
 import { materialById } from '../voxel/Materials.js';
 export function designSlate(mission) {
     const {store}=mission;
-    const floors=[...new Set([1,...mission.rooms.map(r=>r.floorZ)])].sort((a,b)=>a-b);
+    const floors=[...new Set([mission.meta.streetDatum||1,...mission.rooms.map(r=>r.floorZ)])].sort((a,b)=>a-b);
     return { version:1,width:store.width,depth:store.depth,height:store.height,worldUnitsPerTile:1,
         matrix:Array.from(store.mat), // index = x + y*width + z*width*depth
         buildings:mission.buildings.map(({id,x0,y0,w,d,baseZ,storeys,front,program})=>({id,x0,y0,w,d,baseZ,storeys,front,program})),
         layers:floors.map(z=>({z,tiles:Array.from({length:store.depth},(_,y)=>Array.from({length:store.width},(_,x)=>store.get(x,y,z)))})),
         rooms:mission.rooms.map(r=>({id:r.id,kind:r.kind,z:r.floorZ,gameplay:r.gameplay!==false,cells:r.cells})),
         flow:mission.meta.flow || [],flowRoutes:mission.meta.flowRoutes || [],doors:mission.buildings.flatMap(b=>b.doors),
-        cover:Array.from({length:store.depth},(_,y)=>Array.from({length:store.width},(_,x)=>store.get(x,y,2))) };
+        cover:Array.from({length:store.depth},(_,y)=>Array.from({length:store.width},(_,x)=>store.get(x,y,(mission.meta.streetDatum||1)+1))) };
 }
 export function slateSvg(slate) {
     const size=16, w=slate.width*size,d=slate.depth*size;

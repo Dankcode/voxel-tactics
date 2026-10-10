@@ -86,6 +86,7 @@ export class CameraRig {
         const { w, d } = this.bounds;
         this.target.x = clampN(this.target.x, -MARGIN, w + MARGIN);
         this.target.z = clampN(this.target.z, -MARGIN, d + MARGIN);
+        this.target.y=Math.max(this.minLayerHeight??0,this.target.y);
     }
     /** Where a screen ray meets the horizontal plane through the target (grab-the-ground panning). */
     groundPoint(raycaster, y = this.target.y) {
