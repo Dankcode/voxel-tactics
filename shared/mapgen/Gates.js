@@ -3,6 +3,7 @@ import { reachable, nodeKey } from '../world/PathSearch.js';
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
 import { settleUnsupported } from '../voxel/Destruction.js';
 import { footprintIoU } from './SiteSolver.js';
+import { checkAccess } from './AccessModules.js';
 
 export function checkGeneratedGates(mission,{site,layout,design}) {
     const search=reachable(mission.store,mission.spawns.player[0],Infinity,AGENT_PROFILES.player);
@@ -16,7 +17,7 @@ export function checkGeneratedGates(mission,{site,layout,design}) {
         spawnConnectivity:mission.spawns.player.every(p=>search.costs.has(nodeKey(p))&&stairs.costs.has(nodeKey(p))),
         escapeLandings:mission.buildings.every(b=>b.escapes.every(e=>escapes.costs.has(nodeKey(e.landing)))),
         roofsReachable:mission.buildings.every(b=>search.costs.has(nodeKey({x:b.x0+1,y:b.y0+1,z:b.top}))),
-        facadeAttachment:mission.buildings.every(b=>b.escapes.every(e=>mission.store.isSolid(b.x0+b.w-1,e.landing.y,e.landing.z))),
+        ...checkAccess(mission),
         buildingCount:mission.buildings.length===site.buildings.length,
         footprintOverlap:mission.buildings.every(b=>footprintIoU(layout.reference.find(r=>r.id===b.id),b)>=0.85),
         storeys:mission.buildings.every(b=>b.storeys===layout.buildings.find(r=>r.id===b.id).storeys&&b.storeys>=1&&b.storeys<=4),

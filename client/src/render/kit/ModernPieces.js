@@ -307,7 +307,12 @@ const outdoor = {
     hedge: P({ group: 'foliage', text: 'Clipped box hedge (concealment, bullets pass)' }, () => [
         { slot: 'hedge', geometry: merge([sb(1.0, 0.8, 0.86, 0.14, 0, 0, 0, 2), blob(0.22, 1, 6, [1.6, 0.5, 1.1], 0.2).translate(0.05, 0.8, 0)]) }
     ]),
-    shelf_unit: P({ group: 'furniture' }, () => [{ slot: 'frame', geometry: box(1, 1, 0.5) }])
+    shelf_unit: P({ group: 'furniture' }, () => [{ slot: 'frame', geometry: box(1, 1, 0.5) }]),
+    hvac: P({ group: 'cover', text: 'Rooftop HVAC unit (half cover; +X along its long side)' }, () => [
+        { slot: 'self', geometry: sb(0.96, 0.7, 0.86, 0.04) },
+        { slot: 'frame', geometry: merge([...Array.from({ length: 6 }, (_, i) => box(0.9, 0.02, 0.012, 0, 0.12 + i * 0.09, 0.435)), box(0.98, 0.05, 0.88, 0, 0.7)]) },
+        { slot: 'chrome', geometry: merge([cyl(0.3, 0.3, 0.04, 16, 0, 0.75), box(0.56, 0.015, 0.04, 0, 0.8), box(0.04, 0.015, 0.56, 0, 0.8)]) }
+    ])
 };
 
 // ----------------------------------------------------------------------------------------- whole objects

@@ -42,7 +42,7 @@ test('initial debug maps keep every spawn and escape reachable through a support
         const reach = reachable(m.store, m.spawns.player[0]);
         assert.ok(m.spawns.player.every(p => reach.costs.has(nodeKey(p))));
         assert.ok(m.buildings.every(b => b.escapes.every(e => reach.costs.has(nodeKey(e.landing)))));
-        for (const gate of ['initialSupport','spawnConnectivity','escapeLandings','roofsReachable','facadeAttachment','floorsReachable','objectiveReachable']) assert.equal(m.metrics.gates[gate], true, `${seed}: ${gate}`);
+        for (const gate of ['initialSupport','spawnConnectivity','escapeLandings','roofsReachable','accessTemplates','accessByHeight','floorsReachable','objectiveReachable']) assert.equal(m.metrics.gates[gate], true, `${seed}: ${gate}`);
     }
 });
 

@@ -83,7 +83,14 @@ export function explodeVoxels(store, blast, { maxChain = 8, maxVoxels = 900 } = 
  */
 export function settleUnsupported(store, { maxRubble = 600 } = {}) {
     let standRemoved=0;
-    for(const group of store.supportGroups||[])if(group.posts.every(p=>store.get(...p)!==MAT.steel_post)&&!(group.anchors||[]).some(p=>store.isSolid(...p)))for(const p of group.members)if(store.get(...p)!==AIR){store.set(...p,AIR);standRemoved++;}
+    // Steel stands (fire escapes, bridges): a group falls once every post is gone, every post column is broken
+    // somewhere along its height (PLAN-04 §5.2 posts) and no wall anchor holds it. Groups with no support listed never fall here.
+    for(const group of store.supportGroups||[]) {
+        const posts=group.posts||[],columns=group.columns||[],anchors=group.anchors||[];
+        if(!posts.length&&!columns.length&&!anchors.length)continue;
+        const postsGone=posts.every(p=>store.get(...p)!==MAT.steel_post),columnsGone=columns.every(col=>col.some(p=>store.get(...p)!==MAT.steel_post));
+        if(postsGone&&columnsGone&&!anchors.some(p=>store.isSolid(...p)))for(const p of group.members)if(store.get(...p)!==AIR){store.set(...p,AIR);standRemoved++;}
+    }
     const { width: W, depth: D, height: H } = store;
     const seen = new Uint8Array(W * D * H);
     const stack = [];
@@ -91,6 +98,13 @@ export function settleUnsupported(store, { maxRubble = 600 } = {}) {
     for (let y = 0; y < D; y++) for (let x = 0; x < W; x++) {
         const i = store.index(x, y, 0);
         if (attached(store.mat[i])) { seen[i] = 1; stack.push(i); }
+    }
+    // Standing steel stands are bolted together: their surviving members count as supported (their own rule above
+    // decided whether they stand), so a stair stringer between two landings never reads as a floating voxel.
+    for (const group of store.supportGroups || []) for (const p of [...group.members, ...(group.columns || []).flat()]) {
+        if (!store.inBounds(...p)) continue;
+        const i = store.index(...p);
+        if (!seen[i] && attached(store.mat[i])) { seen[i] = 1; stack.push(i); }
     }
     const WD = W * D;
     while (stack.length) {
