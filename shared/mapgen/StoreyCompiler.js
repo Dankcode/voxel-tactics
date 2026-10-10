@@ -52,7 +52,7 @@ export function compileBuilding(m,b,{roomById=id=>m.ctx.rooms.find(r=>r.id===id)
             const x=x0+panel.x,y=y0+panel.y;
             if(panel.kind==='window'||panel.kind==='band'){store.set(x,y,fz+2,MAT.glass);out.windows.push({x,y,z:fz+2,storey:f.floor,kind:panel.kind});}
             else if(panel.kind==='storefront'||panel.kind==='glazing'){for(const h of [1,2])store.set(x,y,fz+h,MAT.glass);out.windows.push({x,y,z:fz+2,storey:f.floor,kind:panel.kind});}
-            else if(panel.kind==='sign'||panel.kind==='vent'){const side=perimeterSide(b,panel.x,panel.y);if(side)ctx.decor.push({kind:panel.kind==='sign'?'wall_sign':'wall_vent',x:x+SIDE_OUT[side][0]*0.55,y:y+SIDE_OUT[side][1]*0.55,z:fz+(panel.kind==='sign'?2:1),yaw:{e:0,n:Math.PI/2,w:Math.PI,s:-Math.PI/2}[side],side,free:true,tint:panel.tint});}
+            else if(panel.kind==='sign'||panel.kind==='vent'){const side=perimeterSide(b,panel.x,panel.y);if(side)ctx.decor.push({kind:panel.kind==='sign'?'wall_sign':'wall_vent',x:x+SIDE_OUT[side][0]*0.55,y:y+SIDE_OUT[side][1]*0.55,z:fz+(panel.kind==='sign'?2:1),yaw:Math.atan2(SIDE_OUT[side][0],SIDE_OUT[side][1]),side,free:true,...(panel.kind==='sign'&&b.accent?{tint:b.accent}:{})});}
         }
     }
     const doorAt=(x,y,floor,side)=> {

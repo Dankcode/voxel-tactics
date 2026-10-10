@@ -181,7 +181,7 @@ function bestTile(battle, u, w, threats, budgetAp, goal = null) {
         s -= allies.filter(o => Math.max(Math.abs(o.x - n.x), Math.abs(o.y - n.y)) <= 2).length * 4;
         if (threats.length) s += Math.max(0, n.z - Math.min(...threats.map(e => e.z))) * 2;
         // Enemies defend the engagement pockets the generator built along the line of play.
-        if (u.side === 'enemy' && pockets.length && pockets.some(p => Math.hypot(p.x - n.x, p.y - n.y) <= 2.5)) s += 6;
+        if (u.side === 'enemy' && pockets.length && pockets.some(p => Math.hypot(p.x - n.x, p.y - n.y) <= 2.5)) s += 2.5;
         if (goal) {
             s -= Math.hypot(n.x - goal.x, n.y - goal.y) * pull;
             if (o.zone && inZone(o.zone, n) && o.kind !== 'recover') s += 25;

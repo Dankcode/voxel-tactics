@@ -14,7 +14,6 @@ import { hashString } from '../util/Rng.js';
 import { critiqueMission } from './Critic.js';
 
 const unit = s => (hashString(s) >>> 0) / 4294967296;
-const YAW = { e: 0, n: Math.PI / 2, w: Math.PI, s: -Math.PI / 2 };
 
 /** One bay piece into voxels (+ whole-object hints and decor) at the street datum. */
 export function compilePiece(m, p, district = 'commercial') {
@@ -40,8 +39,11 @@ export function compileEdges(m, edges) {
             // Yard fences stand on concrete blocks every fourth cell: real cover along an industrial edge.
             const blockAt = e.kind === 'chainlink' && i % 4 === 2;
             for (let k = 1; k <= h; k++) s.set(x, y, G + k, MAT[blockAt && k === 1 ? 'jersey' : key]);
-            if (e.kind === 'barricade' && i % 3 === 1) m.decorAt('cordon', x + 0.5, y + 0.5, { z: G + 2, yaw: e.side === 'n' || e.side === 's' ? 0 : Math.PI / 2, free: true });
-            if (e.kind === 'facade' && i % 4 === 2) m.decorAt('wall_sign', x + 0.5 + (e.side === 'w' ? 0.55 : e.side === 'e' ? -0.55 : 0), y + 0.5 + (e.side === 'n' ? 0.55 : e.side === 's' ? -0.55 : 0), { z: G + 3, yaw: YAW[{ n: 's', s: 'n', e: 'w', w: 'e' }[e.side]], free: true });
+            if (e.kind === 'barricade' && i % 3 === 1) m.decorAt('cordon', x, y, { z: G + 2, yaw: e.side === 'n' || e.side === 's' ? 0 : Math.PI / 2, free: true });
+            if (e.kind === 'facade' && i % 4 === 2) {
+                const [ox, oy] = { w: [1, 0], e: [-1, 0], n: [0, 1], s: [0, -1] }[e.side];        // the face looks into the map
+                m.decorAt(i % 8 === 2 ? 'wall_sign' : 'wall_vent', x + ox * 0.55, y + oy * 0.55, { z: G + 2 + (i % 8 === 2 ? 1 : 0), yaw: Math.atan2(ox, oy), free: true });
+            }
         });
     }
 }

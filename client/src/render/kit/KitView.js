@@ -147,7 +147,8 @@ export class KitView {
         // Decor: drawn while its cell is empty and what it stands on (or hangs on) still exists.
         for (const d of this.decorByChunk.get(`${cx},${cy},${cz}`) || []) {
             const x = Math.floor(d.x + 0.5), y = Math.floor(d.y + 0.5);
-            if (d.free) { add(d.kind, d.x, d.y, d.z, d.yaw || 0, 'stone', { sx: d.w || 1, sz: d.d || 1 }); continue; }   // free-standing (canopies)
+            const accent = d.tint ? { tint: d.tint, tintSlots: ['canvas_white', 'red'] } : {};
+            if (d.free) { add(d.kind, d.x, d.y, d.z, d.yaw || 0, 'stone', { sx: d.w || 1, sz: d.d || 1, ...accent }); continue; }   // free-standing (canopies, signs)
             if (d.z >= cut) continue;
             if (store.get(x, y, d.z) !== AIR) continue;
             if (d.kind === 'wall_art') {
@@ -157,7 +158,7 @@ export class KitView {
                 continue;
             }
             if (!store.isSolid(x, y, d.z - 1)) continue;
-            add(d.kind, d.x, d.y, d.z, d.yaw || 0, 'stone', { sx: d.w || 1, sz: d.d || 1 });
+            add(d.kind, d.x, d.y, d.z, d.yaw || 0, 'stone', { sx: d.w || 1, sz: d.d || 1, ...accent });
         }
         const out = [];
         for (const e of inst.values()) {

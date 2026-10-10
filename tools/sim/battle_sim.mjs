@@ -19,7 +19,10 @@ const args = Object.fromEntries(process.argv.slice(2).reduce((acc, a, i, all) =>
     return acc;
 }, []));
 const SEEDS = Number(args.seeds) || 16, ROUNDS = Number(args.rounds) || 40;
+// --scenario operation [--plot downtown|industrial|suburb] runs generated operations (PLAN-04): every seed is a new map.
+const PLOTS = ['downtown', 'industrial', 'suburb'];
 const scenarios = args.scenario === 'all' ? SCENARIOS.map(m => ({ scenario: m.id }))
+    : args.scenario === 'operation' ? (PLOTS.includes(args.plot) ? [args.plot] : PLOTS).map(plot => ({ scenario: 'operation', operation: { plot } }))
     : [{ scenario: SCENARIOS.some(m => m.id === args.scenario) ? args.scenario : 'proving-grounds' }];
 
 function runOne(desc, { formations }) {
@@ -99,7 +102,7 @@ for (const sc of scenarios) {
     const all = await runAll([...descs.map(d => [d, true]), ...(compare ? descs.map(d => [d, false]) : [])]);
     const withF = all.slice(0, descs.length);
     const aggF = aggregate(withF);
-    printReport(`${sc.scenario} (formations on)`, aggF);
+    printReport(`${sc.scenario}${sc.operation ? `/${sc.operation.plot}` : ''} (formations on)`, aggF);
     const entry = { scenario: sc, formationsOn: aggF };
     if (args['formations-compare']) {
         const without = all.slice(descs.length);

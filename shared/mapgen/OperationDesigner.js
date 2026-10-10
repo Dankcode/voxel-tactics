@@ -70,14 +70,15 @@ export function designProgrammes({ buildings, target, plot, seed, objectiveKind 
     if (top >= 2) design.encounters.push({ group: group++, building: target.id, floor: Math.min(2, top - 1), room: 'hall', types: ['warden_foe'] });
     design.encounters.push({ group: group++, building: target.id, floor: top, room: topRooms[0].id, types: ['archer', 'cultist'] });
     // Other buildings: a picket in the ones nearest the objective (an overwatch on the tallest).
-    const others = buildings.filter(b => b !== target).sort((a, c) => Math.hypot(a.x0 - target.x0, a.y0 - target.y0) - Math.hypot(c.x0 - target.x0, c.y0 - target.y0)).slice(0, 2);
+    const others = buildings.filter(b => b !== target).sort((a, c) => Math.hypot(a.x0 - target.x0, a.y0 - target.y0) - Math.hypot(c.x0 - target.x0, c.y0 - target.y0)).slice(0, 1);
     for (const b of others) design.encounters.push({ group: group++, building: b.id, floor: b.storeys - 1, room: roomOn(b, b.storeys - 1), types: [b.storeys >= 2 ? 'archer' : 'cultist'] });
     return design;
 }
 
 /** Outdoor pods at the engagement pockets in the second half of the line of play (at most two). */
 export function addPocketPods(design, pockets, seed) {
-    const late = pockets.filter(p => p.along >= 0.45).slice(-2);
+    // One outdoor pod on the last pocket before the objective (the squad's fight to get in); a second only on long routes.
+    const late = pockets.filter(p => p.along >= 0.45).slice(pockets.length >= 4 ? -2 : -1);
     let group = Math.max(-1, ...design.encounters.map(e => e.group)) + 1;
     for (const p of late) design.encounters.push({ group: group++, pocket: p.id, at: { x: p.x, y: p.y }, types: unit(`${seed}:pocket-pod:${p.id}`) < 0.5 ? ['cultist', 'archer'] : ['warden_foe', 'cultist'] });
     return design;
