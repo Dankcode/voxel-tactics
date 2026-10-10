@@ -128,6 +128,12 @@ def('deep_ice', { label: 'Ice (over deep water)', element: ELEMENTS.CRYO, color:
 // Locked background-room doors cannot be opened or destroyed into accidental gameplay routes.
 def('door_locked', { label: 'Locked service-room door', color: 0x666b70, hp: Infinity, family: 'metal', walkable: false, structural: false });
 
+// Supported steel circulation: grate passes bullets, railing is low see-through cover.
+def('grate', { label:'Steel grate',color:0x667680,hp:4,opaque:false,projectile:'pass',family:'metal',structural:true });
+def('steel_stair', { label:'Steel stairs',color:0x667680,hp:6,part:4,opaque:false,projectile:'pass',family:'metal' });
+def('steel_post', { label:'Steel post',color:0x53636f,hp:12,family:'metal',walkable:false });
+def('railing', { label:'Steel railing',color:0x8999a2,hp:4,opaque:false,projectile:'pass',concealment:2,family:'metal',walkable:false,structural:false });
+
 export const MATERIALS = Object.freeze(M);
 export const MAT = Object.freeze(Object.fromEntries(M.map(m => [m.key, m.id])));
 export const materialById = id => M[id] || M[0];
@@ -137,6 +143,6 @@ export const AIR = 0;
 /** How much a voxel of this material covers a body standing behind it. */
 export function coverWeight(m) {
     if (!m || m.id === AIR) return 0;
-    if (m.projectile === 'block') return 1;
+    if (m.projectile === 'block' || m.key === 'railing') return 1;
     return m.concealment ? 0.35 : 0;
 }

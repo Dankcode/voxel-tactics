@@ -82,6 +82,7 @@ export function explodeVoxels(store, blast, { maxChain = 8, maxVoxels = 900 } = 
  * @returns {{ fallen: {x,y,from,to,material}[], removed: number }}
  */
 export function settleUnsupported(store, { maxRubble = 600 } = {}) {
+    for(const group of store.supportGroups||[])if(group.posts.every(p=>store.get(...p)!==MAT.steel_post))for(const p of group.members)store.set(...p,AIR);
     const { width: W, depth: D, height: H } = store;
     const seen = new Uint8Array(W * D * H);
     const stack = [];

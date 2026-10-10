@@ -114,6 +114,7 @@ export class VoxelStore {
     }
     clone() {
         const c = new VoxelStore(this.width, this.depth, this.height);
+        c.datum=this.datum;c.supportGroups=structuredClone(this.supportGroups||[]);
         c.mat.set(this.mat); c.hp.set(this.hp); c.rooms.set(this.rooms);
         return c;
     }

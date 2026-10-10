@@ -24,7 +24,7 @@ export const MODERN_WALLS = new Set(['stucco', 'brick', 'concrete_wall', 'siding
 const WALLS = new Set(['stone', 'plaster', 'timber', ...MODERN_WALLS]);
 const WALL_LIKE = new Set([...WALLS, 'city_wall', 'glass', 'door', 'door_locked', 'door_open', 'lantern']);
 const FURNITURE = new Set(['sofa', 'cabinet', 'bed', 'desk', 'appliance', 'shelving', 'pallet']);
-const PROPS = new Set(['planter', 'privacy_fence', 'chainlink', 'jersey', 'bench', 'bin', 'pump']);
+const PROPS = new Set(['planter', 'privacy_fence', 'chainlink', 'railing', 'jersey', 'bench', 'bin', 'pump']);
 const OBJECTS = new Set(['car_body', 'car_cabin', 'container', 'dumpster']);
 // Outdoor objects taller than a storey are not sliced by the storey cutaway (trees, street lights, signs).
 const NO_CLIP = new Set(['canopy', 'tree_round', 'tree_conifer', 'streetlight', 'floodlight', 'price_sign', 'motel_sign', 'crane_leg', 'bus_stop', 'umbrella', 'gate_sign']);
@@ -45,7 +45,7 @@ export function kitHandler(store, x, y, z, id = store.get(x, y, z)) {
     switch (k) {
         case 'glass': return 'window';
         case 'door': case 'door_locked': case 'door_open': return 'door';
-        case 'stairs_wood': case 'stairs_stone': return 'stairs';
+        case 'steel_stair': case 'stairs_wood': case 'stairs_stone': return 'stairs';
         case 'roof': return 'roof';
         case 'crate': return 'crate';
         case 'barrel_powder': case 'barrel_water': return 'barrel';
@@ -249,7 +249,7 @@ export class KitView {
                 break;
             }
             case 'stairs': {
-                const top = !['stairs_wood', 'stairs_stone'].includes(keyOf(get(x, y, z + 1)));
+                const top = !['stairs_wood', 'stairs_stone', 'steel_stair'].includes(keyOf(get(x, y, z + 1)));
                 if (!top) { add('stair_block', x, y, z, 0, k); break; }
                 add('stair_step', x, y, z, stairYaw(store, x, y, z), k);
                 break;
@@ -271,6 +271,7 @@ export class KitView {
                 const below = keyOf(store.get(x, y, z - 1)) === k;
                 switch (k) {
                     case 'privacy_fence': add(below ? 'privacy_fence_top' : 'privacy_fence', x, y, z, lineYaw(sameKey), k); break;
+                    case 'railing': grouped(); break;
                     case 'chainlink': add(below ? 'chainlink_top' : 'chainlink', x, y, z, lineYaw(sameKey), k); break;
                     case 'bench': add('bench', x, y, z, lineYaw(sameKey) + (hash(x >> 1, y >> 1, 5) < 0.5 ? 0 : Math.PI), k); break;
                     case 'bin': add('bin', x, y, z, (hash(x, y, z) - 0.5) * 0.6 + (hash(x, y, 9) < 0.5 ? 0 : Math.PI), k); break;
@@ -356,7 +357,7 @@ function neighbourWall(store, x, y, z) {
 }
 /** The direction the stair run rises: the neighbour whose top is one voxel higher. */
 function stairYaw(store, x, y, z) {
-    const isStair = id => ['stairs_wood', 'stairs_stone'].includes(keyOf(id));
+    const isStair = id => ['stairs_wood', 'stairs_stone', 'steel_stair'].includes(keyOf(id));
     for (const [dx, dy, yaw] of DIRS) {
         if (isStair(store.get(x + dx, y + dy, z + 1)) && !isStair(store.get(x + dx, y + dy, z + 2))) return yaw;
     }

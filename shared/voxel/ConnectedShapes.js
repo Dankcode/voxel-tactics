@@ -38,6 +38,7 @@ export function wallFootprint(mask) { return bandFootprint(mask, WALL_THICKNESS,
  * corners, T-junctions and crossings round only their outside corners.
  */
 export const BANDS = {
+    railing: { thickness:0.08,radius:0.03,family:new Set(['railing']) },
     hedge: { thickness: 0.86, radius: 0.3, family: new Set(['hedge']) },
     planter: { thickness: 0.8, radius: 0.16, family: new Set(['planter']) },
     sandbag: { thickness: 0.62, radius: 0.22, family: new Set(['sandbag']) },

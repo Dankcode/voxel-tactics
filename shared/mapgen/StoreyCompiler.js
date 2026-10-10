@@ -1,3 +1,4 @@
+import { compileFireEscape } from './FireEscape.js';
 // The floor graph, shell and vertical circulation all compile into the same collision/cover matrix.
 import { MAT, AIR } from '../voxel/Materials.js';
 import { createStairRun } from '../world/StairRun.js';
@@ -6,19 +7,19 @@ import { createRng, hashString } from '../util/Rng.js';
 const key=(x,y)=>`${x},${y}`;
 
 export function compileBuilding(m,b) {
-    const {store,ctx}=m,{x0,y0,w,d,storeys}=b,top=1+3*storeys;
-    if(storeys<2||storeys>4||b.floors.length!==storeys)throw Error('compile.storeys: requires all 2–4 floor layouts');
-    const out={id:b.id,name:b.id,program:b.program,role:b.program,x0,y0,w,d,baseZ:1,top,storeys,front:b.front,wall:'stucco',rooms:[],doors:[],windows:[],stairs:[],escapes:[],approach:[],exits:[]};
+    const {store,ctx}=m,{x0,y0,w,d,storeys}=b,top=m.G+3*storeys;
+    if(storeys<1||storeys>4||b.floors.length!==storeys)throw Error('compile.storeys: requires all 1–4 floor layouts');
+    const out={id:b.id,name:b.id,program:b.program,role:b.program,x0,y0,w,d,baseZ:m.G,top,storeys,front:b.front,wall:'stucco',rooms:[],doors:[],windows:[],stairs:[],escapes:[],approach:[],exits:[]};
     const world=([x,y])=>[x+x0,y+y0];
     for(let y=y0;y<y0+d;y++)for(let x=x0;x<x0+w;x++) {
-        for(let z=1;z<=top+2;z++)store.set(x,y,z,AIR);
+        for(let z=m.G;z<=top+2;z++)store.set(x,y,z,AIR);
         for(let s=0;s<=storeys;s++) {
-            const fz=1+s*3;store.set(x,y,fz,s===storeys?MAT.concrete:MAT.oak_floor);
+            const fz=m.G+s*3;store.set(x,y,fz,s===storeys?MAT.concrete:MAT.oak_floor);
             if(s<storeys&&(x===x0||y===y0||x===x0+w-1||y===y0+d-1))for(let h=1;h<=2;h++)store.set(x,y,fz+h,MAT.stucco);
         }
     }
     for(const f of b.floors) {
-        const fz=1+3*f.floor;
+        const fz=m.G+3*f.floor;
         for(const [x,y] of f.walls.map(world))for(let h=1;h<=2;h++)store.set(x,y,fz+h,MAT.stucco);
         for(const r of f.rooms) {
             const rec={id:ctx.nextRoomId(),buildingId:b.id,storey:f.floor,kind:r.kind,gameplay:r.gameplay!==false,cells:r.cells.map(world),floorZ:fz,lit:true,doors:[]};
@@ -39,7 +40,7 @@ export function compileBuilding(m,b) {
         }
     }
     const doorAt=(x,y,floor,side)=> {
-        const z=1+3*floor;for(let h=1;h<=2;h++)store.set(x,y,z+h,MAT.door);
+        const z=m.G+3*floor;for(let h=1;h<=2;h++)store.set(x,y,z+h,MAT.door);
         const rec={x,y,z,storey:floor,side,exterior:true};out.doors.push(rec);return rec;
     };
     const mid=b.floors[0].core.mid;
@@ -51,7 +52,7 @@ export function compileBuilding(m,b) {
     const hallSet=new Set(b.floors[0].rooms.find(r=>r.kind==='hall').cells.map(c=>key(...world(c))));
     // Alternating parallel runs make a compact switchback core; upper holes never eat the next flight.
     for(let s=0;s<storeys-1;s++) {
-        const fz=1+3*s,even=s%2===0;
+        const fz=m.G+3*s,even=s%2===0;
         const run=createStairRun({origin:{x:x0+(even?2:4),y:y0+mid+(even?-1:1)},direction:even?'east':'west',rise:3,baseZ:fz,footprintSet:hallSet});
         if(!run)throw Error(`compile.stairs: ${b.id} floor ${s} cannot fit core`);
         for(const c of [run.before,run.cells[0],run.cells[1]])store.set(c.x,c.y,fz+3,AIR);
@@ -61,20 +62,8 @@ export function compileBuilding(m,b) {
         }
         out.stairs.push({storey:s,...run});
     }
-    // Independent ladder bays reach each upper landing. They remain usable if the indoor core is destroyed.
-    for(let s=1;s<storeys;s++) {
-        const y=y0+mid+s-2,z=1+3*s;
-        store.set(x0+w,y,z,MAT.concrete);doorAt(x0+w-1,y,s,'e');
-        for(let h=2;h<=z;h++)store.set(x0+w+1,y,h,MAT.ladder);
-        out.escapes.push({floor:s,foot:{x:x0+w+1,y,z:1},landing:{x:x0+w,y,z}});
-        m.reserve(x0+w-1,y-1,x0+w+2,y+1);
-    }
-    // A parapet bounds the roof and supplies cover; one exterior ladder gives roof access.
     for(let y=y0;y<y0+d;y++)for(let x=x0;x<x0+w;x++)if(x===x0||x===x0+w-1||y===y0||y===y0+d-1)store.set(x,y,top+1,MAT.stucco);
-    const ry=y0+mid+2;store.set(x0+w,ry,top,MAT.concrete);store.set(x0+w-1,ry,top+1,AIR);
-    for(let h=2;h<=top;h++)store.set(x0+w+1,ry,h,MAT.ladder);
-    m.reserve(x0+w-1,ry-1,x0+w+2,ry+1);
-    out.escapes.push({floor:storeys,toRoof:true,foot:{x:x0+w+1,y:ry,z:1},landing:{x:x0+w,y:ry,z:top}});
+    compileFireEscape(m,{...b,...out,floors:b.floors},doorAt);
     for(const f of b.floors) {
         const rooms=out.rooms.filter(r=>r.storey===f.floor),floorSet=new Set(rooms.filter(r=>r.gameplay).flatMap(r=>r.cells.map(c=>key(...c))));
         const keepFree=new Set(rooms.find(r=>r.kind==='hall').cells.map(c=>key(...c))),obstacles=new Set();
@@ -83,7 +72,7 @@ export function compileBuilding(m,b) {
             for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)keepFree.add(key(dr.x+dx,dr.y+dy));
         }
         for(const run of out.stairs)if(run.storey===f.floor||run.storey===f.floor-1)for(const c of [run.before,...run.cells,run.after]){keepFree.add(key(c.x,c.y));obstacles.add(key(c.x,c.y));}
-        furnish(store,{floorSet,rooms,fz:1+3*f.floor,keepFree,obstacles,rng:createRng(hashString(`${m.id}:${m.seed}:${b.id}:${f.floor}`)),hints:ctx.hints,decor:ctx.decor});
+        furnish(store,{floorSet,rooms,fz:m.G+3*f.floor,keepFree,obstacles,rng:createRng(hashString(`${m.id}:${m.seed}:${b.id}:${f.floor}`)),hints:ctx.hints,decor:ctx.decor});
     }
     out.floorCells=out.rooms.filter(r=>r.storey===0&&r.gameplay).flatMap(r=>r.cells);
     m.buildings.push(out);return out;

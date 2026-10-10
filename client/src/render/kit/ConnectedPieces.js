@@ -39,6 +39,7 @@ for(let mask=0;mask<16;mask++) {
 // rounded post; touching pieces of the same family merge into one run with rounded outside corners. Each mask has a
 // "top" module (the visible height of the cover) and a "full" one used under another piece of the same family.
 export const GROUPED = {
+    railing:{slot:'self',top:0.9},
     hedge: { slot: 'hedge', top: 0.86 },
     planter: { slot: 'self', top: 0.6, soil: true },
     sandbag: { slot: 'sandbag', top: 0.9 },
