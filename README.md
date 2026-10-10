@@ -28,7 +28,7 @@ are drawn as whole objects. The block-world look stays in vibe-game.
 ```bash
 npm install            # on macOS run this natively (don't copy node_modules between machines)
 npm run dev            # http://localhost:5173  → menu
-npm test               # 106 tests: voxels, cover, elements, ballistics, battle, buildings, maps, tile set, co-op room
+npm test               # mechanics and co-op tests: voxels, cover, elements, ballistics, battle, buildings, maps, tile set, co-op room
 ```
 
 Deep links for testing:
@@ -166,3 +166,5 @@ npm run kit:bake                # re-bake the tile set (assets/kit/tileset.glb +
 - Generated packages enforce combat, vertical and reference-congruence gates before installation, with bounded repairs/reseeds; hand-built maps retain their existing reported gates.
 - Generated packages have indoor stairs between storeys and ladder access to upper floors and the roof. Hand-built maps provide roof access where specified.
 - Aliens and their themes are not in yet.
+
+Generated fixtures now include supported fire escapes, underground flanks, floor charges and deterministic darkness. Play `?play=subway-crossing&seed=1` for the night-ops bridge/subway test. See [PLAN-03](docs/PLAN-03-vertical-maps-underground-lighting.md) and [MAPGEN](docs/MAPGEN.md).

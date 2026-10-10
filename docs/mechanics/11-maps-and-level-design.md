@@ -16,11 +16,12 @@ Measured on seed 1:
 <!-- generated:maps -->
 | id | name | theme | size W×D×H | buildings | rooms | enemies | pods | lighting | cover density | cover gap | killing field | sightline median | lanes | breachability | spawn safe | gates (seed 1) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `cedar-image` | Cedar Close · Image Study | Suburbs | 54×46×18 | 2 | 16 | 6 | 4 | dusk | 44% | 5 | 10 | 10.3 | 4 | 100% | yes | PASS |
-| `signal-house` | Signal House | Downtown | 58×42×18 | 1 | 16 | 3 | 2 | overcast | 43% | 6 | 12 | 11.0 | 4 | 100% | yes | PASS |
+| `cedar-image` | Cedar Close · Image Study | Suburbs | 54×46×18 | 2 | 16 | 7 | 5 | dusk | 44% | 5 | 10 | 9.6 | 4 | 100% | yes | PASS |
+| `signal-house` | Signal House | Downtown | 58×42×18 | 1 | 16 | 4 | 3 | overcast | 43% | 6 | 12 | 7.3 | 4 | 100% | yes | PASS |
+| `subway-crossing` | Subway Crossing | Downtown | 58×42×18 | 1 | 8 | 4 | 3 | night-ops | 38% | 6 | 12 | 9.2 | 4 | 100% | yes | PASS |
 | `cedar-close` | Cedar Close | Suburbs | 48×40×12 | 2 | 8 | 7 | 4 | day | 47% | 4 | 5 | 6.3 | 4 | 100% | yes | PASS |
 | `main-street` | Main Street | Downtown | 52×42×14 | 4 | 17 | 8 | 4 | dusk | 46% | 4 | 6 | 8.4 | 4 | 94% | yes | PASS |
-| `harbor-yard` | Harbor Yard | Industrial | 54×44×14 | 2 | 5 | 8 | 4 | night | 36% | 6 | 6 | 7.0 | 2 | 100% | yes | PASS |
+| `harbor-yard` | Harbor Yard | Industrial | 54×44×14 | 2 | 5 | 8 | 4 | night | 41% | 5 | 4 | 7.0 | 2 | 100% | yes | PASS |
 | `route-9` | Route 9 Stop | Roadside | 52×42×12 | 2 | 6 | 7 | 4 | dawn | 35% | 5 | 5 | 10.5 | 4 | 100% | yes | PASS |
 | `proving-grounds` | Training Facility | Training | 60×46×16 | 4 | 17 | 9 | 5 | overcast | 39% | 5 | 5 | 8.5 | 4 | 76% | yes | PASS |
 <!-- /generated:maps -->
@@ -222,3 +223,7 @@ The shared map builder now compiles saved two-to-four-storey layouts into the sa
 Packages under `client/public/maps/<id>/` carry the reference/site read, objective/beat/pod programme, floor priors and solved layout. `PackageCatalog.js` imports those files for both clients and server. Runtime compilation never calls a model or resolves a new architectural layout. Generated-map gates verify every active room through stairs, independent upper-floor escape access, inaccessible closed rooms, reachable objective/enemies, building count, storeys and footprint IoU ≥ .85. See [MAPGEN.md](../MAPGEN.md) for authoring and limitations.
 
 Cover against a known attacker now includes its height (see [03](03-cover-and-sight.md)): low cover loses its rating against an attacker two or more voxels above when it is below the chest; real upper walls and bands still protect. Tile-face shields retain their neutral rating.
+
+## PLAN-03 mechanics
+
+Generated maps now solve underground, street and elevated parcels together. Datum 4 preserves room for tunnels at z=1; hand-built maps keep datum 1. Buildings use observed/played heights from 1–4, varied programmes, indoor cores and supported steel escapes. The Subway Crossing fixture tests a bridge, guarded underground flank and night-ops lighting. Gates verify both entrances, safe drops, concealment, route cost ≤1.6× the street route and a guarding pod.

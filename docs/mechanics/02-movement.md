@@ -139,3 +139,7 @@ from the code rather than an explicit drowning rule.
 
 Knockback (Sledgehammer, Concussion Grenade) and falling after destruction are covered in
 [05](05-destruction.md#falling-units-and-knockback). Neither triggers overwatch.
+
+## PLAN-03 mechanics
+
+Generated maps put the street at z=4 and tunnels at z=1. PgDn reaches BELOW. Stairs connect layers; the attached manhole/drop ladder costs 1.5 plus rise. Controlled 2–4 voxel drops cost 3 movement points and stagger the unit; their noise radius is 8. A compiled ladder needs continuous solid backing on one side. Generated fire escapes use walkable grate platforms and steel stairs.

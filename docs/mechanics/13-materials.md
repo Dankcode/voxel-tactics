@@ -120,6 +120,11 @@ anything else that stops bullets.
 | 80 | `ladder` | Ladder | 3 | — | — | pass | — | 1 | — | — | — | — | — | metal | structure | none (0) | — |
 | 81 | `deep_ice` | Ice (over deep water) | 2 | yes | — | block | yes | 1.4 | — | — | — | melt→deep_water | yes | ice | cryo | cover (1) | liquid shoreline |
 | 82 | `door_locked` | Locked service-room door | ∞ | yes | yes | block | — | 1 | — | — | — | — | — | metal | geo | cover (1) | — |
+| 83 | `grate` | Steel grate | 4 | yes | — | pass | yes | 1 | — | — | — | — | yes | metal | geo | none (0) | — |
+| 84 | `steel_stair` | Steel stairs | 6 | yes | — | pass | yes | 1 | — | — | — | — | yes | metal | geo | none (0) | — |
+| 85 | `steel_post` | Steel post | 12 | yes | yes | block | — | 1 | — | — | — | — | yes | metal | geo | cover (1) | band 0.15 |
+| 86 | `railing` | Steel railing | 4 | yes | — | pass | — | 1 | — | — | — | — | — | metal | geo | cover (1) | band 0.08 |
+| 87 | `emergency_light` | Emergency light | 1 | yes | yes | block | — | 1 | — | — | — | — | — | metal | geo | cover (1) | — |
 <!-- /generated:materials -->
 
 ## Notes

@@ -113,3 +113,7 @@ time along the rounded direction away from the attacker or blast centre. It stop
 solid cell at z+1 or z+2 or another unit; stops if there is no surface at or below its height; a drop of more than
 1 level deals (drop − 1) × `B.fallDamagePerLevel` (5) to the legs and stops it. Knockback does not trigger
 overwatch. A voluntary jump down ([02](02-movement.md#jumping-down)) deals no fall damage.
+
+## PLAN-03 mechanics
+
+Generated escape platforms depend on two ground posts. Losing both removes the escape surfaces and then settles disconnected material; removal is included in collapse statistics/events. Buildings retain connectivity support; the optional six-cell span rule is deferred. Floor breaching removes four slab voxels to make a controlled drop; damaging a larger shaft does not collapse a building still connected to bedrock.

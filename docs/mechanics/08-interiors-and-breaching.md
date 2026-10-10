@@ -90,3 +90,7 @@ Consequences worth knowing:
 
 Not implemented from PLAN-01 §12.5: window vaults, kick-in of locked doors (there are no locked doors), ceiling
 drops, smoke entries, entry-type aim modifiers, defenders acting last.
+
+## PLAN-03 mechanics
+
+With a breach charge, the Breach panel also offers nearby floor slabs over a standable floor 2–4 voxels below. Floor charge: one unit, 1 AP, one charge, 2×2 hole, noise radius 14. It grants no free entry shot and does not automatically move the unit. Locked service-room floors are excluded.

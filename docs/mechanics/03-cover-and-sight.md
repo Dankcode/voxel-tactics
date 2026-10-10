@@ -119,3 +119,7 @@ Wind (`anemo`) clears it.
 - **Dim rooms**: spread × `B.dimRoomSpreadMult` = 1.25 when the target is in a room with `lit: false` and the
   shooter is not in that room. `ModernBuilder` defaults warehouse rooms to dim while offices remain lit. Building specs may
   override a room kind with `lighting: { warehouse: true }` or all rooms with `lit: false`.
+
+## PLAN-03 mechanics
+
+On generated maps, deterministic voxel lighting replaces the room-only dim modifier: light <4 at the target body cell multiplies spread by `B.darkSpreadMult` (1.25) when horizontal distance exceeds 4. Fire, lamps and emissive terrain light air cells; opaque voxels block propagation. Shooting out a lantern updates nearby darkness. A moon marker appears in move previews. Railings provide HALF positional cover while sight and bullets pass through them; the shared thin connected shape controls the rating.
