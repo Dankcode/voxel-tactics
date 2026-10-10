@@ -20,7 +20,8 @@
   "properties": {
     "version": {
       "enum": [
-        2
+        2,
+        3
       ]
     },
     "id": {
@@ -120,6 +121,54 @@
           "minItems": 3
         }
       }
+    },
+    "generatorVersion": {
+      "type": "string",
+      "maxLength": 32
+    },
+    "plot": {
+      "type": "object"
+    },
+    "ground": {
+      "type": "object",
+      "required": [
+        "mat"
+      ]
+    },
+    "pieces": {
+      "type": "array"
+    },
+    "edges": {
+      "type": "array"
+    },
+    "pockets": {
+      "type": "array"
+    },
+    "dressing": {
+      "type": "object"
+    },
+    "lineOfPlay": {
+      "type": "object",
+      "required": [
+        "main",
+        "flanks"
+      ]
+    },
+    "insertion": {
+      "type": "object",
+      "required": [
+        "x",
+        "y"
+      ]
+    },
+    "objective": {
+      "type": "object",
+      "required": [
+        "building"
+      ]
+    },
+    "critic": {
+      "type": "object"
     }
   }
 }

@@ -130,9 +130,14 @@ export function distanceField(w, h, seeds, passable = () => true) {
  *   dist   distance to the nearest route cell      along   0..1 progress toward the objective (nearest main cell)
  *   flank  distance to the nearest flank cell
  */
-export function lineOfPlay(w, h, passable, start, goal, { spread = 7 } = {}) {
-    const main = gridPath(w, h, passable, start, goal);
-    if (!main) throw Error(`fields.lineOfPlay: no route from ${start.x},${start.y} to ${goal.x},${goal.y}`);
+export function lineOfPlay(w, h, passable, start, goal, { spread = 7, via = [] } = {}) {
+    // The main route threads any designer waypoints in order (a picture's flow), then reaches the goal.
+    let main = null;
+    for (const [a, b] of [start, ...via, goal].slice(1).map((p, i, all) => [[start, ...via, goal][i], p])) {
+        const leg = gridPath(w, h, passable, a, b);
+        if (!leg) throw Error(`fields.lineOfPlay: no route from ${a.x},${a.y} to ${b.x},${b.y}`);
+        main = main ? { cost: main.cost + leg.cost, path: [...main.path, ...leg.path.slice(1)] } : leg;
+    }
     const near = distanceField(w, h, main.path);
     const dx = goal.x - start.x, dy = goal.y - start.y, len = Math.hypot(dx, dy) || 1, nx = -dy / len, ny = dx / len;
     const flanks = [];

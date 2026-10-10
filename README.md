@@ -39,6 +39,7 @@ Deep links for testing:
 | `/?play=main-street` · `harbor-yard` · `route-9` | Downtown (dusk) · Industrial docks (night) · Roadside gas station and motel (dusk) |
 | `/?play=signal-house&seed=1` | Four-storey mechanical fixture: stairs, independent ladder escapes, locked service rooms and upper-floor intel recovery |
 | `/?play=proving-grounds` | Training Facility: the test map with every system in it |
+| `/?play=operation&plot=downtown&seed=4` | Generated operation (PLAN-04): a new map per seed. `plot` = `downtown` · `industrial` · `suburb`; optional `objective` (`recover` · `extract` · `hold` · `eliminate`) and `time` (`day` · `dawn` · `dusk` · `overcast` · `night` · `night-ops`) |
 | `…&auto=1` | Squad plays itself (AI vs AI), useful to watch balance |
 | `…&cutins=off` | Skip back shots (`always` / `first` / `off`) |
 | `…&debug=1` | Start with debug mode on (or tick *Debug mode* in the menu, or press F1 in battle) |
@@ -162,6 +163,7 @@ docs/              LEVELS, TILESET, RENDERING, BALANCE, PLAN-01, ANIMATION-AUDIT
 ```bash
 npm run sim                     # 24 AI-vs-AI battles on the Training Facility, weapon table
 npm run sim:all                 # a few battles on every map
+npm run sim -- --scenario operation [--plot suburb]   # generated operations, a new map per seed
 npm run sim:formations          # 100 seeds, formations on vs off, fails if the gates fail
 npm run mission:report          # map-design metrics and gates for every map
 npm run art:placeholders        # regenerate placeholder characters (python3 + Pillow + numpy + scipy)
@@ -179,7 +181,10 @@ npm run kit:bake                # re-bake the tile set (assets/kit/tileset.glb +
 - Online co-op is lockstep: every peer runs the battle, so it is not cheat-proof and fog of war is client-side.
   PvP needs server-filtered state (PLAN-01 M13).
 - Generated packages enforce combat, vertical and reference-congruence gates before installation, with bounded repairs/reseeds; hand-built maps retain their existing reported gates.
-- Generated packages have indoor stairs between storeys and ladder access to upper floors and the roof. Hand-built maps provide roof access where specified.
+- Generated buildings have indoor stairs between storeys; 3–4 storey buildings get the uniform 6×2 stair fire escape and 1–2 storey flat roofs a roof ladder. Hand-built maps provide roof access where specified and are not rebuilt by the PLAN-04 generator.
+- Generated operations are mechanics-checked, not difficulty-balanced (sim: player wins 25–50 %).
 - Aliens and their themes are not in yet.
 
 Generated fixtures now include supported fire escapes, underground flanks, floor charges and deterministic darkness. Play `?play=subway-crossing&seed=1` for the night-ops bridge/subway test. See [PLAN-03](docs/PLAN-03-vertical-maps-underground-lighting.md) and [MAPGEN](docs/MAPGEN.md).
+
+**Generated operations (PLAN-04):** the menu's *Generated operation* card builds a new map per seed from a plot family, with noise-guided WFC outside and inside, uniform access modules, engagement pockets, a tunnel flank and local repair against every gate. See [PLAN-04](docs/PLAN-04-xcom-style-map-generation.md) and [MAPGEN](docs/MAPGEN.md#generated-operations-and-the-v3-pipeline-plan-04).

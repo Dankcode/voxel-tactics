@@ -54,7 +54,7 @@ export function coreStairCells(core) {
  * Solve one floor. b: { id, w, d, storeys }, programme: { floor, rooms: [{ id, kind, areaShare, gameplay }] },
  * opts: { seed, core, keepGameplay: [[i, j]] bays that must be gameplay space (exits, escape doors), storeys }
  */
-export function solveInteriorPlan(b, programme, { seed = 1, core = null, keepGameplay = [] } = {}) {
+export function solveInteriorPlan(b, programme, { seed = 1, core = null, keepGameplay = [], prior = null } = {}) {
     const { nbx, nby } = bayGridOf(b.w, b.d), floor = programme.floor;
     const noise = (i, j) => fbm(`${seed}:${b.id}:interior:${floor}`, i * 2, j * 2, NOISE_LAYERS.interior);
     const region = new Map();                      // 'i,j' → 'hall' | room id
@@ -92,6 +92,18 @@ export function solveInteriorPlan(b, programme, { seed = 1, core = null, keepGam
     const order = rooms.slice().sort((a, c) => (c.areaShare || 1) - (a.areaShare || 1));
     for (const r of order) {
         let best = null;
+        // A floorspec read back from concept art puts the room's seed where the art drew it.
+        const read = prior?.rooms?.find(p => p.kind === r.kind && Array.isArray(p.center));
+        if (read) {
+            const ti = Math.min(nbx - 1, Math.max(0, Math.round(read.center[0] * nbx - 0.5))), tj = Math.min(nby - 1, Math.max(0, Math.round(read.center[1] * nby - 0.5)));
+            for (const [i, j] of free) {
+                if (r.gameplay === false && mustPlay.has(k2(i, j))) continue;
+                if ([...seeds.values()].some(([a, c]) => a === i && c === j)) continue;
+                const score = -Math.hypot(i - ti, j - tj);
+                if (!best || score > best.score) best = { score, at: [i, j] };
+            }
+            if (best) { seeds.set(r.id, best.at); continue; }
+        }
         for (const [i, j] of free) {
             if (r.gameplay === false && mustPlay.has(k2(i, j))) continue;
             if ([...seeds.values()].some(([a, c]) => a === i && c === j)) continue;
@@ -129,7 +141,9 @@ export function solveInteriorPlan(b, programme, { seed = 1, core = null, keepGam
         for (const comp of comps) if (comp !== keep) for (const [i, j] of comp) {
             const counts = new Map();
             for (const [dx, dy] of N4) { const t = region.get(k2(i + dx, j + dy)); if (t && t !== r.id) counts.set(t, (counts.get(t) || 0) + 1); }
-            const target = [...counts].sort((a, c) => c[1] - a[1] || (a[0] < c[0] ? -1 : 1))[0]?.[0] || 'hall';
+            // Fragments join gameplay space first; a service room only takes one when nothing else touches it.
+            const ranked = [...counts].sort((a, c) => (placed.find(x => x.id === a[0])?.gameplay === false) - (placed.find(x => x.id === c[0])?.gameplay === false) || c[1] - a[1] || (a[0] < c[0] ? -1 : 1));
+            const target = ranked[0]?.[0] || 'hall';
             const tr = placed.find(x => x.id === target);
             region.set(k2(i, j), tr && tr.gameplay === false && mustPlay.has(k2(i, j)) ? 'hall' : target);
             repairs.push({ kind: 'merge-fragment', floor, from: r.id, to: region.get(k2(i, j)) });
@@ -150,6 +164,30 @@ export function solveInteriorPlan(b, programme, { seed = 1, core = null, keepGam
         // Keep the programme room if it is the only one of its kind on this floor and the target is the hall: grow it instead.
         for (const [i, j] of bays) region.set(k2(i, j), target);
         repairs.push({ kind: 'merge-thin-room', floor, from: r.id, to: target });
+    }
+    // Repair 3: service rooms stay small (a WC, a plant room): bays beyond their share, farthest from their seed
+    // first, go to the gameplay space next to them.
+    const cap = Math.max(2, Math.round(free.length * 0.14));
+    for (const r of placed.filter(r => r.gameplay === false)) {
+        const [si, sj] = seeds.get(r.id) || [0, 0];
+        const bays = [...region].filter(([, t]) => t === r.id).map(([id]) => id.split(',').map(Number)).sort((a, c) => Math.hypot(c[0] - si, c[1] - sj) - Math.hypot(a[0] - si, a[1] - sj));
+        for (let n = 0; n < 6 && bays.length > cap; n++) for (let k = 0; k < bays.length && bays.length > cap; k++) {
+            const [i, j] = bays[k];
+            const next = N4.map(([dx, dy]) => region.get(k2(i + dx, j + dy))).filter(t => t && t !== r.id && (t === 'hall' || placed.find(x => x.id === t)?.gameplay !== false));
+            if (!next.length) continue;
+            const rest = bays.filter((_, q) => q !== k);
+            if (components(rest).length > 1) continue;
+            region.set(k2(i, j), next.sort()[0]); bays.splice(k, 1); k--;
+        }
+    }
+    // Repair 4: the hall is one piece (the core and its corridor); a stray hall fragment joins a neighbouring room.
+    const hallBays = [...region].filter(([, t]) => t === 'hall').map(([id]) => id.split(',').map(Number));
+    if (hallBays.length) {
+        const parts = components(hallBays), main = core ? parts.find(c => c.some(([i, j]) => inCore(i, j))) : parts.sort((a, c) => c.length - a.length)[0];
+        for (const part of parts) if (part !== main) for (const [i, j] of part) {
+            const next = N4.map(([dx, dy]) => region.get(k2(i + dx, j + dy))).filter(t => t && t !== 'hall' && placed.find(x => x.id === t)?.gameplay !== false);
+            if (next.length) { region.set(k2(i, j), next.sort()[0]); repairs.push({ kind: 'hall-fragment', floor, to: next.sort()[0] }); }
+        }
     }
     const live = placed.filter(r => [...region.values()].includes(r.id));
     return finishPlan(b, floor, region, live, core, repairs, seed);

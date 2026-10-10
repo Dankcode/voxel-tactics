@@ -36,9 +36,10 @@ export function buildImageMap(site, { seed = 1, design = null, floorSpecs = [] }
     return buildPackagedMap({site,...solveLayout(site,{seed,design,floorSpecs})},{seed});
 }
 
-export function buildPackagedMap({site,layout,design,manifest}, { seed = 1 } = {}) {
+export function buildPackagedMap({site,layout,design,manifest}, { seed = 1, strict = true } = {}) {
     validateSite(site);
-    if(layout.version===3)return compileV3Map({site,layout,design,manifest},{seed});
+    // v3 packages promise their gates on seeds 1–4 (validated at install); other runtime seeds play without throwing.
+    if(layout.version===3)return compileV3Map({site,layout,design,manifest},{seed,gates:strict||[1,2,3,4].includes(seed),evaluateOnly:!strict&&![1,2,3,4].includes(seed)});
     const {width,depth,height}=layout;
     const m = createMap({ id: site.id, width, depth, height, seed, datum:layout.datum??4 });
     for(const parcel of layout.parcels)if(parcel.kind==='sidewalk') {

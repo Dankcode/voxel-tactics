@@ -5,7 +5,7 @@ import { createMap } from '../mission/modern/MapKit.js';
 import { MAT } from '../voxel/Materials.js';
 import { compileBuilding } from './StoreyCompiler.js';
 import { compileUnderground } from './UndergroundCompiler.js';
-import { checkGeneratedGates } from './Gates.js';
+import { checkGeneratedGates, evaluateGeneratedGates } from './Gates.js';
 import { designSlate } from './DesignSlate.js';
 import { decodeGround } from './Generator.js';
 import { reachable, nodeKey, pathTo } from '../world/PathSearch.js';
@@ -48,7 +48,7 @@ export function compileEdges(m, edges) {
     }
 }
 
-export function compileV3Map({ site, layout, design, manifest }, { seed = 1, gates = true } = {}) {
+export function compileV3Map({ site, layout, design, manifest }, { seed = 1, gates = true, evaluateOnly = false } = {}) {
     const { width, depth, height } = layout;
     const m = createMap({ id: site.id, width, depth, height, seed, datum: layout.datum ?? 4, ground: 'concrete' });
     const G = m.G, mats = decodeGround(layout.ground.mat);
@@ -95,13 +95,14 @@ export function compileV3Map({ site, layout, design, manifest }, { seed = 1, gat
     const routes = [];
     for (let i = 1; i < flow.length; i++) {
         const start = { x: flow[i - 1][0], y: flow[i - 1][1], z: G }, goal = { x: flow[i][0], y: flow[i][1], z: G };
-        const search = reachable(mission.store, start, Infinity, AGENT_PROFILES.player, { vault: false, goal: p => nodeKey(p) === nodeKey(goal) });
+        const search = reachable(mission.store, start, Infinity, AGENT_PROFILES.player, { vault: false, blocked: p => mission.store.roomAt(p.x, p.y, p.z + 1) >= 0, goal: p => nodeKey(p) === nodeKey(goal) });
         const path = pathTo(search, goal);
         if (path.length) routes.push(path);
     }
     mission.meta.flowRoutes = routes;
     mission.meta.flanks = (layout.lineOfPlay?.flanks || []).map(f => ({ side: f.side, cells: f.path }));
     if (gates) checkGeneratedGates(mission, { site, layout, design });
+    else if (evaluateOnly) evaluateGeneratedGates(mission, { site, layout, design });
     mission.meta.critic = critiqueMission(mission, layout);
     mission.visual.slate = designSlate(mission);
     mission.visual.wear = wearOf(layout);

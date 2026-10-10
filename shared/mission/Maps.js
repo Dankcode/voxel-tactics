@@ -10,7 +10,7 @@ import { buildPackagedMap } from '../mapgen/PackageBuilder.js';
 import { MAP_PACKAGES } from './generated/PackageCatalog.js';
 
 export const MAPS = Object.freeze([
-    ...MAP_PACKAGES.map(pkg => ({id:pkg.manifest.id,name:pkg.manifest.name,theme:pkg.manifest.theme,text:pkg.design.mission.briefing,concept:`/maps/${pkg.manifest.id}/${pkg.manifest.reference}`,build: options => buildPackagedMap(pkg, options)})),
+    ...MAP_PACKAGES.map(pkg => ({id:pkg.manifest.id,name:pkg.manifest.name,theme:pkg.manifest.theme,text:pkg.design.mission.briefing,concept:`/maps/${pkg.manifest.id}/${pkg.manifest.reference}`,build: options => buildPackagedMap(pkg, { ...options, strict: false })})),
     { id: CEDAR_CLOSE_ID, name: 'Cedar Close', theme: 'Suburbs', text: 'Two modern homes on a quiet close. Glass walls, gardens, a residential street.', build: buildCedarClose },
     { id: MAIN_STREET_ID, name: 'Main Street', theme: 'Downtown', text: 'Shops, a diner and an office block on a main road. Storefront glass, roadworks, a parking lot.', build: buildMainStreet },
     { id: HARBOR_ID, name: 'Harbor Yard', theme: 'Industrial', text: 'A container yard on the quay at night: stacked containers, a warehouse with roller doors, fuel drums.', build: buildHarbor },

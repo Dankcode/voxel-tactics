@@ -130,7 +130,7 @@ export function plotFromSite(site, seed) {
  * Solve a complete v3 layout. src: { plot } (a created plot) — picture plots carry their site solve.
  * opts: { seed, design (picture fixtures may pin one), objectiveKind, timeOfDay, id, name }
  */
-export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, objectiveKind = null, timeOfDay = null, id = null, name = null, siteRead = null } = {}) {
+export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, objectiveKind = null, timeOfDay = null, id = null, name = null, siteRead = null, floorSpecs = [] } = {}) {
     const { W, D } = plot, repairs = [];
     const toCell = ([u, v]) => plot.picture ? [Math.round(plot.site.transform.margin + u * plot.site.transform.frame.width * plot.site.transform.scale), Math.round(plot.site.transform.margin + v * plot.site.transform.frame.height * plot.site.transform.scale)] : [Math.round(u * W), Math.round(v * D)];
     // ---- guide fields
@@ -163,6 +163,12 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
         plot.lotKinds = Object.fromEntries([...lots.byLot].map(([k, p]) => [k, p.kind]));
     } else {
         ({ parcels, lotKindAt, buildings, districts } = pictureLots(plot, fields, seed, siteRead));
+        // A pinned design decides the played heights (its floor programmes) and the objective building.
+        if (pinnedDesign) for (const b of buildings) {
+            const floors = pinnedDesign.programs.filter(p => p.building === b.id).length;
+            if (floors && floors !== b.storeys) { repairs.push({ kind: 'played-height', id: b.id, observed: b.storeys, played: floors }); b.storeys = floors; }
+            b.objective = b.id === pinnedDesign.mission.target.building;
+        }
     }
     // ---- exits, access, core (geometry first; the interiors keep these bays playable)
     for (const b of buildings) {
@@ -185,7 +191,10 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
     const door = target.exits[0], [ox, oy] = SIDE_VEC[door.side];
     const goal = { x: target.x0 + door.x + ox * 3, y: target.y0 + door.y + oy * 3 };
     const passable = (x, y) => x > 0 && y > 0 && x < W - 1 && y < D - 1 && !inside(x, y);
-    const play = lineOfPlay(W, D, passable, plot.insertion, goal);
+    // A picture's designer flow is kept: its waypoints must be on open ground, and the main route threads them.
+    const waypoints = plot.picture ? plot.site.flow.slice(1).map(([x, y]) => ({ x, y })) : [];
+    for (const w of waypoints) if (!passable(w.x, w.y)) throw Error(`Gameplay waypoint ${w.x},${w.y} is blocked; revise image analysis flow`);
+    const play = lineOfPlay(W, D, passable, plot.insertion, goal, { via: waypoints });
     fields.play = play;
     objectiveCell = { x: target.x0 + (target.w >> 1), y: target.y0 + (target.d >> 1) };
     // ---- protected cells: spawn, routes, exits, access aprons
@@ -220,7 +229,9 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
     const freeCell = (x, y) => passable(x, y) && !moduleCells.has(k2(x, y)) && !buildings.some(b => x >= b.x0 - 1 && x <= b.x0 + b.w && y >= b.y0 - 1 && y <= b.y0 + b.d);
     const sideMid = s => s === 'n' ? { x: target.x0 + (target.w >> 1), y: target.y0 - 3 } : s === 's' ? { x: target.x0 + (target.w >> 1), y: target.y0 + target.d + 2 } : s === 'w' ? { x: target.x0 - 3, y: target.y0 + (target.d >> 1) } : { x: target.x0 + target.w + 2, y: target.y0 + (target.d >> 1) };
     const sideOrder = SIDES.filter(s => s !== target.front).sort((a, c) => Math.hypot(sideMid(a).x - plot.insertion.x, sideMid(a).y - plot.insertion.y) - Math.hypot(sideMid(c).x - plot.insertion.x, sideMid(c).y - plot.insertion.y));
-    const approach = nearestFree(W, D, sideMid(sideOrder[0]), freeCell);
+    // …but never so close to the insertion that the tunnel is a few steps long (its guard would sit beside the squad).
+    const approaches = sideOrder.map(sd => nearestFree(W, D, sideMid(sd), freeCell)).filter(Boolean);
+    const approach = approaches.find(p => Math.hypot(p.x - plot.insertion.x, p.y - plot.insertion.y) >= 14) || approaches[0];
     const toward = (() => { const dx = approach.x - plot.insertion.x, dy = approach.y - plot.insertion.y, l = Math.hypot(dx, dy) || 1; return { x: Math.round(plot.insertion.x + dx / l * 8), y: Math.round(plot.insertion.y + dy / l * 8) }; })();
     const entrance = pickEntrance(plot, buildings, protectedCells, { path: [toward, toward, toward, toward, toward, toward, toward] }, W, D, (x, y) => passable(x, y) && !moduleCells.has(k2(x, y)));
     const layerLayout = { width: W, depth: D, buildings, flow: [[plot.insertion.x, plot.insertion.y]], parcels: parcels4 };
@@ -228,7 +239,7 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
     let layers = null;
     for (let attempt = 0; attempt < 4 && !layers; attempt++) {
         try {
-            layers = solveLayers(layerLayout, layerSite, seed + attempt, { entrance, approach, kind: plot.underground, bridge: false,
+            layers = solveLayers(layerLayout, layerSite, seed + attempt, { entrance, approach, kind: plot.underground, bridge: !!(siteRead?.levels?.includes('bridge') || siteRead?.underground?.kind === 'underpass'),
                 avoid: (x, y) => moduleCells.has(k2(x, y)) });
         } catch (e) { if (attempt === 3) repairs.push({ kind: 'no-underground', reason: e.message }); }
     }
@@ -249,7 +260,8 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
         const escapeBays = b.access?.module === 'fire_escape' ? slots.map(sl => inwardBay(b, sl)) : [];
         let core = null;
         if (b.storeys >= 2) core = placeCore(b, { seed, avoid: [...exitBays, ...escapeBays] });
-        b.floors = programmes.map(p => solveInteriorPlan(b, p, { seed, core, keepGameplay: [...(p.floor === 0 ? exitBays : []), ...(p.floor > 0 ? escapeBays : [])] }));
+        b.floors = programmes.map(p => solveInteriorPlan(b, p, { seed, core, keepGameplay: [...(p.floor === 0 ? exitBays : []), ...(p.floor > 0 ? escapeBays : [])],
+            prior: floorSpecs.find(f => f.building === b.id && f.floor === p.floor) || null }));
         b.facade = solveFacadeV3(b, b.floors, { seed, exits: b.exits, blank: slots });
         // Fire-escape doors land on bay cells: the end landing's u = 0 / 4 (odd facade offsets).
         if (b.access?.module === 'fire_escape') for (let s = 1; s < b.storeys; s++) b.access.doors[s] = landingEnd(s) ? 4 : 0;
@@ -309,7 +321,7 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
         buildings: buildings.map(b => ({ ...b, bounds: undefined })), pieces, edges, pockets, dressing,
         lineOfPlay: { main: play.main.path.map(p => [p.x, p.y]), cost: play.main.cost, flanks: play.flanks.map(f => ({ side: f.side, cost: f.cost, path: f.path.map(p => [p.x, p.y]) })) },
         insertion: plot.insertion, objective: { building: target.id, cell: objectiveCell },
-        flow: flowWaypoints(play.main.path), layers, parcels: parcels4, repairs,
+        flow: plot.picture ? plot.site.flow.map(([x, y]) => [x, y]) : flowWaypoints(play.main.path), layers, parcels: parcels4, repairs,
         reference: buildings.map(b => ({ id: b.id, x0: b.x0, y0: b.y0, w: b.w, d: b.d, storeys: b.storeys })), congruence: buildings.map(b => ({ id: b.id, iou: 1, storeys: b.storeys })),
         transform: plot.picture ? plot.site.transform : { scale: 1, margin: 0, frame: { width: W, height: D } }, surfaces: []
     };
@@ -328,9 +340,9 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
  */
 function reconcileDesign(design, buildings) {
     const fix = ref => {
-        const b = buildings.find(x => x.id === ref.building); if (!b || ref.room === 'hall') return;
+        const b = buildings.find(x => x.id === ref.building); if (!b) return;
         const f = b.floors[ref.floor], rooms = f.rooms.filter(r => r.gameplay !== false);
-        if (rooms.some(r => r.id === ref.room)) return;
+        if (rooms.some(r => r.id === ref.room || (ref.room !== 'hall' && r.kind === ref.room))) return;
         const best = rooms.filter(r => r.id !== 'hall').sort((a, c) => c.cells.length - a.cells.length)[0] || rooms[0];
         ref.room = best.id;
     };

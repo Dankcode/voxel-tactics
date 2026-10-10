@@ -5,6 +5,7 @@ import { validateSite, buildPackagedMap } from '../../shared/mapgen/PackageBuild
 import { solveSite } from '../../shared/mapgen/SiteSolver.js';
 import { designLevel } from '../../shared/mapgen/LevelDesigner.js';
 import { solveLayout } from '../../shared/mapgen/LayoutSolver.js';
+import { GENERATOR_VERSION } from '../../shared/mapgen/Generator.js';
 import { slateSvg } from '../../shared/mapgen/DesignSlate.js';
 import { readSite, readFloor } from './providers/vision.mjs';
 import { readDesign } from './providers/text.mjs';
@@ -44,7 +45,8 @@ export async function runPipeline({image,id,site:recorded=null,out='/tmp/mapgen'
     const design=await stage('design',{site,designPrompt,textModel,offline},async()=>offline?designLevel(site,siteLayout):(providers.readDesign||readDesign)(site,siteLayout,designPrompt,await schema('design')),['site','design'].includes(redo));
     validateSchema(design,await schema('design'));designLevel(site,siteLayout,design);
     const conceptPrompt=await prompt('concept'),floorPrompt=await prompt('floor'),floorSpecs=[],concepts=[];
-    const sketch=offline?solveLayout(site,{seed,design}).layout:null;
+    const sketch=offline?solveLayout(site,{seed,design,seeds:[seed]}).layout:null;
+    const centre=(b,r)=>[(r.cells.reduce((a,c)=>a+c[0],0)/r.cells.length+0.5)/b.w,(r.cells.reduce((a,c)=>a+c[1],0)/r.cells.length+0.5)/b.d];
     for(const p of design.programs) {
         const name=`${p.building}-${p.floor}`,path=resolve(directory,`concept/${name}.png`),redoFloor=redo===`${p.building}/${p.floor}`||redo===`${p.building}/floor-${p.floor+1}`;
         const signature=digest(Buffer.from(JSON.stringify({p,style:site.style,site,conceptPrompt,imageModel,offline,seed})));
@@ -58,14 +60,15 @@ export async function runPipeline({image,id,site:recorded=null,out='/tmp/mapgen'
         }
         const png=await readFile(path),b=sketch?.buildings.find(b=>b.id===p.building);
         const fs=await stage(`floorspec/${name}`,{hash:digest(png),p,floorPrompt,visionModel,offline},async()=>offline?{
-            building:p.building,floor:p.floor,source:'offline-schematic',rooms:b.floors[p.floor].rooms.filter(r=>r.kind!=='hall').map(r=>({kind:r.kind,center:[(r.x0+r.x1)/2/b.w,(r.y0+r.y1)/2/b.d]})),doors:[],windows:[],stairs:[],furniture:[]
+            building:p.building,floor:p.floor,source:'offline-schematic',rooms:b.floors[p.floor].rooms.filter(r=>r.kind!=='hall'&&p.rooms.some(q=>q.kind===r.kind)).map(r=>({kind:r.kind,center:centre(b,r)})),doors:[],windows:[],stairs:[],furniture:[]
         }:await(providers.readFloor||readFloor)(`data:image/png;base64,${png.toString('base64')}`,p,floorPrompt,await schema('floorspec')),regenerated||redoFloor||redo==='floorspec');
         validateSchema(fs,await schema('floorspec'));validateFloorSpec(fs,p);floorSpecs.push(fs);concepts.push(`concept/${name}.png`);
     }
     let solved,validation,lastError;
     for(let attempt=0;attempt<8;attempt++) {
         try {
-            solved=solveLayout(site,{seed:seed+attempt,design,floorSpecs});validateSchema(solved.layout,await schema('layout'));
+            // v3: the layout is repaired locally until the gates pass on the selected seed and seeds 1–4.
+            solved=solveLayout(site,{seed:seed+attempt,design,floorSpecs,seeds:[seed,1,2,3,4]});validateSchema(solved.layout,await schema('layout'));
             validation=[...new Set([seed,1,2,3,4])].map(s=> {
                 const started=performance.now(),m=buildPackagedMap({site,...solved},{seed:s}),buildMs=performance.now()-started;
                 const failures=Object.entries(m.metrics.gates).filter(([,pass])=>!pass).map(([gate])=>gate);
@@ -78,9 +81,11 @@ export async function runPipeline({image,id,site:recorded=null,out='/tmp/mapgen'
         }catch(e){if(e.message.startsWith('performance.build:'))throw e;lastError=e;solved=null;onStage(`repair/${attempt+1}: ${e.message}`);}
     }
     if(!solved)throw Error(`package.validation: repairs exhausted: ${lastError.message}`);
+    // The design is saved as solved: interior repairs may have moved a beat, pod or objective to a room that exists.
+    await jsonWrite(resolve(directory,'design.json'),solved.design);
     await jsonWrite(resolve(directory,'layout.json'),solved.layout);
     const m=buildPackagedMap({site,...solved},{seed});await writeFile(resolve(directory,'slate.svg'),slateSvg(m.visual.slate));
-    const manifest={version:1,id:site.id,name:design.mission.title,theme:site.theme,seed,generatorVersion:'3.0.0',sourceAnalysis:recorded?'recorded':'vision',conceptSource:offline?'offline-schematic':'image-provider',models:offline?{}:{vision:visionModel,text:textModel,image:imageModel},files:{site:'site.json',design:'design.json',layout:'layout.json'},concepts,reference:site.source,size:[solved.layout.width,solved.layout.depth,solved.layout.height],storeys:site.buildings.map(b=>({id:b.id,storeys:b.storeys})),validation,repairs:[...solved.layout.repairs,...solved.layout.buildings.flatMap(b=>b.floors.flatMap(f=>f.repairs))],credits:'Reference supplied by author; generated interiors are art direction.',checksums:{site:digest(await readFile(resolve(directory,'site.json'))),design:digest(await readFile(resolve(directory,'design.json'))),layout:digest(await readFile(resolve(directory,'layout.json')))}};
+    const manifest={version:1,critic:solved.layout.critic||null,id:site.id,name:design.mission.title,theme:site.theme,seed,generatorVersion:GENERATOR_VERSION,sourceAnalysis:recorded?'recorded':'vision',conceptSource:offline?'offline-schematic':'image-provider',models:offline?{}:{vision:visionModel,text:textModel,image:imageModel},files:{site:'site.json',design:'design.json',layout:'layout.json'},concepts,reference:site.source,size:[solved.layout.width,solved.layout.depth,solved.layout.height],storeys:site.buildings.map(b=>({id:b.id,storeys:b.storeys})),validation,repairs:[...solved.layout.repairs,...solved.layout.buildings.flatMap(b=>b.floors.flatMap(f=>f.repairs))],credits:'Reference supplied by author; generated interiors are art direction.',checksums:{site:digest(await readFile(resolve(directory,'site.json'))),design:digest(await readFile(resolve(directory,'design.json'))),layout:digest(await readFile(resolve(directory,'layout.json')))}};
     validateSchema(manifest,await schema('manifest'));await jsonWrite(resolve(directory,'manifest.json'),manifest);
     return {directory,manifest,site,design,layout:solved.layout};
 }

@@ -32,18 +32,43 @@ export function compileUnderground(m,layers) {
  }
  // Staggered tunnel baffles force a bend and hide most of the flank from its guarding pod.
  const baffles=layers.baffles||[.3,.6];
+ // A baffle never seals the tunnel: it keeps clear of both ends and of turns, and is skipped if the walk from the
+ // stairs to the manhole would no longer connect (checked on the tunnel floor).
+ const walled=new Set(),route=layers.route;
+ // Every open tunnel cell (not just the far end) must stay reachable from the stairs: a baffle may not cut off a pocket.
+ const connected=()=>{const start=route[0],open=[...cells.keys()].filter(kk=>!walled.has(kk)&&!s.isSolid(...kk.split(',').map(Number),2)),seen=new Set([k(start.x,start.y)]),q=[start];
+  for(let n=0;n<q.length;n++){const c=q[n];for(const [ax,ay] of [[1,0],[-1,0],[0,1],[0,-1]]){const kk=k(c.x+ax,c.y+ay);if(!seen.has(kk)&&cells.has(kk)&&!walled.has(kk)&&!s.isSolid(c.x+ax,c.y+ay,2)){seen.add(kk);q.push({x:c.x+ax,y:c.y+ay});}}}
+  return open.every(kk=>seen.has(kk));};
  for(const [index,fraction] of baffles.entries()) {
-  const i=Math.floor(layers.route.length*fraction),p=layers.route[i],next=layers.route[i+1];
-  const dx=next.y!==p.y?1:0,dy=dx?0:1;
-  for(const offset of index%2===0?[-1,0]:[0,1])for(let z=2;z<=3;z++)s.set(p.x+dx*offset,p.y+dy*offset,z,MAT.concrete_wall);
+  const at=Math.floor(route.length*fraction);
+  // The nearest straight stretch (within four cells of the intended spot) takes the baffle.
+  for(const di of [0,1,-1,2,-2,3,-3,4,-4]) {
+   const i=at+di;
+   if(i<3||i>route.length-4)continue;
+   const p=route[i],next=route[i+1],prev=route[i-1];
+   if((next.x-p.x)!==(p.x-prev.x)||(next.y-p.y)!==(p.y-prev.y))continue;
+   const dx=next.y!==p.y?1:0,dy=dx?0:1,wall=(index%2===0?[-1,0]:[0,1]).map(o=>k(p.x+dx*o,p.y+dy*o));
+   // …nor lands on the street drop's landing column (the jump would hit the wall).
+   if(wall.some(w=>walled.has(w))||(layers.drop&&wall.includes(k(layers.drop.x,layers.drop.y))))continue;
+   for(const w of wall)walled.add(w);
+   if(!connected()){for(const w of wall)walled.delete(w);continue;}
+   for(const w of wall){const [x,y]=w.split(',').map(Number);for(let z=2;z<=3;z++)s.set(x,y,z,MAT.concrete_wall);}
+   break;
+  }
  }
- const guard=layers.route[Math.max(4,Math.floor(layers.route.length*.75))];
+ const guard=layers.route[Math.min(layers.route.length-1,Math.max(4,layers.guardAt??Math.floor(layers.route.length*.75)))];
  let lastLight=-6,lights=0;
  for(let i=3;i<layers.route.length-3;i++) {
-  if(i-lastLight<6||baffles.some(f=>Math.abs(i-Math.floor(layers.route.length*f))<3))continue;
+  if(i-lastLight<6||baffles.some(f=>Math.abs(i-Math.floor(layers.route.length*f))<2))continue;
   const p=layers.route[i],next=layers.route[i+1],dx=next.y!==p.y?-1:0,dy=dx?0:-1;
   const sides=[[dx*2,dy*2],[-dx*2,-dy*2]],side=sides.find(([ax,ay])=>!cells.has(k(p.x+ax,p.y+ay))&&s.inBounds(p.x+ax,p.y+ay,3));if(!side)continue;
   s.set(p.x+side[0],p.y+side[1],3,lights++%2===0?MAT.emergency_light:MAT.lantern);lastLight=i;
+ }
+ // A short, heavily baffled tunnel still gets one emergency light at its first straight cell.
+ for(let i=1;!lights&&i<layers.route.length-1;i++) {
+  const p=layers.route[i],next=layers.route[i+1],dx=next.y!==p.y?-1:0,dy=dx?0:-1;
+  const side=[[dx*2,dy*2],[-dx*2,-dy*2]].find(([ax,ay])=>!cells.has(k(p.x+ax,p.y+ay))&&s.inBounds(p.x+ax,p.y+ay,3));
+  if(side){s.set(p.x+side[0],p.y+side[1],3,MAT.emergency_light);lights++;}
  }
  return {cells:[...cells.values()].filter(p=>s.surfaces(p.x,p.y).some(q=>q.z===p.z&&q.headroom>=2)),openings,route:layers.route.map(p=>({...p,z:1})),guard:{...guard,z:1},kind:layers.kind};
 }

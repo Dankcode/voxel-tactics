@@ -23,12 +23,6 @@
           "gameplay": true
         },
         {
-          "id": "kitchen",
-          "kind": "kitchen",
-          "areaShare": 0.25,
-          "gameplay": true
-        },
-        {
           "id": "study",
           "kind": "study",
           "areaShare": 0.25,

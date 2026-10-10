@@ -252,8 +252,11 @@ export function classifyBays(W, D, ground, blocked, protectedCells) {
         const cells = [[0, 0], [1, 0], [0, 1], [1, 1]].map(([a, b]) => [bx * BAY + a, by * BAY + b]);
         const isBlocked = cells.some(([x, y]) => blocked(x, y) || x === 0 || y === 0 || x === W - 1 || y === D - 1);
         const classes = cells.map(([x, y]) => ground.cls[x + y * W]);
+        // A bay across a lane and the carriageway counts as lane (cars and barriers run along the road).
+        const roadish = classes.every(c => c === 'lane_x' || c === 'asphalt') ? 'lane_x' : classes.every(c => c === 'lane_y' || c === 'asphalt') ? 'lane_y' : null;
         const cls = classes.every(c => c === 'lane_x') ? 'lane_x' : classes.every(c => c === 'lane_y') ? 'lane_y'
-            : classes.every(c => c === 'sidewalk') ? 'sidewalk' : classes.every(c => c === classes[0]) ? classes[0] : 'mixed';
+            : classes.every(c => c === 'sidewalk') ? 'sidewalk' : classes.every(c => c === classes[0]) ? classes[0]
+            : roadish && classes.some(c => c.startsWith('lane')) ? roadish : 'mixed';
         const prot = cells.map(([x, y], i) => protectedCells.has(`${x},${y}`) ? i : -1).filter(i => i >= 0).map(i => [i & 1, i >> 1]);
         bays.push({ bx, by, x: bx * BAY, y: by * BAY, blocked: isBlocked, cls, protected: prot });
     }

@@ -227,3 +227,16 @@ Cover against a known attacker now includes its height (see [03](03-cover-and-si
 ## PLAN-03 mechanics
 
 Generated maps now solve underground, street and elevated parcels together. Datum 4 preserves room for tunnels at z=1; hand-built maps keep datum 1. Buildings use observed/played heights from 1–4, varied programmes, indoor cores and supported steel escapes. The Subway Crossing fixture tests a bridge, guarded underground flank and night-ops lighting. Gates verify both entrances, safe drops, concealment, route cost ≤1.6× the street route and a guarding pod.
+
+## PLAN-04 mechanics
+
+Generated operations (`scenario: 'operation'`, `Scenarios.operationFor`) solve a plot, lots, bays, buildings,
+interiors, access and layers per seed (`Generator.generateOperation`); picture fixtures use the same solver with the
+picture pinned. On these maps the outdoor cover pass (`CoverScatter`) does not run: cover pieces are WFC tiles placed
+on 2×2 bays and weighted by the line of play, sightline and noise fields. Engagement pockets (`layout.pockets`) are
+cover clusters along the line of play; pods may start in them. Extra gates: `worldEdges`, `pockets` ≥ 2,
+`flanksWalkable` ≥ 95 % walkable, `accessTemplates` (cell-for-cell), `accessByHeight` (3–4 storeys: stair fire
+escape; 1–2 storey flat roof: roof ladder). Failing gates are repaired locally (`Repair.buildWithRepair`) before a
+reseed. The critic score (`meta.critic`) is informational. Interior partitions on generated buildings are plaster
+(destructible); furniture is placed by WFC per room with a connectivity guard.
+

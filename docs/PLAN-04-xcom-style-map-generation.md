@@ -1,6 +1,6 @@
 # PLAN-04 — XCOM 2-style map generation: uniform modules, noise-guided WFC outside and inside
 
-Status: **draft for approval** (2026-10-10). Plan → Leon approves → Codex implements the approved steps, test first.
+Status: **implemented** (2026-10-10, P0–P9) with the recommended decisions in §11: 6×2 switchback, downtown/industrial/suburb first, cover from WFC (scatter retired on generated maps), existing textures with tint and wear. The five hand-built maps were deliberately left hand-built; see [MAPGEN](MAPGEN.md#generated-operations-and-the-v3-pipeline-plan-04) for what shipped, measurements and limits.
 Builds on PLAN-02 / PLAN-03 as implemented up to `c3dc68c`. Amends PLAN-03 §5.1 (fire exits).
 
 ## 1. Leon's direction (2026-10-10)

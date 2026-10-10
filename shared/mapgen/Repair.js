@@ -140,6 +140,24 @@ function closeDrop(op) {
     return true;
 }
 
+/** Put the tunnel guard where it (and every pod) sees the least of the flank, still on the route's far half. */
+function moveGuard(op, m) {
+    const layers = op.layout.layers, u = m.meta.underground; if (!layers || !u) return false;
+    if ((op.layout.repairs || []).some(r => r.kind === 'move-guard')) return false;
+    const route = u.route, others = m.spawns.enemy.filter(e => e.group !== 99);
+    const sees = (from, p) => Math.hypot(from.x - p.x, from.y - p.y) < 24 && !castRay(m.store, { x: from.x + 0.5, y: from.y + 0.5, h: from.z + 2.5 }, { x: p.x + 0.5, y: p.y + 0.5, h: p.z + 2 }, { blocks: blocksSight }).hit;
+    const seenByOthers = route.map(p => others.some(e => sees(e.pos, p)));
+    let best = null;
+    for (let i = Math.floor(route.length * 0.55); i < route.length - 1; i++) {
+        const g = route[i], hidden = route.filter((p, k) => !seenByOthers[k] && !sees(g, p)).length / route.length;
+        if (!best || hidden > best.hidden) best = { i, hidden };
+    }
+    if (!best || best.hidden <= 0.5) return false;
+    op.layout.repairs.push({ kind: 'move-guard', to: best.i, hidden: Math.round(best.hidden * 100) / 100 });
+    layers.guardAt = best.i;
+    return true;
+}
+
 /** One more staggered tunnel baffle between the guard and the open run (hides the flank from its guard). */
 function addBaffle(op) {
     const layers = op.layout.layers; if (!layers) return false;
@@ -163,14 +181,24 @@ function movePod(op, m) {
         const used = new Set(op.design.encounters.filter(e => e.pocket != null).map(e => e.pocket)), d = Math.hypot(enc.at.x - ins.x, enc.at.y - ins.y);
         const later = (op.layout.pockets || []).filter(p => !used.has(p.id) && Math.hypot(p.x - ins.x, p.y - ins.y) > d + 4).sort((a, b) => a.along - b.along)[0];
         if (later) { op.layout.repairs.push({ kind: 'move-pod', from: enc.pocket, to: later.id }); enc.pocket = later.id; enc.at = { x: later.x, y: later.y }; return true; }
-    } else if (enc.building !== op.layout.objective.building) {
+    } else if (enc.building === op.layout.objective.building) {
+        // A pod in the objective moves to the room of that building farthest from the squad (same floor or above).
+        const b = op.layout.buildings.find(x => x.id === enc.building);
+        let best = null;
+        for (const f of b.floors.filter(f => f.floor >= enc.floor)) for (const r of f.rooms.filter(r => r.gameplay !== false)) {
+            const d = Math.min(...r.cells.map(([x, y]) => Math.hypot(b.x0 + x - ins.x, b.y0 + y - ins.y)));
+            if (!best || d > best.d) best = { d, floor: f.floor, room: r.id };
+        }
+        if (best && (best.floor !== enc.floor || best.room !== enc.room)) { op.layout.repairs.push({ kind: 'move-pod', from: `${enc.floor}/${enc.room}`, to: `${best.floor}/${best.room}` }); enc.floor = best.floor; enc.room = best.room; return true; }
+        return false;
+    } else {
         const taken = new Set(op.design.encounters.map(e => e.building));
         const far = op.layout.buildings.filter(b => !taken.has(b.id)).sort((a, b) => Math.hypot(b.x0 - ins.x, b.y0 - ins.y) - Math.hypot(a.x0 - ins.x, a.y0 - ins.y))[0];
         if (far && Math.hypot(far.x0 - ins.x, far.y0 - ins.y) > Math.hypot(nearest.pos.x - ins.x, nearest.pos.y - ins.y)) {
             const room = far.floors[far.storeys - 1].rooms.find(r => r.gameplay !== false && r.id !== 'hall') || far.floors[far.storeys - 1].rooms[0];
             op.layout.repairs.push({ kind: 'move-pod', from: enc.building, to: far.id }); Object.assign(enc, { building: far.id, floor: far.storeys - 1, room: room.id }); return true;
         }
-    } else return false;
+    }
     op.layout.repairs.push({ kind: 'drop-pod', group: enc.group }); op.design.encounters.splice(op.design.encounters.indexOf(enc), 1);
     return true;
 }
@@ -187,9 +215,9 @@ export function buildWithRepair(op, { seed = 1, budget = 8 } = {}) {
         last = failures;
         if (globalThis.MAPGEN_TRACE) console.log('repair', i, failures.join(','));
         let fixed = false;
-        if (failures.includes('flankHidden')) fixed = addBaffle(op) || fixed;
+        if (failures.includes('flankHidden')) fixed = moveGuard(op, m) || addBaffle(op) || fixed;
         if (failures.includes('dropSafe') || (failures.includes('flankHidden') && !fixed)) fixed = moveDrop(op, m) || (failures.includes('dropSafe') && ((m.spawns.enemy.every(e => e.pos.z <= m.meta.streetDatum) && shieldDrop(op, m)) || closeDrop(op))) || fixed;
-        if (!fixed && failures.some(f => f === 'firstContact' || f === 'spawnSafe' || f === 'enemiesReachable')) fixed = movePod(op, m);
+        if (failures.some(f => f === 'firstContact' || f === 'spawnSafe' || f === 'enemiesReachable')) fixed = movePod(op, m) || fixed;
         if (!fixed && failures.some(f => OUTDOOR_GATES.has(f))) {
             // Which way to push: too much clutter (density over the gate, sightlines too short) thins cover out;
             // gaps, open squares and long sightlines add it.

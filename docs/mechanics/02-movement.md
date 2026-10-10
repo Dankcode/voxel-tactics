@@ -143,3 +143,13 @@ Knockback (Sledgehammer, Concussion Grenade) and falling after destruction are c
 ## PLAN-03 mechanics
 
 Generated maps put the street at z=4 and tunnels at z=1. PgDn reaches BELOW. Stairs connect layers; the attached manhole/drop ladder costs 1.5 plus rise. Controlled 2–4 voxel drops cost 3 movement points and stagger the unit; their noise radius is 8. A compiled ladder needs continuous solid backing on one side. Generated fire escapes use walkable grate platforms and steel stairs.
+
+## PLAN-04 mechanics
+
+Every way up a generated building is a fixed module (`AccessModules.js`). The fire escape is always 6 cells along the
+facade × 2 out (plus a 1-cell grate lip): 2×2 grate landings at alternating ends of each storey, joined by steel
+stair flights of two steps per storey, so 3–4 storey buildings are climbed by stairs only (normal step costs, no
+ladder cost). Its posts form a support group: losing the posts drops the structure. Roof ladders (1–2 storey flat
+roofs) and manhole ladders keep the ladder rule above (1.5 + levels climbed). Street stairs into the tunnel have
+filled risers.
+

@@ -1,10 +1,43 @@
 {
   "version": 1,
+  "critic": {
+    "version": 1,
+    "total": 95,
+    "scores": {
+      "rhythm": 100,
+      "flankConcealment": 100,
+      "verticalUse": 84,
+      "interiorBreach": 100,
+      "roomCover": 100,
+      "outdoorCover": 100,
+      "sightlines": 73,
+      "objectiveDistance": 93
+    },
+    "pocketSpacing": {
+      "count": 4,
+      "mean": 10.149253731343284,
+      "max": 10.149253731343286
+    },
+    "flanks": [
+      {
+        "side": "left",
+        "length": 60,
+        "concealment": 1
+      },
+      {
+        "side": "right",
+        "length": 71,
+        "concealment": 0.97
+      }
+    ],
+    "evacCost": 48,
+    "rooms": 11
+  },
   "id": "cedar-image",
   "name": "Cedar Close · Image Study",
   "theme": "Suburbs",
   "seed": 1,
-  "generatorVersion": "3.0.0",
+  "generatorVersion": "4.0.0",
   "sourceAnalysis": "recorded",
   "conceptSource": "offline-schematic",
   "models": {},
@@ -21,8 +54,8 @@
   ],
   "reference": "concept/reference.png",
   "size": [
-    54,
-    46,
+    56,
+    48,
     18
   ],
   "storeys": [
@@ -39,20 +72,20 @@
     {
       "seed": 1,
       "metrics": {
-        "reachableTiles": 2664,
-        "coverDensity": 0.44894894894894893,
-        "outdoorCover": 0.3942307692307692,
+        "reachableTiles": 2568,
+        "coverDensity": 0.4598909657320872,
+        "outdoorCover": 0.40127099409895595,
         "coverGap": 5,
-        "fullCoverShare": 0.16554054054054054,
-        "interiorShare": 0.14114114114114115,
-        "killingField": 10,
-        "sightlineMedian": 10.60660171779821,
+        "fullCoverShare": 0.22585669781931464,
+        "interiorShare": 0.14213395638629284,
+        "killingField": 6,
+        "sightlineMedian": 7.7781745930520225,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.9516702203269367,
+        "destructibleCover": 0.772038567493113,
         "spawnSafe": 1,
-        "firstContact": 17.11724276862369,
-        "rooms": 16,
+        "firstContact": 19.235384061671347,
+        "rooms": 15,
         "buildings": 2,
         "gates": {
           "coverDensity": true,
@@ -69,7 +102,8 @@
           "spawnConnectivity": true,
           "escapeLandings": true,
           "roofsReachable": true,
-          "facadeAttachment": true,
+          "accessTemplates": true,
+          "accessByHeight": true,
           "buildingCount": true,
           "footprintOverlap": true,
           "storeys": true,
@@ -87,36 +121,45 @@
           "flankLength": true,
           "flankHidden": true,
           "dropSafe": true,
-          "flankGuard": true
+          "flankGuard": true,
+          "worldEdges": true,
+          "pockets": true,
+          "flanksWalkable": true
         },
         "pass": true,
         "flank": {
-          "cost": 31.57,
-          "direct": 22.414,
-          "tunnelCost": 21.656,
-          "approach": 5.414,
-          "ratio": 1.4084946908182385
+          "cost": 37.9776,
+          "direct": 23.828,
+          "tunnelCost": 23.0636,
+          "approach": 10.414,
+          "ratio": 1.5938223938223939
+        },
+        "hallEscapes": {
+          "home-left:0": true,
+          "home-left:1": false,
+          "home-right:0": true,
+          "home-right:1": false
         }
       },
-      "buildMs": 369.702625
+      "buildMs": 359.16952200000014
     },
     {
       "seed": 2,
       "metrics": {
-        "reachableTiles": 2668,
-        "coverDensity": 0.4479010494752624,
-        "outdoorCover": 0.39267015706806285,
+        "reachableTiles": 2566,
+        "coverDensity": 0.45869056897895555,
+        "outdoorCover": 0.40127099409895595,
         "coverGap": 5,
-        "fullCoverShare": 0.16229385307346328,
-        "interiorShare": 0.1409295352323838,
-        "killingField": 10,
-        "sightlineMedian": 10.60660171779821,
+        "fullCoverShare": 0.2260327357755261,
+        "interiorShare": 0.14146531566640685,
+        "killingField": 6,
+        "sightlineMedian": 8.93,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.9514632405424697,
+        "destructibleCover": 0.7726648351648352,
         "spawnSafe": 1,
-        "firstContact": 17.11724276862369,
-        "rooms": 16,
+        "firstContact": 19.235384061671347,
+        "rooms": 15,
         "buildings": 2,
         "gates": {
           "coverDensity": true,
@@ -133,7 +176,8 @@
           "spawnConnectivity": true,
           "escapeLandings": true,
           "roofsReachable": true,
-          "facadeAttachment": true,
+          "accessTemplates": true,
+          "accessByHeight": true,
           "buildingCount": true,
           "footprintOverlap": true,
           "storeys": true,
@@ -151,36 +195,45 @@
           "flankLength": true,
           "flankHidden": true,
           "dropSafe": true,
-          "flankGuard": true
+          "flankGuard": true,
+          "worldEdges": true,
+          "pockets": true,
+          "flanksWalkable": true
         },
         "pass": true,
         "flank": {
-          "cost": 31.57,
-          "direct": 22.414,
-          "tunnelCost": 21.656,
-          "approach": 5.414,
-          "ratio": 1.4084946908182385
+          "cost": 37.9776,
+          "direct": 23.828,
+          "tunnelCost": 23.0636,
+          "approach": 10.414,
+          "ratio": 1.5938223938223939
+        },
+        "hallEscapes": {
+          "home-left:0": true,
+          "home-left:1": false,
+          "home-right:0": true,
+          "home-right:1": false
         }
       },
-      "buildMs": 301.047125
+      "buildMs": 348.4510220000002
     },
     {
       "seed": 3,
       "metrics": {
-        "reachableTiles": 2679,
-        "coverDensity": 0.43822321761851435,
-        "outdoorCover": 0.3816760746851932,
-        "coverGap": 6,
-        "fullCoverShare": 0.1605076521089959,
-        "interiorShare": 0.14035087719298245,
-        "killingField": 10,
-        "sightlineMedian": 9.5,
-        "lanes": 3,
+        "reachableTiles": 2570,
+        "coverDensity": 0.4575875486381323,
+        "outdoorCover": 0.40127099409895595,
+        "coverGap": 5,
+        "fullCoverShare": 0.22568093385214008,
+        "interiorShare": 0.14280155642023346,
+        "killingField": 6,
+        "sightlineMedian": 8.117941502192956,
+        "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.950401167031364,
+        "destructibleCover": 0.7715665976535542,
         "spawnSafe": 1,
-        "firstContact": 17.11724276862369,
-        "rooms": 16,
+        "firstContact": 19.235384061671347,
+        "rooms": 15,
         "buildings": 2,
         "gates": {
           "coverDensity": true,
@@ -197,7 +250,8 @@
           "spawnConnectivity": true,
           "escapeLandings": true,
           "roofsReachable": true,
-          "facadeAttachment": true,
+          "accessTemplates": true,
+          "accessByHeight": true,
           "buildingCount": true,
           "footprintOverlap": true,
           "storeys": true,
@@ -215,36 +269,45 @@
           "flankLength": true,
           "flankHidden": true,
           "dropSafe": true,
-          "flankGuard": true
+          "flankGuard": true,
+          "worldEdges": true,
+          "pockets": true,
+          "flanksWalkable": true
         },
         "pass": true,
         "flank": {
-          "cost": 31.57,
-          "direct": 22.414,
-          "tunnelCost": 21.656,
-          "approach": 5.414,
-          "ratio": 1.4084946908182385
+          "cost": 37.9776,
+          "direct": 23.828,
+          "tunnelCost": 23.0636,
+          "approach": 10.414,
+          "ratio": 1.5938223938223939
+        },
+        "hallEscapes": {
+          "home-left:0": true,
+          "home-left:1": false,
+          "home-right:0": true,
+          "home-right:1": false
         }
       },
-      "buildMs": 287.640708
+      "buildMs": 312.88814
     },
     {
       "seed": 4,
       "metrics": {
-        "reachableTiles": 2671,
-        "coverDensity": 0.44440284537626357,
-        "outdoorCover": 0.3877995642701525,
+        "reachableTiles": 2564,
+        "coverDensity": 0.4582683307332293,
+        "outdoorCover": 0.40127099409895595,
         "coverGap": 5,
-        "fullCoverShare": 0.16398352676900038,
-        "interiorShare": 0.14077124672407337,
-        "killingField": 10,
-        "sightlineMedian": 9.145940754134639,
+        "fullCoverShare": 0.22698907956318254,
+        "interiorShare": 0.14079563182527302,
+        "killingField": 6,
+        "sightlineMedian": 8.8,
         "lanes": 4,
         "breachability": 1,
-        "destructibleCover": 0.9511844938980617,
+        "destructibleCover": 0.7721954576737784,
         "spawnSafe": 1,
-        "firstContact": 17.11724276862369,
-        "rooms": 16,
+        "firstContact": 19.235384061671347,
+        "rooms": 15,
         "buildings": 2,
         "gates": {
           "coverDensity": true,
@@ -261,7 +324,8 @@
           "spawnConnectivity": true,
           "escapeLandings": true,
           "roofsReachable": true,
-          "facadeAttachment": true,
+          "accessTemplates": true,
+          "accessByHeight": true,
           "buildingCount": true,
           "footprintOverlap": true,
           "storeys": true,
@@ -279,25 +343,203 @@
           "flankLength": true,
           "flankHidden": true,
           "dropSafe": true,
-          "flankGuard": true
+          "flankGuard": true,
+          "worldEdges": true,
+          "pockets": true,
+          "flanksWalkable": true
         },
         "pass": true,
         "flank": {
-          "cost": 31.57,
-          "direct": 22.414,
-          "tunnelCost": 21.656,
-          "approach": 5.414,
-          "ratio": 1.4084946908182385
+          "cost": 37.9776,
+          "direct": 23.828,
+          "tunnelCost": 23.0636,
+          "approach": 10.414,
+          "ratio": 1.5938223938223939
+        },
+        "hallEscapes": {
+          "home-left:0": true,
+          "home-left:1": false,
+          "home-right:0": true,
+          "home-right:1": false
         }
       },
-      "buildMs": 288.489916
+      "buildMs": 310.91233100000045
     }
   ],
-  "repairs": [],
+  "repairs": [
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "living",
+      "to": "study"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "kitchen",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "kitchen",
+      "to": "bathroom"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "kitchen",
+      "to": "living"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "kitchen",
+      "to": "living"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "kitchen",
+      "to": "study"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "kitchen",
+      "to": "study"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "bathroom",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "bathroom",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "bathroom",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "bathroom",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-thin-room",
+      "floor": 0,
+      "from": "kitchen",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 1,
+      "from": "bedroom",
+      "to": "living"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 1,
+      "from": "bedroom",
+      "to": "living"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 1,
+      "from": "bedroom",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 1,
+      "from": "bedroom",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 1,
+      "from": "bedroom",
+      "to": "living"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 1,
+      "from": "study",
+      "to": "bedroom"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 1,
+      "from": "study",
+      "to": "living"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 1,
+      "from": "bathroom",
+      "to": "study"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 1,
+      "from": "bathroom",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 1,
+      "from": "bathroom",
+      "to": "living"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 1,
+      "from": "bathroom",
+      "to": "bedroom"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "kitchen",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "study",
+      "to": "living"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "bathroom",
+      "to": "kitchen"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 1,
+      "from": "bedroom",
+      "to": "bathroom"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 1,
+      "from": "bedroom",
+      "to": "hall"
+    }
+  ],
   "credits": "Reference supplied by author; generated interiors are art direction.",
   "checksums": {
     "site": "247078fa8ac60e612e2895a80353750f55f2f3c90577dd8b971e6285f5081deb",
-    "design": "b153497bda982a39c80c5a5be5d4959b1b1d69d94a3f7d51530881afeb353455",
-    "layout": "36ba82f342646adc9b5c5ebc9082329c1a7c44ab14159104840e397e2189af85"
+    "design": "4bdf9133129f179b7983699a10e03ba9588ade30428d56a35c4c2bcebddda043",
+    "layout": "01b53e3f56e937e1f6e448ec4d2259e0ff021c8603ed2f6860d296a99f8294b0"
   }
 }
