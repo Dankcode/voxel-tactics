@@ -1,0 +1,34 @@
+import { MAT } from '../voxel/Materials.js';
+/** Carve the shared voxel matrix; every socket gets real headroom, floors and an ascent. */
+export function compileUnderground(m,layers) {
+ if(!layers)return null;
+ const s=m.store,cells=new Map(),k=(x,y)=>`${x},${y}`;
+ for(const p of layers.route)for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)if(s.inBounds(p.x+dx,p.y+dy,1))cells.set(k(p.x+dx,p.y+dy),{x:p.x+dx,y:p.y+dy,z:1});
+ for(const p of cells.values()){s.set(p.x,p.y,1,MAT.concrete);s.set(p.x,p.y,2,0);s.set(p.x,p.y,3,0);m.reserve(p.x,p.y,p.x,p.y);}
+ const openings=[];
+ for(const e of layers.entrances) {
+  if(e.kind==='manhole') {
+   // Backing wall stays solid at every rung and its top is a real street ledge.
+   const x=e.x,y=e.y;s.set(x+1,y,2,MAT.concrete);s.set(x+1,y,3,MAT.concrete);
+   for(let z=2;z<=4;z++)s.set(x,y,z,MAT.ladder);
+   openings.push({from:{x:x+1,y,z:4},to:{x,y,z:1},kind:'climb'});
+  }else {
+   const candidates=[[0,-1],[-1,0],[1,0],[0,1]];
+   const d=candidates.find(([dx,dy])=>Array.from({length:4},(_,i)=>({x:e.x+dx*(i+1),y:e.y+dy*(i+1)})).every(p=>s.inBounds(p.x,p.y,4)&&!m.buildings.some(b=>p.x>=b.x0&&p.x<b.x0+b.w&&p.y>=b.y0&&p.y<b.y0+b.d)));
+   if(!d)throw Error('layer.socket: stairs entrance has no street apron');
+   for(let i=0;i<4;i++){const x=e.x+d[0]*i,y=e.y+d[1]*i,z=1+i;for(let h=2;h<=6;h++)s.set(x,y,h,0);s.set(x,y,z,i?MAT.stairs_stone:MAT.concrete);cells.set(k(x,y),{x,y,z});m.reserve(x-1,y-1,x+1,y+1);}
+   openings.push({from:{x:e.x+d[0]*3,y:e.y+d[1]*3,z:4},to:{x:e.x,y:e.y,z:1},kind:'stairs'});
+  }
+  m.reserve(e.x-2,e.y-2,e.x+2,e.y+2);
+ }
+ const p=layers.drop;s.set(p.x,p.y,4,0);m.reserve(p.x-2,p.y-2,p.x+2,p.y+2);
+ openings.push({from:{x:p.x+1,y:p.y,z:4},to:{x:p.x,y:p.y,z:1},kind:'jump'});
+ // A small raised bridge crosses the open underpass. Parallel steps leave the tunnel intact.
+ if(layers.bridge) {
+  for(let i=-3;i<=3;i++){const x=p.x+i,y=p.y+1,z=7-Math.max(0,Math.abs(i)-1);s.set(x,y,z,Math.abs(i)>1?MAT.steel_stair:MAT.grate);m.reserve(x-1,y-1,x+1,y+1);}
+  for(const dx of [-4,4])s.set(p.x+dx,p.y+1,4,MAT.concrete);
+ }
+ const guard=layers.route[Math.max(4,Math.floor(layers.route.length*.75))];
+ for(let i=6;i<layers.route.length-3;i+=8){const p=layers.route[i];s.set(p.x-1,p.y,3,MAT.lantern);}
+ return {cells:[...cells.values()].filter(p=>s.surfaces(p.x,p.y).some(q=>q.z===p.z&&q.headroom>=2)),openings,route:layers.route.map(p=>({...p,z:1})),guard:{...guard,z:1},kind:layers.kind};
+}

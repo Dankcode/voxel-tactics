@@ -20,7 +20,7 @@ export function checkGeneratedGates(mission,{site,layout,design}) {
         windowLines:mission.buildings.every(b=>Array.from({length:b.storeys},(_,s)=>b.windows.some(w=>w.storey===s)).every(Boolean)),
         firstContact:mission.metrics.firstContact>=12,
         heightBudget:mission.store.height<=18&&mission.store.width<=64&&mission.store.depth<=64,
-        enemiesReachable:mission.spawns.enemy.length===design.encounters.reduce((n,e)=>n+e.types.length,0)&&mission.spawns.enemy.every(e=>search.costs.has(nodeKey(e.pos)))
+        enemiesReachable:mission.spawns.enemy.length===design.encounters.reduce((n,e)=>n+e.types.length,0)+(mission.meta.underground?1:0)&&mission.spawns.enemy.every(e=>search.costs.has(nodeKey(e.pos)))
     };
     mission.metrics.gates={...mission.metrics.gates,...checks};
     mission.metrics.pass=Object.values(mission.metrics.gates).every(Boolean);

@@ -1,3 +1,4 @@
+import { compileUnderground } from './UndergroundCompiler.js';
 // Offline image analysis becomes data. Runtime compilation is deterministic and shares the gameplay voxel matrix.
 import { solveLayout } from './LayoutSolver.js';
 import { compileBuilding } from './StoreyCompiler.js';
@@ -43,6 +44,7 @@ export function buildPackagedMap({site,layout,design,manifest}, { seed = 1 } = {
     }
     for(const s of layout.surfaces)m.ground(s.x0,s.y0,s.x0+s.w-1,s.y0+s.d-1,s.material);
     for(const b of layout.buildings)compileBuilding(m,b);
+    const underground=compileUnderground(m,layout.layers);
     const flow=layout.flow;
     const [sx,sy] = flow[0];
     m.reserve(sx-2,sy-1,sx+3,sy+1);
@@ -79,13 +81,14 @@ export function buildPackagedMap({site,layout,design,manifest}, { seed = 1 } = {
     m.scatter(catalog,{ maxGap:3,targetShare:0.34 });
     const flowRoutes = traceFlow();
     const enemies=design.encounters.flatMap(e=>e.types.map(type=>({type,group:e.group,room:{building:e.building,storey:e.floor,kind:e.room}})));
+    if(underground)enemies.push({type:'cultist',group:99,pos:underground.guard});
     const target=design.mission.target,targetRoom=m.ctx.rooms.find(r=>r.buildingId===target.building&&r.storey===target.floor&&r.kind===target.room);
     if(!targetRoom)throw Error('design.objective: target room does not exist');
     const item={room:{building:target.building,storey:target.floor,kind:target.room},label:'Syndicate intelligence'};
     const zone={x0:Math.min(...targetRoom.cells.map(c=>c[0])),y0:Math.min(...targetRoom.cells.map(c=>c[1])),x1:Math.max(...targetRoom.cells.map(c=>c[0])),y1:Math.max(...targetRoom.cells.map(c=>c[1])),z:targetRoom.floorZ,dz:0};
     const kind=design.mission.kind;
     const objective=kind==='recover'?{kind,item,text:'Recover the intelligence from the upper command room.'}:kind==='hold'?{kind,zone,rounds:3,needed:2,text:'Take and hold the command room.'}:kind==='extract'?{kind,zone,needed:3,text:'Reach the upper rendezvous with three soldiers.'}:{kind,text:'Clear the occupied buildings.'};
-    const mission=m.finish({ name:design.mission.title, spawns:{ player:[[-1,0],[1,0],[0,0],[-1,1],[1,1],[0,1]].map(([dx,dy])=>({x:sx+dx,y:sy+dy,z:m.G})), enemy:enemies }, objective, meta:{theme:site.theme || 'Suburbs',lighting:site.timeOfDay,timeOfDay:site.timeOfDay,defaultCut:m.G+3,streetDatum:m.G,cutLevels:[m.G,...Array.from({length:4},(_,s)=>m.G+3*(s+1)),Infinity],imageGenerated:true,source:site.source,flow,flowRoutes,briefing:design.mission.briefing,storyBeats:design.beats,congruence:layout.congruence,repairs:layout.repairs,packageId:manifest?.id,concepts:manifest?.concepts||[]} });
+    const mission=m.finish({ name:design.mission.title, spawns:{ player:[[-1,0],[1,0],[0,0],[-1,1],[1,1],[0,1]].map(([dx,dy])=>({x:sx+dx,y:sy+dy,z:m.G})), enemy:enemies }, objective, meta:{theme:site.theme || 'Suburbs',lighting:site.timeOfDay,timeOfDay:site.timeOfDay,defaultCut:m.G+3,streetDatum:m.G,cutLevels:[m.G,...Array.from({length:4},(_,s)=>m.G+3*(s+1)),Infinity],imageGenerated:true,underground,source:site.source,flow,flowRoutes,briefing:design.mission.briefing,storyBeats:design.beats,congruence:layout.congruence,repairs:layout.repairs,packageId:manifest?.id,concepts:manifest?.concepts||[]} });
     const search=reachable(mission.store,mission.spawns.player[0],Infinity,AGENT_PROFILES.player);
     for (const [x,y] of flow) if (!search.costs.has(nodeKey({x,y,z:m.G}))) throw new Error(`Gameplay waypoint ${x},${y} is blocked; revise image analysis flow`);
     for (const room of mission.rooms.filter(r=>r.gameplay)) if (!room.cells.some(([x,y])=>search.costs.has(nodeKey({x,y,z:room.floorZ})))) throw new Error(`Combat room ${room.buildingId}/${room.kind} is unreachable`);

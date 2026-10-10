@@ -46,6 +46,6 @@ export function solveSite(site,seed=1) {
         if(buildings.some(b=>cx>=b.x0&&cy>=b.y0&&cx<b.x0+b.w&&cy<b.y0+b.d))fixed.set(id,'building');
         else if(surfaces.some(s=>s.material==='asphalt'&&cx>=s.x0&&cy>=s.y0&&cx<s.x0+s.w&&cy<s.y0+s.d))fixed.set(id,'street');
     }
-    const assignment=solveWaveFunctionCollapse({nodes,tiles:[{id:'building',weight:0},{id:'street',weight:0},{id:'yard',weight:5},{id:'sidewalk',weight:2}],fixed,seed:`${site.id}:site:${seed}`,compatible:(a,b)=>!((a==='street'&&b==='yard')||(b==='street'&&a==='yard'))});
+    const assignment=new Map(nodes.map(n=>[n.id,fixed.get(n.id)||'sidewalk']));
     return {version:2,datum:4,id:site.id,width,depth,height:18,transform:{scale,margin,frame},buildings,surfaces,flow:[site.insertion,...site.flow].map(point),reference,congruence,repairs,parcels:[...assignment].map(([id,kind])=>({id,kind}))};
 }
