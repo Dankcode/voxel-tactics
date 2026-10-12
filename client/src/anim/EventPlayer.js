@@ -134,7 +134,8 @@ export class EventPlayer {
             case 'death': { const v = this.view(e.unitId); if (v) { v.animator.play('down'); v.drawBar(); fx.float(v.worldPosition(), v.unit.side === 'player' ? 'KIA' : 'KILLED', '#ff5252', 22); } await this.d(0.3); break; }
             case 'extract': { const v = this.view(e.unitId); if (v) { fx.float(v.worldPosition(), e.item ? 'EXTRACTED WITH THE PACKAGE' : 'EXTRACTED', '#5ff2d6', 20); await this.d(0.35); v.setVisible(false); } g.overlays.showObjective(g.battle); break; }
             case 'recover': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition(), `${(e.label || 'item').toUpperCase()} RECOVERED`, '#5ff2d6', 20); g.overlays.showObjective(g.battle); await this.d(0.3); break; }
-            case 'drop': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition(), `${(e.label || 'item').toUpperCase()} DROPPED`, '#ffc845', 18); g.overlays.showObjective(g.battle); break; }
+            case 'drop': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition(), `${(e.label || 'item').toUpperCase()} DROPPED`, '#ffc845', 18); if (e.collapse) g.hud.log(`${e.label || 'The package'} fell with the floor.`); g.overlays.showObjective(g.battle); break; }
+            case 'zone': g.overlays.showObjective(g.battle); g.hud.log('The objective zone collapsed to the floor below.'); break;
             case 'objective': if (e.kind === 'hold') g.hud.log(e.contested ? `Zone contested — held ${e.held}/${e.rounds}` : `Zone held ${e.held}/${e.rounds}`); break;
             case 'status': { const v = this.view(e.unitId); if (v && (v.unit.side === 'player' || g.isVisible(v.unit))) fx.float(v.worldPosition().add(new THREE.Vector3(0, 0.3, 0)), e.statusId, '#ffe08a', 14); break; }
             case 'stress': { const v = this.view(e.unitId); if (v) { v.drawBar(); if (e.breakdown) { fx.float(v.worldPosition(), 'BREAKDOWN', '#c38bff', 22); await this.d(0.4); } } break; }

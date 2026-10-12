@@ -117,3 +117,14 @@ overwatch. A voluntary jump down ([02](02-movement.md#jumping-down)) deals no fa
 ## PLAN-03 mechanics
 
 Generated escape platforms depend on two ground posts. Losing both removes the escape surfaces and then settles disconnected material; removal is included in collapse statistics/events. Buildings retain connectivity support; the optional six-cell span rule is deferred. Floor breaching removes four slab voxels to make a controlled drop; damaging a larger shaft does not collapse a building still connected to bedrock.
+
+## Load-bearing voxels and collapse (2026-10-12)
+
+Only solid voxels carry load in `settleUnsupported`. Ladders, doors and leaves hang on whatever holds them and are
+supported through it, but never hold anything up; a steel stand (fire escape) stands or falls by its own posts rule
+and never holds up the building it is attached to. So a building whose ground storey is destroyed collapses even
+with a roof ladder or a fire escape on its facade (before this, either kept the whole building standing).
+
+A collapse never strands the objective (`Battle.settleObjective`, run with every fall check): a loose package drops
+to the floor left in its column, or the nearest one within four tiles, and a hold/extract zone whose floor is gone
+moves down to the level that remains in its area. Floor breach charges also work on carpet and tiled upper floors.

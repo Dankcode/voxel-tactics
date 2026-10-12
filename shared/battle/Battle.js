@@ -528,6 +528,40 @@ export class Battle {
         this.emit({ t: 'voxels', changes });
         if (open) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) this.revealRoom(this.store.roomAt(d.x + dx, d.y + dy, d.z + 1), u);
     }
+    /**
+     * A collapse must never strand the objective: a loose package drops to the floor that is left in its column (or the
+     * nearest one), and a hold/extract zone whose floor is gone moves down to the level that remains in its area.
+     */
+    settleObjective() {
+        const o = this.objective, s = this.store, ok = c => c.headroom >= 2;
+        const it = o.item;
+        if (it && !it.carrier && !it.secured && !s.surfaces(it.x, it.y).some(c => c.z === it.z && ok(c))) {
+            let best = null;
+            for (let r = 0; r <= 4 && !best; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+                if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+                const list = s.surfaces(it.x + dx, it.y + dy).filter(c => ok(c) && c.z <= it.z + 2);
+                const c = list.filter(c => c.z <= it.z).at(-1) || list[0];
+                if (c && (!best || Math.abs(c.z - it.z) < Math.abs(best.z - it.z) || (c.z === best.z && r === 0))) best = c;
+            }
+            if (best) { Object.assign(it, { x: best.x, y: best.y, z: best.z }); this.emit({ t: 'drop', unitId: null, x: best.x, y: best.y, z: best.z, label: it.label, collapse: true }); }
+        }
+        const z = o.zone;
+        if (z && z.z != null) {
+            const dz = z.dz ?? 1, levels = new Map();
+            let held = false;
+            for (let y = z.y0; y <= z.y1 && !held; y++) for (let x = z.x0; x <= z.x1; x++) {
+                const list = s.surfaces(x, y).filter(ok);
+                if (list.some(c => Math.abs(c.z - z.z) <= dz)) { held = true; break; }
+                const c = list.filter(c => c.z < z.z).at(-1);
+                if (c) levels.set(c.z, (levels.get(c.z) || 0) + 1);
+            }
+            if (!held && levels.size) {
+                const [lz] = [...levels].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0];
+                z.z = lz;
+                this.emit({ t: 'zone', zone: { ...z }, collapse: true });
+            }
+        }
+    }
     revealRoomOf(u) { /* Interior discovery is explicit: kick/breach, not walking or window LOS. */ }
     revealRoom(id, by) {
         if (id == null || id < 0 || !by || by.side !== 'player' || this.revealedRooms.has(id)) return;
@@ -789,6 +823,7 @@ export class Battle {
         if (removed) { this.stats.voxelsDestroyed += removed; this.emit({ t: 'collapse', fallen, removed }); }
     }
     checkFalls() {
+        this.settleObjective();
         for (const u of this.units.filter(alive)) {
             const here = this.store.surfaces(u.x, u.y).find(s => s.z === u.z);
             if (here && here.headroom >= 2) continue;
@@ -884,7 +919,7 @@ export class Battle {
         if(![d.x,d.y,d.z].every(Number.isInteger)||d.z<3)return false;
         for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++) {
             const x=d.x+dx,y=d.y+dy,m=this.store.material(x,y,d.z);
-            if(!this.store.inBounds(x,y,d.z)||!['oak_floor','concrete','ceramic','grate','stone_floor','plank'].includes(m.key)||!Number.isFinite(m.hp))return false;
+            if(!this.store.inBounds(x,y,d.z)||!['oak_floor','concrete','ceramic','grate','stone_floor','plank','carpet','tile_dark'].includes(m.key)||!Number.isFinite(m.hp))return false;
             const room=this.mission.rooms[this.store.roomAt(x,y,d.z-1)];if(room?.gameplay===false)return false;
             if(!this.store.surfaces(x,y).some(s=>s.z>=d.z-4&&s.z<=d.z-2&&s.headroom>=2))return false;
         }

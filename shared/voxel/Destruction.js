@@ -95,6 +95,10 @@ export function settleUnsupported(store, { maxRubble = 600 } = {}) {
     const seen = new Uint8Array(W * D * H);
     const stack = [];
     const attached = id => id !== AIR && !MATERIALS[id].liquid;
+    // Only solid voxels carry load. Ladders, doors and leaves hang on whatever holds them but never hold anything up,
+    // and a steel stand (fire escape) is held by its own posts rule above: neither may keep a building standing.
+    const hangs = new Uint8Array(W * D * H);
+    for (let i = 0; i < store.mat.length; i++) if (store.mat[i] !== AIR && !MATERIALS[store.mat[i]].solid) hangs[i] = 1;
     for (let y = 0; y < D; y++) for (let x = 0; x < W; x++) {
         const i = store.index(x, y, 0);
         if (attached(store.mat[i])) { seen[i] = 1; stack.push(i); }
@@ -104,17 +108,20 @@ export function settleUnsupported(store, { maxRubble = 600 } = {}) {
     for (const group of store.supportGroups || []) for (const p of [...group.members, ...(group.columns || []).flat()]) {
         if (!store.inBounds(...p)) continue;
         const i = store.index(...p);
+        hangs[i] = 1;
         if (!seen[i] && attached(store.mat[i])) { seen[i] = 1; stack.push(i); }
     }
     const WD = W * D;
+    let bears = true;
     while (stack.length) {
         const i = stack.pop();
+        bears = !hangs[i];
         const z = Math.floor(i / WD), rem = i - z * WD, y = Math.floor(rem / W), x = rem - y * W;
         if (x > 0) push(i - 1); if (x < W - 1) push(i + 1);
         if (y > 0) push(i - W); if (y < D - 1) push(i + W);
         if (z > 0) push(i - WD); if (z < H - 1) push(i + WD);
     }
-    function push(j) { if (!seen[j] && attached(store.mat[j])) { seen[j] = 1; stack.push(j); } }
+    function push(j) { if (!seen[j] && attached(store.mat[j]) && (bears || hangs[j])) { seen[j] = 1; stack.push(j); } }
 
     const loose = [];
     for (let i = 0; i < store.mat.length; i++) if (!seen[i] && attached(store.mat[i])) loose.push(i);

@@ -5,7 +5,9 @@ import { WEAPONS, THROWABLES } from '../content/weapons.js';
 import { coverAgainst, COVER } from '../voxel/Cover.js';
 import { estimateShot } from './Ballistics.js';
 import { alive, partArmor } from './Units.js';
-import { nodeKey, pathTo } from '../world/PathSearch.js';
+import { nodeKey, pathTo, reachable } from '../world/PathSearch.js';
+import { AGENT_PROFILES } from '../world/TraversalRules.js';
+import { MAT } from '../voxel/Materials.js';
 import { inZone, extractionOpen, objectiveGoal } from './Objectives.js';
 
 export const DEFAULT_POLICY = Object.freeze({ formations: false, breach: true, grenadeMinTargets: 2, shootThreshold: 0.9, samples: 24 });
@@ -67,7 +69,8 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
 
     // Breach a closed door to an unexplored room next to us (player autopilot / sim).
     if (policy.breach && u.side === 'player' && u.ap >= 2) {
-        const bp = battle.breachPoints(u).find(p => !battle.revealedRooms.has(p.roomId));
+        // Door entries only: floor charges (entry 'floor') have no room behind them and need their own intent.
+        const bp = battle.breachPoints(u).find(p => p.entry === 'door' && !battle.revealedRooms.has(p.roomId));
         if (bp) {
             const squad = battle.unitsOf(u.side).filter(o => o.ap >= 1 && Math.max(Math.abs(o.x - bp.x), Math.abs(o.y - bp.y)) <= 2 && Math.abs(o.z - bp.z) <= 1);
             const entry = squad.some(o => o.items.breach_charge > 0) && known.length === 0 ? 'charge' : 'door';
@@ -117,7 +120,11 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
         if (u.movedThisTurn >= 1 && u.ap < 2) return null;
         const target = (goal && flankTarget(battle, u, goal)) || (goal ? { ...goal, z: goal.z ?? u.z } : nearest(u, battle.enemiesOf(u)));
         if (!target || u.movedThisTurn > 12) return null;
-        const step = advance(battle, u, target);
+        // Closed doors stop squad movement until kicked (classic and intel rules): kick the one in the way.
+        const door = closedDoorOnRoute(battle, u, target);
+        if (door && u.ap >= 1 && Math.max(Math.abs(door.door.x - u.x), Math.abs(door.door.y - u.y)) <= 1 && Math.abs(door.door.z - u.z) <= 1)
+            return { type: 'door', unitId: u.id, door: { x: door.door.x, y: door.door.y, z: door.door.z } };
+        const step = advance(battle, u, door ? door.approach : target);
         return step ? { type: 'move', unitId: u.id, to: step, group } : null;
     }
 
@@ -220,6 +227,26 @@ function advance(battle, u, target) {
     };
     // Ladders are atomic moves. If reserving an AP prevents any progress, allow a full-turn climb/dash.
     return stepWithin(Math.min(budget,available)) || stepWithin(available);
+}
+
+/**
+ * When closed doors keep the squad from getting near `target`, the first closed door on the route that ignores doors,
+ * and the cell to stand on to kick it. Null when the target is reachable already (or not at all).
+ */
+function closedDoorOnRoute(battle, u, target) {
+    if (u.side !== 'player') return null;
+    const near = (search) => { let best = null, bd = Infinity; for (const n of search.nodes.values()) { const d = Math.hypot(n.x - target.x, n.y - target.y) + Math.abs(n.z - (target.z ?? n.z)) * 1.5; if (d < bd) { bd = d; best = n; } } return { best, bd }; };
+    const full = battle.reach(u, Infinity), mine = near(full);
+    if (mine.bd <= 2) return null;
+    const open = reachable(battle.store, { x: u.x, y: u.y, z: u.z }, Infinity, AGENT_PROFILES.player, { blocked: to => { const o = battle.occupant(to.x, to.y, to.z); return o && o.id !== u.id; } });
+    const there = near(open);
+    if (!there.best || there.bd >= mine.bd - 1) return null;
+    const path = pathTo(open, nodeKey(there.best));
+    for (let i = 1; i < path.length; i++) {
+        const p = path[i];
+        if (battle.store.get(p.x, p.y, p.z + 1) === MAT.door) return full.costs.has(nodeKey(path[i - 1])) ? { door: p, approach: path[i - 1] } : null;
+    }
+    return null;
 }
 
 /** Flankers (every third squad member) follow a flank path ~12 cells ahead of where they stand, then the goal. */
