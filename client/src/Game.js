@@ -1,4 +1,6 @@
 import { InteriorVisibility } from './render/InteriorVisibility.js';
+import { battleReport } from '../../shared/session/BattleReport.js';
+import { saveReport } from './ui/TestGroundStore.js';
 import { watchWeapon, watchSector } from '../../shared/battle/WatchSector.js';
 // Client controller: owns the scene, the battle (through a session), input modes, overlays, the event
 // player and the HUD. Local sessions apply intents directly; online sessions apply the server-ordered
@@ -86,6 +88,7 @@ export class Game {
     async start(session) {
         this.cameraDirector.end();
         this.session = session;
+        this.startedAt = performance.now();
         this.battle = session.battle;
         this.voxelView?.dispose();
         for (const v of this.views.values()) v.dispose();
@@ -140,8 +143,8 @@ export class Game {
         this.views.set(u.id, v);
         return v;
     }
-    restart() { this.session.restart?.().then(s => this.start(s)); }
-    exitToMenu() { this.onExit?.(); }
+    restart() { this.session.restart?.().then(s => this.start(s)).then(() => { if (this.autoPlayer) this.maybeRunAi(); }); }
+    exitToMenu(opts) { this.onExit?.(opts); }
 
     loop(now) {
         // rAF timestamps can predate the constructor (negative first dt), which used to fling the camera shake.
@@ -454,7 +457,16 @@ export class Game {
         else this.hud.banner('ENEMY ACTIVITY', 'HOSTILE PHASE', 'enemy');
         this.hud.log(e.side === 'player' ? `Round ${e.round}` : 'Enemy activity…');
     }
-    onOutcome(e) { this.hud.showOutcome(e); this.hud.log(e.winner === 'player' ? 'Mission complete.' : 'Squad lost.'); }
+    onOutcome(e) {
+        this.hud.log(e.winner === 'player' ? 'Mission complete.' : 'Squad lost.');
+        // After-action report for every battle; kept in this browser's recent reports (Test ground).
+        const report = battleReport(this.battle, this.session?.desc || {}, {
+            at: new Date().toISOString(), durationMs: Math.round(performance.now() - (this.startedAt || performance.now())),
+            mode: this.session?.local ? 'local' : 'online', autopilot: !!this.autoPlayer
+        });
+        this.lastReport = report;
+        this.hud.showReport(report, { saved: saveReport(report), canEdit: !!this.session?.local });
+    }
     async onSpawn(e) { const u = this.battle.unit(e.unitId); if (u) { await this.addView(u); this.updateEnemyVisibility(); } }
     log(t) { this.hud.log(t); }
 

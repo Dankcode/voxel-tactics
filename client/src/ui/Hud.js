@@ -1,3 +1,6 @@
+import { reportMarkup } from './BattleReportView.js';
+import { reportText } from '../../../shared/session/BattleReport.js';
+import { downloadJson } from './TestGroundStore.js';
 import { packMarkup } from './InventoryPrep.js';
 import { MAT } from '../../../shared/voxel/Materials.js';
 import { watchWeapon, visionProfile } from '../../../shared/battle/WatchSector.js';
@@ -59,7 +62,7 @@ export class Hud {
         this.lines = [];
         this.slots = [];
     }
-    reset() { this.el('.outcome').classList.add('hidden'); this.hidePanel(); this.squadSpent(false); }
+    reset() { this.report = null; this.el('.outcome').classList.add('hidden'); this.hidePanel(); this.squadSpent(false); }
     onClick(e) {
         const b = e.target.closest('[data-act]');
         if (!b || b.disabled) return;
@@ -99,6 +102,10 @@ export class Hud {
             case 'endTurn': g.endTurn(); break;
             case 'closePanel': this.hidePanel(); break;
             case 'restart': g.restart(); break;
+            case 'rtab': this.reportTab(arg); return;
+            case 'reportCopy': this.copyReport(); return;
+            case 'reportJson': if (this.report) downloadJson(`report-${this.report.scenario.id}-${this.report.scenario.seed}-${(this.report.run.at || '').replace(/[:.]/g, '-')}.json`, this.report); return;
+            case 'reportEdit': g.exitToMenu({ tab: 'test', desc: g.session?.desc, client: { autopilot: g.autoPlayer } }); return;
         }
         this.refresh();
     }
@@ -285,14 +292,16 @@ export class Hud {
             pts.map((pt, i) => `<div class="bp">${pt.entry==='floor'?'Floor slab':'Door'} at ${pt.x},${pt.y}${pt.roomId!=null?' → room '+pt.roomId:''}
                 ${pt.entry==='floor'?`<button data-act="doBreach" data-arg="${i}:floor">Floor charge · 2×2 hole</button>`:`<button data-act="doBreach" data-arg="${i}:door">Door entry</button>`}${pt.entry!=='floor'&&charge ? `<button data-act="doBreach" data-arg="${i}:charge">Breach charge</button>` : ''}</div>`).join('');
     }
-    showOutcome(o) {
+    /** After-action report (every battle). The old outcome card is folded into its header. */
+    showReport(report, { saved = true, canEdit = true } = {}) {
+        this.report = report; this.reportOpts = { saved, canEdit, tab: this.reportOpts?.tab || 'squad' };
         const el = this.el('.outcome'); el.classList.remove('hidden');
-        const b = this.game.battle;
-        const kills = b.units.filter(u => u.side === 'enemy' && u.dead).length;
-        const why = { recovered: `${b.objective.item?.label || 'Package'} recovered`, held: 'Zone held', extracted: `${b.objective.extracted.length} extracted`, eliminated: 'All hostiles down', timer: 'Out of time', 'squad lost': 'The squad was lost' }[o.reason] || '';
-        el.innerHTML = `<div class="ocard ${o.winner}"><h2>${o.winner === 'player' ? 'MISSION COMPLETE' : o.reason === 'timer' ? 'MISSION FAILED' : 'SQUAD LOST'}</h2>${why ? `<p class="owhy">${esc(why)}</p>` : ''}
-            <div class="ostats"><div><b>${o.round}</b>rounds</div><div><b>${kills}</b>hostiles killed</div><div><b>${b.unitsOf('player').length}</b>soldiers standing</div><div><b>${b.stats.voxelsDestroyed}</b>voxels destroyed</div><div><b>${b.stats.breaches}</b>breaches</div></div>
-            <button data-act="restart">REPLAY</button><button data-act="menu">MENU</button></div>`;
+        el.innerHTML = reportMarkup(report, this.reportOpts);
+    }
+    reportTab(tab) { if (!this.report) return; this.reportOpts.tab = tab; this.showReport(this.report, this.reportOpts); }
+    async copyReport() {
+        try { await navigator.clipboard.writeText(reportText(this.report)); this.toast('Report summary copied'); }
+        catch { this.toast('Copy failed: clipboard not available', 'warn'); }
     }
 }
 

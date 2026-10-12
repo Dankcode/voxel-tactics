@@ -7,6 +7,9 @@ import { SCENARIOS, OPERATION_ID, operationFor } from '../../shared/session/Scen
 import { PLOT_FAMILIES, PLOT_IDS } from '../../shared/mapgen/PlotCatalogue.js';
 import { OPERATION_OBJECTIVES, OPERATION_TIMES } from '../../shared/mapgen/Generator.js';
 import { drawOperationPreview } from './ui/OperationPreview.js';
+import { TestGroundPanel, descToSetup } from './ui/TestGroundPanel.js';
+import { saveLastSetup, decodeSetup } from './ui/TestGroundStore.js';
+import { sanitizeDesc } from '../../shared/session/Scenarios.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -14,7 +17,7 @@ const params = new URLSearchParams(location.search);
 const menu = $('#menu');
 let game = null;
 
-async function showMenu() {
+async function showMenu(opts = {}) {
     menu.classList.remove('hidden');
     const defaultServer = `ws://${location.hostname || 'localhost'}:2567`;
     const themes = [...new Set(SCENARIOS.map(s => s.theme))];
@@ -25,6 +28,11 @@ async function showMenu() {
       <div class="menu-card">
         <h1>FIRETEAM</h1>
         <p class="tag">Present-day tactical operations · co-op</p>
+        <nav class="menu-tabs" role="tablist">
+          <button data-tab="play" role="tab">Play</button>
+          <button data-tab="test" role="tab">Test ground <small>admin</small></button>
+        </nav>
+        <div id="tab-play" role="tabpanel">
         <section class="operation ${pick === OPERATION_ID ? 'on' : ''}" id="m-op" data-map="${OPERATION_ID}">
           <div class="op-head"><b>Generated operation</b><span>A new map every seed: a plot, its lots and buildings, interiors, cover along the line of advance, a tunnel flank and a fire escape — checked by the same gates as the authored maps.</span></div>
           <div class="plots">${PLOT_IDS.map(id => `<button class="plot ${id === op.plot ? 'on' : ''}" data-plot="${id}"><b>${esc(PLOT_FAMILIES[id].name)}</b><span>${esc(PLOT_FAMILIES[id].text)}</span></button>`).join('')}</div>
@@ -48,6 +56,8 @@ async function showMenu() {
           <button id="m-local" class="primary">Play vs AI</button>
           <button id="m-host">Host online co-op</button>
         </div>
+        </div>
+        <section id="tab-test" class="tg" role="tabpanel" hidden></section>
         <div class="row">
           <label>Server <input id="m-server" value="${defaultServer}"></label>
           <label>Room <input id="m-room" placeholder="room code"></label>
@@ -91,24 +101,51 @@ async function showMenu() {
         } catch (err) { console.error(err); status(`Generation failed: ${err.message}`); }
     };
     $('#m-preview').onclick = preview;
-    const launch = async make => {
-        try {
-            status(scenario === OPERATION_ID ? 'Generating the operation…' : 'Building the battlefield…');
-            await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
-            const session = await make();
-            menu.classList.add('hidden');
-            if (!game) game = new Game({ canvas: $('#view'), hudRoot: $('#hud'), cutinRoot: $('#cutin-layer'), floatRoot: $('#float-layer'), onExit: () => { session.leave?.(); showMenu(); } });
-            await game.start(session);
-            if (desc().debug && !game.debug.enabled) game.debug.enable(true);
-            window.__game = game;
-            if (session.roomId) game.hud.log(`Room code: ${session.roomId} — share it with your squadmates`);
-        } catch (err) { console.error(err); status(`Failed: ${err.message}`); }
-    };
+    const launch = (make, { generating = scenario === OPERATION_ID, debug = desc().debug, autopilot = false } = {}) =>
+        startBattle(make, { generating, debug, autopilot, status });
     $('#m-local').onclick = () => launch(() => LocalSession.create(desc()));
     $('#m-host').onclick = () => launch(() => OnlineSession.connect({ url: $('#m-server').value, desc: desc() }));
-    $('#m-join').onclick = () => launch(() => OnlineSession.connect({ url: $('#m-server').value, roomId: $('#m-room').value.trim() }));
+    $('#m-join').onclick = () => launch(() => OnlineSession.connect({ url: $('#m-server').value, roomId: $('#m-room').value.trim() }), { generating: false, debug: false });
+    // Test ground (admin): its own panel; launches go through the same path as Play.
+    const testLaunch = (online) => (d, client, setup) => {
+        saveLastSetup({ setup });
+        launch(() => online ? OnlineSession.connect({ url: $('#m-server').value, desc: d }) : LocalSession.create(d), { generating: d.scenario === OPERATION_ID, debug: !!d.debug, autopilot: !!client.autopilot });
+    };
+    new TestGroundPanel($('#tab-test'), { launch: testLaunch(false), host: testLaunch(true), status }, opts.desc ? descToSetup(opts.desc, opts.client) : null);
+    const showTab = tab => {
+        $('#tab-play').hidden = tab !== 'play'; $('#tab-test').hidden = tab !== 'test';
+        menu.querySelectorAll('[data-tab]').forEach(b => { b.classList.toggle('on', b.dataset.tab === tab); b.setAttribute('aria-selected', b.dataset.tab === tab); });
+        try { localStorage.setItem('fireteam.menuTab', tab); } catch { /* storage unavailable */ }
+    };
+    menu.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+    let lastTab = 'play'; try { lastTab = localStorage.getItem('fireteam.menuTab') || 'play'; } catch { /* storage unavailable */ }
+    showTab(opts.tab || (params.get('tab') === 'test' ? 'test' : lastTab));
 }
 
+/** Build a session, hide the menu and start the battle (Play, Test ground, deep links). */
+async function startBattle(make, { generating = false, debug = false, autopilot = false, status = () => {} } = {}) {
+    try {
+        status(generating ? 'Generating the operation…' : 'Building the battlefield…');
+        await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+        const session = await make();
+        menu.classList.add('hidden');
+        if (!game) game = new Game({ canvas: $('#view'), hudRoot: $('#hud'), cutinRoot: $('#cutin-layer'), floatRoot: $('#float-layer'), onExit: o => { game.session?.leave?.(); game.autoPlayer = false; showMenu(o); } });
+        await game.start(session);
+        if (debug && !game.debug.enabled) game.debug.enable(true);
+        game.autoPlayer = !!autopilot;
+        if (autopilot) game.maybeRunAi();
+        window.__game = game;
+        if (session.roomId) game.hud.log(`Room code: ${session.roomId} — share it with your squadmates`);
+    } catch (err) { console.error(err); status(`Failed: ${err.message}`); if (menu.classList.contains('hidden')) showMenu(); }
+}
+
+// Test-ground deep link: ?test=<setup> (made by "Copy link") launches that exact setup.
+if (params.get('test')) {
+    let setup = null;
+    try { setup = decodeSetup(params.get('test')); setup.desc = sanitizeDesc(setup.desc); } catch (err) { console.error(err); setup = null; }
+    if (setup) startBattle(() => LocalSession.create(setup.desc), { generating: setup.desc.scenario === OPERATION_ID, debug: !!setup.desc.debug, autopilot: !!setup.client?.autopilot || !!params.get('auto') });
+    else showMenu({ tab: 'test' });
+} else
 // Deep link for quick testing: ?play=cedar-close&seed=3 (&debug=1 &auto=1 &cutins=off)
 if (params.get('play')) {
     const operation = params.get('play') === OPERATION_ID ? { plot: params.get('plot'), objective: params.get('objective'), timeOfDay: params.get('time') } : undefined;

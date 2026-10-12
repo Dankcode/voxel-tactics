@@ -85,3 +85,10 @@ squad's turn alone. It is **not** cheat-proof:
 - Desyncs are detected, not corrected.
 
 PvP would need server-filtered state (PLAN-01 M13); the README says the same.
+
+## Test-ground descriptors
+
+A descriptor may carry `test` settings (custom hostile roster, alerted pods, eliminate objective, round deadline,
+time of day; see [TEST-GROUND](../TEST-GROUND.md)). The server validates them in `sanitizeDesc` before building
+the mission, sends the untouched compiled mission, and every peer applies the same settings in `createBattle`, so
+the starting hash matches. Hostile placement uses only the mission, the settings and the seed.

@@ -2,12 +2,14 @@ import { normalizeInventory } from '../inventory/Inventory.js';
 // Scenario descriptors → missions. Local sessions generate from a descriptor; co-op sessions hydrate
 // the server's compiled mission, then replay the ordered intent list.
 //
-// desc: { scenario: map id, seed, squad?: string[] | squadKey, debug? }
+// desc: { scenario: map id, seed, squad?: string[] | squadKey, debug?, operation?, inventories?, test? }
+// `test` is the admin test ground (custom hostile roster and mission overrides, see TestGround.js).
 import { MAPS, DEFAULT_MAP, mapById } from '../mission/Maps.js';
 import { SQUADS, CALLSIGNS, CLASSES } from '../content/units.js';
 import { Battle } from '../battle/Battle.js';
 import { generateOperation, operationOptions } from '../mapgen/Generator.js';
 import { compileV3Map } from '../mapgen/ExteriorCompiler.js';
+import { sanitizeTest, applyTestGround } from './TestGround.js';
 
 export const SCENARIOS = MAPS.map(({ id, name, theme, text }) => ({ id, name, theme, text }));
 /** The generated-map game mode (PLAN-04): every operation is generated from a plot family and a seed. */
@@ -27,6 +29,8 @@ export function sanitizeDesc(d = {}) {
         if(!Array.isArray(d.inventories)||d.inventories.length>size)throw Error('Invalid inventory: expected one pack per soldier');
         out.inventories=d.inventories.map((p,i)=>{try{return normalizeInventory(p);}catch(e){throw Error(`Invalid inventory for soldier ${i+1}: ${e.message}`);}});
     }
+    const test = sanitizeTest(d.test);
+    if (test) out.test = test;
     squadFor(out); // Validate unit types before any expensive generation.
     return out;
 }
@@ -60,5 +64,7 @@ export function squadFor(desc) {
 export function createBattle(desc, mission = null) {
     const squad=squadFor(desc);
     mission ||= buildMission(desc);
-    return new Battle({ mission, squad, seed: desc.seed ?? 1, debug: !!desc.debug });
+    // The test ground applies to the compiled mission on every peer (and the server) alike.
+    const enemies = desc.test ? applyTestGround(mission, sanitizeTest(desc.test), desc.seed ?? 1) : null;
+    return new Battle({ mission, squad, seed: desc.seed ?? 1, debug: !!desc.debug, enemies });
 }

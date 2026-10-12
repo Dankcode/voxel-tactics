@@ -41,6 +41,7 @@ Deep links for testing:
 | `/?play=proving-grounds` | Training Facility: the test map with every system in it |
 | `/?play=operation&plot=downtown&seed=4` | Generated operation (PLAN-04): a new map per seed. `plot` = `downtown` · `industrial` · `suburb`; optional `objective` (`recover` · `extract` · `hold` · `eliminate`) and `time` (`day` · `dawn` · `dusk` · `overcast` · `night` · `night-ops`) |
 | `…&auto=1` | Squad plays itself (AI vs AI), useful to watch balance |
+| `/?tab=test` · `/?test=…` | Open the Test ground tab · launch a copied test-ground setup |
 | `…&cutins=off` | Skip back shots (`always` / `first` / `off`) |
 | `…&debug=1` | Start with debug mode on (or tick *Debug mode* in the menu, or press F1 in battle) |
 
@@ -112,6 +113,29 @@ while local debug mode is enabled. It returns `{ options, site, layout, design }
 (and `null` with an on-screen error on failure). The same data remains available at
 `__game.battle.mission.meta.debugGeneration` for inspecting or exporting the generated blueprint.
 Map generation replaces the current local battle and resets its progress.
+
+## Test ground (admin) and after-action reports
+
+The menu's **Test ground** tab sets up a battle scenario to test: any map (or a generated operation), a squad of
+1–6 soldiers of any class, and either the map's own hostile pods or a custom roster of up to 24 hostiles (up to 12
+of a type, in mixed pods of 1–4). Rules can start every hostile alerted, switch the objective to *eliminate*,
+set a round deadline, change the time of day, let the AI play the squad (autopilot), and turn on the F1 debug
+tools. **Preview placements** draws the map with the squad spawns, each hostile (coloured and lettered by type)
+and the objective. Setups can be saved in the browser, shared with **Copy link** (`?test=…` launches that exact
+setup) or hosted online — the server and every peer place the same roster.
+
+Every battle — test ground or not — ends with an **after-action report**: outcome, rounds, first contact, a
+per-soldier table (status and HP, kills, shots hit, damage dealt and taken, reactions, tiles moved, abilities and
+items used, disabled limbs), hostiles by type and per unit, weapons per side, field stats (voxels destroyed, fires,
+breaches, doors kicked, collapses, drops, flank steps) and a timeline. **Copy summary** and **Download JSON** export
+it; the last 20 reports stay in the Test ground tab (view or replay them). The same report runs headless:
+
+```bash
+npm run sim -- --seeds 8 --scenario main-street --enemies cultist:4,brute:2 --pod 3 --alerted --objective eliminate --deadline 20 --report
+npm run sim -- --seeds 8 --setup report.json --reports out/reports.json   # rerun a downloaded report's setup
+```
+
+See [docs/TEST-GROUND.md](docs/TEST-GROUND.md) for placement rules and the report fields.
 
 ## What the battle tests
 

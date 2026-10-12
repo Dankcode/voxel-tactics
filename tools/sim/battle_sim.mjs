@@ -4,12 +4,19 @@
 //
 //   node tools/sim/battle_sim.mjs --seeds 24 [--scenario cedar-close|proving-grounds|all]
 //        [--squad standard] [--rounds 40] [--formations-compare] [--gate] [--json out.json]
+//
+// Test ground (same rules as the in-game admin panel; every seed places the roster afresh):
+//   --enemies cultist:3,brute:2 [--pod 3] [--alerted] [--objective eliminate] [--deadline 12] [--time night]
+//   --setup file.json   a downloaded after-action report or a scenario descriptor: rerun that exact setup
+//   --report            print the after-action report summary of every battle
+//   --reports out.json  write every battle's full report (JSON array)
 import fs from 'node:fs';
 import os from 'node:os';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createBattle, SCENARIOS } from '../../shared/session/Scenarios.js';
+import { createBattle, sanitizeDesc, SCENARIOS } from '../../shared/session/Scenarios.js';
+import { battleReport, reportText } from '../../shared/session/BattleReport.js';
 import { runAiSide } from '../../shared/battle/Ai.js';
 import { WEAPONS, THROWABLES } from '../../shared/content/weapons.js';
 
@@ -21,12 +28,23 @@ const args = Object.fromEntries(process.argv.slice(2).reduce((acc, a, i, all) =>
 const SEEDS = Number(args.seeds) || 16, ROUNDS = Number(args.rounds) || 40;
 // --scenario operation [--plot downtown|industrial|suburb] runs generated operations (PLAN-04): every seed is a new map.
 const PLOTS = ['downtown', 'industrial', 'suburb'];
-const scenarios = args.scenario === 'all' ? SCENARIOS.map(m => ({ scenario: m.id }))
+// Test-ground settings from flags (or a saved setup / downloaded report).
+const setup = args.setup ? JSON.parse(fs.readFileSync(args.setup, 'utf8')) : null;
+const setupDesc = setup ? (setup.desc || (setup.scenario?.id ? { scenario: setup.scenario.id, squad: setup.scenario.squad, operation: setup.scenario.operation, test: setup.scenario.test } : setup)) : null;
+const flagTest = (args.enemies || args.alerted || args.objective || args.deadline || args.time || args.pod) ? {
+    enemies: args.enemies ? String(args.enemies).split(',').map(p => { const [type, n] = p.split(':'); return { type, count: Number(n ?? 1) }; }) : null,
+    podSize: Number(args.pod) || 3, alerted: !!args.alerted, objective: args.objective === 'eliminate' ? 'eliminate' : 'map',
+    rounds: args.deadline ? Number(args.deadline) : null, timeOfDay: typeof args.time === 'string' ? args.time : null
+} : null;
+const TEST = flagTest || setupDesc?.test || null;
+const scenarios = setupDesc ? [{ scenario: setupDesc.scenario, ...(setupDesc.operation ? { operation: setupDesc.operation } : {}) }]
+    : args.scenario === 'all' ? SCENARIOS.map(m => ({ scenario: m.id }))
     : args.scenario === 'operation' ? (PLOTS.includes(args.plot) ? [args.plot] : PLOTS).map(plot => ({ scenario: 'operation', operation: { plot } }))
     : [{ scenario: SCENARIOS.some(m => m.id === args.scenario) ? args.scenario : 'proving-grounds' }];
 
 function runOne(desc, { formations }) {
     const b = createBattle(desc);
+    const wantReport = !!(args.report || args.reports);
     const t = Date.now();
     while (!b.outcome && b.round <= ROUNDS) {
         runAiSide(b, 'player', { formations });
@@ -35,7 +53,9 @@ function runOne(desc, { formations }) {
     return {
         winner: b.outcome?.winner || 'draw', reason: b.outcome?.reason || 'round cap', objective: b.objective.kind, rounds: b.round, ms: Date.now() - t,
         survivors: b.unitsOf('player').length, enemiesLeft: b.unitsOf('enemy').length, stats: b.stats,
-        playerDamage: b.units.filter(u => u.side === 'player').reduce((s, u) => s + u.stats.damage, 0)
+        playerDamage: b.units.filter(u => u.side === 'player').reduce((s, u) => s + u.stats.damage, 0),
+        enemyTypes: b.units.filter(u => u.side === 'enemy').reduce((a, u) => { const t = a[u.type] ||= { count: 0, killed: 0 }; t.count++; if (u.dead || u.down) t.killed++; return a; }, {}),
+        report: wantReport ? battleReport(b, desc, { sim: true, ms: Date.now() - t }) : null
     };
 }
 
@@ -94,15 +114,20 @@ if (!isMainThread && workerData?.worker) {
 } else await main();
 
 async function main() {
-const report = { args, scenarios: [] };
+const report = { args, scenarios: [] }, allReports = [];
 let gateFail = false;
 for (const sc of scenarios) {
-    const descs = Array.from({ length: SEEDS }, (_, i) => ({ ...sc, seed: i + 1, squad: args.squad || 'standard' }));
+    const descs = Array.from({ length: SEEDS }, (_, i) => sanitizeDesc({ ...sc, seed: i + 1, squad: args.squad || setupDesc?.squad || 'standard', ...(TEST ? { test: TEST } : {}) }));
     const compare = !!args['formations-compare'];
     const all = await runAll([...descs.map(d => [d, true]), ...(compare ? descs.map(d => [d, false]) : [])]);
     const withF = all.slice(0, descs.length);
     const aggF = aggregate(withF);
     printReport(`${sc.scenario}${sc.operation ? `/${sc.operation.plot}` : ''} (formations on)`, aggF);
+    const types = {};
+    for (const r of withF) for (const [t, v] of Object.entries(r.enemyTypes || {})) { const a = types[t] ||= { count: 0, killed: 0 }; a.count += v.count; a.killed += v.killed; }
+    console.log(`hostiles${TEST ? ' (test ground)' : ''}: ${Object.entries(types).map(([t, v]) => `${t} ${v.killed}/${v.count} down`).join(' · ')}`);
+    if (args.report) for (const r of withF) console.log(`\n--- seed ${r.report.scenario.seed}\n${reportText(r.report)}`);
+    if (args.reports) allReports.push(...withF.map(r => r.report));
     const entry = { scenario: sc, formationsOn: aggF };
     if (args['formations-compare']) {
         const without = all.slice(descs.length);
@@ -115,6 +140,7 @@ for (const sc of scenarios) {
     }
     report.scenarios.push(entry);
 }
+if (args.reports) { fs.mkdirSync(path.dirname(path.resolve(args.reports)), { recursive: true }); fs.writeFileSync(args.reports, JSON.stringify(allReports, null, 1)); console.log(`\nwrote ${allReports.length} reports to ${args.reports}`); }
 if (args.json) { fs.mkdirSync(path.dirname(path.resolve(args.json)), { recursive: true }); fs.writeFileSync(args.json, JSON.stringify(report, null, 1)); console.log(`\nwrote ${args.json}`); }
 if (args.gate && gateFail) { console.error('balance gate failed'); process.exit(1); }
 }

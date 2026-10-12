@@ -67,7 +67,7 @@ export class Battle {
             this.units.push(u);
         });
         (enemies || mission.spawns.enemy).forEach((e, i) => {
-            this.units.push(createUnit(e.type, 'enemy', e.pos, `e${i}`, { group: e.group ?? 0, facing: e.facing || 's' }));
+            this.units.push(createUnit(e.type, 'enemy', e.pos, `e${i}`, { group: e.group ?? 0, facing: e.facing || 's', extra: e.alerted ? { alerted: true, scattered: true } : undefined }));
         });
         this.startSide('player', true);
         for(const u of this.unitsOf('player')) this.revealRoom(this.roomOf(u),u);
@@ -322,7 +322,7 @@ export class Battle {
             case 'throw': this.doThrow(u, intent); break;
             case 'overwatch': this.doOverwatch(u, intent); break;
             case 'reload': { const w = WEAPONS[intent.weaponId || u.weapon]; u.ap -= w.reloadAp; u.ammo[w.id] = w.ammo; this.emit({ t: 'reload', unitId: u.id, weaponId: w.id }); break; }
-            case 'gadget': {const item=THROWABLES[intent.itemId],target=this.unit(intent.targetId),amount=Math.min(item.heal,target.maxHp-target.hp);u.ap-=item.ap;consumeItem(u,item.id);target.hp+=amount;if(!target.parts.torso.disabled)target.parts.torso.hp=Math.min(target.parts.torso.max,target.parts.torso.hp+amount);this.emit({t:'heal',unitId:target.id,amount});break;}
+            case 'gadget': {const item=THROWABLES[intent.itemId],target=this.unit(intent.targetId),amount=Math.min(item.heal,target.maxHp-target.hp);u.ap-=item.ap;consumeItem(u,item.id);target.hp+=amount;if(!target.parts.torso.disabled)target.parts.torso.hp=Math.min(target.parts.torso.max,target.parts.torso.hp+amount);this.emit({t:'heal',unitId:target.id,sourceId:u.id,itemId:item.id,amount});break;}
             case 'wait': u.ap=0;u.moveOnlyAp=0;this.emit({t:'wait',unitId:u.id});break;
             case 'switchWeapon': u.weapon = intent.weaponId; this.emit({ t: 'weapon', unitId: u.id, weaponId: u.weapon }); break;
             case 'ability': this.doAbility(u, intent); break;
