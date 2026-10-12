@@ -1,7 +1,3 @@
-## Intel co-op prototype
-
-The new playable test build adds independent 2–4-player turns, intel classes, scout drones, quiet wall cuts, high precision shooting and per-player terrain strikes. See [setup, turn rules and playtest checklist](docs/INTEL-COOP-TEST.md).
-
 # Xcom2 game: Fireteam (working title)
 
 A 2D-character XCOM 2-style game in the browser with co-op multiplayer and PvP. Repo:
@@ -117,6 +113,18 @@ while local debug mode is enabled. It returns `{ options, site, layout, design }
 (and `null` with an on-screen error on failure). The same data remains available at
 `__game.battle.mission.meta.debugGeneration` for inspecting or exporting the generated blueprint.
 Map generation replaces the current local battle and resets its progress.
+
+## One game, two rule sets, two ways to run it
+
+- **Classic rules** (default): the XCOM-style squad game, team End turn votes in co-op, hit percentages.
+- **Intel co-op rules** (experimental, opt-in): tick *Intel co-op rules* in Play or the Test ground (or add
+  `&intel=1` to a `?play=` link). Classes gain sensing roles (Faultfinder, Tidekeeper, Skywatch, Ghostwright),
+  scout drones, quiet wall cuts, high-precision fire without hit percentages, independent 2–4-player turns and
+  per-player support strikes. See [docs/INTEL-COOP-TEST.md](docs/INTEL-COOP-TEST.md).
+
+`npm run dev` (port 5173) always serves the live source. The game server on port 2567 serves the last
+`npm run build`, so after pulling or editing code use **`npm run play`** (build, then server); the server warns
+when its build is older than the source. The menu footer shows which commit a page was built from.
 
 ## Test ground (admin) and after-action reports
 

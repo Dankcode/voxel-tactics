@@ -1,6 +1,6 @@
 # Intel co-op test build
 
-Run `npm run build` and `npm run server`, then open http://localhost:2567. Choose a map (Proving Grounds is the fastest test arena), leave **Intel co-op test build** enabled, select match support, and **Host online co-op**. Friends open the same server address and join with the room code; they choose support before joining. The room supports 2–4 players, with one or more soldiers per player. To test alone, use separate browser windows. For LAN play use the host computer's LAN address and allow port 2567 through its firewall.
+Run `npm run play` (it builds the client, then starts the server), then open http://localhost:2567. Choose a map (Proving Grounds is the fastest test arena), tick **Intel co-op rules (experimental)** — the classic rules are the default — select match support, and **Host online co-op**. The same option is in the Test ground, and `?play=proving-grounds&intel=1` starts a local intel battle. Class and enemy names switch to their intel roles only under these rules. Friends open the same server address and join with the room code; they choose support before joining. The room supports 2–4 players, with one or more soldiers per player. To test alone, use separate browser windows. For LAN play use the host computer's LAN address and allow port 2567 through its firewall.
 
 ## Independent turn contract
 

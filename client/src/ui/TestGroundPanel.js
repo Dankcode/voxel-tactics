@@ -18,12 +18,14 @@ const MAX_SQUAD = 6;
 export const DEFAULT_SETUP = Object.freeze({
     scenario: 'proving-grounds', seed: 1, plot: 'downtown', opObjective: '', opTime: '',
     squad: [...SQUADS.standard], useMapHostiles: false, roster: { ...TEST_PRESETS.patrol.enemies }, podSize: 3,
-    alerted: false, objective: 'map', rounds: '', timeOfDay: '', autopilot: false, debug: false
+    alerted: false, objective: 'map', rounds: '', timeOfDay: '', autopilot: false, debug: false, intel: false, support: 'carpet_bomb'
 });
 
 /** Panel state → scenario descriptor (validated by sanitizeDesc before use). */
 export function setupToDesc(c) {
     const desc = { scenario: c.scenario, seed: Number(c.seed) || 1, squad: c.squad.slice(), debug: !!c.debug };
+    // Intel co-op rules (Codex prototype) are opt-in here exactly as in Play.
+    if (c.intel) Object.assign(desc, { intel: true, asyncCoop: true, support: c.support === 'orbital_laser' ? 'orbital_laser' : 'carpet_bomb' });
     if (c.scenario === OPERATION_ID) desc.operation = { plot: c.plot, objective: c.opObjective || null, timeOfDay: c.opTime || null };
     desc.test = {
         enemies: c.useMapHostiles ? null : ENEMY_TYPES.filter(t => c.roster[t] > 0).map(type => ({ type, count: c.roster[type] })),
@@ -43,11 +45,12 @@ export function descToSetup(desc = {}, client = {}) {
         squad: Array.isArray(desc.squad) ? desc.squad.slice(0, MAX_SQUAD) : [...(SQUADS[desc.squad] || SQUADS.standard)],
         useMapHostiles: !t.enemies, roster: t.enemies ? roster : { ...DEFAULT_SETUP.roster }, podSize: t.podSize || 3,
         alerted: !!t.alerted, objective: t.objective === 'eliminate' ? 'eliminate' : 'map', rounds: t.rounds || '', timeOfDay: t.timeOfDay || '',
-        autopilot: !!client.autopilot, debug: !!desc.debug
+        autopilot: !!client.autopilot, debug: !!desc.debug, intel: !!desc.intel, support: desc.support === 'orbital_laser' ? 'orbital_laser' : 'carpet_bomb'
     };
 }
 /** A report's scenario block → descriptor, so a recent report can be replayed or edited. */
-export const reportToDesc = r => ({ scenario: r.scenario.id, seed: r.scenario.seed, squad: r.scenario.squad || 'standard', ...(r.scenario.operation ? { operation: r.scenario.operation } : {}), ...(r.scenario.test ? { test: r.scenario.test } : {}) });
+export const reportToDesc = r => ({ scenario: r.scenario.id, seed: r.scenario.seed, squad: r.scenario.squad || 'standard', ...(r.scenario.operation ? { operation: r.scenario.operation } : {}), ...(r.scenario.test ? { test: r.scenario.test } : {}),
+    ...(r.scenario.rules === 'intel' ? { intel: true, asyncCoop: r.scenario.intel?.asyncCoop !== false, support: r.scenario.intel?.support || 'carpet_bomb' } : {}) });
 
 export class TestGroundPanel {
     /** @param root element; @param hooks { launch(desc, client), host(desc, client), status(text) } */
@@ -96,6 +99,8 @@ export class TestGroundPanel {
             <div class="row"><label>Time of day <select data-tg-field="timeOfDay"><option value="">Map default</option>${TEST_TIMES.map(t => `<option ${t === c.timeOfDay ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>
             <label class="check"><input type="checkbox" data-tg-field="autopilot" ${c.autopilot ? 'checked' : ''}> Autopilot squad (AI plays both sides; watch and read the report)</label>
             <label class="check"><input type="checkbox" data-tg-field="debug" ${c.debug ? 'checked' : ''}> Debug tools in battle (F1)</label>
+            <label class="check"><input type="checkbox" data-tg-field="intel" ${c.intel ? 'checked' : ''}> Intel co-op rules (experimental): sensing roles, drones, quiet cuts, precision shots, independent turns</label>
+            ${c.intel ? `<div class="row"><label>Match support <select data-tg-field="support"><option value="carpet_bomb" ${c.support !== 'orbital_laser' ? 'selected' : ''}>Carpet Bomb · circular craters</option><option value="orbital_laser" ${c.support === 'orbital_laser' ? 'selected' : ''}>Orbital Laser · line cut</option></select></label></div>` : ''}
           </div>
           <div class="tg-col">
             <h4>Hostiles <span>${c.useMapHostiles ? 'map pods' : `${total} / ${TEST_LIMITS.total}`}</span></h4>
@@ -121,7 +126,7 @@ export class TestGroundPanel {
         const map = desc.scenario === OPERATION_ID ? `Generated ${desc.operation?.plot || ''}` : SCENARIOS.find(s => s.id === desc.scenario)?.name || desc.scenario;
         const t = desc.test || {};
         const roster = t.enemies ? t.enemies.map(e => `${e.count} ${ENEMIES[e.type]?.name || e.type}`).join(', ') : 'map pods';
-        return `${map} · seed ${desc.seed} · ${Array.isArray(desc.squad) ? desc.squad.length : 4} soldiers · ${roster}${t.alerted ? ' · alerted' : ''}${t.objective === 'eliminate' ? ' · eliminate' : ''}${t.rounds ? ` · ${t.rounds} rounds` : ''}`;
+        return `${map} · seed ${desc.seed} · ${Array.isArray(desc.squad) ? desc.squad.length : 4} soldiers · ${roster}${t.alerted ? ' · alerted' : ''}${t.objective === 'eliminate' ? ' · eliminate' : ''}${t.rounds ? ` · ${t.rounds} rounds` : ''}${desc.intel ? ' · intel rules' : ''}`;
     }
     validDesc() {
         try { return sanitizeDesc(this.desc); } catch (err) { this.hooks.status(`Setup problem: ${err.message}`); return null; }
@@ -136,7 +141,7 @@ export class TestGroundPanel {
         else if (f === 'podSize') this.c.podSize = Number(v);
         else if (f === 'name') { this.name = v; return; }
         else this.c[f] = v;
-        if (f !== 'autopilot' && f !== 'debug') this.clearPreview();
+        if (!['autopilot', 'debug', 'support'].includes(f)) this.clearPreview();
         this.render();
     }
     async onClick(e) {

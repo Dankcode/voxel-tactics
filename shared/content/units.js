@@ -10,21 +10,23 @@ export const BODY = Object.freeze({
 });
 export const PARTS = Object.freeze(['head', 'torso', 'armL', 'armR', 'legs']);
 
+// `name` is the classic (default) role. Intel co-op rules (experimental, opt-in) add sensing abilities and show
+// `intelName` / `intelRole` instead; see displayName().
 export const CLASSES = Object.freeze({
-    vanguard: { id: 'vanguard', name: 'Faultfinder', role: 'Seismic sensing through grounded terrain; terrain shaping', art: 'vanguard', hp: UNIT_HP, accuracy: 0.9, mobility: 3.4, will: 6, armor: 'medium',
+    vanguard: { id: 'vanguard', name: 'Assault', role: 'Close quarters: shotgun, sidearm, knife', intelName: 'Faultfinder', intelRole: 'Seismic sensing through grounded terrain; terrain shaping', art: 'vanguard', hp: UNIT_HP, accuracy: 0.9, mobility: 3.4, will: 6, armor: 'medium',
         weapons: ['blunderbuss', 'handcannon', 'sword'], items: { fire_flask: 1, smoke_pot: 1 }, abilities: ['seismic_sense', 'earth_cover', 'dash'] },
-    grenadier: { id: 'grenadier', name: 'Tidekeeper', role: 'Water-linked enemy sensing; healing and suppression', art: 'grenadier', hp: UNIT_HP, accuracy: 0.85, mobility: 2.9, will: 6, armor: 'heavy',
+    grenadier: { id: 'grenadier', name: 'Grenadier', role: 'Assault rifle, frag grenades, demolition', intelName: 'Tidekeeper', intelRole: 'Water-linked enemy sensing; healing and suppression', art: 'grenadier', hp: UNIT_HP, accuracy: 0.85, mobility: 2.9, will: 6, armor: 'heavy',
         weapons: ['repeater'], items: { powder_bomb: 2, gale_flask: 1 }, abilities: ['water_sense', 'water_mend', 'demolish', 'suppress'] },
-    marksman: { id: 'marksman', name: 'Skywatch', role: 'Scout drone reconnaissance; precision engagement', art: 'marksman', hp: UNIT_HP, accuracy: 1.0, mobility: 3.1, will: 7, armor: 'light',
+    marksman: { id: 'marksman', name: 'Sharpshooter', role: 'Sniper rifle and sidearm; overwatch from height', intelName: 'Skywatch', intelRole: 'Scout drone reconnaissance; precision engagement', art: 'marksman', hp: UNIT_HP, accuracy: 1.0, mobility: 3.1, will: 7, armor: 'light',
         weapons: ['longrifle', 'handcannon'], items: { smoke_pot: 1, frost_flask: 1 }, abilities: ['scout_drone', 'quick_aim', 'deadeye'] },
-    warden: { id: 'warden', name: 'Ghostwright', role: 'Quiet wall cutting; protected infiltration', art: 'warden', hp: UNIT_HP, accuracy: 0.88, mobility: 2.9, will: 7, armor: 'plate',
+    warden: { id: 'warden', name: 'Breacher', role: 'Ballistic shield, suppressed carbine, breaching charges', intelName: 'Ghostwright', intelRole: 'Quiet wall cutting; protected infiltration', art: 'warden', hp: UNIT_HP, accuracy: 0.88, mobility: 2.9, will: 7, armor: 'plate',
         weapons: ['crossbow', 'sword'], items: { breach_charge: 2, water_flask: 1 }, abilities: ['quiet_cut', 'brace', 'rally'] }
 });
 
 export const ENEMIES = Object.freeze({
     cultist: { id: 'cultist', name: 'Gunman', faction: 'syndicate', art: 'cultist', hp: UNIT_HP, accuracy: 0.55, mobility: 3, will: 4, armor: 'light',
         weapons: ['musket', 'sword'], items: { fire_flask: 1 }, abilities: [] },
-    archer: { id: 'archer', name: 'Drone Hunter', droneDetector: true, faction: 'syndicate', art: 'archer', hp: UNIT_HP, accuracy: 0.64, mobility: 3.2, will: 4, armor: 'hide',
+    archer: { id: 'archer', name: 'Lookout', intelName: 'Drone Hunter', droneDetector: true, faction: 'syndicate', art: 'archer', hp: UNIT_HP, accuracy: 0.64, mobility: 3.2, will: 4, armor: 'hide',
         weapons: ['shortbow'], items: {}, abilities: [] },
     pyromancer: { id: 'pyromancer', name: 'Arsonist', faction: 'syndicate', art: 'pyromancer', hp: UNIT_HP, accuracy: 0.68, mobility: 2.8, will: 6, armor: 'light',
         weapons: ['firelance'], items: { fire_flask: 2 }, abilities: [] },
@@ -70,3 +72,9 @@ export const FACTIONS = Object.freeze({
 });
 /** Squad callsigns, dealt in order. */
 export const CALLSIGNS = Object.freeze(['Reyes', 'Kowalski', 'Okafor', 'Tanaka', 'Moreau', 'Lindqvist', 'Haddad', 'Novak']);
+
+/** The name a unit type shows: its intel role name under the opt-in intel co-op rules, else the classic name. */
+export function displayName(type, intelMode = false) {
+    const def = CLASSES[type] || ENEMIES[type];
+    return (intelMode && def?.intelName) || def?.name || type;
+}

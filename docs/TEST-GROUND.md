@@ -11,6 +11,7 @@ The menu, links, online rooms and the sim all produce the same descriptor (`shar
 ```js
 { scenario: 'main-street' | 'operation' | …, seed, squad: ['vanguard', 'marksman', …] | 'standard',
   operation?: { plot, objective, timeOfDay },            // generated operations only
+  intel?, asyncCoop?, support?,                           // experimental intel co-op rules (opt-in, see INTEL-COOP-TEST)
   test?: {                                               // shared/session/TestGround.js
     enemies: [{ type: 'cultist', count: 4 }, …] | null,  // null keeps the map's own pods
     podSize: 1–4, alerted: bool, objective: 'map' | 'eliminate',

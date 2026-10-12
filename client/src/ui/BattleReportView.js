@@ -52,7 +52,7 @@ export function reportMarkup(r, { saved = true, canEdit = true, tab = 'squad' } 
     const section = (id, body) => `<section class="rsec ${id === tab ? '' : 'hidden'}" data-tab="${id}" role="tabpanel">${body}</section>`;
     return `<div class="rcard ${r.outcome.winner}" role="dialog" aria-label="After-action report">
       <header class="rtop">
-        <div><span class="kicker">After-action report${sc.test ? ' · Test ground' : ''}</span><h2>${title(r)}</h2>
+        <div><span class="kicker">After-action report${sc.test ? ' · Test ground' : ''}${sc.rules === 'intel' ? ' · Intel co-op rules' : ''}</span><h2>${title(r)}</h2>
           <p class="rsub">${esc(REASONS[r.outcome.reason] || r.outcome.reason)} · ${esc(sc.name)} · seed ${esc(sc.seed)}${sc.timeOfDay ? ` · ${esc(sc.timeOfDay)}` : ''}</p></div>
         <div class="ractions"><button data-act="restart" class="primary">Replay</button>${canEdit ? '<button data-act="reportEdit">Edit setup</button>' : ''}<button data-act="menu">Menu</button></div>
       </header>
@@ -64,7 +64,7 @@ export function reportMarkup(r, { saved = true, canEdit = true, tab = 'squad' } 
       ${section('weapons', r.weapons.length ? `<div class="rtable"><table><thead><tr><th>Side</th><th>Weapon</th><th>Shots</th><th>Hit</th><th>Projectiles hit</th><th>Damage</th><th>Kills</th></tr></thead><tbody>${weaponRows}</tbody></table></div>` : '<p class="rnone">No shots fired.</p>')}
       ${section('field', `<div class="rgrid">${field.map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>
         <dl class="rdl"><dt>Objective</dt><dd>${esc(r.objective.kind)} — ${esc(r.objective.status)}${r.objective.deadline ? ` · deadline round ${r.objective.deadline}` : ''}</dd>
-        <dt>Setup</dt><dd>${esc(testSummary(sc.test))}</dd><dt>Squad</dt><dd>${esc(r.squad.map(s => s.typeName).join(', '))}</dd>
+        <dt>Setup</dt><dd>${esc(testSummary(sc.test))}</dd><dt>Rules</dt><dd>${sc.rules === 'intel' ? `Intel co-op (experimental)${sc.intel?.asyncCoop ? ' · independent turns' : ''} · support ${esc(sc.intel?.support || '')}` : 'Classic'}</dd><dt>Squad</dt><dd>${esc(r.squad.map(s => s.typeName).join(', '))}</dd>
         <dt>Map</dt><dd>${esc(sc.id)}${sc.operation ? ` · ${esc(sc.operation.plot)}` : ''}${sc.size ? ` · ${esc(sc.size)}` : ''}</dd></dl>`)}
       ${section('timeline', r.timeline.length ? `<ol class="rtime">${r.timeline.map(t => `<li class="${t.side}"><span>R${t.round}</span>${esc(t.text)}</li>`).join('')}</ol>` : '<p class="rnone">Nothing notable happened.</p>')}
       <footer class="rfoot"><button data-act="reportCopy">Copy summary</button><button data-act="reportJson">Download JSON</button>

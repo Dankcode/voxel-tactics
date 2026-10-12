@@ -14,6 +14,9 @@ import { sanitizeDesc } from '../../shared/session/Scenarios.js';
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const params = new URLSearchParams(location.search);
+// Which code this page was built from (vite.config.js): `npm run dev` is always live source; the server on :2567
+// serves the last `npm run build`, so compare this line when two runs look different.
+const BUILD = typeof __BUILD__ !== 'undefined' ? __BUILD__ : { commit: 'dev', time: '', dirty: false };
 const menu = $('#menu');
 let game = null;
 
@@ -51,8 +54,8 @@ async function showMenu(opts = {}) {
           <label>Squad <select id="m-squad">${Object.keys(SQUADS).map(k => `<option>${k}</option>`).join('')}</select></label>
         </div>
         <label class="check"><input id="m-debug" type="checkbox" ${params.get('debug') ? 'checked' : ''}> Debug mode (F1 in battle: spawn, teleport, destroy, elements, overlays, AI stepping, operation generator)</label>
-        <label class="check"><input id="m-intel" type="checkbox" checked> Intel co-op test build · independent turns, sensors and quiet breaches</label>
-        <label>Match support <select id="m-support"><option value="carpet_bomb">Carpet Bomb · circular craters</option><option value="orbital_laser">Orbital Laser · line cut</option></select></label>
+        <label class="check"><input id="m-intel" type="checkbox" ${params.get('intel') ? 'checked' : ''}> Intel co-op rules (experimental) · sensing roles, drones, quiet cuts, precision shots, independent turns</label>
+        <label id="m-support-row" ${params.get('intel') ? '' : 'hidden'}>Match support <select id="m-support"><option value="carpet_bomb">Carpet Bomb · circular craters</option><option value="orbital_laser">Orbital Laser · line cut</option></select></label>
         <section id="m-inventory"></section>
         <div class="row buttons">
           <button id="m-local" class="primary">Play vs AI</button>
@@ -66,8 +69,10 @@ async function showMenu(opts = {}) {
           <button id="m-join">Join</button>
         </div>
         <p class="status" id="m-status" role="status"></p>
-        <p class="small">Online co-op needs <code>npm run server</code> running. Units are dealt to players round-robin; Intel test mode lets each player end and refresh their own turn immediately, with an enemy response per completion. Other players keep their actions. Supports unlock after detection and recharge every 10 personal turns. Sensor contacts are shared snapshots, not direct firing targets.</p>
+        <p class="small">Online co-op needs <code>npm run server</code> running. Units are dealt to players round-robin; the squad ends its turn when every player has pressed End turn. With the experimental intel rules each player ends and refreshes their own turn, with an enemy response per completion; supports unlock after detection and recharge every 10 personal turns; sensor contacts are shared snapshots, not firing targets.</p>
+        <p class="small build">Build ${esc(BUILD.commit)} · ${esc(BUILD.time)}${BUILD.dirty ? ' · uncommitted changes' : ''}</p>
       </div>`;
+    $('#m-intel').onchange = e => { $('#m-support-row').hidden = !e.target.checked; };
     const prep=new InventoryPrep($('#m-inventory'),$('#m-squad').value);
     $('#m-squad').onchange=()=>prep.reset($('#m-squad').value);
     let scenario = pick;
@@ -151,7 +156,7 @@ if (params.get('test')) {
 // Deep link for quick testing: ?play=cedar-close&seed=3 (&debug=1 &auto=1 &cutins=off)
 if (params.get('play')) {
     const operation = params.get('play') === OPERATION_ID ? { plot: params.get('plot'), objective: params.get('objective'), timeOfDay: params.get('time') } : undefined;
-    LocalSession.create({ scenario: params.get('play'), seed: Number(params.get('seed')) || 1, squad: params.get('squad') || 'standard', debug: !!params.get('debug'), operation }).then(async session => {
+    LocalSession.create({ scenario: params.get('play'), seed: Number(params.get('seed')) || 1, squad: params.get('squad') || 'standard', debug: !!params.get('debug'), operation, ...(params.get('intel') ? { intel: true, asyncCoop: true, support: params.get('support') === 'orbital_laser' ? 'orbital_laser' : 'carpet_bomb' } : {}) }).then(async session => {
         menu.classList.add('hidden');
         game = new Game({ canvas: $('#view'), hudRoot: $('#hud'), cutinRoot: $('#cutin-layer'), floatRoot: $('#float-layer'), onExit: showMenu });
         await game.start(session);

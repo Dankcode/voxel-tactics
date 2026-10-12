@@ -7,7 +7,7 @@ import { watchWeapon, visionProfile } from '../../../shared/battle/WatchSector.j
 // Squad status, equipment workspace, skill dock and precision targeting.
 import { WEAPONS, THROWABLES } from '../../../shared/content/weapons.js';
 import { CALIBERS } from '../../../shared/content/calibers.js';
-import { ABILITIES, CLASSES, ENEMIES } from '../../../shared/content/units.js';
+import { ABILITIES, CLASSES, ENEMIES, displayName } from '../../../shared/content/units.js';
 import { FORMATIONS } from '../../../shared/content/formations.js';
 import { alive } from '../../../shared/battle/Units.js';
 import { inZone, extractionOpen, objectiveStatus } from '../../../shared/battle/Objectives.js';
@@ -236,7 +236,7 @@ export class Hud {
             const def = CLASSES[u.type] || ENEMIES[u.type] || {};
             const w = WEAPONS[u.weapon], vision = visionProfile(u, watchWeapon(u));
             const enabled=g.controllable(u)&&g.canAct();
-            up.innerHTML = `<div class="character-heading"><img src="/assets/characters/test-soldier/portrait.png" alt=""><div><div class="uname">${esc(u.name)}</div><div class="uclass">${esc(def.name||u.type)}</div><div class="nums"><span>HP ${u.hp}/${u.maxHp}</span><span>AP ${u.ap}/${u.maxAp}</span><span>Will ${u.will}</span></div></div></div><div class="hp seg">${segs(u.hp,u.maxHp)}</div>
+            up.innerHTML = `<div class="character-heading"><img src="/assets/characters/test-soldier/portrait.png" alt=""><div><div class="uname">${esc(u.name)}</div><div class="uclass">${esc(displayName(u.type, b.intelMode))}</div><div class="nums"><span>HP ${u.hp}/${u.maxHp}</span><span>AP ${u.ap}/${u.maxAp}</span><span>Will ${u.will}</span></div></div></div><div class="hp seg">${segs(u.hp,u.maxHp)}</div>
             <div class="equipment-tabs"><button data-act="equipmentTab" data-arg="weapons" class="${this.equipmentTab==='weapons'?'on':''}">Weapons</button><button data-act="equipmentTab" data-arg="pack" class="${this.equipmentTab!=='weapons'?'on':''}">Pack · ${u.inventory?.length||0}</button></div><div class="${this.equipmentTab==='weapons'?'':'hidden'}">${u.weapons.map(id=>{const w=WEAPONS[id];return `<div class="weapon-row"><button data-act="weapon" data-arg="${id}" ${!enabled||u.ap<b.shotAp(u,w)||(w.ammo&&(u.ammo[id]||0)<(w.perShot||1))?'disabled':''}><b>${esc(w.name)}</b><small>${w.ammo?`${u.ammo[id]||0}/${w.ammo} rounds · `:''}${w.ap} AP</small></button>${w.ammo?`<button data-act="reloadWeapon" data-arg="${id}" title="Reload ${esc(w.name)}" ${!enabled||u.ap<w.reloadAp||u.ammo[id]===w.ammo?'disabled':''}>↻</button>`:''}</div>`;}).join('')}
             </div><div class="${this.equipmentTab!=='weapons'?'':'hidden'}">${packMarkup(u.inventory||[],false)}</div><small class="vision-info">Vision ${vision.sightRange} tiles · reaction ${vision.halfAngleDeg*2}° / ${vision.range} tiles · ${vision.armor} armour</small><div class="tags">${u.statuses.map(s=>`<span>${s.id}</span>`).join('')}</div>`;
             up.querySelectorAll('.pack-item').forEach(el=>{el.dataset.act='item';el.dataset.arg=el.dataset.item;el.disabled=!enabled||u.ap<THROWABLES[el.dataset.item].ap;});

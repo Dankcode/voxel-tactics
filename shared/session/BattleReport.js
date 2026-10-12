@@ -1,13 +1,12 @@
 // After-battle status report: everything a tester needs to compare scenario runs, derived from the battle's event
 // log and final unit state. Pure (no clock, no DOM): the client shows it after every battle, the sim prints it, and
 // tests check it. Plain JSON, so it can be saved, downloaded and diffed.
-import { CLASSES, ENEMIES, ABILITIES } from '../content/units.js';
+import { ABILITIES, displayName } from '../content/units.js';
 import { WEAPONS, THROWABLES } from '../content/weapons.js';
 import { objectiveStatus } from '../battle/Objectives.js';
 
 export const REPORT_VERSION = 1;
 const pct = (a, b) => (b ? Math.round((a / b) * 1000) / 10 : null);
-const typeName = u => (CLASSES[u.type] || ENEMIES[u.type])?.name || u.type;
 const statusOf = u => (u.extracted ? 'extracted' : u.dead ? 'killed' : u.down ? 'down' : u.hp < u.maxHp ? 'wounded' : 'unhurt');
 
 /**
@@ -17,6 +16,7 @@ const statusOf = u => (u.extracted ? 'extracted' : u.dead ? 'killed' : u.down ? 
  */
 export function battleReport(battle, desc = {}, extra = {}) {
     const b = battle, m = b.mission;
+    const typeName = u => displayName(u.type, !!b.intelMode);
     const per = new Map(b.units.map(u => [u.id, {
         id: u.id, name: u.name || typeName(u), side: u.side, type: u.type, typeName: typeName(u), group: u.group ?? null,
         status: statusOf(u), hp: Math.max(0, u.hp), maxHp: u.maxHp, will: u.will, stress: u.stress ?? 0,
@@ -128,6 +128,7 @@ export function battleReport(battle, desc = {}, extra = {}) {
         scenario: {
             id: desc.scenario || m.id || null, name: m.name || m.id || desc.scenario || 'Mission', seed: desc.seed ?? b.seed,
             squad: desc.squad ?? null, operation: desc.operation || null, test: desc.test || null,
+            rules: b.intelMode ? 'intel' : 'classic', ...(b.intelMode ? { intel: { asyncCoop: !!b.asyncCoop, support: desc.support || 'carpet_bomb' } } : {}),
             timeOfDay: m.meta?.timeOfDay || null, size: m.store ? `${m.store.width}×${m.store.depth}×${m.store.height}` : null
         },
         outcome: { winner: outcome.winner, reason: outcome.reason, rounds: outcome.round ?? rounds, firstContactRound: firstContact },
@@ -157,7 +158,7 @@ export function reportText(r) {
     const head = r.outcome.winner === 'player' ? 'MISSION COMPLETE' : r.outcome.winner === 'enemy' ? 'MISSION FAILED' : r.outcome.winner === 'draw' ? 'DRAW' : 'ABANDONED';
     const lines = [
         `${head} — ${r.outcome.reason} · round ${r.outcome.rounds}${r.outcome.firstContactRound ? ` · first contact round ${r.outcome.firstContactRound}` : ''}`,
-        `${sc.name} (${sc.id}${sc.operation ? `/${sc.operation.plot}` : ''}, seed ${sc.seed}${sc.timeOfDay ? `, ${sc.timeOfDay}` : ''})${sc.test ? ' · TEST GROUND' : ''}`,
+        `${sc.name} (${sc.id}${sc.operation ? `/${sc.operation.plot}` : ''}, seed ${sc.seed}${sc.timeOfDay ? `, ${sc.timeOfDay}` : ''})${sc.test ? ' · TEST GROUND' : ''}${sc.rules === 'intel' ? ' · INTEL RULES' : ''}`,
         `Objective: ${r.objective.kind} — ${r.objective.status}${r.objective.deadline ? ` (deadline round ${r.objective.deadline})` : ''}`,
         `Squad: ${P.standing}/${P.units} standing · HP ${P.hpLeft}/${P.hpMax} · ${plural(P.kills, 'kill')} · accuracy ${P.accuracy ?? '–'}% (${P.shotsHit}/${P.shots}) · dealt ${P.damageDealt} · took ${P.damageTaken}${P.friendlyDamage ? ` · friendly fire ${P.friendlyDamage}` : ''}`,
         `Hostiles: ${E.standing}/${E.units} standing · ${plural(E.kills, 'kill')} · accuracy ${E.accuracy ?? '–'}% (${E.shotsHit}/${E.shots}) · dealt ${E.damageDealt}`,

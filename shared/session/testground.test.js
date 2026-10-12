@@ -7,6 +7,7 @@ import { runAiSide } from '../battle/Ai.js';
 import { reachable, nodeKey } from '../world/PathSearch.js';
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
 import { MAT } from '../voxel/Materials.js';
+import { displayName } from '../content/units.js';
 
 test('test ground settings are validated and normalised', () => {
     assert.equal(sanitizeTest(undefined), null);
@@ -69,4 +70,17 @@ test('the after-action report adds up and survives a JSON round trip', () => {
     assert.deepEqual(JSON.parse(JSON.stringify(r)), r);
     const text = reportText(r);
     assert.match(text, /TEST GROUND/); assert.match(text, /Soldiers:/); assert.match(text, /Gunman ×3/);
+});
+
+test('classic rules are the default; intel co-op rules are opt-in and labelled in the report', () => {
+    assert.equal(displayName('vanguard'), 'Assault'); assert.equal(displayName('archer'), 'Lookout');
+    assert.equal(displayName('vanguard', true), 'Faultfinder'); assert.equal(displayName('archer', true), 'Drone Hunter');
+    const classic = createBattle(sanitizeDesc({ scenario: 'proving-grounds', seed: 2 }));
+    assert.equal(classic.intelMode, false); assert.equal(classic.asyncCoop, false);
+    const intel = createBattle(sanitizeDesc({ scenario: 'proving-grounds', seed: 2, intel: true, asyncCoop: true, support: 'orbital_laser', test: { enemies: [{ type: 'archer', count: 2 }] } }));
+    assert.equal(intel.intelMode, true);
+    const r = battleReport(intel, sanitizeDesc({ scenario: 'proving-grounds', seed: 2, intel: true, asyncCoop: true, support: 'orbital_laser' }));
+    assert.equal(r.scenario.rules, 'intel'); assert.equal(r.scenario.intel.support, 'orbital_laser');
+    assert.equal(r.hostiles[0].typeName, 'Drone Hunter'); assert.equal(r.squad[0].typeName, 'Faultfinder');
+    assert.equal(battleReport(classic, { scenario: 'proving-grounds', seed: 2 }).squad[0].typeName, 'Assault');
 });

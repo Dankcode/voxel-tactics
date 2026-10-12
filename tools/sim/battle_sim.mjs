@@ -9,6 +9,7 @@
 //   --enemies cultist:3,brute:2 [--pod 3] [--alerted] [--objective eliminate] [--deadline 12] [--time night]
 //   --setup file.json   a downloaded after-action report or a scenario descriptor: rerun that exact setup
 //   --report            print the after-action report summary of every battle
+//   --intel             experimental intel co-op rules (classic turn order)
 //   --reports out.json  write every battle's full report (JSON array)
 import fs from 'node:fs';
 import os from 'node:os';
@@ -37,6 +38,8 @@ const flagTest = (args.enemies || args.alerted || args.objective || args.deadlin
     rounds: args.deadline ? Number(args.deadline) : null, timeOfDay: typeof args.time === 'string' ? args.time : null
 } : null;
 const TEST = flagTest || setupDesc?.test || null;
+// --intel runs the experimental intel co-op rules (sensing roles, precision fire) with the classic turn order.
+const INTEL = args.intel || setupDesc?.intel ? { intel: true } : {};
 const scenarios = setupDesc ? [{ scenario: setupDesc.scenario, ...(setupDesc.operation ? { operation: setupDesc.operation } : {}) }]
     : args.scenario === 'all' ? SCENARIOS.map(m => ({ scenario: m.id }))
     : args.scenario === 'operation' ? (PLOTS.includes(args.plot) ? [args.plot] : PLOTS).map(plot => ({ scenario: 'operation', operation: { plot } }))
@@ -117,7 +120,7 @@ async function main() {
 const report = { args, scenarios: [] }, allReports = [];
 let gateFail = false;
 for (const sc of scenarios) {
-    const descs = Array.from({ length: SEEDS }, (_, i) => sanitizeDesc({ ...sc, seed: i + 1, squad: args.squad || setupDesc?.squad || 'standard', ...(TEST ? { test: TEST } : {}) }));
+    const descs = Array.from({ length: SEEDS }, (_, i) => sanitizeDesc({ ...sc, seed: i + 1, squad: args.squad || setupDesc?.squad || 'standard', ...(TEST ? { test: TEST } : {}), ...INTEL }));
     const compare = !!args['formations-compare'];
     const all = await runAll([...descs.map(d => [d, true]), ...(compare ? descs.map(d => [d, false]) : [])]);
     const withF = all.slice(0, descs.length);
