@@ -348,3 +348,9 @@ button {text-transform:none;letter-spacing:0;border-radius:8px;}
 @media (max-width: 600px) { .rcard { padding: 16px; } .rcard h2 { font-size: 24px; } .rdl { grid-template-columns: 1fr; } }
 .tg-modal[hidden], .tg-preview[hidden], #tab-test[hidden], #tab-play[hidden] { display: none; }
 .outcome { z-index: 12; }
+/* Keep co-op status and read-only logs clear of action controls. */
+.log { bottom: 98px; pointer-events: none; }
+.topbar .mission { min-width: 0; }
+.topbar .mission span { display: block; max-width: 430px; max-height: 56px; overflow: auto; }
+.intel-mode .turnbox .phase { max-width: 250px; font-size: 14px; }
+.intel-mode .bigpct { font-size: 18px; }

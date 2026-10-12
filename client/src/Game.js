@@ -1,3 +1,4 @@
+import { footprint } from '../../shared/battle/IntelOps.js';
 import { InteriorVisibility } from './render/InteriorVisibility.js';
 import { battleReport } from '../../shared/session/BattleReport.js';
 import { saveReport } from './ui/TestGroundStore.js';
@@ -118,7 +119,8 @@ export class Game {
         this.cameraDirector.store = store;
         await Promise.all(this.battle.units.map(u => this.addView(u)));
         this.selected = null; this.mode = { kind: 'move' };
-        const first = this.battle.unitsOf('player')[0];
+        this.intelOverlaySeq=null;this.overlays.showIntel(this.battle);
+        const first = this.battle.unitsOf('player').find(u=>this.controllable(u));
         this.scene.focus(store.width / 2, 2, store.depth / 2);
         if (first) this.select(first.id, { snap: true });
         this.fx.syncField(this.battle.field);
@@ -171,6 +173,7 @@ export class Game {
             this.scene.updateCamera(dt);
             this.scene.renderer.render(this.scene.scene, this.cameraDirector.cam);
         } else this.scene.render(dt);
+        if(this.battle?.intelMode && this.intelOverlaySeq!==this.battle.seq){this.intelOverlaySeq=this.battle.seq;this.overlays.showIntel(this.battle);}
         this.hud.tick?.(dt);
         requestAnimationFrame(this.loop);
     }
@@ -180,7 +183,7 @@ export class Game {
     /** Units the local player may command right now (debug can hand over the enemy side). */
     controllable(u) {
         if (!u || !alive(u) || u.side !== this.battle.activeSide) return false;
-        if (u.side === 'player') return true;
+        if (u.side === 'player') return this.session.local || u.owner===this.session.playerId;
         return this.debug.manualEnemy;
     }
     isVisible(u) { return u.side==='player' || !this.fog || (this.battle.visible?.has(u.id) && !this.voxelView.interiorVisibility.hiddenAt(u.x,u.y,u.z+1)); }
@@ -258,7 +261,7 @@ export class Game {
     }
     refreshRange() {
         const u = this.selectedUnit();
-        if (!u || this.mode.kind !== 'move' || !this.controllable(u) || !this.player.idle() || this.battle.outcome) { this.overlays.clearRange(); this.search = null; this.zones = null; return; }
+        if (!u || this.mode.kind !== 'move' || !this.controllable(u) || (this.session.local && !this.player.idle()) || this.battle.outcome) { this.overlays.clearRange(); this.search = null; this.zones = null; return; }
         this.search = this.battle.reach(u);
         const minAct = this.minActionAp(u), zones = new Map();
         for (const [k, cost] of this.search.costs) {
@@ -302,7 +305,7 @@ export class Game {
     confirmFire() { if (this.mode.kind === 'shoot' && this.targetInfo) this.fire(this.targetInfo.target, this.targetInfo.part); }
 
     // ------------------------------------------------------------------ intents
-    canAct() { return this.battle && !this.battle.outcome && this.player.idle() && this.session.canAct?.() !== false && (this.battle.activeSide === 'player' || this.debug.manualEnemy) && !this.aiRunning; }
+    canAct() { return this.battle && !this.battle.outcome && (!this.session.local || this.player.idle()) && this.session.canAct?.() !== false && (this.battle.activeSide === 'player' || this.debug.manualEnemy) && !this.aiRunning; }
     async intent(partial) {
         const u = this.selectedUnit();
         if (!this.canAct()) return { ok: false };
@@ -453,7 +456,7 @@ export class Game {
         this.cutins.newTurn();
         this.hud.squadSpent(false);
         this.overlays.clearAim(); this.overlays.clearPath();
-        if (e.side === 'player') this.hud.banner(`ROUND ${e.round}`, 'SQUAD PHASE', 'player');
+        if (e.side === 'player') this.hud.banner(this.battle.asyncCoop?`ENEMY BEAT ${e.round}`:`ROUND ${e.round}`, this.battle.asyncCoop?'INDEPENDENT TURNS':'SQUAD PHASE', 'player');
         else this.hud.banner('ENEMY ACTIVITY', 'HOSTILE PHASE', 'enemy');
         this.hud.log(e.side === 'player' ? `Round ${e.round}` : 'Enemy activity…');
     }
@@ -639,7 +642,8 @@ export class Game {
                 const a = ABILITIES[this.mode.abilityId];
                 const intent = {type:'ability', unitId:u.id, abilityId:a.id, to:this.hoverCell, targetId:unit?.id, by:'*'};
                 const reason = this.battle.validate(intent);
-                this.overlays.showAbilityTile(a.targeting === 'ally' ? unit : this.hoverCell, !reason);
+                if(a.support && this.hoverCell)this.overlays.showSupportArea(footprint(this.battle,a.id,this.hoverCell),!reason);
+                else this.overlays.showAbilityTile(a.targeting === 'ally' ? unit : this.hoverCell, !reason);
                 this.hud.cursorTip(e.clientX,e.clientY, reason ? `${a.name} · ${reasonText(reason)}` : `${a.name} · click to cast · ${a.ap} AP / ${a.wp} WP`);
                 break;
             }

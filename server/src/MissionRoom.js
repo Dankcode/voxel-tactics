@@ -5,8 +5,9 @@
 // Clients hydrate the server’s compiled mission and apply the same stream, reaching the same state hash
 // (broadcast after each intent for desync detection). AI turns are decided here and streamed too.
 //
-// Squad units are dealt round-robin to connected players; the squad's turn ends when every connected
-// player has voted End Turn. Reconnects get the full intent log and replay it.
+// Squad units are dealt round-robin. Experimental co-op ends a personal turn without a vote,
+// then streams the enemy response and refreshes only that owner's squad. Classic mode retains
+// team votes. Late joins replay the full log; dropped connections have a 60-second grace period.
 import colyseus from 'colyseus';
 import { createBattle, sanitizeDesc } from '../../shared/session/Scenarios.js';
 import { unpackMission } from '../../shared/session/MissionSnapshot.js';
@@ -32,7 +33,8 @@ export class MissionRoom extends Room {
     }
     playerOf(client) { return this.players.find(p => p.sessionId === client.sessionId) || null; }
     onJoin(client, options = {}) {
-        const player = { id: `P${this.nextPlayer++}`, sessionId: client.sessionId, name: String(options.name || 'Player').slice(0, 24) };
+        const player = { id: `P${this.nextPlayer++}`, sessionId: client.sessionId, name: String(options.name || 'Player').slice(0, 24), support: options.support === 'orbital_laser' ? 'orbital_laser' : (this.desc.support || 'carpet_bomb') };
+        if(this.players.length>=this.battle.units.filter(u=>u.side==='player').length)throw new colyseus.ServerError(4212,'No squad slot available');
         this.players.push(player);
         // Deal units first so the joining peer's init log already contains the ownership intent.
         this.reassignOwners();
@@ -53,7 +55,7 @@ export class MissionRoom extends Room {
         if (!this.players.length) return;
         const owners = {};
         this.battle.units.filter(u => u.side === 'player').forEach((u, i) => { owners[u.id] = this.players[i % this.players.length].id; });
-        this.commit({ type: 'owners', owners });
+        this.commit({ type: 'owners', owners, supports:Object.fromEntries(this.players.map(p=>[p.id,p.support])) });
         this.broadcast('players', { players: this.players });
     }
     commit(intent, nonce = null) {
@@ -71,6 +73,11 @@ export class MissionRoom extends Room {
         if (!p || this.battle.outcome) return client.send('reject', { nonce: m?.nonce, reason: 'battle_over' });
         if (intent.type === 'endTurn') {
             if (this.battle.activeSide !== 'player') return client.send('reject', { nonce: m.nonce, reason: 'not_your_turn' });
+            if(this.battle.asyncCoop){
+                const r=this.commit({type:'personalEnd',owner:p.id,by:p.id},m.nonce);
+                if(!r.ok)return client.send('reject',{nonce:m.nonce,reason:r.reason});
+                this.runEnemyTurn();return;
+            }
             this.votes.add(p.id);
             if (this.votes.size < this.players.length) {
                 this.broadcast('votes', { votes: [...this.votes], needed: this.players.length });
@@ -79,7 +86,7 @@ export class MissionRoom extends Room {
             return this.endPlayerTurn(m.nonce);
         }
         if (intent.type === 'debug' && p.id !== 'P1') return client.send('reject', { nonce: m.nonce, reason: 'not_your_unit' });
-        if (intent.type === 'owners') return client.send('reject', { nonce: m.nonce, reason: 'bad_intent' });
+        if (['owners','personalEnd'].includes(intent.type) || !['move','shoot','melee','throw','overwatch','reload','gadget','wait','switchWeapon','ability','door','breach','formation','formation_break','face','extract','recover','debug'].includes(intent.type)) return client.send('reject', { nonce: m.nonce, reason: 'bad_intent' });
         const r = this.commit(intent, m.nonce);
         if (!r.ok) client.send('reject', { nonce: m.nonce, reason: r.reason });
     }

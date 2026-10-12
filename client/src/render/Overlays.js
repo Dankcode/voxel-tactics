@@ -45,6 +45,7 @@ export class Overlays {
         this.aim = new THREE.Group(); this.group.add(this.aim);
         this.debug = new THREE.Group(); this.group.add(this.debug);
         this.debugLayer = new THREE.Group(); this.group.add(this.debugLayer);
+        this.intelGroup=new THREE.Group();this.group.add(this.intelGroup);
         this.objectiveGroup = new THREE.Group(); this.group.add(this.objectiveGroup);
         this.mats = {
             blueLine: glowMaterial(ZONE.blue, 0.95, clip), yellowLine: glowMaterial(ZONE.yellow, 0.95, clip),
@@ -135,7 +136,7 @@ export class Overlays {
             this.shields.add(s);
         }
     }
-    clearAim() { const owned=new Set();for (const c of [...this.aim.children]) { this.aim.remove(c); c.geometry?.dispose?.();if(c.userData.watch)owned.add(c.material); }for(const m of owned)m.dispose();this.watchPreview=null; }
+    clearAim() { const owned=new Set();for (const c of [...this.aim.children]) { this.aim.remove(c); c.geometry?.dispose?.();if(c.userData.watch || c.userData.ownedMaterial)owned.add(c.material); }for(const m of owned)m.dispose();this.watchPreview=null; }
     /** Accuracy cone: lines from the muzzle to a ring of radius r at the aim point. */
     showCone(muzzle, aimPoint, spreadDeg) {
         this.clearAim();
@@ -170,6 +171,20 @@ export class Overlays {
             disc.position.copy(ring.position);
             this.aim.add(ring, disc);
         }
+    }
+    showIntel(battle) {
+        for(const child of [...this.intelGroup.children]){this.intelGroup.remove(child);child.geometry?.dispose();child.material?.dispose();}
+        const add=(c,drone)=>{
+            const m=new THREE.Mesh(drone?new THREE.OctahedronGeometry(.35):new THREE.RingGeometry(.35,.48,24).rotateX(-Math.PI/2),glowMaterial(drone?ZONE.teal:ZONE.yellow,.8));
+            m.material.depthTest=false;m.renderOrder=100;
+            m.position.set(c.x+.5,c.z+(drone?2.5:1.08),c.y+.5);this.intelGroup.add(m);
+        };
+        for(const c of Object.values(battle.contacts))if(!battle.visibleTo('player').has(c.enemyId))add(c,false);
+        for(const d of Object.values(battle.drones))if(d.active)add(d,true);
+    }
+    showSupportArea(cells,valid) {
+        this.clearAim();
+        const mesh=tileMesh(cells,glowMaterial(valid?ZONE.teal:ZONE.red,.4));mesh.userData.ownedMaterial=true;this.aim.add(mesh);
     }
     showAbilityTile(cell, valid) {
         this.clearAim();

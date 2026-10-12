@@ -143,17 +143,17 @@ export class Formations {
     onBreach(units) {
         for (const u of units) { const f = this.of(u); if (f?.template === 'breach_stack') { this.battle.stats.formations.breach_stack.breaches++; this.dissolve(f.id, 'breached'); } }
     }
-    onSideStart(side) {
+    onSideStart(side, owner = null) {
         for (const f of [...this.list.values()]) {
-            if (f.side !== side) continue;
+            if (f.side !== side || (owner && this.battle.unit(f.leaderId)?.owner!==owner)) continue;
             if (f.template === 'crossfire') { this.dissolve(f.id, 'new turn'); continue; }
             if (this.strays(f) === 0) f.cohesion = Math.min(100, f.cohesion + R.cohesionRegain);
             const st = this.battle.stats.formations[f.template]; if (st && this.tier(f) > 0) st.phasesActive++;
         }
     }
-    onSideEnd(side) {
+    onSideEnd(side, owner = null) {
         for (const f of this.list.values()) {
-            if (f.side !== side || f.template !== 'shield_line') continue;
+            if (f.side !== side || (owner && this.battle.unit(f.leaderId)?.owner!==owner) || f.template !== 'shield_line') continue;
             const leader = this.battle.unit(f.leaderId);
             if ((leader?.movedThisTurn || 0) >= 2) f.staticPhases = 0; else f.staticPhases++;
         }

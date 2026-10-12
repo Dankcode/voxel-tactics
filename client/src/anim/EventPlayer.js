@@ -34,13 +34,15 @@ export class EventPlayer {
         const g = this.game, fx = g.fx;
         const clip = EVENT_TO_CLIP[e.t];
         switch (e.t) {
+            case 'intel': g.hud.log(`${e.source}: ${e.contacts.length} shared contact(s)`); break;
+            case 'drone': g.hud.log(e.detected?'Scout drone detected and lost':`Drone scouting ${e.x}, ${e.y}`); break;
             case 'cutin': {
                 const u = g.battle.unit(e.unitId);
                 const group = (e.group || [e.unitId]).map(id => g.battle.unit(id)).filter(Boolean);
                 if (!group.length || (u.side === 'enemy' && !g.isVisible(u))) break;
                 const target = e.targetIds?.[0] ? g.battle.unit(e.targetIds[0]) : null;
                 const title = e.kind === 'breach' ? 'BREACH' : (WEAPONS[e.weaponId]?.name || THROWABLES[e.itemId]?.name || ABILITIES[e.abilityId]?.name || e.kind).toUpperCase();
-                const sub = g.lastPreview?.unitId === e.unitId && g.lastPreview.hit != null ? `${Math.round(g.lastPreview.hit * 100)}% on target` : (target ? `→ ${target.name}` : '');
+                const sub = !g.battle.intelMode && g.lastPreview?.unitId === e.unitId && g.lastPreview.hit != null ? `${Math.round(g.lastPreview.hit * 100)}% on target` : (target ? `→ ${target.name}` : '');
                 const sv = this.view(e.unitId), tv = target ? this.view(target.id) : null;
                 await g.cutins.play({ units: group, kind: e.kind, title, subtitle: sub, side: u.side,
                     shooterPos: sv?.worldPosition(), targetPos: tv ? tv.worldPosition() : sv?.worldPosition().clone().add(new THREE.Vector3(...faceVec(u)).multiplyScalar(4)) });

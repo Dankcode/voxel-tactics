@@ -22,7 +22,7 @@ export function scenarioId(id) { return id === OPERATION_ID || mapById(id) ? id 
 export function sanitizeDesc(d = {}) {
     const scenario = scenarioId(d.scenario);
     const seed = Number.isInteger(Number(d.seed)) && Number(d.seed) >= 0 && Number(d.seed) <= 0xffffffff ? Number(d.seed) : 1;
-    const out = { scenario, seed: seed || 1, squad: d.squad || 'standard', debug: d.debug === true };
+    const out = { scenario, seed: seed || 1, squad: d.squad || 'standard', debug: d.debug === true, intel: d.intel === true, asyncCoop: d.asyncCoop === true, support: d.support === 'orbital_laser' ? 'orbital_laser' : 'carpet_bomb' };
     if (scenario === OPERATION_ID) out.operation = operationOptions(d.operation);
     if (d.inventories!==undefined) {
         const size=Array.isArray(out.squad)?out.squad.length:(SQUADS[out.squad]||SQUADS.standard).length;
@@ -66,5 +66,5 @@ export function createBattle(desc, mission = null) {
     mission ||= buildMission(desc);
     // The test ground applies to the compiled mission on every peer (and the server) alike.
     const enemies = desc.test ? applyTestGround(mission, sanitizeTest(desc.test), desc.seed ?? 1) : null;
-    return new Battle({ mission, squad, seed: desc.seed ?? 1, debug: !!desc.debug, enemies });
+    return new Battle({ mission, squad, seed: desc.seed ?? 1, debug: !!desc.debug, enemies, intel: !!desc.intel, asyncCoop: !!desc.asyncCoop, support: desc.support });
 }

@@ -1,3 +1,4 @@
+import { validateIntel, executeIntel, intelSpread, refreshDrones } from './IntelOps.js';
 import { consumeItem, normalizeInventory, inventoryCounts } from '../inventory/Inventory.js';
 import { watchSector, inWatchSector } from './WatchSector.js';
 import { LightField } from '../lighting/LightField.js';
@@ -37,7 +38,8 @@ export class Battle {
      * @param {{ mission, squad: {type, owner?, name?}[], seed, controllers? }} o
      * mission: { store, rooms, buildings, spawns: { player: pos[], enemy: {pos, type, group}[] }, name, id }
      */
-    constructor({ mission, squad, seed = 1, controllers = { player: 'human', enemy: 'ai' }, enemies = null, debug = false }) {
+    constructor({ mission, squad, seed = 1, controllers = { player: 'human', enemy: 'ai' }, enemies = null, debug = false, intel = false, asyncCoop = false, support = 'carpet_bomb' }) {
+        this.intelMode=intel; this.asyncCoop=asyncCoop; this.personalTurns={}; this.supportReady={}; this.supportChoices={player:support || 'carpet_bomb'}; this.contacts={}; this.drones={}; this.detected=false; this.refreshOwner=null;
         this.mission = mission;
         this.debugEnabled = !!debug;
         this.store = mission.store;
@@ -124,6 +126,7 @@ export class Battle {
 
     /** Spread in degrees for a shot, with every modifier listed for the HUD. */
     spreadFor(shooter, weapon, aimPoint, { reaction = false, breach = false, target = null } = {}) {
+        if(this.intelMode)return intelSpread(shooter,weapon,this,target);
         const mods = [];
         let s = weapon.spread / Math.max(0.2, accuracyMult(shooter));
         mods.push(['accuracy', +(1 / Math.max(0.2, accuracyMult(shooter))).toFixed(2)]);
@@ -178,6 +181,7 @@ export class Battle {
     validate(intent) {
         if (this.outcome) return 'battle_over';
         if (intent.type === 'endTurn') return intent.side === this.activeSide ? null : 'not_your_turn';
+        if (intent.type === 'personalEnd') return this.asyncCoop && this.activeSide==='player' && (!intent.by || intent.by==='*' || intent.by===intent.owner) && this.unitsOf('player').some(u=>u.owner===intent.owner) ? null : 'bad_intent';
         if (intent.type === 'owners') return intent.owners && typeof intent.owners === 'object' ? null : 'bad_intent';
         if (intent.type === 'debug') return validateDebug(this, intent);
         const u = this.unit(intent.unitId || (intent.type === 'formation_break' ? this.formations.list.get(intent.formationId)?.leaderId : null));
@@ -244,10 +248,11 @@ export class Battle {
             case 'switchWeapon': return u.weapons.includes(intent.weaponId) ? null : 'bad_intent';
             case 'ability': {
                 const a = ABILITIES[intent.abilityId];
-                if (!a || !u.abilities.includes(a.id)) return 'bad_intent';
+                if (!a || !(u.abilities.includes(a.id)||(a.support && this.intelMode))) return 'bad_intent';
                 if (u.will < a.wp) return 'no_will';
                 if (u.ap < a.ap) return 'no_ap';
                 if (hasStatus(u, 'panicked')) return 'no_will';
+                if(a.intel)return validateIntel(this,u,intent);
                 if (a.id === 'earth_cover') {
                     const t = intent.to;
                     if (!t || ![t.x, t.y, t.z].every(Number.isInteger) || !this.store.inBounds(t.x, t.y, t.z + 2)) return 'bad_intent';
@@ -313,9 +318,10 @@ export class Battle {
         const start = this.log.length;
         const u = this.unit(intent.unitId);
         switch (intent.type) {
+            case 'personalEnd': this.refreshOwner=intent.owner; this.personalTurns[intent.owner]=(this.personalTurns[intent.owner]||0)+1; this.endTurn('player'); break;
             case 'endTurn': this.endTurn(intent.side); break;
             case 'debug': applyDebug(this, intent); break;
-            case 'owners': for (const [id, owner] of Object.entries(intent.owners)) { const x = this.unit(id); if (x && x.side === 'player') x.owner = owner; } this.emit({ t: 'owners', owners: intent.owners }); break;
+            case 'owners': Object.assign(this.supportChoices,intent.supports||{}); for (const [id, owner] of Object.entries(intent.owners)) { const x = this.unit(id); if (x && x.side === 'player') x.owner = owner; } this.emit({ t: 'owners', owners: intent.owners }); break;
             case 'move': this.doMove(u, intent.to); if (intent.group) this.formations.follow(u); break;
             case 'shoot': this.doShoot(u, intent); break;
             case 'melee': this.doMelee(u, intent); break;
@@ -342,6 +348,8 @@ export class Battle {
 
     afterAction() {
         this.updateVisibility();
+        if(this.intelMode)refreshDrones(this);
+        if(this.intelMode && this.unitsOf('enemy').some(e=>e.alerted))this.detected=true;
         this.checkOutcome();
     }
 
@@ -349,6 +357,7 @@ export class Battle {
     startSide(side, first = false) {
         this.activeSide = side;
         for (const u of this.unitsOf(side)) {
+            if(side==='player' && this.refreshOwner && u.owner!==this.refreshOwner)continue;
             // Start-of-turn statuses (burning and bleeding deal damage, durations tick).
             for (const s of [...u.statuses]) {
                 const def = STATUS_DEFS[s.id];
@@ -372,14 +381,15 @@ export class Battle {
             // Effects used during this turn survive their final duration tick until the side ends.
             u.statuses = u.statuses.filter(s => s.rounds > 0 || (!STATUS_DEFS[s.id]?.untilOwnTurn && (STATUS_DEFS[s.id]?.noAbilities || STATUS_DEFS[s.id]?.rooted || STATUS_DEFS[s.id]?.accuracyMult)));
         }
-        this.formations.onSideStart(side);
+        this.formations.onSideStart(side,side==='player'?this.refreshOwner:null);
+        if(side==='player')this.refreshOwner=null;
         this.emit({ t: 'turn', side, round: this.round });
     }
 
     endTurn(side) {
-        for (const u of this.unitsOf(side)) u.statuses = u.statuses.filter(s => s.rounds > 0);
+        for (const u of this.unitsOf(side).filter(u=>side!=='player'||!this.refreshOwner||u.owner===this.refreshOwner)) u.statuses = u.statuses.filter(s => s.rounds > 0);
         if (side === 'player') {
-            this.formations.onSideEnd('player');
+            this.formations.onSideEnd('player',this.refreshOwner);
             this.startSide('enemy');
         } else {
             this.formations.onSideEnd('enemy');
@@ -816,6 +826,7 @@ export class Battle {
         u.will -= a.wp; u.ap -= a.ap;
         if (a.id !== 'suppress') this.emit({ t: 'cutin', unitId: u.id, kind: 'skill', abilityId: a.id, targetIds: intent.targetId ? [intent.targetId] : [] });
         this.emit({ t: 'ability', unitId: u.id, abilityId: a.id });
+        if(a.intel){executeIntel(this,u,intent);return;}
         switch (a.id) {
             case 'earth_cover': {
                 const t = intent.to;
@@ -1009,13 +1020,19 @@ export class Battle {
             event.kinds=kinds.slice(0,walked.length-1);
         }
     }
+    spotsPlayer(e,p) {
+        if(!this.sees(e,p))return false;
+        if(!this.intelMode || e.alerted || this.distance(e,p)<=2)return true;
+        const [fx,fy]=FACING_VEC[e.facing]||[0,1],dx=p.x-e.x,dy=p.y-e.y;
+        return dx*fx+dy*fy >= Math.hypot(dx,dy)*Math.hypot(fx,fy)*.5;
+    }
     updateVisibility({initial=false,interior=true}={}) {
         const seen=this.visibleTo('player'),groups=[];
-        for(const id of seen){const e=this.unit(id);if(e&&!e.alerted)groups.push(e.group);if(initial)e.scattered=true;}
-        for(const e of this.unitsOf('enemy'))if(!e.alerted&&this.unitsOf('player').some(p=>this.sees(e,p)))groups.push(e.group);
-        if(groups.length)this.alertGroup(groups,'spotted');
+        for(const id of seen){const e=this.unit(id);if(e&&!e.alerted&&!this.intelMode)groups.push(e.group);if(initial)e.scattered=true;}
+        for(const e of this.unitsOf('enemy'))if(!e.alerted&&this.unitsOf('player').some(p=>this.spotsPlayer(e,p)))groups.push(e.group);
+        if(groups.length){this.alertGroup(groups,'spotted');if(this.intelMode)this.detected=true;}
         this.visible=seen;
-        if(!initial)for(const group of [...new Set([...seen].map(id=>this.unit(id).group))])this.scatterPod(group);
+        if(!initial)for(const group of [...new Set([...seen].map(id=>this.unit(id).group))])if(!this.intelMode||this.unit([...seen].find(id=>this.unit(id).group===group))?.alerted)this.scatterPod(group);
         this.visible=this.visibleTo('player');
         if(interior)this.updateInteriorVision();
     }
@@ -1037,7 +1054,7 @@ export class Battle {
     hash() {
         let voxelHp = 0x811c9dc5;
         for (const hp of this.store.hp) { voxelHp ^= hp; voxelHp = Math.imul(voxelHp, 0x01000193); }
-        const state = { units: this.units, round: this.round, activeSide: this.activeSide, outcome: this.outcome,
+        const state = { intelMode:this.intelMode, asyncCoop:this.asyncCoop, personalTurns:this.personalTurns,supportReady:this.supportReady,supportChoices:this.supportChoices,contacts:this.contacts,drones:this.drones,detected:this.detected,refreshOwner:this.refreshOwner, units: this.units, round: this.round, activeSide: this.activeSide, outcome: this.outcome,
             revealedRooms: [...this.revealedRooms].sort((a, b) => a - b), field: this.field.snapshot(),
             formations: this.formations.snapshot(), nextFormationId: this.formations.nextId,
             objective: this.objective, rng: this.rng.state, debugEnabled: this.debugEnabled, controllers: this.controllers, seq: this.seq };

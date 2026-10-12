@@ -7,9 +7,9 @@ import * as Colyseus from 'colyseus.js';
 import { createBattle } from '../../../shared/session/Scenarios.js';
 
 export class OnlineSession {
-    static async connect({ url, desc = null, roomId = null, name = 'Player' }) {
+    static async connect({ url, desc = null, roomId = null, name = 'Player', support = 'carpet_bomb' }) {
         const client = new Colyseus.Client(url);
-        const room = roomId ? await client.joinById(roomId, { name }) : await client.create('mission', { desc, name });
+        const room = roomId ? await client.joinById(roomId, { name, support }) : await client.create('mission', { desc, name, support });
         // Buffer stream messages that arrive while the mission is being built.
         const early = [];
         for (const type of ['intent', 'reject', 'players', 'hash', 'votes', 'ping']) room.onMessage(type, m => early.push([type, m]));

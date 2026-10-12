@@ -163,7 +163,7 @@ export class Hud {
         const ap = u.ap;
         const ow = WEAPONS[watchWeapon(u)];
         if (ow) s.push({ act: 'overwatch', icon: ICONS.overwatch, name: 'Overwatch', cost: 'all', disabled: ap < ow.ap || (u.ammo[ow.id] ?? 0) < (ow.perShot || 1), on: mode.kind === 'overwatch', tip: '<b>Overwatch</b> · choose direction · all AP · <span style="color:#5ff2d6">Teal ≥65%</span> / <span style="color:#ffb347">Amber &lt;65%</span> estimated hit' });
-        for (const a of u.abilities) { const ab = ABILITIES[a]; s.push({ act: 'ability', arg: a, icon: ICONS[a] || ICONS.ability, name: ab.name, on: mode.abilityId === a || (a === 'suppress' && !!mode.suppress), cost: `${ab.ap || 0}`, sub: `${ab.wp} WP`, disabled: u.will < ab.wp || ap < (ab.ap || 0) || u.statuses.some(s => s.id === 'panicked') || (a === 'suppress' && (u.ammo.repeater ?? 0) < (WEAPONS.repeater.perShot || 1)), tip: `<b>${ab.name}</b> · ${ab.wp} Will${ab.ap ? ` · ${ab.ap} AP` : ''}<br>${esc(ab.text)}` }); }
+        for (const a of [...u.abilities.filter(id=>!ABILITIES[id].intel||b.intelMode), ...(b.intelMode?[b.supportChoices[u.owner]||'carpet_bomb']:[])]) { const ab = ABILITIES[a]; s.push({ act: 'ability', arg: a, icon: ICONS[a] || ICONS.ability, name: ab.name, on: mode.abilityId === a || (a === 'suppress' && !!mode.suppress), cost: `${ab.ap || 0}`, sub: `${ab.wp} WP`, disabled: (ab.support && (!b.detected || (b.personalTurns[u.owner]||0)<(b.supportReady[u.owner]||0))) || u.will < ab.wp || ap < (ab.ap || 0) || u.statuses.some(s => s.id === 'panicked') || (a === 'suppress' && (u.ammo.repeater ?? 0) < (WEAPONS.repeater.perShot || 1)), tip: `<b>${ab.name}</b> · ${ab.wp} Will${ab.ap ? ` · ${ab.ap} AP` : ''}<br>${esc(ab.text)}` }); }
         const f = b.formations.of(u);
         s.push(f ? { act: 'formBreak', arg: f.id, icon: ICONS.formation, name: `Break ${FORMATIONS[f.template].name}`, cost: '0', tip: 'Dissolve the formation' }
             : { act: 'formation', icon: ICONS.formation, name: 'Formation', cost: '1', tip: '<b>Formation</b> (F) · Shield Line, Breach Stack, Crossfire' });
@@ -204,12 +204,14 @@ export class Hud {
         const g = this.game, b = g.battle;
         if (!b) return;
         this.root.classList.toggle('enemy-phase', b.activeSide !== 'player');
+        this.root.classList.toggle('intel-mode',b.intelMode);
         this.el('.mission b').textContent = b.mission.name;
-        this.el('.mission span').textContent = b.mission.objective?.text || '';
+        this.el('.mission span').textContent = b.intelMode ? `${b.mission.objective?.text||''} · ${Object.values(b.contacts).map(c=>`${c.source}: (${c.x},${c.y},${c.z}) @ beat ${c.round}`).join(' · ')||'No sensor contacts'} · Support ${b.detected?'unlocked':'awaiting detection'}${g.selectedUnit()?` · ready in ${Math.max(0,(b.supportReady[g.selectedUnit().owner]||0)-(b.personalTurns[g.selectedUnit().owner]||0))} personal turns`:''}` : b.mission.objective?.text || '';
         this.el('.turnbox .objstat').textContent = objectiveStatus(b.objective, id => b.unit(id)?.name || id);
-        this.el('.round').textContent = `ROUND ${b.round}`;
+        this.el('.round').textContent = b.asyncCoop ? `ENEMY BEAT ${b.round} · YOUR TURN ${(b.personalTurns[g.session.local?'player':g.session.playerId]||0)+1}` : `ROUND ${b.round}`;
+        this.el('.endturn').textContent=b.asyncCoop?'END MY TURN':'END TURN';
         const phase = this.el('.phase');
-        phase.textContent = b.outcome ? 'MISSION OVER' : b.activeSide === 'player' ? 'SQUAD PHASE' : 'ENEMY ACTIVITY';
+        phase.textContent = b.outcome ? 'MISSION OVER' : b.activeSide === 'player' ? (b.asyncCoop ? 'INDEPENDENT TURNS' : 'SQUAD PHASE') : 'ENEMY ACTIVITY';
         phase.className = `phase ${b.activeSide}`;
         this.el('.enemyturn').classList.toggle('hidden', !(b.activeSide !== 'player' && !b.outcome && !g.debug.manualEnemy));
         this.el('.level').textContent = Number.isFinite(g.cutLevel) ? (g.cutLevel===b.mission.meta.streetDatum?'BELOW':`L${Math.round((g.cutLevel - (b.mission.meta.streetDatum||1)) / 3)}`) : 'ALL';
@@ -258,7 +260,7 @@ export class Hud {
         const cur = g.targetInfo?.target?.id;
         el.innerHTML = list.map(t => {
             const hit = cur === t.id && g.targetInfo ? pct(g.targetInfo.byPart[g.targetInfo.part] ?? 0) : '';
-            return `<button class="tgt ${cur === t.id ? 'on' : ''}" data-act="target" data-arg="${t.id}" title="${esc(t.name)}"><img src="/assets/characters/test-soldier/portrait.png" alt=""><span>${hit}</span></button>`;
+            return `<button class="tgt ${cur === t.id ? 'on' : ''}" data-act="target" data-arg="${t.id}" title="${esc(t.name)}"><img src="/assets/characters/test-soldier/portrait.png" alt=""><span>${g.battle.intelMode ? 'LOS' : hit}</span></button>`;
         }).join('');
     }
     renderTarget() {
@@ -267,11 +269,11 @@ export class Hud {
         el.classList.remove('hidden');
         const u = t.target, w = WEAPONS[g.mode.weaponId];
         const main = t.byPart[t.part] ?? 0;
-        el.innerHTML = `<div class="thead"><img src="/assets/characters/test-soldier/portrait.png" alt=""><div><div class="tname">${esc(u.name)}</div><div class="thp seg">${segs(u.hp, u.maxHp)}</div></div><div class="bigpct ${main < 0.35 ? 'low' : main < 0.65 ? 'mid' : 'high'}">${pct(main)}</div></div>
+        el.innerHTML = `<div class="thead"><img src="/assets/characters/test-soldier/portrait.png" alt=""><div><div class="tname">${esc(u.name)}</div><div class="thp seg">${segs(u.hp, u.maxHp)}</div></div><div class="bigpct ${main < 0.35 ? 'low' : main < 0.65 ? 'mid' : 'high'}">${this.game.battle.intelMode ? (t.blocked>.5?'OBSTRUCTED':'CLEAR AIM') : pct(main)}</div></div>
             <div class="tcover">${t.flanked ? '<b class="flank">FLANKED</b>' : `<b class="cov">${['NO COVER', 'HALF COVER', 'FULL COVER'][t.cover] || ''}</b>`} · ${t.distance.toFixed(1)} tiles${t.lean ? ` · lean ${t.lean}` : ''}${t.inRange ? '' : ' · <b class="flank">OUT OF RANGE</b>'}</div>
             <div class="parts">${(g.mode.suppress ? PARTS.filter(([k]) => k === 'torso') : PARTS).map(([k, label, key]) => `<button data-act="part" data-arg="${k}" class="${t.part === k ? 'on' : ''} ${u.parts[k].disabled ? 'dis' : ''}">
-                <b>${label}</b><span>${pct(t.byPart[k] ?? 0)}</span><small>armor ${u.parts[k].armor} · ${u.parts[k].hp}/${u.parts[k].max}</small><kbd>${key}</kbd></button>`).join('')}</div>
-            <div class="tsum">Any hit ${pct(t.anyHit)} · cover blocks ${pct(t.blocked)}${t.friendly > 0.01 ? ` · <b class="warn">friendly ${pct(t.friendly)}</b>` : ''}</div>
+                <b>${label}</b><span>${g.battle.intelMode ? '' : pct(t.byPart[k] ?? 0)}</span><small>armor ${u.parts[k].armor} · ${u.parts[k].hp}/${u.parts[k].max}</small><kbd>${key}</kbd></button>`).join('')}</div>
+            <div class="tsum">${this.game.battle.intelMode ? 'Physical cover still intercepts bullets' : `Any hit ${pct(t.anyHit)} · cover blocks ${pct(t.blocked)}`}${t.friendly > 0.01 ? ` · <b class="warn">friendly ${pct(t.friendly)}</b>` : ''}</div>
             <div class="mods">${t.mods.map(([k, v]) => `<span>${k} ×${v}</span>`).join('')}</div>
             <div class="tbtns"><button data-act="cancel" class="ghost">BACK <kbd>Esc</kbd></button><button data-act="fire" class="firebtn">${esc(g.mode.suppress ? 'SUPPRESSIVE FIRE' : w?.name?.toUpperCase() || 'FIRE')} · ${t.ap} AP${g.mode.suppress ? ` · ${ABILITIES.suppress.wp} WP` : ''} <kbd>Space</kbd></button></div>`;
         this.renderTargets();

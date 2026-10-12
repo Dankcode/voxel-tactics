@@ -51,6 +51,8 @@ async function showMenu(opts = {}) {
           <label>Squad <select id="m-squad">${Object.keys(SQUADS).map(k => `<option>${k}</option>`).join('')}</select></label>
         </div>
         <label class="check"><input id="m-debug" type="checkbox" ${params.get('debug') ? 'checked' : ''}> Debug mode (F1 in battle: spawn, teleport, destroy, elements, overlays, AI stepping, operation generator)</label>
+        <label class="check"><input id="m-intel" type="checkbox" checked> Intel co-op test build · independent turns, sensors and quiet breaches</label>
+        <label>Match support <select id="m-support"><option value="carpet_bomb">Carpet Bomb · circular craters</option><option value="orbital_laser">Orbital Laser · line cut</option></select></label>
         <section id="m-inventory"></section>
         <div class="row buttons">
           <button id="m-local" class="primary">Play vs AI</button>
@@ -64,7 +66,7 @@ async function showMenu(opts = {}) {
           <button id="m-join">Join</button>
         </div>
         <p class="status" id="m-status" role="status"></p>
-        <p class="small">Online co-op needs <code>npm run server</code> running. Units are dealt to players round-robin; the squad ends its turn when every player has pressed End turn. Generated operations are rebuilt from the seed on every peer.</p>
+        <p class="small">Online co-op needs <code>npm run server</code> running. Units are dealt to players round-robin; Intel test mode lets each player end and refresh their own turn immediately, with an enemy response per completion. Other players keep their actions. Supports unlock after detection and recharge every 10 personal turns. Sensor contacts are shared snapshots, not direct firing targets.</p>
       </div>`;
     const prep=new InventoryPrep($('#m-inventory'),$('#m-squad').value);
     $('#m-squad').onchange=()=>prep.reset($('#m-squad').value);
@@ -84,7 +86,7 @@ async function showMenu(opts = {}) {
     $('#m-time').onchange = e => { op.timeOfDay = e.target.value; select(OPERATION_ID); };
     $('#m-dice').onclick = () => { $('#m-seed').value = 1 + Math.floor(Math.random() * 99999); select(OPERATION_ID); if (!$('#m-preview-box').hidden) preview(); };
     const operation = () => ({ plot: op.plot, objective: op.objective || null, timeOfDay: op.timeOfDay || null });
-    const desc = () => ({ scenario, seed: Number($('#m-seed').value) || 1, squad: $('#m-squad').value, debug: $('#m-debug').checked, inventories: prep.inventories(), ...(scenario === OPERATION_ID ? { operation: operation() } : {}) });
+    const desc = () => ({ scenario, seed: Number($('#m-seed').value) || 1, squad: $('#m-squad').value, debug: $('#m-debug').checked, intel: $('#m-intel').checked, asyncCoop: $('#m-intel').checked, support: $('#m-support').value, inventories: prep.inventories(), ...(scenario === OPERATION_ID ? { operation: operation() } : {}) });
     const status = t => { $('#m-status').textContent = t; };
     const preview = async () => {
         select(OPERATION_ID);
@@ -104,8 +106,8 @@ async function showMenu(opts = {}) {
     const launch = (make, { generating = scenario === OPERATION_ID, debug = desc().debug, autopilot = false } = {}) =>
         startBattle(make, { generating, debug, autopilot, status });
     $('#m-local').onclick = () => launch(() => LocalSession.create(desc()));
-    $('#m-host').onclick = () => launch(() => OnlineSession.connect({ url: $('#m-server').value, desc: desc() }));
-    $('#m-join').onclick = () => launch(() => OnlineSession.connect({ url: $('#m-server').value, roomId: $('#m-room').value.trim() }), { generating: false, debug: false });
+    $('#m-host').onclick = () => launch(() => OnlineSession.connect({ url: $('#m-server').value, desc: desc(), support: $('#m-support').value }));
+    $('#m-join').onclick = () => launch(() => OnlineSession.connect({ url: $('#m-server').value, roomId: $('#m-room').value.trim(), support: $('#m-support').value }), { generating: false, debug: false });
     // Test ground (admin): its own panel; launches go through the same path as Play.
     const testLaunch = (online) => (d, client, setup) => {
         saveLastSetup({ setup });

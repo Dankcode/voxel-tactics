@@ -112,3 +112,29 @@ test('room creation rejects malformed packs with a readable inventory error', {t
   await assert.rejects(client.create('mission',{desc:{scenario:'operation',inventories:[[{id:'kit',itemId:'medkit',x:5,y:4,rotated:false}]]}}),error=>error.code===4211&&/soldier 1: Item outside pack/.test(error.message));
  }finally{await srv.close();}
 });
+
+test('four asynchronous peers act independently, reject forged turns, and replay identical hashes', {timeout:30000},async()=>{
+    const srv=await startServer(),rooms=[],peers=[];
+    try {
+        const client=new Client.Client(`ws://127.0.0.1:${srv.port}`);
+        for(let i=0;i<4;i++) {
+            const room=i?await client.joinById(rooms[0].roomId,{support:'orbital_laser'}):await client.create('mission',{desc:{scenario:'proving-grounds',seed:4,intel:true,asyncCoop:true}});
+            rooms.push(room);const peer={seq:0,early:[],hashes:[]};peers.push(peer);
+            const apply=m=>{if(!peer.battle){peer.early.push(m);return;}if(m.seq>peer.seq){assert.equal(m.seq,peer.seq+1);assert.ok(peer.battle.apply(m.intent).ok);peer.seq=m.seq;}};
+            room.onMessage('intent',apply);room.onMessage('hash',m=>peer.hashes.push(m));room.onMessage('players',()=>{});room.onMessage('votes',()=>{});room.onMessage('reject',()=>{});
+            const init=await next(room,'init');peer.battle=createBattle(init.desc,unpackMission(init.mission));peer.id=init.playerId;
+            for(const m of [...init.log,...peer.early])apply(m);
+        }
+        const accepted=(room,nonce,intent)=>new Promise(resolve=>{room.onMessage('intent',m=>{if(m.nonce===nonce)resolve(m);});room.send('intent',{nonce,intent});});
+        await accepted(rooms[1],'p2-wait',{type:'wait',unitId:'p1'});
+        // P1 can complete and refresh while P2, P3 and P4 never vote.
+        await accepted(rooms[0],'p1-end',{type:'endTurn',side:'player'});
+        await new Promise(r=>setTimeout(r,150));
+        for(const p of peers){assert.equal(p.battle.round,2);assert.equal(p.battle.unit('p1').ap,0);assert.equal(p.battle.personalTurns.P1,1);assert.equal(p.battle.unit('p0').ap,4);assert.equal(p.battle.supportChoices.P2,'orbital_laser');}
+        const rejected=next(rooms[1],'reject');rooms[1].send('intent',{nonce:'forged',intent:{type:'personalEnd',owner:'P1'}});assert.equal((await rejected).reason,'bad_intent');
+        await accepted(rooms[2],'p3-sense',{type:'ability',unitId:'p2',abilityId:'scout_drone',to:{x:peers[2].battle.unit('p2').x,y:peers[2].battle.unit('p2').y,z:peers[2].battle.unit('p2').z}});
+        await new Promise(r=>setTimeout(r,100));
+        const hash=peers[0].hashes.at(-1).hash;for(const p of peers)assert.equal(p.battle.hash(),hash);
+        for(const room of rooms)await room.leave();
+    }finally{await srv.close();}
+});

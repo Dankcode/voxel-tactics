@@ -15,7 +15,7 @@ export class LocalSession {
         return new LocalSession(desc, createBattle(desc));
     }
     constructor(desc, battle) { this.desc = desc; this.battle = battle; this.local = true; this.playerId = '*'; }
-    async submit(intent) { return this.battle.apply({ ...intent, by: '*' }); }
+    async submit(intent) { return this.battle.apply(this.battle.asyncCoop && intent.type==='endTurn' && intent.side==='player' ? {type:'personalEnd',owner:'player',by:'*'} : { ...intent, by: '*' }); }
     restart() { return LocalSession.create(this.desc); }
     canAct() { return true; }
 }

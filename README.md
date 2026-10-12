@@ -1,3 +1,7 @@
+## Intel co-op prototype
+
+The new playable test build adds independent 2–4-player turns, intel classes, scout drones, quiet wall cuts, high precision shooting and per-player terrain strikes. See [setup, turn rules and playtest checklist](docs/INTEL-COOP-TEST.md).
+
 # Xcom2 game: Fireteam (working title)
 
 A 2D-character XCOM 2-style game in the browser with co-op multiplayer and PvP. Repo:
