@@ -28,6 +28,9 @@ export function validateSite(site) {
     for (const s of site.surfaces || []) if (!box(s.bounds) || !['lawn','concrete','paving','asphalt','deck'].includes(s.material)) fail('surface');
     const point = p => Array.isArray(p) && p.length === 2 && p.every(n => Number.isFinite(n) && n > 0 && n < 1);
     if (!point(site.insertion) || site.insertion.some(n=>n<0.06 || n>0.94) || !Array.isArray(site.flow) || site.flow.length < 2 || !site.flow.every(point)) fail('insertion and at least two gameplay flow waypoints required');
+    if(site.playableBoundary&&(!Array.isArray(site.playableBoundary)||site.playableBoundary.length<3||!site.playableBoundary.every(p=>Array.isArray(p)&&p.length===2&&p.every(n=>Number.isFinite(n)&&n>=0&&n<=1))))fail('playable boundary');
+    for(const r of site.roads||[])if(typeof r.id!=='string'||!Array.isArray(r.points)||r.points.length<2||!r.points.every(p=>Array.isArray(p)&&p.length===2&&p.every(n=>Number.isFinite(n)&&n>=0&&n<=1))||!Number.isFinite(r.width)||r.width<3||r.width>14)fail('road centerline/width');
+    for(const p of site.parking||[])if(!box(p.bounds)||!['x','y'].includes(p.axis))fail('parking bounds/axis');
     return site;
 }
 

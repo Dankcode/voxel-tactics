@@ -1,3 +1,4 @@
+import { WALKERS, occupiedCells, walkerFits } from '../battle/Walker.js';
 // Test ground (admin build): run any map with a custom hostile roster and a few mission overrides.
 //
 // desc.test = {
@@ -24,6 +25,7 @@ export const ENEMY_TYPES = Object.freeze(Object.keys(ENEMIES));
 
 /** Ready-made rosters for the test-ground panel (counts per enemy type). */
 export const TEST_PRESETS = Object.freeze({
+    walkers: {name:'Climbing walkers',enemies:{wall_strider:2,siege_weaver:1}},
     patrol: { name: 'Light patrol', enemies: { cultist: 3, archer: 1 } },
     guard: { name: 'Guard post', enemies: { warden_foe: 3, archer: 2 } },
     arson: { name: 'Arson cell', enemies: { pyromancer: 3, cultist: 2 } },
@@ -130,7 +132,10 @@ export function placeTestEnemies(mission, test, seed = 1) {
             .sort((a, b) => a.d - b.d || a.c.z - b.c.z || a.c.y - b.c.y || a.c.x - b.c.x);
         if (order.length < pod.length) throw Error(`Test ground: the map has room for only ${out.length + order.length} hostiles`);
         pod.forEach((type, k) => {
-            const c = order[k].c; taken.add(key(c));
+            const shape={type};
+            const c = order.map(e=>e.c).find(c=>occupiedCells(shape,c,store).every(p=>!taken.has(key(p))&&near(p)>=TEST_LIMITS.minSpawnDistance) && (!WALKERS[type]||walkerFits(store,shape,c)));
+            if(!c)throw Error(`Test ground: no clear footprint for ${type}`);
+            for(const p of occupiedCells(shape,c,store))taken.add(key(p));
             out.push({ type, group: g, pos: { x: c.x, y: c.y, z: c.z }, facing: facingToward(start.x - c.x, start.y - c.y), alerted: !!test.alerted });
         });
     });

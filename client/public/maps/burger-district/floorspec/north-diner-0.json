@@ -1,0 +1,39 @@
+{
+  "building": "north-diner",
+  "floor": 0,
+  "source": "offline-schematic",
+  "rooms": [
+    {
+      "kind": "dining",
+      "center": [
+        0.6155555555555555,
+        0.2931623931623931
+      ]
+    },
+    {
+      "kind": "kitchen",
+      "center": [
+        0.3,
+        0.8076923076923077
+      ]
+    },
+    {
+      "kind": "office",
+      "center": [
+        0.7823529411764706,
+        0.7850678733031674
+      ]
+    },
+    {
+      "kind": "restroom",
+      "center": [
+        0.19696969696969696,
+        0.17832167832167833
+      ]
+    }
+  ],
+  "doors": [],
+  "windows": [],
+  "stairs": [],
+  "furniture": []
+}

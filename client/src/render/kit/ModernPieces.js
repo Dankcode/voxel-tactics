@@ -409,7 +409,14 @@ const decor = {
     shower: P({ group: 'decor' }, () => [{ slot: 'porcelain', geometry: box(0.86, 0.06, 0.86) }, { slot: 'glass', geometry: merge([box(0.86, 1.7, 0.015, 0, 0.06, 0.42), box(0.015, 1.7, 0.86, 0.42, 0.06, 0)]) }, { slot: 'chrome', geometry: merge([cyl(0.012, 0.012, 1.6, 5, -0.38, 0.1, -0.4), cyl(0.08, 0.08, 0.015, 10, -0.3, 1.66, -0.38)]) }]),
     cafe_table: P({ group: 'decor' }, () => [{ slot: 'worktop', geometry: cyl(0.32, 0.32, 0.04, 16, 0, 0.7) }, { slot: 'chrome', geometry: merge([cyl(0.025, 0.025, 0.7, 6), cyl(0.18, 0.2, 0.02, 12)]) }]),
     register: P({ group: 'decor' }, () => [{ slot: 'screen', geometry: merge([box(0.3, 0.12, 0.26, 0, 0, -0.1), box(0.26, 0.18, 0.02, 0, 0.12, -0.18)]) }]),
-    streetlight: P({ group: 'decor', light: true, text: 'Street light (arm toward +Z)' }, () => [{ slot: 'iron', geometry: merge([cyl(0.05, 0.07, 3.6, 8), cyl(0.12, 0.14, 0.3, 8), box(0.05, 0.05, 0.9, 0, 3.55, 0.42)]) }, { slot: 'lamp', geometry: box(0.2, 0.05, 0.36, 0, 3.5, 0.82) }]),
+    streetlight: P({ group:'decor', light:true, text:'Curb-mounted LED road lantern; tapered mast, swept arm toward +Z' },()=>[
+        {slot:'iron',geometry:merge([
+            cyl(.047,.075,3.45,12),cyl(.13,.16,.18,12),box(.12,.25,.11,0,.18,0),
+            new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0,3.18,0),new THREE.Vector3(0,3.43,.18),new THREE.Vector3(0,3.52,.65),new THREE.Vector3(0,3.48,1.06)]),10,.038,6,false),
+            sb(.25,.075,.46,.025,0,3.42,1.06)
+        ])},
+        {slot:'lamp',geometry:sb(.19,.018,.34,.009,0,3.409,1.09)}
+    ]),
     floodlight: P({ group: 'decor', light: true }, () => [{ slot: 'iron', geometry: merge([cyl(0.06, 0.09, 4.4, 8), box(0.9, 0.06, 0.06, 0, 4.4, 0)]) }, { slot: 'lamp', geometry: merge([box(0.24, 0.2, 0.08, -0.32, 4.25, 0.06).rotateX(-0.3), box(0.24, 0.2, 0.08, 0.32, 4.25, 0.06).rotateX(-0.3)]) }]),
     mailbox: P({ group: 'decor' }, () => [{ slot: 'frame', geometry: box(0.06, 0.9, 0.06) }, { slot: 'self_dark', geometry: sb(0.22, 0.26, 0.4, 0.06, 0, 0.9) }]),
     hydrant: P({ group: 'decor' }, () => [{ slot: 'red', geometry: merge([cyl(0.1, 0.12, 0.5, 10), new THREE.SphereGeometry(0.1, 10, 6).translate(0, 0.5, 0), disc(0.05, 0.36, 8, 0, 0.32, 0).rotateY(Math.PI / 2)]) }]),
@@ -449,6 +456,10 @@ const decor = {
 };
 
 const circulation={
+    escape_rail:P({group:'circulation'},()=>[{slot:'self',geometry:merge([
+        box(.045,.9,.045,-.47,0,.47),box(.045,.9,.045,.47,0,.47),
+        box(.98,.045,.045,0,.87,.47),box(.98,.035,.045,0,.42,.47)
+    ])}]),
     steel_post:P({group:'circulation'},()=>[{slot:'self',geometry:box(.15,1,.15)}]),
     grate:P({group:'circulation'},()=>[{slot:'self',geometry:merge([box(1,.1,.08,0,.9,-.45),box(1,.1,.08,0,.9,.45),...Array.from({length:7},(_,i)=>box(.035,.055,1,-.45+i*.15,.945,0))])}]),
 };

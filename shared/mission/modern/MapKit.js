@@ -1,3 +1,4 @@
+import { organizeStreetLights } from '../../mapgen/StreetLighting.js';
 // Map-authoring toolkit for the present-day themes: ground, roads, buildings, vehicles, trees, hedges, decor, the
 // theme cover pass and the finishing step. Every map is still a voxel grid (the gameplay truth); vehicles, trees and
 // furniture also leave render hints so the tile set can draw them as whole objects, and decor is visual only.
@@ -136,6 +137,7 @@ export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'l
         },
         finish({ name, spawns, objective, meta = {} }) {
             validateLadders(store);
+            const streetLights=organizeStreetLights(m,{roads:m.lightRoutes||[],spacing:meta.lightSpacing||12});
             // Decor that a later prop or the cover pass landed on is dropped.
             for (let i = ctx.decor.length - 1; i >= 0; i--) {
                 const d = ctx.decor[i];
@@ -143,7 +145,7 @@ export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'l
                 if (store.get(Math.floor(d.x + 0.5), Math.floor(d.y + 0.5), d.z) !== 0) ctx.decor.splice(i, 1);
             }
             return finalizeMission({ id, name, store, rooms: ctx.rooms, buildings: m.buildings, spawns, rng, objective,
-                meta: { seed, ...meta, timeOfDay: meta.timeOfDay || meta.lighting || 'day' }, visual: { hints: ctx.hints, decor: ctx.decor } });
+                meta: { seed, ...meta, streetLighting:{algorithm:"curb-arclength-v1",count:streetLights.length}, timeOfDay: meta.timeOfDay || meta.lighting || 'day' }, visual: { hints: ctx.hints, decor: ctx.decor } });
         }
     };
     store.fill(0, 0, 0, width - 1, depth - 1, 0, 'bedrock');

@@ -1,3 +1,5 @@
+import { WALKERS, walkerContacts } from './Walker.js';
+import { legPose, rayCapsule } from './WalkerIK.js';
 import { intersectCellShape } from '../voxel/ConnectedShapes.js';
 // Phoenix Point-style free-aim ballistics on the voxel grid.
 //
@@ -20,6 +22,7 @@ export const HITBOX = Object.freeze({
 const DEG = Math.PI / 180;
 
 export function partCentre(u, part) {
+    if(WALKERS[u.type]){const spec=WALKERS[u.type];return {x:u.x+.5+(part==='armR'?.4:part==='armL'?-.4:part==='legs'?spec.legs[0][0]:0),y:u.y+.5+(part==='legs'?spec.legs[0][1]:part==='head'?-.55:part==='armR'?-.7:part==='armL'?-.2:0),h:u.z+1+(part==='legs'?.5:spec.height+(part==='head'?.25:0))};}
     const hb = HITBOX[part];
     const [fx, fy] = FACING_VEC[u.facing] || [0, 1];
     const len = Math.hypot(fx, fy) || 1;
@@ -52,7 +55,17 @@ function rayCylinder(o, d, cx, cy, r, h0, h1) {
 }
 
 /** First body part of `u` a ray meets, or null. */
-export function rayUnit(o, d, u, maxT) {
+export function rayUnit(o, d, u, maxT, store=null) {
+    if(WALKERS[u.type]){
+        const spec=WALKERS[u.type],origin=[o.x,o.y,o.h];let best=null;
+        const take=(part,t)=>{if(t<=maxT&&t<(best?.t??Infinity))best={part,t};};
+        take('torso',rayCylinder(o,d,u.x+.5,u.y+.5,.7,u.z+1+spec.height-.4,u.z+1+spec.height+.25));
+        if(!u.parts.head.disabled)take('head',rayCylinder(o,d,u.x+.5,u.y-.05,.24,u.z+1+spec.height+.12,u.z+1+spec.height+.5));
+        for(const [part,dx,dy] of [['armR',.32,-.7],['armL',-.32,-.2]])if(!u.parts[part].disabled)take(part,rayCapsule(origin,d,[u.x+.5+dx,u.y+.5+dy-.3,u.z+1+spec.height],[u.x+.5+dx,u.y+.5+dy+.3,u.z+1+spec.height],.16));
+        const contacts=store?walkerContacts(store,u):[];
+        if(!u.parts.legs.disabled)spec.legs.forEach((offset,i)=>{const foot=contacts[i]||{x:u.x+.5+offset[0],y:u.y+.5+offset[1],h:u.z+1};const p=legPose(u,offset,foot,spec.height);take('legs',rayCapsule(origin,d,p.hip,p.knee,.14));take('legs',rayCapsule(origin,d,p.knee,p.foot,.1));});
+        return best;
+    }
     // Cheap reject: distance from the unit's axis.
     const cx = u.x + 0.5, cy = u.y + 0.5;
     const ox = cx - o.x, oy = cy - o.y;
@@ -125,7 +138,7 @@ export function traceProjectile(battle, o, d, maxDist, { ignore = null } = {}) {
     let best = null;
     for (const u of battle.units) {
         if (!alive(u) || u.id === ignore) continue;
-        const h = rayUnit(o, d, u, voxT);
+        const h = rayUnit(o, d, u, voxT,store);
         if (h && h.t < (best?.t ?? Infinity)) best = { unit: u, part: h.part, t: h.t };
     }
     const at = t => ({ x: o.x + d[0] * t, y: o.y + d[1] * t, h: o.h + d[2] * t });

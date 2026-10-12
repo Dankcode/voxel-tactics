@@ -69,7 +69,7 @@ function pinCoverNear(op, cell, { full = false, destructible = false } = {}) {
         for (const facing of [toward, ...['n', 'e', 's', 'w'].filter(f => f !== toward)]) for (const base of bases) {
             const id = `${base}_${facing}`, p = BAY_PIECES[id];
             if (!p || p.cells.some(([x, y]) => bay.protected.some(([px, py]) => px === x && py === y))) continue;
-            if (p.surfaces && !p.surfaces.includes(bay.cls === 'lane_x' || bay.cls === 'lane_y' ? 'lane' : bay.cls) && !(bay.cls.startsWith('lane') && p.surfaces.includes('asphalt'))) continue;
+            if (p.surfaces && !p.surfaces.includes(bay.cls.startsWith('parking_')||bay.cls==='carriageway'?'asphalt':bay.cls === 'lane_x' || bay.cls === 'lane_y' ? 'lane' : bay.cls) && !(bay.cls.startsWith('lane') && p.surfaces.includes('asphalt'))) continue;
             return new Map([[`${bay.bx},${bay.by}`, id]]);
         }
     }
@@ -207,13 +207,13 @@ function movePod(op, m) {
  * Compile an operation and repair it locally until every gate passes (bounded). Returns the mission; throws with the
  * remaining failures when the budget runs out, and the caller reseeds.
  */
-export function buildWithRepair(op, { seed = 1, budget = 8 } = {}) {
+export function buildWithRepair(op, { seed = 1, budget = Math.min(28,8*Math.ceil(Math.max(op.layout.width,op.layout.depth)/64)) } = {}) {
     let last = null;
     for (let i = 0; i <= budget; i++) {
         const { m, failures } = compileEvaluated(op, seed);
         if (!failures.length) { m.visual.slate = designSlate(m); m.visual.wear = wearOf(op.layout); op.layout.critic = m.meta.critic; return m; }
         last = failures;
-        if (globalThis.MAPGEN_TRACE) console.log('repair', i, failures.join(','));
+        if (globalThis.MAPGEN_TRACE) console.log('repair', i, failures.join(','),JSON.stringify({gap:m.metrics.coverGap,worst:worstGapCells(m).slice(0,2)}));
         let fixed = false;
         if (failures.includes('flankHidden')) fixed = moveGuard(op, m) || addBaffle(op) || fixed;
         if (failures.includes('dropSafe') || (failures.includes('flankHidden') && !fixed)) fixed = moveDrop(op, m) || (failures.includes('dropSafe') && ((m.spawns.enemy.every(e => e.pos.z <= m.meta.streetDatum) && shieldDrop(op, m)) || closeDrop(op))) || fixed;

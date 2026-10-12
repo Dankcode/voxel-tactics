@@ -290,7 +290,7 @@ export function buildModern(store, spec, ctx) {
             }
             for (const { g, cells } of runs) cells.forEach(([x, y], i) => {
                 const n = cells.length;
-                const put = zs => { for (const z of zs) store.set(x, y, z, MAT.glass); result.windows.push({ x, y, z: zs[0], side, storey: s, full: zs.length > 1 }); };
+                const put = zs => { for (const z of zs) {store.set(x, y, z, MAT.glass);hints[`${x},${y},${z}`]={windowStyle:g==='full'?'curtain':g==='band'?'ribbon':g==='clerestory'?'factory':'sash'};} result.windows.push({ x, y, z: zs[0], side, storey: s, full: zs.length > 1 }); };
                 if (g === 'full' && !(n > 4 && i % 4 === 3)) put([fz + 1, fz + 2]);
                 else if (g === 'band' && !(n > 5 && i % 5 === 4)) put([fz + 2]);
                 else if (g === 'punched' && (n <= 2 ? i === 0 : i % 3 === 1)) put([fz + 2]);

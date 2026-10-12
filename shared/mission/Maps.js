@@ -1,5 +1,6 @@
 // Map registry: every playable battlefield, grouped by theme. Present-day settings only (no aliens yet);
 // the opposing force is the Syndicate, a human crime organisation (shared/content/units.js FACTIONS).
+import { buildArchitectureYard, ARCHITECTURE_YARD_ID } from './ArchitectureYard.js';
 import { buildCedarClose, CEDAR_CLOSE_ID } from './CedarClose.js';
 import { buildProvingGrounds, PROVING_GROUNDS_ID } from './ProvingGrounds.js';
 import { buildMainStreet, MAIN_STREET_ID } from './MainStreet.js';
@@ -10,6 +11,7 @@ import { buildPackagedMap } from '../mapgen/PackageBuilder.js';
 import { MAP_PACKAGES } from './generated/PackageCatalog.js';
 
 export const MAPS = Object.freeze([
+    {id:ARCHITECTURE_YARD_ID,name:"Architecture Yard",theme:"Training",text:"Walk through full glass, vault solid window sills, inspect window families and rounded facades.",build:buildArchitectureYard},
     ...MAP_PACKAGES.map(pkg => ({id:pkg.manifest.id,name:pkg.manifest.name,theme:pkg.manifest.theme,text:pkg.design.mission.briefing,concept:`/maps/${pkg.manifest.id}/${pkg.manifest.reference}`,build: options => buildPackagedMap(pkg, { ...options, strict: false })})),
     { id: CEDAR_CLOSE_ID, name: 'Cedar Close', theme: 'Suburbs', text: 'Two modern homes on a quiet close. Glass walls, gardens, a residential street.', build: buildCedarClose },
     { id: MAIN_STREET_ID, name: 'Main Street', theme: 'Downtown', text: 'Shops, a diner and an office block on a main road. Storefront glass, roadworks, a parking lot.', build: buildMainStreet },

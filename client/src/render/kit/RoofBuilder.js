@@ -10,22 +10,22 @@ import { CHUNK } from '../../../../shared/voxel/VoxelStore.js';
 const EAVE_OUT = 0.32, EAVE_DROP = 0.3;
 
 /** Top and bottom of the roof run in a column, below the cutaway (null when the column has no roof). */
-export function roofColumn(store, x, y, cut = Infinity) {
+export function roofColumn(store, x, y, cut = Infinity, hidden=null) {
     if (x < 0 || y < 0 || x >= store.width || y >= store.depth) return null;
     let top = -1;
-    for (let z = Math.min(store.height, cut) - 1; z >= 0; z--) if (store.get(x, y, z) === MAT.roof) { top = z; break; }
+    for (let z = Math.min(store.height, cut) - 1; z >= 0; z--) if (!hidden?.(x,y,z)&&store.get(x, y, z) === MAT.roof) { top = z; break; }
     if (top < 0) return null;
     // A column that continues above the cut is cut away entirely.
-    for (let z = top + 1; z < store.height; z++) if (store.get(x, y, z) === MAT.roof) return null;
+    for (let z = top + 1; z < store.height; z++) if (!hidden?.(x,y,z)&&store.get(x, y, z) === MAT.roof) return null;
     let bottom = top;
     while (bottom > 0 && store.get(x, y, bottom - 1) === MAT.roof) bottom--;
     return { top, bottom, h: top + 1 };
 }
 
-export function buildRoofGeometry(store, cx, cy, cz, cut = Infinity) {
+export function buildRoofGeometry(store, cx, cy, cz, cut = Infinity, hidden=null) {
     const x0 = cx * CHUNK, y0 = cy * CHUNK, z0 = cz * CHUNK;
     const cols = new Map();
-    const col = (x, y) => { const k = x + y * store.width; if (!cols.has(k)) cols.set(k, roofColumn(store, x, y, cut)); return cols.get(k); };
+    const col = (x, y) => { const k = x + y * store.width; if (!cols.has(k)) cols.set(k, roofColumn(store, x, y, cut,hidden)); return cols.get(k); };
     const pos = [], uvs = [];
     const corner = (vx, vy) => {
         // cells around grid vertex (vx, vy)

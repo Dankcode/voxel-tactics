@@ -146,7 +146,7 @@ export function buildBuilding(store, spec, ctx) {
     for (let s = 0; s < runs; s++) {
         const fz = baseZ + STOREY * s;
         const run = placeStairRun(plan, footprint, reserved, stairCells, fz);
-        if (!run) break;
+        if (!run) {if(s<storeys-1)throw Error(`${spec.id}: missing interior staircase from storey ${s}`);break;}
         run.cells.forEach((c, i) => { for (let z = fz + 1; z <= fz + 1 + i; z++) store.set(c.x, c.y, z, MAT[wallKey === 'stone' ? 'stairs_stone' : 'stairs_wood']); });
         for (const c of [run.before, run.cells[0], run.cells[1]]) for (let z = fz + STOREY; z <= fz + STOREY + 0; z++) store.set(c.x, c.y, z, AIR);
         for (const c of [run.before, ...run.cells, run.after]) { stairCells.add(`${c.x},${c.y}`); reserved.add(`${c.x},${c.y}`); }

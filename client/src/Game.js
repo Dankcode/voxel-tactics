@@ -1,3 +1,5 @@
+import { BuildingView, BUILDING_VIEWS } from './render/BuildingView.js';
+import { pickVisibleTile } from './render/TilePicking.js';
 import { footprint } from '../../shared/battle/IntelOps.js';
 import { InteriorVisibility } from './render/InteriorVisibility.js';
 import { battleReport } from '../../shared/session/BattleReport.js';
@@ -60,7 +62,7 @@ export function wearTint(mission) {
 
 export class Game {
     constructor({ canvas, hudRoot, cutinRoot, floatRoot, onExit, options = {} }) {
-        this.options = { autoEndTurn: false, autoNext: true, followCamera: true, edgeScroll: true, ...options };
+        this.options = { autoEndTurn: false, autoNext: true, followCamera: true, edgeScroll: true, buildingView:'auto', ...options };
         this.scene = new Scene(canvas);
         this.library = new MaterialLibrary(this.scene.renderer, this.scene.clipping);
         this.kit = new KitLibrary(this.library);
@@ -104,8 +106,9 @@ export class Game {
         this.visualRevealedRooms = new Set(this.battle.revealedRooms);
         this.discoveryVisible = new Set();
         this.visualInterior=new Set(this.battle.visibleInterior);
+        this.buildingView=new BuildingView(this.battle.mission);this.buildingViewKey=null;this.voxelView.buildingView=this.buildingView;
         this.voxelView.interiorVisibility = new InteriorVisibility(this.battle.mission,this.visualRevealedRooms,()=>this.fog,this.visualInterior);
-        this.overlays.visibleCell = c => !this.voxelView.interiorVisibility.hiddenAt(c.x,c.y,c.z+1);
+        this.overlays.visibleCell = c => !this.voxelView.interiorVisibility.hiddenAt(c.x,c.y,c.z+1)&&!this.buildingView.hiddenAt(c.x,c.y,c.z);
         const wear = wearTint(this.battle.mission);
         this.voxelView.tint = (x, y, z) => {
             let light=this.battle.light.tint(x,y,z);
@@ -141,7 +144,7 @@ export class Game {
     }
     async addView(u) {
         if (this.views.has(u.id)) return this.views.get(u.id);
-        const v = new UnitView(this.scene, u, await loadCharacterArt(u.art));
+        const v = new UnitView(this.scene, u, await loadCharacterArt(u.art),this.battle.store);
         this.views.set(u.id, v);
         return v;
     }
@@ -153,6 +156,7 @@ export class Game {
         const dt = Math.max(0, Math.min(0.05, (now - this.last) / 1000)); this.last = now;
         this.time += dt;
         this.handleKeysHeld(dt);
+        this.refreshBuildingView();
         const yaw = this.scene.yaw;
         this.cameraDirector.update(dt);
         const cine = this.cameraDirector.active;
@@ -273,7 +277,19 @@ export class Game {
         this.zones = zones;
         this.overlays.showZones(this.search.nodes, zones);
     }
-    setLevel(top) { this.cutLevel = top; this.scene.setCut(Number.isFinite(top) ? top : Infinity); this.voxelView?.setCut(top); this.scene.rig.minLayerHeight=top===this.battle.mission.meta.streetDatum?2:(this.battle.mission.meta.streetDatum||1)+1;if(top===this.battle.mission.meta.streetDatum){const u=this.selectedUnit(),route=this.battle.mission.meta.underground?.route,p=u&&u.z<top?u:route?.[Math.floor(route.length/2)];this.scene.glide=null;if(p)this.scene.rig.target.set(p.x+.5,2,p.y+.5);else this.scene.rig.target.y=2;} this.hud.refresh(); }
+    setLevel(top) { this.cutLevel = top; this.scene.setCut(Number.isFinite(top) ? top : Infinity); this.voxelView?.setCut(top); this.scene.rig.minLayerHeight=top===this.battle.mission.meta.streetDatum?2:(this.battle.mission.meta.streetDatum||1)+1;if(top===this.battle.mission.meta.streetDatum){const u=this.selectedUnit(),route=this.battle.mission.meta.underground?.route,p=u&&u.z<top?u:route?.[Math.floor(route.length/2)];this.scene.glide=null;if(p)this.scene.rig.target.set(p.x+.5,2,p.y+.5);else this.scene.rig.target.y=2;} this.refreshBuildingView();this.hud.refresh(); }
+    setBuildingView(mode) {
+        if(!BUILDING_VIEWS.includes(mode))return;
+        this.options.buildingView=mode;this.buildingViewKey=null;this.refreshBuildingView();
+        this.hud.refresh();this.hud.renderOptions();
+    }
+    cycleBuildingView(){const i=BUILDING_VIEWS.indexOf(this.options.buildingView);this.setBuildingView(BUILDING_VIEWS[(i+1)%BUILDING_VIEWS.length]);}
+    refreshBuildingView() {
+        if(!this.battle||!this.buildingView)return;
+        const u=this.selectedUnit(),units=this.battle.unitsOf('player'),key=`${u?.id}:${units.map(p=>`${p.id}:${p.x},${p.y},${p.z}`).join(';')}:${u?.x},${u?.y},${u?.z}:${this.cutLevel}:${this.options.buildingView}`;
+        if(key===this.buildingViewKey)return;this.buildingViewKey=key;
+        if(this.buildingView.update({unit:u,units,cutZ:this.cutLevel,mode:this.options.buildingView})){this.voxelView.rebuildAll();this.refreshRange();}
+    }
     changeLevel(d) {
         this.levelLocked = true;
         const levels = this.battle.mission.meta.cutLevels || [4, 7, 10, 13, Infinity];
@@ -535,6 +551,7 @@ export class Game {
             case 'enter': case ' ': e.preventDefault(); if (this.mode.kind === 'shoot') this.confirmFire(); else if (key === 'enter') this.endTurn(); break;
             case 'backspace': case 'escape': this.cancel(); break;
             case 'h': case 'home': e.preventDefault(); this.focusUnit(u); break;
+            case 'i': this.cycleBuildingView(); break;
             case 'v': this.scene.toggleProjection(); this.hud.toast(this.scene.projection === 'ortho' ? 'Camera: isometric' : 'Camera: perspective'); break;
             case 'o': this.setMode({ kind: 'overwatch' }); break;
             case 'r': this.intent({ type: 'reload' }); break;
@@ -555,19 +572,12 @@ export class Game {
         const seg = clipToBox(ray.ray.origin, ray.ray.direction, store);
         if (!seg) return null;
         const { from, to } = seg;
-        const r = castRay(store, from, to, { skipStart: false, blocks: (s, x, y, z) => z < top && x >= 0 && y >= 0 && x < s.width && y < s.depth && s.get(x, y, z) !== AIR && materialById(s.get(x, y, z)).render !== 'none' });
-        if (!r.hit) return null;
-        const v = r.hit;
-        let cx = v.x, cy = v.y;
-        if (r.normal && (r.normal[0] || r.normal[1])) { cx += r.normal[0]; cy += r.normal[1]; }
-        const surf = store.surfaces(cx, cy).filter(s => s.z <= v.z && s.z < top).at(-1) || store.surfaces(v.x, v.y).filter(s => s.z <= v.z).at(-1);
-        const cell = surf ? { x: surf.x, y: surf.y, z: surf.z } : null;
-        return { cell, voxel: v, point: r.point, normal: r.normal };
+        return pickVisibleTile(store,from,to,{cutZ:top,buildingView:this.buildingView,interiorVisibility:this.voxelView.interiorVisibility});
     }
     unitAt(px, py) {
         const ray = this.scene.rayAt(px, py);
         const meshes = [...this.views.values()].filter(v => v.group.visible && alive(v.unit)).map(v => v.sprite);
-        const hit = ray.intersectObjects(meshes, false)[0];
+        const hit = ray.intersectObjects(meshes, true)[0];
         return hit ? this.battle.unit(hit.object.userData.unitId) : null;
     }
     onHover(e) {

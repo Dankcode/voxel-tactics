@@ -1,3 +1,4 @@
+import { WALKERS, occupiedCells, walkerReach, walkerFits, fitWalkerSpawn } from './Walker.js';
 import { validateIntel, executeIntel, intelSpread, refreshDrones } from './IntelOps.js';
 import { consumeItem, normalizeInventory, inventoryCounts } from '../inventory/Inventory.js';
 import { watchSector, inWatchSector } from './WatchSector.js';
@@ -71,6 +72,7 @@ export class Battle {
         (enemies || mission.spawns.enemy).forEach((e, i) => {
             this.units.push(createUnit(e.type, 'enemy', e.pos, `e${i}`, { group: e.group ?? 0, facing: e.facing || 's', extra: e.alerted ? { alerted: true, scattered: true } : undefined }));
         });
+        for(const u of this.units)if(WALKERS[u.type]){fitWalkerSpawn(this,u);u.footprint=occupiedCells(u,{x:u.x,y:u.y,z:u.z},this.store);}
         this.startSide('player', true);
         for(const u of this.unitsOf('player')) this.revealRoom(this.roomOf(u),u);
         this.updateVisibility({initial:true});
@@ -80,9 +82,9 @@ export class Battle {
     unit(id) { return this.units.find(u => u.id === id) || null; }
     unitsOf(side) { return this.units.filter(u => u.side === side && alive(u)); }
     enemiesOf(u) { return this.units.filter(o => o.side !== u.side && alive(o)); }
-    occupant(x, y, z) { return this.units.find(u => alive(u) && u.x === x && u.y === y && u.z === z) || null; }
-    eye(u) { return { x: u.x + 0.5, y: u.y + 0.5, h: u.z + 1 + EYE }; }
-    chest(u) { return { x: u.x + 0.5, y: u.y + 0.5, h: u.z + 1 + CHEST }; }
+    occupant(x, y, z) { return this.units.find(u => alive(u) && occupiedCells(u).some(c=>c.x===x&&c.y===y&&c.z===z)) || null; }
+    eye(u) { return { x: u.x + 0.5, y: u.y + 0.5, h: u.z + 1 + (WALKERS[u.type]?WALKERS[u.type].height+.2:EYE) }; }
+    chest(u) { return { x: u.x + 0.5, y: u.y + 0.5, h: u.z + 1 + (WALKERS[u.type]?.height??CHEST) }; }
     roomOf(u) { return this.store.roomAt(u.x, u.y, u.z + 1); }
     distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y, (a.z - b.z) * 0.8); }
 
@@ -118,6 +120,7 @@ export class Battle {
     moveBudget(u) { return (u.ap + u.moveOnlyAp) * this.mobility(u); }
     mobility(u) { return mobilityPerAp(u, this.formations.mobilityPenalty(u)); }
     reach(u, budget = this.moveBudget(u)) {
+        if(WALKERS[u.type])return walkerReach(this,u,budget);
         return reachable(this.store, { x: u.x, y: u.y, z: u.z }, budget, PROFILE, {
             blocked: to => { const o = this.occupant(to.x, to.y, to.z); return (o && o.id !== u.id) || (u.side==='player' && (this.store.get(to.x,to.y,to.z+1)===MAT.door)); }
         });
@@ -195,6 +198,7 @@ export class Battle {
                 if (group && intent.by && intent.by !== '*' && this.formations.members(group).some(m => m.owner !== intent.by)) return 'not_your_unit';
                 const t = intent.to; if (!t) return 'bad_intent';
                 const o = this.occupant(t.x, t.y, t.z); if (o && o.id !== u.id) return 'occupied';
+                if(WALKERS[u.type] && occupiedCells(u,t,this.store).some(c=>{const v=this.occupant(c.x,c.y,c.z);return v&&v.id!==u.id;}))return 'occupied';
                 const cost = this.reach(u).costs.get(nodeKey(t));
                 if (cost == null) return this.reach(u, this.moveBudget(u) * 4 + 8).costs.has(nodeKey(t)) ? 'no_ap' : 'unreachable';
                 if (this.apForCost(u, cost) > u.ap + u.moveOnlyAp) return 'no_ap';
@@ -220,7 +224,7 @@ export class Battle {
                 if (!w || w.kind !== 'melee' || !u.weapons.includes(w.id)) return 'bad_intent';
                 if (u.ap < w.ap) return 'no_ap';
                 const t = this.unit(intent.targetId); if (!t || !alive(t)) return 'no_target';
-                if (Math.max(Math.abs(t.x - u.x), Math.abs(t.y - u.y)) > 1 || Math.abs(t.z - u.z) > 1) return 'not_adjacent';
+                if (Math.min(...occupiedCells(u).flatMap(a=>occupiedCells(t).map(c=>Math.max(Math.abs(a.x-c.x),Math.abs(a.y-c.y))))) > 1 || Math.abs(t.z - u.z) > 1) return 'not_adjacent';
                 return null;
             }
             case 'throw': {
@@ -347,6 +351,7 @@ export class Battle {
     emit(e) { e.seq = ++this.seq; e.round = this.round; this.log.push(e); return e; }
 
     afterAction() {
+        for(const u of this.units)if(WALKERS[u.type])u.footprint=occupiedCells(u,{x:u.x,y:u.y,z:u.z},this.store);
         this.updateVisibility();
         if(this.intelMode)refreshDrones(this);
         if(this.intelMode && this.unitsOf('enemy').some(e=>e.alerted))this.detected=true;
@@ -478,7 +483,7 @@ export class Battle {
         let jumped = false;
         for (let i = 1; i < path.length; i++) {
             const p = path[i];
-            const kind = stepKind(this.store, path[i - 1], p);
+            const kind = WALKERS[u.type]&&p.z!==path[i-1].z?'climb':stepKind(this.store, path[i - 1], p);
             kinds.push(kind);
             if (kind === 'jump') {jumped = true;this.stats.drops++;this.noise(p.x,p.y,p.z,8,u);}
             if(this.mission.meta?.streetDatum&&p.z<this.mission.meta?.streetDatum)this.stats.undergroundSteps++;
@@ -486,6 +491,7 @@ export class Battle {
             this.openDoorsOnStep(u, path[i - 1], p);
             u.facing = facingToward(p.x - u.x, p.y - u.y);
             u.x = p.x; u.y = p.y; u.z = p.z;
+            if(WALKERS[u.type])u.footprint=occupiedCells(u,{x:u.x,y:u.y,z:u.z},this.store);
             walked.push(p);
             u.movedThisTurn = (u.movedThisTurn || 0) + 1;
             this.revealRoomOf(u);
@@ -536,10 +542,16 @@ export class Battle {
         const o = this.objective, s = this.store, ok = c => c.headroom >= 2;
         const it = o.item;
         if (it && !it.carrier && !it.secured && !s.surfaces(it.x, it.y).some(c => c.z === it.z && ok(c))) {
+            // Rubble can form a sealed ring. Prefer a landing the surviving squad can reach.
+            const accessible=new Set();
+            for(const u of this.units.filter(u=>u.side==='player'&&alive(u))) {
+                const floor=s.surfaces(u.x,u.y).filter(ok).sort((a,b)=>Math.abs(a.z-u.z)-Math.abs(b.z-u.z))[0];
+                if(floor)for(const key of reachable(s,floor,Infinity,PROFILE).costs.keys())accessible.add(key);
+            }
             let best = null;
             for (let r = 0; r <= 4 && !best; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
                 if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-                const list = s.surfaces(it.x + dx, it.y + dy).filter(c => ok(c) && c.z <= it.z + 2);
+                const list = s.surfaces(it.x + dx, it.y + dy).filter(c => ok(c) && c.z <= it.z + 2 && (!accessible.size||accessible.has(nodeKey(c))));
                 const c = list.filter(c => c.z <= it.z).at(-1) || list[0];
                 if (c && (!best || Math.abs(c.z - it.z) < Math.abs(best.z - it.z) || (c.z === best.z && r === 0))) best = c;
             }
@@ -776,7 +788,7 @@ export class Battle {
     blastUnits(e, by, item = null) {
         for (const u of this.units.filter(alive)) {
             if (e.excludeUnits?.includes(u.id)) continue;
-            const c = this.chest(u);
+            const c = WALKERS[u.type]?occupiedCells(u).map(p=>({x:p.x+.5,y:p.y+.5,h:p.z+1.3})).concat([this.chest(u)]).sort((a,c)=>Math.hypot(a.x-e.x,a.y-e.y,a.h-e.h)-Math.hypot(c.x-e.x,c.y-e.y,c.h-e.h))[0]:this.chest(u);
             const clustered = this.formations.isClustered(u);
             const r = e.radius + (clustered ? B.clusteredRadiusBonus : 0);
             const d = Math.hypot(c.x - e.x, c.y - e.y, (c.h - e.h) * 0.8);
@@ -802,6 +814,7 @@ export class Battle {
         if (changes.length) this.emit({ t: 'voxels', changes });
     }
     knockback(u, dx, dy, tiles) {
+        if(WALKERS[u.type])return; // Anchored heavy constructs resist forced displacement.
         const len = Math.hypot(dx, dy) || 1, sx = Math.round(dx / len), sy = Math.round(dy / len);
         const path = [{ x: u.x, y: u.y, z: u.z }];
         for (let i = 0; i < tiles; i++) {
@@ -825,8 +838,15 @@ export class Battle {
     checkFalls() {
         this.settleObjective();
         for (const u of this.units.filter(alive)) {
+            if(WALKERS[u.type]&&walkerFits(this.store,u))continue;
             const here = this.store.surfaces(u.x, u.y).find(s => s.z === u.z);
-            if (here && here.headroom >= 2) continue;
+            if (here && here.headroom >= 2 && !WALKERS[u.type]) continue;
+            if(WALKERS[u.type]){
+                const from=u.z;let dest=null;
+                for(let z=from-1;z>=0;z--)if(walkerFits(this.store,u,{x:u.x,y:u.y,z},c=>{const o=this.occupant(c.x,c.y,c.z);return o&&o.id!==u.id;})){dest=z;break;}
+                if(dest===null){this.dealDamage(u,'torso',u.maxHp+100,{pierce:99,source:'fall'});continue;}
+                u.z=dest;u.footprint=occupiedCells(u,{x:u.x,y:u.y,z:u.z},this.store);this.emit({t:'fall',unitId:u.id,from,to:dest});if(from-dest>1)this.dealDamage(u,'legs',(from-dest-1)*B.fallDamagePerLevel,{pierce:99,source:'fall'});continue;
+            }
             const below = this.store.surfaces(u.x, u.y).filter(s => s.z < u.z && s.headroom >= 2).at(-1);
             const above = this.store.surfaces(u.x, u.y).filter(s => s.z > u.z && s.z <= u.z + 2 && s.headroom >= 2)[0];
             const from = u.z;

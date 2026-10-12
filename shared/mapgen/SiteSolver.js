@@ -1,3 +1,4 @@
+import { smoothRoad } from './RoadGeometry.js';
 import { solveWaveFunctionCollapse } from '../generation/WaveFunctionCollapse.js';
 const overlap = (a,b) => Math.max(0,Math.min(a.x0+a.w,b.x0+b.w)-Math.max(a.x0,b.x0))*Math.max(0,Math.min(a.y0+a.d,b.y0+b.d)-Math.max(a.y0,b.y0));
 export const footprintIoU = (a,b) => {const n=overlap(a,b);return n/(a.w*a.d+b.w*b.d-n);};
@@ -5,7 +6,8 @@ export const footprintIoU = (a,b) => {const n=overlap(a,b);return n/(a.w*a.d+b.w
 export function solveSite(site,seed=1) {
     const frame=site.frame || {width:48,height:40};
     if (![frame.width,frame.height].every(n=>Number.isFinite(n)&&n>0)) throw Error('site.frame: positive source extents required');
-    const margin=3, limit=64-2*margin, repairs=[];
+    const margin=3, maxDimension=site.maxDimension??64, limit=maxDimension-2*margin, repairs=[];
+    if(!Number.isInteger(maxDimension)||maxDimension<64||maxDimension>192)throw Error("site.size: maxDimension must be 64–192");
     // Grow the whole site, never an individual building, when small footprints need more resolution.
     const required=Math.max(...site.buildings.map(b=>Math.max(11/((b.bounds[2]-b.bounds[0])*frame.width),11/((b.bounds[3]-b.bounds[1])*frame.height))));
     const scale=Math.min(Math.max(1,required),limit/Math.max(frame.width,frame.height));
@@ -39,6 +41,8 @@ export function solveSite(site,seed=1) {
     for(const b of buildings)if(b.x0+b.w>width-1||b.y0+b.d>depth-1)throw Error(`site.bounds: repaired ${b.id} exceeds grid budget`);
     if(congruence.some(c=>c.iou<0.85))throw Error(`site.congruence: repair cannot preserve footprint IoU >= 0.85 (${congruence.map(c=>`${c.id}:${c.iou.toFixed(3)}`).join(', ')})`);
     const surfaces=(site.surfaces || []).map(s=>({...rect(s.bounds),material:s.material}));
+    const roads=(site.roads||[]).map(r=>({id:r.id,role:r.role||"street",width:r.width*scale,points:smoothRoad(r.points.map(point))}));
+    const parking=(site.parking||[]).map(p=>({...p,...rect(p.bounds)}));
     const pw=Math.ceil(width/4),pd=Math.ceil(depth/4),nodes=[],fixed=new Map();
     for(let y=0;y<pd;y++)for(let x=0;x<pw;x++) {
         const id=`${x},${y}`,cx=x*4+2,cy=y*4+2;
@@ -47,5 +51,5 @@ export function solveSite(site,seed=1) {
         else if(surfaces.some(s=>s.material==='asphalt'&&cx>=s.x0&&cy>=s.y0&&cx<s.x0+s.w&&cy<s.y0+s.d))fixed.set(id,'street');
     }
     const assignment=new Map(nodes.map(n=>[n.id,fixed.get(n.id)||'sidewalk']));
-    return {version:2,datum:4,id:site.id,width,depth,height:18,transform:{scale,margin,frame},buildings,surfaces,flow:[site.insertion,...site.flow].map(point),reference,congruence,repairs,parcels:[...assignment].map(([id,kind])=>({id,kind}))};
+    return {version:2,datum:4,id:site.id,width,depth,height:18,transform:{scale,margin,frame},boundary:site.playableBoundary?.map(point),buildings,surfaces,roads,parking,flow:[site.insertion,...site.flow].map(point),reference,congruence,repairs,parcels:[...assignment].map(([id,kind])=>({id,kind}))};
 }

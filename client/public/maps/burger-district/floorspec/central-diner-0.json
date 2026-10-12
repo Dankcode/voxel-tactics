@@ -1,0 +1,39 @@
+{
+  "building": "central-diner",
+  "floor": 0,
+  "source": "offline-schematic",
+  "rooms": [
+    {
+      "kind": "dining",
+      "center": [
+        0.4411764705882353,
+        0.8076923076923077
+      ]
+    },
+    {
+      "kind": "kitchen",
+      "center": [
+        0.7418300653594772,
+        0.22649572649572652
+      ]
+    },
+    {
+      "kind": "office",
+      "center": [
+        0.24573055028463,
+        0.2841191066997518
+      ]
+    },
+    {
+      "kind": "restroom",
+      "center": [
+        0.9117647058823529,
+        0.8076923076923077
+      ]
+    }
+  ],
+  "doors": [],
+  "windows": [],
+  "stairs": [],
+  "furniture": []
+}

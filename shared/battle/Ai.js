@@ -1,3 +1,4 @@
+import { WALKERS } from './Walker.js';
 // Tactical AI shared by enemies, the player-side autopilot and the balance sim.
 // It scores reachable tiles by cover against known threats, flanking chances, range and hazards, then
 // shoots (expected damage from the same ballistic estimate the HUD uses), throws, overwatches or reloads.
@@ -44,6 +45,7 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
     if (u.side === 'enemy' && !u.alerted) return null;
     if (u.ap <= 0 && u.moveOnlyAp <= 0) return null;
     const known = knownEnemies(battle, u);
+    if(WALKERS[u.type] && !known.length){const target=nearest(u,battle.enemiesOf(u));if(!target)return null;const step=approach(battle,u,target,0);return step?{type:'move',unitId:u.id,to:step}:null;}
     const ranged = u.weapons.map(id => WEAPONS[id]).find(w => w.kind === 'ballistic');
     const melee = u.weapons.map(id => WEAPONS[id]).find(w => w.kind === 'melee');
 
@@ -270,11 +272,11 @@ function approach(battle, u, target, keepAp) {
     const search = battle.reach(u, budget);
     let best = null, bd = Infinity;
     for (const n of search.nodes.values()) {
-        if (battle.occupant(n.x, n.y, n.z) && n !== search.nodes.get(nodeKey(u))) continue;
+        if (battle.occupant(n.x, n.y, n.z)?.id!==u.id && battle.occupant(n.x,n.y,n.z)) continue;
         const d = Math.hypot(n.x - target.x, n.y - target.y) + Math.abs(n.z - target.z);
         if (d < bd) { bd = d; best = n; }
     }
-    return best && (best.x !== u.x || best.y !== u.y) ? best : null;
+    return best && (best.x !== u.x || best.y !== u.y || best.z!==u.z) ? best : null;
 }
 
 /**

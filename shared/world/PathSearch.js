@@ -38,8 +38,18 @@ export const LADDER_BASE_COST = 1.5;
 export function ladderMoves(world, from, profile = AGENT_PROFILES.player) {
     const out = [];
     if (profile.width !== 1) return out;
+    // Aligned fire-escape wells have a stop on each floor, rather than only at the column's top.
+    for(const group of world.supportGroups||[]) {
+        const l=group.ladder;if(!l||Math.abs(l.x-from.x)+Math.abs(l.y-from.y)>1||!ladderAttachment(world,l.x,l.y,l.lo))continue;
+        const stops=z=>CARDINAL.flatMap(([dx,dy])=>surfacesAt(world,l.x+dx,l.y+dy,profile).filter(s=>s.z===z));
+        const lower=stops(l.lo-1),upper=stops(l.hi);
+        const foot=surfacesAt(world,l.x,l.y,profile).find(s=>s.z===l.lo-1);if(foot)lower.push(foot);
+        const matches=s=>s.x===from.x&&s.y===from.y&&s.z===from.z;
+        const targets=lower.some(matches)?upper:upper.some(matches)?lower:[];
+        for(const s of targets)out.push({x:s.x,y:s.y,z:s.z,rise:l.hi-l.lo+1});
+    }
     const L = MAT.ladder, at = (x, y, z) => world.get(x, y, z) === L;
-    if (at(from.x, from.y, from.z + 1)&&ladderAttachment(world,from.x,from.y,from.z+1)) {                                        // up: the ladder rises from this cell
+    if (!(world.supportGroups||[]).some(g=>g.ladder?.x===from.x&&g.ladder.y===from.y) && at(from.x, from.y, from.z + 1)&&ladderAttachment(world,from.x,from.y,from.z+1)) {                                        // up: the ladder rises from this cell
         let top = from.z + 1; while (at(from.x, from.y, top + 1)) top++;
         if (top - from.z >= 2 && !world.isSolid(from.x, from.y, top + 1)) for (const [dx, dy] of CARDINAL) {
             const s = surfacesAt(world, from.x + dx, from.y + dy, profile).find(q => q.z === top);
@@ -48,6 +58,7 @@ export function ladderMoves(world, from, profile = AGENT_PROFILES.player) {
     }
     for (const [dx, dy] of CARDINAL) {                                             // down: a ladder top beside this ledge
         const lx = from.x + dx, ly = from.y + dy;
+        if((world.supportGroups||[]).some(g=>g.ladder?.x===lx&&g.ladder.y===ly))continue;
         if (!ladderAttachment(world,lx,ly,from.z)||!at(lx, ly, from.z) || at(lx, ly, from.z + 1) || world.isSolid(lx, ly, from.z + 1)) continue;
         let bottom = from.z; while (at(lx, ly, bottom - 1)) bottom--;
         const foot = surfacesAt(world, lx, ly, profile).find(q => q.z === bottom - 1);
@@ -62,7 +73,7 @@ export function stepKind(world, a, b) {
     const dz = b.z - a.z, flat = Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y));
     if (Math.abs(dz) >= 2) {
         const L = MAT.ladder;
-        const ladder = dz > 0 ? world.get(a.x, a.y, a.z + 1) === L : world.get(b.x, b.y, b.z + 1) === L && world.get(b.x, b.y, a.z) === L;
+        const ladder = ladderMoves(world,a).some(s=>s.x===b.x&&s.y===b.y&&s.z===b.z) || (dz > 0 ? world.get(a.x, a.y, a.z + 1) === L : world.get(b.x, b.y, b.z + 1) === L && world.get(b.x, b.y, a.z) === L);
         return ladder ? 'climb' : 'jump';
     }
     return flat >= 2 ? 'vault' : 'walk';

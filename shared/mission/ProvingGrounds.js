@@ -82,7 +82,9 @@ export function buildProvingGrounds({ seed = 1 } = {}) {
             { type: 'pyromancer', group: 2, room: { building: 'shack', storey: 0, index: 0 } },
             { type: 'brute', group: 2, at: { x: 42, y: 15 } },
             { type: 'archer', group: 3, roof: 'tower' },
-            { type: 'cultist', group: 4, room: { building: 'house', storey: 1, index: 0 } }
+            { type: 'cultist', group: 4, room: { building: 'house', storey: 1, index: 0 } },
+            { type: 'wall_strider', group: 5, at: { x: 38, y: 30 } },
+            { type: 'siege_weaver', group: 6, at: { x: 10, y: 24 } }
         ]
     };
     return m.finish({

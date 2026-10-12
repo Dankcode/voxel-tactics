@@ -10,22 +10,22 @@ test('ladder columns require one continuous backing side',()=>{
  m.store.fill(5,5,2,5,5,5,'concrete');m.ladder(4,5,1,0);assert.deepEqual(ladderAttachment(m.store,4,5,3),[1,0]);assert.ok(validateLadders(m.store));
  m.store.set(5,5,3,0);assert.throws(()=>validateLadders(m.store),/attachment/);
 });
-test('hand-built maps preserve their datum and material hashes',()=>{
- const hashes={'cedar-close':'34ffd992','main-street':'7cde5c80','harbor-yard':'68c840fa','route-9':'7934db8b','proving-grounds':'c1e20a26'};
+test('hand-built maps preserve their datum and deterministic hashes under walk-through glass rules',()=>{
+ const hashes={'cedar-close':'4db5a19c','main-street':'0be6f856','harbor-yard':'68c840fa','route-9':'5a54ae3b','proving-grounds':'e6265382'};
  for(const [id,hash] of Object.entries(hashes))assert.equal(MAPS.find(m=>m.id===id).build({seed:1}).store.hash(),hash);
 });
 import { reachable, nodeKey } from '../world/PathSearch.js';
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
 import { settleUnsupported } from './Destruction.js';
 import { coverAt, COVER } from './Cover.js';
-test('the stair fire escape reaches every floor and the roof, and its post columns carry the landings',()=>{
+test('the ladder fire escape reaches every floor and roof, with supported platforms',()=>{
  const m=MAPS.find(m=>m.id==='signal-house').build({seed:1}),b=m.buildings[0];
- const reach=reachable(m.store,m.spawns.player[0],Infinity,AGENT_PROFILES.player,{ladders:false,jump:false,blocked:p=>b.stairs.some(r=>r.cells.some(c=>nodeKey(c)===nodeKey(p)))});
+ const reach=reachable(m.store,m.spawns.player[0],Infinity,AGENT_PROFILES.player,{jump:false,blocked:p=>b.stairs.some(r=>r.cells.some(c=>nodeKey(c)===nodeKey(p)))});
  for(const e of b.escapes)assert.ok(reach.costs.has(nodeKey(e.landing)),`landing ${e.floor}`);
- const groups=m.store.supportGroups;assert.equal(groups.length,b.storeys);assert.ok(groups.every(g=>g.columns.length===1&&g.columns[0].every(p=>m.store.get(...p)===MAT.steel_post)));
+ const groups=m.store.supportGroups;assert.equal(groups.length,b.storeys);assert.ok(groups.every(g=>g.columns.length===0&&g.anchors.some(p=>m.store.isSolid(...p))));
  const hash=m.store.hash();assert.equal(settleUnsupported(m.store).removed,0);assert.equal(m.store.hash(),hash);
- // Shoot one voxel out of the first landing's post column: the landings it carries fall, the building stands.
- const target=groups[0],[p]=target.columns[0];m.store.set(...p,0);settleUnsupported(m.store);
+ // Remove a platform’s facade anchors: that platform falls while the building stands.
+ const target=groups[0];for(const anchor of target.anchors)m.store.set(...anchor,0);settleUnsupported(m.store);
  assert.ok(target.members.every(q=>m.store.get(...q)===0));assert.ok(m.store.isSolid(b.x0+8,b.y0+2,10));
  const t=createMap({id:'rail',width:10,depth:10});t.store.fill(5,3,2,5,5,2,'railing');assert.equal(coverAt(t.store,4,4,1).e,COVER.HALF);
 });

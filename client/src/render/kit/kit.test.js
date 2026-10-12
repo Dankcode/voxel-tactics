@@ -129,3 +129,16 @@ test('pitched roofs are not walkable; flat roofs are', () => {
     const s = store.surfaces(tower.x0 + 3, tower.y0 + 3).at(-1);
     assert.ok(s && s.z >= tower.top, 'the watchtower roof is a walkable surface');
 });
+
+test('fire escapes draw uniform edge rails within their two-tile footprint, without beams', async () => {
+    const {compileFireEscape}=await import('../../../../shared/mapgen/AccessModules.js');
+    const {VoxelStore}=await import('../../../../shared/voxel/VoxelStore.js');
+    const s=new VoxelStore(16,16,16);s.fill(0,0,0,15,15,1,'concrete');
+    s.fill(2,2,2,7,2,13,'brick');
+    const rec=compileFireEscape(s,{side:'s',origin:[2,2],datum:1,storeys:4,doors:{}});
+    const {byPiece}=buildAll(Infinity,{store:s});
+    assert.equal(byPiece.get('escape_rail'),12*rec.landings.length);
+    assert.equal(byPiece.get('steel_post')||0,0);
+    const parts=pieces.get('escape_rail');assert.ok(parts?.length);
+    for(const {geometry} of parts){geometry.computeBoundingBox();assert.ok(geometry.boundingBox.max.z<=.5);}
+});

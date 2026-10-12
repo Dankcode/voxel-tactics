@@ -14,6 +14,7 @@
 //     barrels, hay, sandbags and cloth use the UVs authored here.
 import * as THREE from 'three';
 import { rng, box, clean, merge, softBox, blob } from './Geo.js';
+import { ARCHITECTURE_PIECES } from './ArchitecturePieces.js';
 import { CONNECTED_PIECES } from './ConnectedPieces.js';
 import { MODERN_PIECES } from './ModernPieces.js';
 
@@ -162,7 +163,8 @@ export const PIECES = {
     } },
     // Present-day pieces (walls trims, glazing, doors, furniture, vehicles, street furniture, trees, decor).
     ...MODERN_PIECES,
-    ...CONNECTED_PIECES
+    ...CONNECTED_PIECES,
+    ...ARCHITECTURE_PIECES
 };
 
 /** Build every piece: Map id → [{ slot, geometry }] (variants as `id#n`). */

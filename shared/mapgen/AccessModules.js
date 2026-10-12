@@ -1,21 +1,7 @@
-// PLAN-04 §5.2 — uniform vertical access. Every way up or down is one fixed module, the same size on every map,
-// generated from a template and validated against it cell for cell (amends PLAN-03 §5.1):
-//
-//   fire escape   6 along the facade × 2 out per storey (+1 railed lip), stairs only, one per 3–4 storey building
-//   roof ladder   1 cell, one storey per segment, through a 1-cell parapet gap; 1–2 storey flat roofs only
-//   manhole       1 × 1 shaft with a ladder on one wall; single-level underground
-//   service stair the fire-escape module turned inward inside a shaft; deep underground and hive maps
-//   street stair  1 × 4 straight subway stair (street ↔ tunnel), unchanged from PLAN-03
-//
-// Module frame: u runs along the facade (0..5), r runs outward from the wall line (r = 0 is the wall itself).
-//
-//   facade wall  r=0 ─────────────────────────────
-//   inner row    r=1  [L][L][s][s][L][L]   flights on even storeys climb this row
-//   outer row    r=2  [L][L][s][s][L][L]   flights on odd storeys climb this row (2 voxels of headroom over the one below)
-//   lip          r=3  [P][=]        [=][P]  railing over a grate lip, steel posts at the outer corners
-//
-// Landings alternate ends: the street landing is the left end, storey 1 lands on the right end, storey 2 on the
-// left, … so a landing never sits 3 voxels under another one and every flight has headroom.
+// Uniform vertical access: exterior fire escapes use ladder-linked platforms;
+// internal storeys and underground service shafts use stairs.
+// Module frame: u along the facade (0..5), r outward (wall = 0).
+// Each 6×2 platform wraps the same ladder well and bolts directly to the facade.
 import { MAT, AIR, materialById } from '../voxel/Materials.js';
 import { ladderAttachment } from '../world/LadderAttachment.js';
 import { STOREY } from './KitMetric.js';
@@ -24,7 +10,7 @@ export const SIDE_FRAME = Object.freeze({
     n: { a: [1, 0], o: [0, -1] }, s: { a: [1, 0], o: [0, 1] },
     e: { a: [0, 1], o: [1, 0] }, w: { a: [0, 1], o: [-1, 0] }
 });
-export const FIRE_ESCAPE = Object.freeze({ along: 6, out: 2, lip: 1, apron: 2, landing: 2, flight: 2, storey: STOREY });
+export const FIRE_ESCAPE = Object.freeze({ along: 6, out: 2, lip: 0, apron: 2, landing: 6, flight: 0, ladderRise: STOREY, storey: STOREY });
 export const ROOF_LADDER = Object.freeze({ width: 1, segment: STOREY, parapetGap: 1, maxStoreys: 2 });
 export const MANHOLE = Object.freeze({ shaft: [1, 1], levels: 1 });
 export const SERVICE_STAIR = Object.freeze({ along: 6, out: 2, shaft: [8, 4] });
@@ -39,7 +25,7 @@ export function facadeOrigin(b, side, offset) {
         : side === 'n' ? [b.x0 + offset, b.y0] : [b.x0 + offset, b.y0 + b.d - 1];
 }
 export const facadeLength = (b, side) => (side === 'n' || side === 's' ? b.w : b.d);
-/** Landing end of level s: 0 = left (u 0–1), 4 = right (u 4–5). The street landing (s = 0) is the left end. */
+/** Facade door end (also used by service stairs) of level s: 0 = left (u 0–1), 4 = right (u 4–5). The street landing (s = 0) is the left end. */
 export const landingEnd = s => (s % 2 ? 4 : 0);
 
 /**
@@ -50,42 +36,39 @@ export function fireEscapeTemplate({ side, origin, datum, storeys, doors = {} })
     const f = { ...SIDE_FRAME[side], origin }, cells = [];
     const put = (u, r, z, mat, role, level) => { const [x, y] = at(f, u, r); cells.push({ x, y, z, mat, role, level, u, r }); };
     const z = s => datum + STOREY * s;
-    const topAtEnd = E => { let top = 0; for (let s = 1; s <= storeys; s++) if (landingEnd(s) === E) top = s; return top; };
-    for (let s = 1; s <= storeys; s++) {
-        const E = landingEnd(s), inner = E ? 4 : 1, outer = E ? 5 : 0;
-        for (const u of [E, E + 1]) for (const r of [1, 2]) put(u, r, z(s), MAT.grate, 'landing', s);
-        put(inner, 3, z(s), MAT.grate, 'lip', s); put(inner, 3, z(s) + 1, MAT.railing, 'rail', s);
-        if (topAtEnd(E) === s) { put(outer, 3, z(s), MAT.grate, 'lip', s); put(outer, 3, z(s) + 1, MAT.railing, 'rail', s); }
-        if (s < storeys && doors[s] != null) for (const h of [1, 2]) put(doors[s], 0, z(s) + h, MAT.door, 'door', s);
-        if (s === storeys) for (const u of [E, E + 1]) put(u, 0, z(s) + 1, AIR, 'gap', s);
+    for (let level=1;level<=storeys;level++) {
+        const incoming=2;
+        for(let u=0;u<6;u++)for(const r of [1,2]) {
+            if(r===2&&u===incoming)continue; // Incoming ladder passes through this well.
+            put(u,r,z(level),MAT.grate,'landing',level);
+        }
+        if(level<storeys&&doors[level]!=null)for(const h of [1,2])put(doors[level],0,z(level)+h,MAT.door,'door',level);
+        if(level===storeys)for(const u of [landingEnd(level),landingEnd(level)+1])put(u,0,z(level)+1,AIR,'gap',level);
     }
-    // One switchback flight per storey: two steps, then the next landing three voxels up.
-    for (let s = 0; s < storeys; s++) {
-        const row = 1 + (s % 2), order = s % 2 ? [3, 2] : [2, 3];
-        order.forEach((u, i) => put(u, row, z(s) + 1 + i, MAT.steel_stair, 'flight', s + 1));
-    }
-    // Posts: one column under each outer corner, from the street to the highest landing at that end.
-    for (const E of [0, 4]) {
-        const top = topAtEnd(E); if (!top) continue;
-        for (let h = datum + 1; h < z(top); h++) put(E ? 5 : 0, 3, h, MAT.steel_post, 'post', E);
-    }
-    return { cells, frame: f };
+    // One aligned ladder well runs through every platform.
+    for(let level=0;level<storeys;level++)for(let h=z(level)+1;h<=z(level+1);h++)put(2,2,h,MAT.ladder,'rung',level+1);
+    const last=new Map();for(const c of cells)last.set(key3(c.x,c.y,c.z),c);
+    return { cells:[...last.values()],frame:f };
 }
 
 /** Write a fire escape into the store; returns its record (params + landings + support groups). */
 export function compileFireEscape(store, params) {
     const { cells } = fireEscapeTemplate(params);
     for (const c of cells) store.set(c.x, c.y, c.z, c.mat);
-    const posts = E => cells.filter(c => c.role === 'post' && c.level === E).map(c => [c.x, c.y, c.z]);
+    const f = { ...SIDE_FRAME[params.side], origin: params.origin };
     const landings = [];
     for (let s = 1; s <= params.storeys; s++) {
-        const own = cells.filter(c => c.level === s && ['landing', 'lip', 'rail', 'flight'].includes(c.role));
+        const own = cells.filter(c => c.level === s && ['landing', 'lip', 'rail', 'rung'].includes(c.role));
         const land = own.filter(c => c.role === 'landing');
-        // The landing cell nearest the flight is where a unit stands to use the stairs or the door.
+        // A full platform links the ladder well to the facade door.
         const door = params.doors?.[s], end = landingEnd(s);
         const stand = land.find(c => c.r === 1 && c.u === (door ?? (end ? 4 : 1))) || land[0];
         landings.push({ storey: s, z: params.datum + STOREY * s, end, cells: land.map(c => [c.x, c.y, c.z]), stand: { x: stand.x, y: stand.y, z: stand.z }, door: door ?? null, toRoof: s === params.storeys });
-        (store.supportGroups ??= []).push({ posts: [], columns: [posts(end)].filter(p => p.length), anchors: [], members: own.map(c => [c.x, c.y, c.z]) });
+        const [lx,ly]=at(f,2,2), top=params.datum+STOREY*s;
+        (store.supportGroups ??= []).push({ posts: [], columns: [],
+            anchors: Array.from({length:6},(_,u)=>[...at(f,u,0),top]),
+            ladder: {x:lx,y:ly,lo:top-STOREY+1,hi:top,backing:[-f.o[0],-f.o[1]]},
+            members: own.map(c => [c.x, c.y, c.z]) });
     }
     return { module: 'fire_escape', params: structuredClone(params), landings };
 }
@@ -105,7 +88,8 @@ export function validateAccessModule(store, rec) {
     if (rec.module === 'fire_escape') {
         const us = tpl.cells.map(c => c.u), rs = tpl.cells.filter(c => c.r > 0).map(c => c.r);
         if (Math.min(...us) < 0 || Math.max(...us) > FIRE_ESCAPE.along - 1 || Math.max(...rs) > FIRE_ESCAPE.out + FIRE_ESCAPE.lip) throw Error('access.size: fire escape left its 6 × 2 module');
-        if (tpl.cells.some(c => c.mat === MAT.ladder)) throw Error('access.ladder: fire escapes climb by stairs only');
+        if(tpl.cells.some(c=>c.mat===MAT.steel_stair)||!tpl.cells.some(c=>c.mat===MAT.ladder))throw Error('access.ladder: fire escapes require vertical ladders, not stairs');
+        for(const c of tpl.cells.filter(c=>c.role==='rung'))if(!ladderAttachment(store,c.x,c.y,c.z))throw Error(`access.attachment: fire_escape ${c.x},${c.y},${c.z}`);
     }
     if (rec.module === 'roof_ladder' || rec.module === 'manhole') {
         const rung = tpl.cells.find(c => c.mat === MAT.ladder);
@@ -274,7 +258,7 @@ export function compileServiceStair(store, params) {
 
 /**
  * Access gate (PLAN-03 D3 + PLAN-04 §5.2): every structure matches its template, buildings of 3–4 storeys climb by
- * the fire escape only (no ladder touches them), roof ladders serve only 1–2 storey flat roofs.
+ * ladder-linked fire escapes; standalone roof ladders serve only 1–2 storey flat roofs.
  */
 export function checkAccess(mission) {
     const s = mission.store, out = { accessTemplates: true, accessByHeight: true };
@@ -286,8 +270,9 @@ export function checkAccess(mission) {
         }
         if (b.storeys >= 3) {
             if (!(b.access || []).some(r => r.module === 'fire_escape')) out.accessByHeight = false;
-            for (let y = b.y0 - 1; y <= b.y0 + b.d; y++) for (let x = b.x0 - 1; x <= b.x0 + b.w; x++) for (let z = b.baseZ; z <= b.top + 1; z++)
-                if (s.get(x, y, z) === MAT.ladder) out.accessByHeight = false;
+            const allowed=new Set((b.access||[]).filter(r=>r.module==='fire_escape').flatMap(r=>fireEscapeTemplate(r.params).cells.filter(c=>c.role==='rung').map(c=>key3(c.x,c.y,c.z))));
+            for(let y=b.y0-1;y<=b.y0+b.d;y++)for(let x=b.x0-1;x<=b.x0+b.w;x++)for(let z=b.baseZ;z<=b.top+1;z++)
+                if(s.get(x,y,z)===MAT.ladder&&!allowed.has(key3(x,y,z)))out.accessByHeight=false;
         }
     }
     return out;

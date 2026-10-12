@@ -1,3 +1,5 @@
+import { rasterRoadNetwork,pointInRegion } from './RoadGeometry.js';
+import { solveReferenceParcels } from './ParcelFormula.js';
 // PLAN-04 — the v3 map generator: plot → guide fields → districts → lots → buildings → line of play → layers →
 // programmes → interiors → facades → bays (cover as WFC) → world edges → dressing. The result is a layout v3 (data:
 // every choice is saved, so a package rebuilds byte-identically) that PackageBuilder compiles into voxels.
@@ -15,12 +17,12 @@ import { solveFacadeV3 } from './FacadeSolver.js';
 import { solveLayers } from './LayerSolver.js';
 import { solveSite } from './SiteSolver.js';
 import { designProgrammes, addPocketPods } from './OperationDesigner.js';
-import { FIRE_ESCAPE, SIDE_FRAME, facadeOrigin, facadeLength, landingEnd } from './AccessModules.js';
+import { fireEscapeTemplate, FIRE_ESCAPE, SIDE_FRAME, facadeOrigin, facadeLength, landingEnd } from './AccessModules.js';
 import { hashString } from '../util/Rng.js';
 import { solveWaveFunctionCollapse } from '../generation/WaveFunctionCollapse.js';
 import { buildWithRepair } from './Repair.js';
 
-export const GENERATOR_VERSION = '4.0.0';
+export const GENERATOR_VERSION = '4.1.0';
 const unit = s => (hashString(s) >>> 0) / 4294967296;
 const SIDES = ['n', 'e', 's', 'w'];
 const k2 = (x, y) => `${x},${y}`;
@@ -112,7 +114,8 @@ function accessSlots(b, access) {
  */
 export function plotFromSite(site, seed) {
     const s = solveSite(site, seed);
-    const W = Math.min(64, Math.ceil(s.width / LOT) * LOT), D = Math.min(64, Math.ceil(s.depth / LOT) * LOT);
+    const cap=site.maxDimension??64;
+    const W = Math.min(cap, Math.ceil(s.width / LOT) * LOT), D = Math.min(cap, Math.ceil(s.depth / LOT) * LOT);
     const buildings = s.buildings.map(b => {
         const w = b.w % 2 ? b.w : (b.w - 1 >= 11 ? b.w - 1 : b.w + 1), d = b.d % 2 ? b.d : (b.d - 1 >= 11 ? b.d - 1 : b.d + 1);
         return { ...b, w, d };
@@ -132,6 +135,7 @@ export function plotFromSite(site, seed) {
  */
 export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, objectiveKind = null, timeOfDay = null, id = null, name = null, siteRead = null, floorSpecs = [] } = {}) {
     const { W, D } = plot, repairs = [];
+    const inRegion=(x,y)=>pointInRegion(plot.site?.boundary,x,y);
     const toCell = ([u, v]) => plot.picture ? [Math.round(plot.site.transform.margin + u * plot.site.transform.frame.width * plot.site.transform.scale), Math.round(plot.site.transform.margin + v * plot.site.transform.frame.height * plot.site.transform.scale)] : [Math.round(u * W), Math.round(v * D)];
     // ---- guide fields
     const prior = picturePrior(siteRead, W, D, toCell);
@@ -190,7 +194,8 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
     const inside = (x, y) => buildings.some(b => x >= b.x0 && y >= b.y0 && x < b.x0 + b.w && y < b.y0 + b.d);
     const door = target.exits[0], [ox, oy] = SIDE_VEC[door.side];
     const goal = { x: target.x0 + door.x + ox * 3, y: target.y0 + door.y + oy * 3 };
-    const passable = (x, y) => x > 0 && y > 0 && x < W - 1 && y < D - 1 && !inside(x, y);
+    const accessObstacles=new Set(buildings.filter(b=>b.access?.module==='fire_escape').flatMap(b=>fireEscapeTemplate({side:b.access.side,origin:facadeOrigin(b,b.access.side,b.access.offset),datum:0,storeys:b.storeys}).cells.filter(c=>c.role==='post'&&c.z===1).map(c=>k2(c.x,c.y))));
+    const passable = (x, y) => inRegion(x,y)&&!accessObstacles.has(k2(x,y)) && x > 0 && y > 0 && x < W - 1 && y < D - 1 && !inside(x, y);
     // A picture's designer flow is kept: its waypoints must be on open ground, and the main route threads them.
     const waypoints = plot.picture ? plot.site.flow.slice(1).map(([x, y]) => ({ x, y })) : [];
     for (const w of waypoints) if (!passable(w.x, w.y)) throw Error(`Gameplay waypoint ${w.x},${w.y} is blocked; revise image analysis flow`);
@@ -268,7 +273,7 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
     }
     reconcileDesign(design, buildings);
     // ---- bays: cover and props as WFC tiles, pockets pinned along the line of play
-    const blocked = (x, y) => buildings.some(b => x >= b.x0 - 1 && y >= b.y0 - 1 && x <= b.x0 + b.w && y <= b.y0 + b.d);
+    const blocked = (x, y) => !inRegion(x,y)||buildings.some(b => x >= b.x0 - 1 && y >= b.y0 - 1 && x <= b.x0 + b.w && y <= b.y0 + b.d);
     const ground = plot.picture ? pictureGround(plot, siteRead, W, D) : groundFromPlot(plot, lotKindAt);
     if (!plot.picture) markParking(plot, ground, lotKindAt);
     let bayGrid = classifyBays(W, D, ground, blocked, protectedCells);
@@ -299,6 +304,8 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
         bayGrid = classifyBays(W, D, ground, blocked, protectedCells);
     }
     const lotPool = (lot, bay) => {
+        if(bay.cls.startsWith('parking_'))return 'parking';
+        if(bay.cls==='carriageway')return 'carriageway';
         if (bay.cls === 'sidewalk') return 'sidewalk';
         if (bay.cls === 'lane_x' || bay.cls === 'lane_y' || (lot.road && bay.cls === 'asphalt')) return 'lane';
         const kind = lotKindAt(lot);
@@ -315,6 +322,7 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
     const edges = planEdges(plot, ground, buildings, districts, seed, protectedCells);
     const dressing = planDressing(plot, buildings, parcels, seed);
     const layout = {
+        roads:plot.site?.roads||[],parking:plot.site?.parking||[],parcelAssignments:plot.parcelAssignments||[],
         version: 3, generatorVersion: GENERATOR_VERSION, datum: plot.datum, id: id || `${plot.family}-${seed}`, width: W, depth: D, height: plot.height,
         plot: { family: plot.family, theme: plot.theme, seed: plot.seed, lots: plot.lots.map(l => ({ lx: l.lx, ly: l.ly, road: l.road, kind: lotKindAt(l), district: districts?.at?.(l.lx, l.ly) ?? null })), roadExits: plot.roadExits, picture: !!plot.picture },
         ground: { mat: encodeGround(ground.mat) },
@@ -398,7 +406,7 @@ function flowWaypoints(path) {
     return out;
 }
 
-const GROUND_CODES = { concrete: 'c', asphalt: 'a', road_mark: 'm', paving: 'p', lawn: 'l', gravel: 'g', deck: 'd', soil: 's' };
+const GROUND_CODES = { air:'v',concrete: 'c', asphalt: 'a', road_mark: 'm', paving: 'p', lawn: 'l', gravel: 'g', deck: 'd', soil: 's' };
 const GROUND_KEYS = Object.fromEntries(Object.entries(GROUND_CODES).map(([k, v]) => [v, k]));
 export const encodeGround = mat => mat.map(m => GROUND_CODES[m] || 'c').join('');
 export const decodeGround = str => [...str].map(c => GROUND_KEYS[c] || 'concrete');
@@ -416,6 +424,9 @@ function pictureLots(plot, fields, seed, siteRead) {
             margins: { n: b.y0, s: D - (b.y0 + b.d), w: b.x0, e: W - (b.x0 + b.w) }, wall: (DISTRICT_WALLS[district])[Math.floor(unit(`${seed}:${b.id}:wall`) * 3) % DISTRICT_WALLS[district].length],
             roof: 'flat', accent: DISTRICT_PALETTE[district][i % DISTRICT_PALETTE[district].length], objective: tallest };
     });
+    const parcelAssignments=solveReferenceParcels(siteRead||{},buildings,seed);
+    plot.parcelAssignments=parcelAssignments;
+    for(const p of parcelAssignments){const b=buildings.find(b=>b.id===p.slot);b.parcel=p.prototype;b.wall=p.wall;}
     // Real margins: distance to the next footprint on each side (or the map edge).
     for (const b of buildings) for (const o of buildings) if (o !== b) {
         const overlapX = Math.min(b.x0 + b.w, o.x0 + o.w) > Math.max(b.x0, o.x0), overlapY = Math.min(b.y0 + b.d, o.y0 + o.d) > Math.max(b.y0, o.y0);
@@ -447,7 +458,7 @@ function pictureLots(plot, fields, seed, siteRead) {
     plot.lotKinds = Object.fromEntries([...kinds].map(([k, v]) => [k, v.kind || (v.picture ? 'picture' : 'street')]));
     return { parcels: [], lotKindAt, buildings, districts: { at: () => district } };
 }
-function pictureBayPool(cls) { return cls === 'lawn' ? 'yard_garden' : cls === 'asphalt' ? 'parking' : cls === 'gravel' ? 'vacant' : 'yard_paved'; }
+function pictureBayPool(cls) { if(cls.startsWith('parking_'))return 'parking';if(cls==='carriageway')return 'carriageway';return cls === 'lawn' ? 'yard_garden' : cls === 'asphalt' ? 'parking' : cls === 'gravel' ? 'vacant' : 'yard_paved'; }
 function pictureGround(plot, siteRead, W, D) {
     const site = plot.site, base = plot.theme === 'Suburbs' ? 'lawn' : 'concrete';
     const mat = new Array(W * D).fill(base), cls = new Array(W * D).fill(base);
@@ -461,6 +472,13 @@ function pictureGround(plot, siteRead, W, D) {
             cls[x + y * W] = edge < 2 ? (alongX ? 'lane_x' : 'lane_y') : 'asphalt';
         }
     }
+    for(const p of site.parking||[])for(let y=p.y0;y<Math.min(D,p.y0+p.d);y++)for(let x=p.x0;x<Math.min(W,p.x0+p.w);x++) {
+        mat[x+y*W]='asphalt';cls[x+y*W]=`parking_${p.axis||'y'}`;
+        if((p.axis||'y')==='y'?(x-p.x0)%4===0:(y-p.y0)%4===0)mat[x+y*W]='road_mark';
+    }
+    const owned=(x,y)=>plot.buildings.some(b=>x>=b.x0-1&&y>=b.y0-1&&x<=b.x0+b.w&&y<=b.y0+b.d);
+    for(const c of rasterRoadNetwork(site.roads||[],W,D,{blocked:owned})) {mat[c.x+c.y*W]=c.material;cls[c.x+c.y*W]=c.road?(c.edge<1.5?`lane_${c.axis}`:'carriageway'):'sidewalk';}
+    if(site.boundary)for(let y=0;y<D;y++)for(let x=0;x<W;x++)if(!pointInRegion(site.boundary,x,y)){mat[x+y*W]='air';cls[x+y*W]='outside';}
     return { mat, cls, axisAt: lot => { const c = cls[lot.x0 + 4 + (lot.y0 + 4) * W]; return c === 'lane_x' ? 'x' : c === 'lane_y' ? 'y' : null; } };
 }
 
@@ -480,7 +498,7 @@ export function planEdges(plot, ground, buildings, districts, seed, protectedCel
         let run = null;
         for (let t = 0; t < len; t++) {
             const [x, y] = side === 'n' ? [t, 0] : side === 's' ? [t, D - 1] : side === 'w' ? [0, t] : [W - 1, t];
-            const kind = occupied(x, y) ? null : isAsphalt(x, y) ? 'road' : 'open';
+            const kind = ground.mat[x+y*W]==='air'||occupied(x, y) ? null : isAsphalt(x, y) ? 'road' : 'open';
             if (run && run.kind === kind) run.cells.push([x, y]);
             else { if (run) runs.push(run); run = kind ? { side, kind, cells: [[x, y]] } : null; }
         }

@@ -1,3 +1,4 @@
+import { WALKERS } from './Walker.js';
 // PLAN-02 rule changes: 30 HP and caliber damage, cosmetic glass, jump-down and ladders, objectives.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -65,8 +66,8 @@ test('autopilot spends a full movement turn on an affordable tall ladder instead
     runAiSide(b,'player');assert.equal(b.outcome?.reason,'recovered');
 });
 
-test('every character has 30 HP and every gun takes its damage from its caliber', () => {
-    for (const def of [...Object.values(CLASSES), ...Object.values(ENEMIES)]) assert.equal(def.hp, UNIT_HP, def.id);
+test('every human character has 30 HP and every gun takes its damage from its caliber', () => {
+    for (const def of [...Object.values(CLASSES), ...Object.values(ENEMIES).filter(def=>!WALKERS[def.id])]) assert.equal(def.hp, UNIT_HP, def.id);
     assert.equal(UNIT_HP, 30);
     for (const w of Object.values(WEAPONS).filter(w => w.caliber)) {
         const c = CALIBERS[w.caliber];
@@ -104,7 +105,7 @@ test('jump down one storey: reachable, costs about an AP, no fall damage, lands 
     const r = b.apply({ type: 'move', unitId: 'p0', to });
     assert.ok(r.ok);
     assert.deepEqual([u.x, u.y, u.z], [10, 13, 1]);
-    assert.equal(u.hp, 30);
+    assert.equal(u.hp, WALKERS[u.type]? (u.type==='wall_strider'?60:90):30);
     assert.ok(u.statuses.some(s => s.id === 'staggered'));
     assert.ok(r.events.find(e => e.t === 'move').kinds.includes('jump'));
     // Jumping is one way: without stairs or a ladder the platform cannot be reached from the ground.

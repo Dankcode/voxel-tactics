@@ -1,3 +1,4 @@
+import { smoothRoad, rasterRoadNetwork } from './RoadGeometry.js';
 // PLAN-04 §5.3 step 2 — guide fields for field-guided WFC. Every field is a low-resolution scalar grid that is
 // deterministic from the map id, the layer and the seed, so lockstep peers and the offline builder agree:
 //
@@ -71,6 +72,8 @@ export function picturePrior(site, w, h, toCell, { blur = 1 } = {}) {
         for (let y = Math.max(0, y0); y <= Math.min(h - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(w - 1, x1); x++) fn(x, y);
     };
     for (const s of site?.surfaces || []) { const k = SURFACE_KIND[s.material]; if (k) fillRect(s.bounds, (x, y) => { for (const o of Object.keys(SURFACE_KIND).map(m => SURFACE_KIND[m])) kinds[o].set(x, y, 0); kinds[k].set(x, y, 1); }); }
+    const roads=(site?.roads||[]).map(r=>({id:r.id,width:r.width*Math.hypot(...toCell([1,0]).map((v,i)=>v-toCell([0,0])[i]))/(site.frame.width||1),points:smoothRoad(r.points.map(toCell))}));
+    for(const c of rasterRoadNetwork(roads,w,h)) {kinds.road.set(c.x,c.y,c.road?1:0);kinds.paved.set(c.x,c.y,c.road?0:1);kinds.green.set(c.x,c.y,0);}
     for (const b of site?.buildings || []) fillRect(b.bounds, (x, y) => { kinds.building.set(x, y, 1); kinds.road.set(x, y, 0); kinds.height.set(x, y, Math.min(1, (b.storeys || 1) / 4)); });
     for (const wtr of site?.water || []) fillRect(wtr.bounds, (x, y) => kinds.water.set(x, y, 1));
     if (blur) for (const k of Object.keys(kinds)) kinds[k] = kinds[k].blur(blur);

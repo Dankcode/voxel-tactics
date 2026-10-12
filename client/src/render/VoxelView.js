@@ -49,7 +49,7 @@ export class VoxelView {
         if (cx < 0 || cy < 0 || cz < 0 || cx * CHUNK >= this.store.width || cy * CHUNK >= this.store.depth || cz * CHUNK >= this.store.height) return;
         const old = this.chunks.get(key);
         if (old) { for (const m of old) { this.group.remove(m); if (m.userData.kit) m.dispose?.(); if (!m.isInstancedMesh) m.geometry.dispose(); } }
-        const hidden = () => false;
+        const hidden = (x,y,z) => this.buildingView?.hiddenAt(x,y,z)||false;
         const parts = meshChunk(this.store, cx, cy, cz, { hidden, tint: this.tint, cutZ: this.cutZ, kit: this.kitView ? kitHandler : null, apron: true });
         const meshes = [];
         for (const p of parts) {
@@ -78,11 +78,11 @@ export class VoxelView {
     }
     refreshConcealment() {
         const rooms=this.interiorVisibility?.concealedRooms()||[];
-        const key=rooms.map(r=>r.id).join(',')+':'+this.cutZ+':'+[...(this.interiorVisibility?.seen||[])].sort().join(';');
+        const key=rooms.map(r=>r.id).join(',')+':'+this.cutZ+':'+[...(this.buildingView?.active||[])].map(([b,z])=>`${b.id}:${z}`).join(',')+':'+[...(this.interiorVisibility?.seen||[])].sort().join(';');
         if(key===this.concealmentKey)return;
         this.concealmentKey=key;
         if(this.concealment){this.group.remove(this.concealment);this.concealment.geometry.dispose();this.concealment.material.dispose();}
-        const cells=rooms.flatMap(r=>r.cells.map(([x,y])=>({x,y,z:r.floorZ+1.02,floor:r.floorZ}))).filter(c=>c.z<this.cutZ&&this.interiorVisibility.hiddenAt(c.x,c.y,c.floor));
+        const cells=rooms.flatMap(r=>r.cells.map(([x,y])=>({x,y,z:r.floorZ+1.02,floor:r.floorZ}))).filter(c=>c.z<this.cutZ&&!this.buildingView?.hiddenAt(c.x,c.y,c.floor)&&this.interiorVisibility.hiddenAt(c.x,c.y,c.floor));
         if(!cells.length){this.concealment=null;return;}
         const mesh=new THREE.InstancedMesh(new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0x091118,transparent:true,opacity:.65,depthWrite:false,clippingPlanes:this.scene.clipping}),cells.length);
         const matrix=new THREE.Matrix4();

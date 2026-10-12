@@ -30,7 +30,20 @@ export function roundPolygon(points, radius = 0.12, steps = 5, eligible = () => 
     return out;
 }
 const wallCache = new Map();
-export function wallFootprint(mask) { return bandFootprint(mask, WALL_THICKNESS, 0.12); }
+export const CURVED_WALL_MASKS = new Set([3,6,12,9]);
+const curveCache=new Map();
+/** A quarter-circle bend tangent to the adjoining tile runs, just like exposed terrain corners. */
+export function curvedCornerFootprint(mask, thickness=WALL_THICKNESS, steps=12) {
+    if(!CURVED_WALL_MASKS.has(mask))return null;
+    const key=`${mask}|${thickness}|${steps}`;if(curveCache.has(key))return curveCache.get(key);
+    const points=[],outer=.5+thickness/2,inner=.5-thickness/2;
+    for(let i=0;i<=steps;i++){const a=Math.PI+i/steps*Math.PI/2;points.push([1+outer*Math.cos(a),1+outer*Math.sin(a)]);}
+    for(let i=steps;i>=0;i--){const a=Math.PI+i/steps*Math.PI/2;points.push([1+inner*Math.cos(a),1+inner*Math.sin(a)]);}
+    const turns={3:0,6:1,12:2,9:3}[mask];
+    const poly=points.map(([x,y])=>{for(let i=0;i<turns;i++)[x,y]=[1-y,x];return [Math.max(0,Math.min(1,x)),Math.max(0,Math.min(1,y))];});
+    curveCache.set(key,poly);return poly;
+}
+export function wallFootprint(mask) { return curvedCornerFootprint(mask)||bandFootprint(mask, WALL_THICKNESS, 0.12); }
 
 /**
  * Grouped cover (hedges, planters, sandbags, barriers, field walls, fences) uses the same post-and-arm silhouette as
@@ -93,7 +106,8 @@ export function collisionFootprint(store, x, y, z) {
     if (band) return bandFootprint(bandMask(store, x, y, z, band.family), band.thickness, band.radius);
     if (WALL_KEYS.has(key)) return wallFootprint(wallMask(store, x, y, z));
     if (key === 'glass' || key === 'door' || key === 'door_locked') {
-        const t = key === 'glass' ? 0.1 : 0.08, a = (1-t)/2, b=1-a;
+        const t = key === 'glass' ? 0.035 : 0.08, a = (1-t)/2, b=1-a;
+        if(key==='glass'){const curve=curvedCornerFootprint(wallMask(store,x,y,z),t);if(curve)return curve;}
         return openingAxis(store,x,y,z) === 'x' ? [[0,a],[1,a],[1,b],[0,b]] : [[a,0],[b,0],[b,1],[a,1]];
     }
     return null;

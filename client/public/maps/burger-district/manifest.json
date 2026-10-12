@@ -1,0 +1,645 @@
+{
+  "version": 1,
+  "critic": {
+    "version": 1,
+    "total": 89,
+    "scores": {
+      "rhythm": 100,
+      "flankConcealment": 95,
+      "verticalUse": 65,
+      "interiorBreach": 89,
+      "roomCover": 100,
+      "outdoorCover": 82,
+      "sightlines": 76,
+      "objectiveDistance": 96
+    },
+    "pocketSpacing": {
+      "count": 3,
+      "mean": 8.22857142857143,
+      "max": 8.22857142857143
+    },
+    "flanks": [
+      {
+        "side": "left",
+        "length": 41,
+        "concealment": 0.95
+      },
+      {
+        "side": "right",
+        "length": 33,
+        "concealment": 0.88
+      }
+    ],
+    "evacCost": 47,
+    "rooms": 9
+  },
+  "id": "burger-district",
+  "name": "Burger District · Upper-left Parcels",
+  "theme": "Roadside",
+  "seed": 1,
+  "generatorVersion": "4.1.0",
+  "sourceAnalysis": "recorded",
+  "conceptSource": "offline-schematic",
+  "models": {},
+  "files": {
+    "site": "site.json",
+    "design": "design.json",
+    "layout": "layout.json"
+  },
+  "concepts": [
+    "concept/west-retail-0.png",
+    "concept/north-diner-0.png",
+    "concept/central-diner-0.png"
+  ],
+  "reference": "concept/reference.png",
+  "size": [
+    112,
+    56,
+    18
+  ],
+  "storeys": [
+    {
+      "id": "west-retail",
+      "storeys": 1
+    },
+    {
+      "id": "north-diner",
+      "storeys": 1
+    },
+    {
+      "id": "central-diner",
+      "storeys": 1
+    }
+  ],
+  "validation": [
+    {
+      "seed": 1,
+      "metrics": {
+        "reachableTiles": 4316,
+        "coverDensity": 0.3276181649675626,
+        "outdoorCover": 0.287573360551161,
+        "coverGap": 6,
+        "fullCoverShare": 0.1387859128822984,
+        "interiorShare": 0.09198331788693234,
+        "killingField": 10,
+        "sightlineMedian": 13.4350288425444,
+        "lanes": 4,
+        "breachability": 0.9166666666666666,
+        "destructibleCover": 0.7818290496114764,
+        "spawnSafe": 1,
+        "firstContact": 20.223748416156685,
+        "rooms": 12,
+        "buildings": 3,
+        "gates": {
+          "coverDensity": true,
+          "outdoorCover": true,
+          "coverGap": true,
+          "fullCoverShare": true,
+          "killingField": true,
+          "sightlineMedian": true,
+          "lanes": true,
+          "breachability": true,
+          "destructibleCover": true,
+          "spawnSafe": true,
+          "initialSupport": true,
+          "spawnConnectivity": true,
+          "escapeLandings": true,
+          "roofsReachable": true,
+          "accessTemplates": true,
+          "accessByHeight": true,
+          "buildingCount": true,
+          "footprintOverlap": true,
+          "storeys": true,
+          "floorsReachable": true,
+          "secondEscape": true,
+          "closedRooms": true,
+          "storyBeats": true,
+          "objectiveReachable": true,
+          "windowLines": true,
+          "firstContact": true,
+          "heightBudget": true,
+          "enemiesReachable": true,
+          "layerConnectivity": true,
+          "twoEntrances": true,
+          "flankLength": true,
+          "flankHidden": true,
+          "dropSafe": true,
+          "flankGuard": true,
+          "worldEdges": true,
+          "pockets": true,
+          "flanksWalkable": true
+        },
+        "pass": true,
+        "flank": {
+          "cost": 63.0056,
+          "direct": 47.07000000000001,
+          "tunnelCost": 47.0916,
+          "approach": 11.414,
+          "ratio": 1.3385510941151475
+        },
+        "hallEscapes": {
+          "west-retail:0": true,
+          "north-diner:0": true,
+          "central-diner:0": true
+        }
+      },
+      "buildMs": 254.71170899999925
+    },
+    {
+      "seed": 2,
+      "metrics": {
+        "reachableTiles": 4311,
+        "coverDensity": 0.3275342147993505,
+        "outdoorCover": 0.287573360551161,
+        "coverGap": 6,
+        "fullCoverShare": 0.13801902110879147,
+        "interiorShare": 0.09093017861285084,
+        "killingField": 10,
+        "sightlineMedian": 14.849242404917499,
+        "lanes": 4,
+        "breachability": 0.9166666666666666,
+        "destructibleCover": 0.7828673408685306,
+        "spawnSafe": 1,
+        "firstContact": 20.518284528683193,
+        "rooms": 12,
+        "buildings": 3,
+        "gates": {
+          "coverDensity": true,
+          "outdoorCover": true,
+          "coverGap": true,
+          "fullCoverShare": true,
+          "killingField": true,
+          "sightlineMedian": true,
+          "lanes": true,
+          "breachability": true,
+          "destructibleCover": true,
+          "spawnSafe": true,
+          "initialSupport": true,
+          "spawnConnectivity": true,
+          "escapeLandings": true,
+          "roofsReachable": true,
+          "accessTemplates": true,
+          "accessByHeight": true,
+          "buildingCount": true,
+          "footprintOverlap": true,
+          "storeys": true,
+          "floorsReachable": true,
+          "secondEscape": true,
+          "closedRooms": true,
+          "storyBeats": true,
+          "objectiveReachable": true,
+          "windowLines": true,
+          "firstContact": true,
+          "heightBudget": true,
+          "enemiesReachable": true,
+          "layerConnectivity": true,
+          "twoEntrances": true,
+          "flankLength": true,
+          "flankHidden": true,
+          "dropSafe": true,
+          "flankGuard": true,
+          "worldEdges": true,
+          "pockets": true,
+          "flanksWalkable": true
+        },
+        "pass": true,
+        "flank": {
+          "cost": 63.0056,
+          "direct": 47.07000000000001,
+          "tunnelCost": 47.0916,
+          "approach": 11.414,
+          "ratio": 1.3385510941151475
+        },
+        "hallEscapes": {
+          "west-retail:0": true,
+          "north-diner:0": true,
+          "central-diner:0": true
+        }
+      },
+      "buildMs": 254.85337499999878
+    },
+    {
+      "seed": 3,
+      "metrics": {
+        "reachableTiles": 4313,
+        "coverDensity": 0.3269186181312312,
+        "outdoorCover": 0.287573360551161,
+        "coverGap": 6,
+        "fullCoverShare": 0.13772316253188036,
+        "interiorShare": 0.09135172733596104,
+        "killingField": 10,
+        "sightlineMedian": 14.5,
+        "lanes": 4,
+        "breachability": 0.9166666666666666,
+        "destructibleCover": 0.7820895522388059,
+        "spawnSafe": 1,
+        "firstContact": 21.213203435596427,
+        "rooms": 12,
+        "buildings": 3,
+        "gates": {
+          "coverDensity": true,
+          "outdoorCover": true,
+          "coverGap": true,
+          "fullCoverShare": true,
+          "killingField": true,
+          "sightlineMedian": true,
+          "lanes": true,
+          "breachability": true,
+          "destructibleCover": true,
+          "spawnSafe": true,
+          "initialSupport": true,
+          "spawnConnectivity": true,
+          "escapeLandings": true,
+          "roofsReachable": true,
+          "accessTemplates": true,
+          "accessByHeight": true,
+          "buildingCount": true,
+          "footprintOverlap": true,
+          "storeys": true,
+          "floorsReachable": true,
+          "secondEscape": true,
+          "closedRooms": true,
+          "storyBeats": true,
+          "objectiveReachable": true,
+          "windowLines": true,
+          "firstContact": true,
+          "heightBudget": true,
+          "enemiesReachable": true,
+          "layerConnectivity": true,
+          "twoEntrances": true,
+          "flankLength": true,
+          "flankHidden": true,
+          "dropSafe": true,
+          "flankGuard": true,
+          "worldEdges": true,
+          "pockets": true,
+          "flanksWalkable": true
+        },
+        "pass": true,
+        "flank": {
+          "cost": 63.0056,
+          "direct": 47.07000000000001,
+          "tunnelCost": 47.0916,
+          "approach": 11.414,
+          "ratio": 1.3385510941151475
+        },
+        "hallEscapes": {
+          "west-retail:0": true,
+          "north-diner:0": true,
+          "central-diner:0": true
+        }
+      },
+      "buildMs": 242.86625000000095
+    },
+    {
+      "seed": 4,
+      "metrics": {
+        "reachableTiles": 4311,
+        "coverDensity": 0.32846207376478775,
+        "outdoorCover": 0.287573360551161,
+        "coverGap": 6,
+        "fullCoverShare": 0.13755509162607285,
+        "interiorShare": 0.09093017861285084,
+        "killingField": 10,
+        "sightlineMedian": 14.849242404917497,
+        "lanes": 4,
+        "breachability": 0.9166666666666666,
+        "destructibleCover": 0.7823494335122242,
+        "spawnSafe": 1,
+        "firstContact": 21.93171219946131,
+        "rooms": 12,
+        "buildings": 3,
+        "gates": {
+          "coverDensity": true,
+          "outdoorCover": true,
+          "coverGap": true,
+          "fullCoverShare": true,
+          "killingField": true,
+          "sightlineMedian": true,
+          "lanes": true,
+          "breachability": true,
+          "destructibleCover": true,
+          "spawnSafe": true,
+          "initialSupport": true,
+          "spawnConnectivity": true,
+          "escapeLandings": true,
+          "roofsReachable": true,
+          "accessTemplates": true,
+          "accessByHeight": true,
+          "buildingCount": true,
+          "footprintOverlap": true,
+          "storeys": true,
+          "floorsReachable": true,
+          "secondEscape": true,
+          "closedRooms": true,
+          "storyBeats": true,
+          "objectiveReachable": true,
+          "windowLines": true,
+          "firstContact": true,
+          "heightBudget": true,
+          "enemiesReachable": true,
+          "layerConnectivity": true,
+          "twoEntrances": true,
+          "flankLength": true,
+          "flankHidden": true,
+          "dropSafe": true,
+          "flankGuard": true,
+          "worldEdges": true,
+          "pockets": true,
+          "flanksWalkable": true
+        },
+        "pass": true,
+        "flank": {
+          "cost": 63.0056,
+          "direct": 47.07000000000001,
+          "tunnelCost": 47.0916,
+          "approach": 11.414,
+          "ratio": 1.3385510941151475
+        },
+        "hallEscapes": {
+          "west-retail:0": true,
+          "north-diner:0": true,
+          "central-diner:0": true
+        }
+      },
+      "buildMs": 245.93837499999972
+    }
+  ],
+  "repairs": [
+    {
+      "kind": "local-recollapse",
+      "reason": "coverGap+killingField",
+      "lots": [
+        "0,0",
+        "12,4"
+      ]
+    },
+    {
+      "kind": "local-recollapse",
+      "reason": "coverGap",
+      "lots": [
+        "3,0",
+        "2,0",
+        "11,5"
+      ]
+    },
+    {
+      "kind": "local-recollapse",
+      "reason": "coverGap",
+      "lots": [
+        "8,2",
+        "11,3",
+        "9,6"
+      ]
+    },
+    {
+      "kind": "local-recollapse",
+      "reason": "coverGap",
+      "lots": [
+        "7,0",
+        "0,1",
+        "10,6"
+      ]
+    },
+    {
+      "kind": "local-recollapse",
+      "reason": "coverGap",
+      "lots": [
+        "4,0",
+        "3,0",
+        "9,2"
+      ]
+    },
+    {
+      "kind": "local-recollapse",
+      "reason": "coverGap",
+      "lots": [
+        "4,4",
+        "12,5",
+        "8,6"
+      ]
+    },
+    {
+      "kind": "local-recollapse",
+      "reason": "coverGap",
+      "lots": [
+        "8,0",
+        "1,1",
+        "2,1"
+      ]
+    },
+    {
+      "kind": "local-recollapse",
+      "reason": "coverGap",
+      "lots": [
+        "4,1",
+        "10,2",
+        "4,3"
+      ]
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "sales",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "sales",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "sales",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "sales",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "stock",
+      "to": "restroom"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "stock",
+      "to": "restroom"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "stock",
+      "to": "office"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "stock",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "stock",
+      "to": "office"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "stock",
+      "to": "office"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "office",
+      "to": "stock"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "office",
+      "to": "restroom"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "office",
+      "to": "stock"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "office",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "office",
+      "to": "stock"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "dining",
+      "to": "kitchen"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "dining",
+      "to": "office"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "kitchen",
+      "to": "restroom"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "kitchen",
+      "to": "restroom"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "kitchen",
+      "to": "dining"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "kitchen",
+      "to": "office"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "office",
+      "to": "kitchen"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "office",
+      "to": "dining"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "dining",
+      "to": "office"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "dining",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "dining",
+      "to": "hall"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "dining",
+      "to": "kitchen"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "kitchen",
+      "to": "dining"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "office",
+      "to": "dining"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "office",
+      "to": "kitchen"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "office",
+      "to": "kitchen"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "restroom",
+      "to": "dining"
+    },
+    {
+      "kind": "merge-fragment",
+      "floor": 0,
+      "from": "restroom",
+      "to": "kitchen"
+    }
+  ],
+  "credits": "Reference supplied by author; generated interiors are art direction.",
+  "checksums": {
+    "site": "487156dcddda14d9873cb06b46bf598790ccbd7ae837a0c7b22e43cb4fc8cd4a",
+    "design": "0405109fa8c70d9507ca5a91a8e9667da0672be0b0b65f68bea5e33e95068a0d",
+    "layout": "aac1f9bd90e2b2c3dabd619941206a150a05fc2471fc90ab31faa9dbbdece6e2"
+  }
+}

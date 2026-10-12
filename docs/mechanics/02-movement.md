@@ -142,14 +142,33 @@ Knockback (Sledgehammer, Concussion Grenade) and falling after destruction are c
 
 ## PLAN-03 mechanics
 
-Generated maps put the street at z=4 and tunnels at z=1. PgDn reaches BELOW. Stairs connect layers; the attached manhole/drop ladder costs 1.5 plus rise. Controlled 2–4 voxel drops cost 3 movement points and stagger the unit; their noise radius is 8. A compiled ladder needs continuous solid backing on one side. Generated fire escapes use walkable grate platforms and steel stairs.
+Generated maps put the street at z=4 and tunnels at z=1. PgDn reaches BELOW. Stairs connect layers; the attached manhole/drop ladder costs 1.5 plus rise. Controlled 2–4 voxel drops cost 3 movement points and stagger the unit; their noise radius is 8. A standalone ladder needs continuous solid backing on one side; fire-escape ladders attach to facade-bolted platforms. Generated fire escapes use walkable grate platforms connected by vertical ladders; interior floor connections use stairs.
 
 ## PLAN-04 mechanics
 
 Every way up a generated building is a fixed module (`AccessModules.js`). The fire escape is always 6 cells along the
-facade × 2 out (plus a 1-cell grate lip): 2×2 grate landings at alternating ends of each storey, joined by steel
-stair flights of two steps per storey, so 3–4 storey buildings are climbed by stairs only (normal step costs, no
-ladder cost). Its posts form a support group: losing the posts drops the structure. Roof ladders (1–2 storey flat
-roofs) and manhole ladders keep the ladder rule above (1.5 + levels climbed). Street stairs into the tunnel have
-filled risers.
+facade × exactly 2 out, with no outer lip or full-height support beams. Every platform has the same aligned
+ladder opening. Three-rung segments connect consecutive platforms with a stop on each floor, using the ordinary
+ladder cost (1.5 + rise). Thin guard rails follow exposed platform edges and the ladder well, leaving its
+wall-side entry open; rails are visual edge details, so they do not consume a movement tile or grant cover.
+Platforms bolt directly to the facade slab; removing all of a platform's anchors drops it. Every multi-storey
+interior keeps a separate primary staircase between its floors. Standalone roof ladders
+serve 1–2 storey flat roofs. Manhole ladders use the same climb rule; underground street/service routes use stairs
+with filled risers.
 
+## Building view and tile selection
+
+The Buildings button (or **I**) cycles **Auto → Interiors → Exterior**. Auto cuts roofs and upper slabs around friendly soldiers and keeps occupied buildings open when selection switches to another teammate.
+Interiors keeps buildings open for the selected floor; floor arrows/Page Up/Page Down choose the storey. Exterior
+restores the shell subject to the global floor cutaway. Camera zoom can now reach distance 8 for close interior views.
+
+The active floor retains its walls and windows. In an open interior, tile selection passes through these walls
+and windows to the floor behind them; roofs and upper storeys are hidden. Cutaways change presentation only: closed doors still need opening, walls still block movement and firing,
+and selecting a destination does not reveal enemies.
+
+
+## Glass facades
+
+Glass panes allow ordinary walking and provide no cover. A solid one-voxel sill below a pane remains half cover
+and must be vaulted; a pane alone cannot block the vault's headroom. Tile selection passes through glass.
+See [architecture assets and the test map](../ARCHITECTURE-ASSETS.md) for the window families and rounded corners.

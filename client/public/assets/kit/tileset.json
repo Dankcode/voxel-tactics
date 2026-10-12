@@ -1,6 +1,6 @@
 {
  "version": "tileset-v1",
- "generated": "2026-10-10",
+ "generated": "2026-10-12",
  "cell": {
   "size": 1,
   "height": 1,
@@ -1029,6 +1029,25 @@
    ],
    "group": "furniture",
    "text": "Server rack top; appliance collision"
+  },
+  "escape_rail": {
+   "slots": [
+    "self"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.493,
+     0,
+     0.447
+    ],
+    [
+     0.493,
+     0.915,
+     0.493
+    ]
+   ],
+   "group": "circulation"
   },
   "steel_post": {
    "slots": [
@@ -2503,6 +2522,28 @@
    ],
    "group": "furniture"
   },
+  "hvac": {
+   "slots": [
+    "self",
+    "frame",
+    "chrome"
+   ],
+   "tris": 280,
+   "bounds": [
+    [
+     -0.49,
+     0,
+     -0.44
+    ],
+    [
+     0.49,
+     0.815,
+     0.441
+    ]
+   ],
+   "group": "cover",
+   "text": "Rooftop HVAC unit (half cover; +X along its long side)"
+  },
   "car": {
    "slots": [
     "carpaint",
@@ -3024,22 +3065,22 @@
     "iron",
     "lamp"
    ],
-   "tris": 88,
+   "tris": 444,
    "bounds": [
     [
-     -0.14,
+     -0.16,
      0,
-     -0.14
+     -0.16
     ],
     [
-     0.14,
-     3.6,
-     1
+     0.16,
+     3.554,
+     1.29
     ]
    ],
    "group": "decor",
    "light": true,
-   "text": "Street light (arm toward +Z)"
+   "text": "Curb-mounted LED road lantern; tapered mast, swept arm toward +Z"
   },
   "floodlight": {
    "slots": [
@@ -3386,6 +3427,151 @@
    ],
    "group": "decor"
   },
+  "cash_stack": {
+   "slots": [
+    "flowers"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.21,
+     0,
+     -0.15
+    ],
+    [
+     0.19,
+     0.12,
+     -0.01
+    ]
+   ],
+   "group": "decor",
+   "text": "Bundled cash on a table (story beat)"
+  },
+  "rifle_rack": {
+   "slots": [
+    "iron"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.4,
+     0.02,
+     -0.17
+    ],
+    [
+     0.42,
+     0.1,
+     0.11
+    ]
+   ],
+   "group": "decor",
+   "text": "Rifles laid on a crate (arms cache beat)"
+  },
+  "papers": {
+   "slots": [
+    "canvas_white"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.259,
+     0.002,
+     -0.2
+    ],
+    [
+     0.366,
+     0.01,
+     0.332
+    ]
+   ],
+   "group": "decor",
+   "text": "Scattered papers (clutter noise)"
+  },
+  "debris": {
+   "slots": [
+    "wood",
+    "plinth"
+   ],
+   "tris": 64,
+   "bounds": [
+    [
+     -0.311,
+     -0.037,
+     -0.28
+    ],
+    [
+     0.275,
+     0.123,
+     0.322
+    ]
+   ],
+   "group": "decor",
+   "text": "Broken furniture and plaster (ransacked room)"
+  },
+  "cordon": {
+   "slots": [
+    "iron",
+    "red",
+    "lamp"
+   ],
+   "tris": 60,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.15
+    ],
+    [
+     0.5,
+     1,
+     0.15
+    ]
+   ],
+   "group": "decor",
+   "text": "Police sawhorse barrier at a closed road (world edge)"
+  },
+  "wall_sign": {
+   "slots": [
+    "canvas_white",
+    "lamp"
+   ],
+   "tris": 120,
+   "bounds": [
+    [
+     -0.45,
+     0.3,
+     -0.04
+    ],
+    [
+     0.45,
+     0.68,
+     0.055
+    ]
+   ],
+   "group": "decor",
+   "light": true,
+   "text": "Shop or street sign on a facade (+Z faces out); the board takes the building accent"
+  },
+  "wall_vent": {
+   "slots": [
+    "frame"
+   ],
+   "tris": 60,
+   "bounds": [
+    [
+     -0.25,
+     0.2,
+     -0.02
+    ],
+    [
+     0.25,
+     0.6,
+     0.298
+    ]
+   ],
+   "group": "decor",
+   "text": "Louvred wall vent (+Z faces out)"
+  },
   "joined_wall_0": {
    "slots": [
     "self"
@@ -3507,7 +3693,7 @@
    "slots": [
     "self"
    ],
-   "tris": 56,
+   "tris": 98,
    "bounds": [
     [
      -0.2,
@@ -3527,7 +3713,7 @@
    "slots": [
     "cap"
    ],
-   "tris": 14,
+   "tris": 24,
    "bounds": [
     [
      -0.2,
@@ -3624,7 +3810,7 @@
    "slots": [
     "self"
    ],
-   "tris": 56,
+   "tris": 98,
    "bounds": [
     [
      -0.5,
@@ -3644,7 +3830,7 @@
    "slots": [
     "cap"
    ],
-   "tris": 14,
+   "tris": 24,
    "bounds": [
     [
      -0.5,
@@ -3741,7 +3927,7 @@
    "slots": [
     "self"
    ],
-   "tris": 56,
+   "tris": 98,
    "bounds": [
     [
      -0.2,
@@ -3761,7 +3947,7 @@
    "slots": [
     "cap"
    ],
-   "tris": 14,
+   "tris": 24,
    "bounds": [
     [
      -0.2,
@@ -3858,7 +4044,7 @@
    "slots": [
     "self"
    ],
-   "tris": 56,
+   "tris": 98,
    "bounds": [
     [
      -0.5,
@@ -3878,7 +4064,7 @@
    "slots": [
     "cap"
    ],
-   "tris": 14,
+   "tris": 24,
    "bounds": [
     [
      -0.5,
@@ -7167,6 +7353,1333 @@
    "group": "connected-cover",
    "text": "Shrubs and flowers in a planter cell",
    "overhang": true
+  },
+  "window_sash": {
+   "slots": [
+    "glass",
+    "frame_white"
+   ],
+   "tris": 84,
+   "bounds": [
+    [
+     -0.45,
+     0,
+     -0.035
+    ],
+    [
+     0.45,
+     1,
+     0.035
+    ]
+   ],
+   "group": "architecture",
+   "text": "Residential sash: pale frame and fine crossbars, no masonry surround"
+  },
+  "window_ribbon": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 60,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.035
+    ],
+    [
+     0.5,
+     1,
+     0.035
+    ]
+   ],
+   "group": "architecture",
+   "text": "Continuous office ribbon window, dark aluminium perimeter"
+  },
+  "window_factory": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 96,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.035
+    ],
+    [
+     0.5,
+     1,
+     0.035
+    ]
+   ],
+   "group": "architecture",
+   "text": "Industrial steel-grid window, three bays and two lights"
+  },
+  "facade_concrete_0": {
+   "slots": [
+    "self",
+    "frame",
+    "self"
+   ],
+   "tris": 276,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Precast concrete with recessed storey joint"
+  },
+  "facade_stucco_0": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 184,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Smooth rendered facade with pale thin course"
+  },
+  "facade_metal_0": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 460,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Metal cassette facade with horizontal panel seams"
+  },
+  "facade_concrete_1": {
+   "slots": [
+    "self",
+    "frame",
+    "self"
+   ],
+   "tris": 150,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Precast concrete with recessed storey joint"
+  },
+  "facade_stucco_1": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 100,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Smooth rendered facade with pale thin course"
+  },
+  "facade_metal_1": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 250,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Metal cassette facade with horizontal panel seams"
+  },
+  "facade_concrete_2": {
+   "slots": [
+    "self",
+    "frame",
+    "self"
+   ],
+   "tris": 150,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Precast concrete with recessed storey joint"
+  },
+  "facade_stucco_2": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 100,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Smooth rendered facade with pale thin course"
+  },
+  "facade_metal_2": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 250,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Metal cassette facade with horizontal panel seams"
+  },
+  "facade_concrete_3": {
+   "slots": [
+    "self",
+    "frame",
+    "self"
+   ],
+   "tris": 294,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Precast concrete with recessed storey joint"
+  },
+  "facade_stucco_3": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 196,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Smooth rendered facade with pale thin course"
+  },
+  "facade_metal_3": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 490,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Metal cassette facade with horizontal panel seams"
+  },
+  "facade_concrete_4": {
+   "slots": [
+    "self",
+    "frame",
+    "self"
+   ],
+   "tris": 150,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Precast concrete with recessed storey joint"
+  },
+  "facade_stucco_4": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 100,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Smooth rendered facade with pale thin course"
+  },
+  "facade_metal_4": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 250,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Metal cassette facade with horizontal panel seams"
+  },
+  "facade_concrete_5": {
+   "slots": [
+    "self",
+    "frame",
+    "self"
+   ],
+   "tris": 24,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Precast concrete with recessed storey joint"
+  },
+  "facade_stucco_5": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 16,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Smooth rendered facade with pale thin course"
+  },
+  "facade_metal_5": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 40,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Metal cassette facade with horizontal panel seams"
+  },
+  "facade_concrete_6": {
+   "slots": [
+    "self",
+    "frame",
+    "self"
+   ],
+   "tris": 294,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Precast concrete with recessed storey joint"
+  },
+  "facade_stucco_6": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 196,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Smooth rendered facade with pale thin course"
+  },
+  "facade_metal_6": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 490,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Metal cassette facade with horizontal panel seams"
+  },
+  "facade_concrete_7": {
+   "slots": [
+    "self",
+    "frame",
+    "self"
+   ],
+   "tris": 186,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Precast concrete with recessed storey joint"
+  },
+  "facade_stucco_7": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 124,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Smooth rendered facade with pale thin course"
+  },
+  "facade_metal_7": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 310,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Metal cassette facade with horizontal panel seams"
+  },
+  "facade_concrete_8": {
+   "slots": [
+    "self",
+    "frame",
+    "self"
+   ],
+   "tris": 150,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Precast concrete with recessed storey joint"
+  },
+  "facade_stucco_8": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 100,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Smooth rendered facade with pale thin course"
+  },
+  "facade_metal_8": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 250,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Metal cassette facade with horizontal panel seams"
+  },
+  "facade_concrete_9": {
+   "slots": [
+    "self",
+    "frame",
+    "self"
+   ],
+   "tris": 294,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Precast concrete with recessed storey joint"
+  },
+  "facade_stucco_9": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 196,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Smooth rendered facade with pale thin course"
+  },
+  "facade_metal_9": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 490,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Metal cassette facade with horizontal panel seams"
+  },
+  "facade_concrete_10": {
+   "slots": [
+    "self",
+    "frame",
+    "self"
+   ],
+   "tris": 24,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Precast concrete with recessed storey joint"
+  },
+  "facade_stucco_10": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 16,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Smooth rendered facade with pale thin course"
+  },
+  "facade_metal_10": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 40,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Metal cassette facade with horizontal panel seams"
+  },
+  "facade_concrete_11": {
+   "slots": [
+    "self",
+    "frame",
+    "self"
+   ],
+   "tris": 186,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Precast concrete with recessed storey joint"
+  },
+  "facade_stucco_11": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 124,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Smooth rendered facade with pale thin course"
+  },
+  "facade_metal_11": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 310,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Metal cassette facade with horizontal panel seams"
+  },
+  "facade_concrete_12": {
+   "slots": [
+    "self",
+    "frame",
+    "self"
+   ],
+   "tris": 294,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Precast concrete with recessed storey joint"
+  },
+  "facade_stucco_12": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 196,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Smooth rendered facade with pale thin course"
+  },
+  "facade_metal_12": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 490,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Metal cassette facade with horizontal panel seams"
+  },
+  "facade_concrete_13": {
+   "slots": [
+    "self",
+    "frame",
+    "self"
+   ],
+   "tris": 186,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Precast concrete with recessed storey joint"
+  },
+  "facade_stucco_13": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 124,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Smooth rendered facade with pale thin course"
+  },
+  "facade_metal_13": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 310,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "architecture",
+   "text": "Metal cassette facade with horizontal panel seams"
+  },
+  "facade_concrete_14": {
+   "slots": [
+    "self",
+    "frame",
+    "self"
+   ],
+   "tris": 186,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Precast concrete with recessed storey joint"
+  },
+  "facade_stucco_14": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 124,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Smooth rendered facade with pale thin course"
+  },
+  "facade_metal_14": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 310,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Metal cassette facade with horizontal panel seams"
+  },
+  "facade_concrete_15": {
+   "slots": [
+    "self",
+    "frame",
+    "self"
+   ],
+   "tris": 348,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Precast concrete with recessed storey joint"
+  },
+  "facade_stucco_15": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 232,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Smooth rendered facade with pale thin course"
+  },
+  "facade_metal_15": {
+   "slots": [
+    "self",
+    "frame"
+   ],
+   "tris": 580,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Metal cassette facade with horizontal panel seams"
+  },
+  "glaze_curve_3": {
+   "slots": [
+    "glass"
+   ],
+   "tris": 98,
+   "bounds": [
+    [
+     -0.018,
+     0,
+     -0.018
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Quarter-circle glazing tangent to adjacent panels"
+  },
+  "glaze_curve_sill_3": {
+   "slots": [
+    "frame"
+   ],
+   "tris": 98,
+   "bounds": [
+    [
+     -0.035,
+     0,
+     -0.035
+    ],
+    [
+     0.5,
+     0.05,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Continuous curved glass base rail"
+  },
+  "glaze_curve_head_3": {
+   "slots": [
+    "frame"
+   ],
+   "tris": 98,
+   "bounds": [
+    [
+     -0.035,
+     0.95,
+     -0.035
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Continuous curved glass head rail"
+  },
+  "glaze_curve_6": {
+   "slots": [
+    "glass"
+   ],
+   "tris": 98,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.018
+    ],
+    [
+     0.018,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Quarter-circle glazing tangent to adjacent panels"
+  },
+  "glaze_curve_sill_6": {
+   "slots": [
+    "frame"
+   ],
+   "tris": 98,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.035
+    ],
+    [
+     0.035,
+     0.05,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Continuous curved glass base rail"
+  },
+  "glaze_curve_head_6": {
+   "slots": [
+    "frame"
+   ],
+   "tris": 98,
+   "bounds": [
+    [
+     -0.5,
+     0.95,
+     -0.035
+    ],
+    [
+     0.035,
+     1,
+     0.5
+    ]
+   ],
+   "group": "architecture",
+   "text": "Continuous curved glass head rail"
+  },
+  "glaze_curve_12": {
+   "slots": [
+    "glass"
+   ],
+   "tris": 98,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.018,
+     1,
+     0.018
+    ]
+   ],
+   "group": "architecture",
+   "text": "Quarter-circle glazing tangent to adjacent panels"
+  },
+  "glaze_curve_sill_12": {
+   "slots": [
+    "frame"
+   ],
+   "tris": 98,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.035,
+     0.05,
+     0.035
+    ]
+   ],
+   "group": "architecture",
+   "text": "Continuous curved glass base rail"
+  },
+  "glaze_curve_head_12": {
+   "slots": [
+    "frame"
+   ],
+   "tris": 98,
+   "bounds": [
+    [
+     -0.5,
+     0.95,
+     -0.5
+    ],
+    [
+     0.035,
+     1,
+     0.035
+    ]
+   ],
+   "group": "architecture",
+   "text": "Continuous curved glass head rail"
+  },
+  "glaze_curve_9": {
+   "slots": [
+    "glass"
+   ],
+   "tris": 98,
+   "bounds": [
+    [
+     -0.018,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.018
+    ]
+   ],
+   "group": "architecture",
+   "text": "Quarter-circle glazing tangent to adjacent panels"
+  },
+  "glaze_curve_sill_9": {
+   "slots": [
+    "frame"
+   ],
+   "tris": 98,
+   "bounds": [
+    [
+     -0.035,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.05,
+     0.035
+    ]
+   ],
+   "group": "architecture",
+   "text": "Continuous curved glass base rail"
+  },
+  "glaze_curve_head_9": {
+   "slots": [
+    "frame"
+   ],
+   "tris": 98,
+   "bounds": [
+    [
+     -0.035,
+     0.95,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.035
+    ]
+   ],
+   "group": "architecture",
+   "text": "Continuous curved glass head rail"
   }
  }
 }

@@ -1,3 +1,4 @@
+import { occupiedCells } from './Walker.js';
 // Experimental intel rules. Contacts are observations, never permission to shoot through cover.
 import { ABILITIES, ENEMIES } from '../content/units.js';
 import { AIR } from '../voxel/Materials.js';
@@ -58,7 +59,7 @@ export function executeIntel(b,u,intent) {
         b.emit({t:'voxels',changes});
         if(id!=='quiet_cut') {
             b.supportReady[u.owner]=(b.personalTurns[u.owner]||0)+10;
-            for(const e of b.units.filter(alive))if(cells.some(c=>c.x===e.x&&c.y===e.y))b.dealDamage(e,'torso',40,{pierce:99,source:id,applyStatuses:false});
+            for(const e of b.units.filter(alive))if(occupiedCells(e).some(p=>cells.some(c=>c.x===p.x&&c.y===p.y)))b.dealDamage(e,'torso',40,{pierce:99,source:id,applyStatuses:false});
             b.noise(t.x,t.y,t.z,30,u);
         }
         b.checkFalls();

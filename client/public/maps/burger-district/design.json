@@ -1,0 +1,230 @@
+{
+  "version": 1,
+  "mission": {
+    "kind": "recover",
+    "title": "Burger District · Upper-left Parcels",
+    "briefing": "The Syndicate has occupied this Roadside block. Advance through cover and use the flank to reach central-diner. Its upper floors control the approach. Secure the objective and withdraw.",
+    "timeOfDay": "day",
+    "target": {
+      "building": "central-diner",
+      "floor": 0,
+      "room": "dining"
+    }
+  },
+  "programs": [
+    {
+      "building": "west-retail",
+      "floor": 0,
+      "rooms": [
+        {
+          "id": "sales",
+          "kind": "sales",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "stock",
+          "kind": "stock",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "office",
+          "kind": "office",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "restroom",
+          "kind": "restroom",
+          "areaShare": 0.25,
+          "gameplay": false
+        }
+      ],
+      "adjacencies": [
+        [
+          "sales",
+          "hall"
+        ],
+        [
+          "stock",
+          "hall"
+        ],
+        [
+          "office",
+          "hall"
+        ]
+      ]
+    },
+    {
+      "building": "north-diner",
+      "floor": 0,
+      "rooms": [
+        {
+          "id": "dining",
+          "kind": "dining",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "kitchen",
+          "kind": "kitchen",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "office",
+          "kind": "office",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "restroom",
+          "kind": "restroom",
+          "areaShare": 0.25,
+          "gameplay": false
+        }
+      ],
+      "adjacencies": [
+        [
+          "dining",
+          "hall"
+        ],
+        [
+          "kitchen",
+          "hall"
+        ],
+        [
+          "office",
+          "hall"
+        ]
+      ]
+    },
+    {
+      "building": "central-diner",
+      "floor": 0,
+      "rooms": [
+        {
+          "id": "dining",
+          "kind": "dining",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "kitchen",
+          "kind": "kitchen",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "office",
+          "kind": "office",
+          "areaShare": 0.25,
+          "gameplay": true
+        },
+        {
+          "id": "restroom",
+          "kind": "restroom",
+          "areaShare": 0.25,
+          "gameplay": false
+        }
+      ],
+      "adjacencies": [
+        [
+          "dining",
+          "hall"
+        ],
+        [
+          "kitchen",
+          "hall"
+        ],
+        [
+          "office",
+          "hall"
+        ]
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "id": "approach",
+      "text": "Reach cover beneath the lookout.",
+      "building": "central-diner",
+      "floor": 0,
+      "room": "hall"
+    },
+    {
+      "id": "escalation",
+      "text": "Push past the guarded stair core.",
+      "building": "central-diner",
+      "floor": 0,
+      "room": "hall"
+    },
+    {
+      "id": "climax",
+      "text": "Secure the Syndicate command room.",
+      "building": "central-diner",
+      "floor": 0,
+      "room": "dining"
+    }
+  ],
+  "encounters": [
+    {
+      "group": 0,
+      "building": "west-retail",
+      "floor": 0,
+      "room": "hall",
+      "types": [
+        "cultist",
+        "warden_foe"
+      ]
+    },
+    {
+      "group": 1,
+      "building": "west-retail",
+      "floor": 0,
+      "room": "sales",
+      "types": [
+        "archer"
+      ]
+    },
+    {
+      "group": 2,
+      "building": "north-diner",
+      "floor": 0,
+      "room": "hall",
+      "types": [
+        "cultist",
+        "warden_foe"
+      ]
+    },
+    {
+      "group": 3,
+      "building": "north-diner",
+      "floor": 0,
+      "room": "dining",
+      "types": [
+        "archer"
+      ]
+    },
+    {
+      "group": 4,
+      "building": "central-diner",
+      "floor": 0,
+      "room": "hall",
+      "types": [
+        "cultist",
+        "warden_foe"
+      ]
+    },
+    {
+      "group": 5,
+      "building": "central-diner",
+      "floor": 0,
+      "room": "dining",
+      "types": [
+        "archer"
+      ]
+    }
+  ]
+}

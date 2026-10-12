@@ -41,7 +41,7 @@ test('tactical pitch stays at 45 degrees across zoom; reset restores framing aft
         assert.ok(Math.abs(Math.atan2(delta.y,Math.hypot(delta.x,delta.z))-Math.PI/4)<1e-9);
     }
     rig.orbit(300,200);rig.resetTactical();
-    assert.equal(rig.mode,'perspective');assert.equal(rig.distance,36);assert.equal(rig.pitchOffset,0);
+    assert.equal(rig.mode,'perspective');assert.equal(rig.distance,27);assert.equal(rig.pitchOffset,0);
     assert.equal(rig.yaw,Math.PI/4);assert.equal(rig.camera.fov,38);
 });
 

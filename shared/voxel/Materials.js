@@ -47,7 +47,7 @@ def('stone_floor', { label: 'Stone floor', element: ELEMENTS.STRUCTURE, color: 0
 // can't stand on them. It vaults low ones (PathSearch canVault) and goes round tall ones, as in XCOM.
 // Pitched roofs are not walkable (XCOM rule: flat roofs are terrain, pitched roofs are scenery you can shoot through).
 def('roof', { label: 'Roof tiles', element: ELEMENTS.STRUCTURE, color: 0xb4553f, hp: 3, family: 'wood', flammable: true, burnTo: 'ash', walkable: false });
-def('glass', { label: 'Window', element: ELEMENTS.STRUCTURE, color: 0xbfe6f2, hp: 1, opaque: false, projectile: 'pass', shatters: true, render: 'glass', family: 'glass', structural: false });
+def('glass', { solid: false, walkable: false, label: 'Glass pane', element: ELEMENTS.STRUCTURE, color: 0xbfe6f2, hp: 1, opaque: false, projectile: 'pass', shatters: true, render: 'glass', family: 'glass', structural: false });
 def('door', { label: 'Door', element: ELEMENTS.STRUCTURE, color: 0x6f4526, hp: 4, solid: false, opaque: true, projectile: 'block', render: 'solid', flammable: true, part: 2, family: 'wood', structural: false, walkable: false });
 def('door_open', { label: 'Open door', element: ELEMENTS.STRUCTURE, color: 0x6f4526, hp: 4, solid: false, opaque: false, projectile: 'pass', render: 'none', part: 2, family: 'wood', structural: false, walkable: false });
 def('stairs_wood', { label: 'Wooden stairs', element: ELEMENTS.STRUCTURE, color: 0x8b5e3a, hp: 4, flammable: true, part: 4, burnTo: 'ash', family: 'wood' });

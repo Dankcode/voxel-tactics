@@ -30,7 +30,7 @@ export class Hud {
                     <button data-act="rotL" title="Rotate camera (Q) · middle-drag to orbit">${ICONS.rotL}</button><button data-act="rotR" title="Rotate camera (E) · middle-drag to orbit">${ICONS.rotR}</button>
                     <button data-act="lvlDown" title="Cutaway down (PgDn)">${ICONS.down}</button><span class="level"></span><button data-act="lvlUp" title="Cutaway up (PgUp)">${ICONS.up}</button>
                     <button data-act="cutins" class="cutin-mode" title="Back-shot cut-ins"></button>
-                    <button data-act="options" title="Options">${ICONS.gear}</button>
+                    <button data-act="buildingCycle" class="building-view" title="Building cutaway (I)">BUILDINGS</button><button data-act="options" title="Options">${ICONS.gear}</button>
                     <button data-act="debug" class="debug-btn" title="Debug mode (F1)">${ICONS.bug}</button>
                     <button data-act="menu" title="Menu">${ICONS.menu}</button>
                 </div></div>
@@ -99,6 +99,8 @@ export class Hud {
             case 'cancel': g.cancel(); break;
             case 'formTpl': g.declareFormation(arg); this.hidePanel(); break;
             case 'doBreach': { const [i, entry] = arg.split(':'); g.doBreach(+i, entry); this.hidePanel(); break; }
+            case 'buildingCycle': g.cycleBuildingView(); break;
+            case 'buildingView': g.setBuildingView(arg); break;
             case 'endTurn': g.endTurn(); break;
             case 'closePanel': this.hidePanel(); break;
             case 'restart': g.restart(); break;
@@ -123,6 +125,7 @@ export class Hud {
         el.innerHTML = `<h4>Options</h4>${row('autoEndTurn', 'Auto end turn when the squad is spent')}${row('autoNext', 'Auto-select the next ready soldier')}${row('followCamera', 'Camera follows actions')}
             <h4>Camera</h4>${row('edgeScroll', 'Screen-edge scrolling')}<button data-act="proj" class="${g.scene.projection === 'ortho' ? 'on' : ''}">${g.scene.projection === 'ortho' ? '☑' : '☐'} Isometric (orthographic) view (V)</button>
             <div class="camhint" style="font-size:11px;opacity:.7;line-height:1.5;margin:4px 0 2px">WASD / arrows / screen edge pan · right-drag grab · middle-drag orbit · wheel zoom · Q/E rotate · H / Home centre on soldier · V isometric</div>
+            <h4>Buildings</h4><div class="row">${['auto','interiors','exterior'].map(mode=>`<button data-act="buildingView" data-arg="${mode}" class="${o.buildingView===mode?'on':''}">${mode==='auto'?'Auto cutaway':mode==='interiors'?'Show interiors':'Show exterior'}</button>`).join('')}</div><small>Press I to cycle. Interior tiles stay selectable; enemy fog still applies. Use floor arrows to choose a storey.</small>
             <h4>Graphics</h4><button data-act="quality" data-arg="mobile" class="${QUALITY.name === 'mobile' ? 'on' : ''}">${QUALITY.name === 'mobile' ? '◉' : '○'} Mobile (light textures, fast)</button><button data-act="quality" data-arg="high" class="${QUALITY.name === 'high' ? 'on' : ''}">${QUALITY.name === 'high' ? '◉' : '○'} High (full textures, AO) — reloads</button>
             <h4>Readability</h4><button data-act="cue" data-arg="uGrid" class="${TERRAIN_CUES.uGrid.value ? 'on' : ''}">${TERRAIN_CUES.uGrid.value ? '☑' : '☐'} Debug tile grid</button><button data-act="cue" data-arg="uRim" class="${TERRAIN_CUES.uRim.value ? 'on' : ''}">${TERRAIN_CUES.uRim.value ? '☑' : '☐'} Ledge rims (orange = 2+ drop)</button><button data-act="ao" class="${g.scene.ao ? 'on' : ''}">${g.scene.ao ? '☑' : '☐'} Ambient occlusion</button>
             <h4>Lighting</h4><div class="row">${['day', 'dusk', 'night'].map(l => `<button data-act="lighting" data-arg="${l}" class="${g.scene.lightingName === l ? 'on' : ''}">${l}</button>`).join('')}</div>`;
@@ -203,6 +206,7 @@ export class Hud {
     refresh() {
         const g = this.game, b = g.battle;
         if (!b) return;
+        this.el('.building-view').textContent=`BUILDINGS · ${(g.options.buildingView||'auto').toUpperCase()}`;
         this.root.classList.toggle('enemy-phase', b.activeSide !== 'player');
         this.root.classList.toggle('intel-mode',b.intelMode);
         this.el('.mission b').textContent = b.mission.name;

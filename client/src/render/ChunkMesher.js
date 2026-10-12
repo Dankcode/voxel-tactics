@@ -50,7 +50,7 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
     const tint = options.tint || null;
     const cut = options.cutZ ?? Infinity;          // storey cutaway: voxels at z >= cut are not drawn
     const kit = options.kit || (() => null);      // voxels the tile set draws (thin walls, props …) are skipped
-    const opaque = (x, y, z) => z < cut && opaqueAt(store, x, y, z);
+    const opaque = (x, y, z) => z < cut && !options.hidden?.(x,y,z) && opaqueAt(store, x, y, z);
     const hides = (x, y, z) => opaque(x, y, z) && !kit(store, x, y, z);   // only full cubes hide a neighbour's face
     const apron = !!options.apron;               // the map edge continues as an apron: no boundary side faces
     const W = store.width, D = store.depth;
@@ -284,7 +284,7 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
                 for (let f = 0; f < 6; f++) {
                     const face = FACES[f];
                     const nx = x + face.n[0], ny = y + face.n[1], nz = z + face.n[2];
-                    const nid = nz >= cut ? AIR : store.get(nx, ny, nz);
+                    const nid = nz >= cut || options.hidden?.(nx,ny,nz) ? AIR : store.get(nx, ny, nz);
                     if (g === 0) { if (hides(nx, ny, nz)) continue; }
                     else if (nid === id || hides(nx, ny, nz)) continue;
                     // A top face exposed only by the cutaway is a section cap: drawn dark, like XCOM's cut walls.

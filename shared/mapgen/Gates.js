@@ -39,7 +39,7 @@ export function evaluateGeneratedGates(mission,{site,layout,design}) {
         objectiveReachable:reaches(room(design.mission.target)),
         windowLines:mission.buildings.every(b=>Array.from({length:b.storeys},(_,s)=>b.windows.some(w=>w.storey===s)).every(Boolean)),
         firstContact:mission.metrics.firstContact>=12,
-        heightBudget:mission.store.height<=18&&mission.store.width<=64&&mission.store.depth<=64,
+        heightBudget:mission.store.height<=18&&mission.store.width<=(site.maxDimension??64)&&mission.store.depth<=(site.maxDimension??64),
         enemiesReachable:mission.spawns.enemy.length===design.encounters.reduce((n,e)=>n+e.types.length,0)+(mission.meta.underground?1:0)&&mission.spawns.enemy.every(e=>search.costs.has(nodeKey(e.pos)))
     };
     if(mission.meta.underground)Object.assign(checks,checkLayerGates(mission));
@@ -57,12 +57,12 @@ export function evaluateGeneratedGates(mission,{site,layout,design}) {
 export function checkV3Gates(mission,layout) {
     const {store}=mission,G=mission.meta.streetDatum,W=store.width,D=store.depth;
     let open=0,border=0;
-    for(let x=0;x<W;x++)for(const y of [0,D-1]){border++;if(!store.isSolid(x,y,G+1)&&!mission.buildings.some(b=>x>=b.x0&&x<b.x0+b.w&&y>=b.y0&&y<b.y0+b.d))open++;}
-    for(let y=1;y<D-1;y++)for(const x of [0,W-1]){border++;if(!store.isSolid(x,y,G+1)&&!mission.buildings.some(b=>x>=b.x0&&x<b.x0+b.w&&y>=b.y0&&y<b.y0+b.d))open++;}
+    for(let x=0;x<W;x++)for(const y of [0,D-1]){if(!store.isSolid(x,y,G))continue;border++;if(!store.isSolid(x,y,G+1)&&!mission.buildings.some(b=>x>=b.x0&&x<b.x0+b.w&&y>=b.y0&&y<b.y0+b.d))open++;}
+    for(let y=1;y<D-1;y++)for(const x of [0,W-1]){if(!store.isSolid(x,y,G))continue;border++;if(!store.isSolid(x,y,G+1)&&!mission.buildings.some(b=>x>=b.x0&&x<b.x0+b.w&&y>=b.y0&&y<b.y0+b.d))open++;}
     const search=reachable(store,mission.spawns.player[0],Infinity,AGENT_PROFILES.player);
     const flanks=(layout.lineOfPlay?.flanks||[]).filter(f=>f.path.length);
     const walkable=f=>f.path.filter(([x,y])=>search.costs.has(nodeKey({x,y,z:G}))).length/f.path.length;
-    return {worldEdges:open/border<=0.02,pockets:(layout.pockets||[]).length>=2,flanksWalkable:flanks.length>=1&&flanks.every(f=>walkable(f)>=0.95)};
+    return {worldEdges:border===0||open/border<=0.02,pockets:(layout.pockets||[]).length>=2,flanksWalkable:flanks.length>=1&&flanks.every(f=>walkable(f)>=0.95)};
 }
 
 export function checkLayerGates(mission) {

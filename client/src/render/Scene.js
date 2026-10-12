@@ -175,7 +175,12 @@ export class Scene {
         return a - this.yaw;
     }
     /** dt 0 snaps the eased yaw / zoom (used on resize and mission start). */
-    updateCamera(dt = 0) { this.rig.update(dt); }
+    updateCamera(dt = 0) {
+        this.rig.update(dt);
+        // Keep the battlefield clear at map-scale zoom and in the fixed-distance orthographic camera.
+        const distance=this.camera.position.distanceTo(this.rig.target);
+        if(this.scene.fog){this.scene.fog.near=Math.max(45,distance+15);this.scene.fog.far=Math.max(145,distance+115);}
+    }
     render(dt) {
         this.shake = Math.max(0, this.shake - dt * 3);
         this.updateCamera(dt);

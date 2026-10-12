@@ -1,3 +1,4 @@
+import { WALKERS, walkerFits } from './Walker.js';
 import { packItems, inventoryCounts } from '../inventory/Inventory.js';
 // Debug intents: `{ type: 'debug', op, ... }`. They go through Battle.apply like every other intent, so the
 // event player animates them and lockstep peers stay in sync, but Battle only accepts them when it was
@@ -40,6 +41,8 @@ export function validateDebug(b, i) {
         if (!at || !b.store.inBounds(Math.floor(at.x), Math.floor(at.y), Math.max(0, Math.floor(at.z ?? at.h ?? 0)))) return 'out_of_bounds';
     }
     if (i.op === 'teleport' || i.op === 'spawn') {
+        const type=i.unitType||b.unit(i.unitId)?.type;
+        if(WALKERS[type]&&!walkerFits(b.store,{type},i.to,c=>{const o=b.occupant(c.x,c.y,c.z);return o&&o.id!==i.unitId;}))return 'no_footing';
         const s = b.store.surfaces(i.to.x, i.to.y).find(s => s.z === i.to.z);
         if (!s || s.headroom < 2) return 'no_footing';
         const o = b.occupant(i.to.x, i.to.y, i.to.z); if (o && o.id !== i.unitId) return 'occupied';

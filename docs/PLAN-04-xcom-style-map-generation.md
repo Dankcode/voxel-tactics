@@ -233,7 +233,7 @@ docs/MAPGEN.md, docs/mechanics/02, 11 the method and the module rules
 
 | # | Step | Accept when |
 |---|---|---|
-| P0 | Kit metric + `AccessModules`: uniform 6×2 fire-escape module with stairs (no ladders on 3+ floors), roof ladder module, manhole, service stair; template gate | every access structure matches its template cell-for-cell on all fixtures; Signal House climbs by stairs only; screenshot review |
+| P0 | Kit metric + `AccessModules`: uniform 6×2 fire-escape platforms connected by vertical ladders, separate primary interior stairs, roof ladder module, manhole, service stair; template gate | every access structure matches its template cell-for-cell on all fixtures; Signal House has ladder access outside and stairs inside; screenshot review |
 | P1 | `Fields.js`: picture prior, fBm noise, line of play, sightline, height intent | fields deterministic per seed; a property test shows the noise is continuous and in range; line of play matches PathSearch |
 | P2 | Plot catalogue (3 families first: downtown grid, industrial yard, suburb) + lot catalogue (12 lots) | a picture read picks a plot family; lots tile a plot with matching sockets on 20 seeds |
 | P3 | `ExteriorSolver`: hierarchical WFC with field weights; cover and props as bay-level tiles (CoverScatter retired for generated maps) | existing combat gates pass on seeds 1–4; cover pockets on the line of play; the same picture with two seeds gives different but recognisable maps |

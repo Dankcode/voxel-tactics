@@ -1,0 +1,39 @@
+{
+  "building": "west-retail",
+  "floor": 0,
+  "source": "offline-schematic",
+  "rooms": [
+    {
+      "kind": "sales",
+      "center": [
+        0.26929902395740907,
+        0.7797118847539016
+      ]
+    },
+    {
+      "kind": "stock",
+      "center": [
+        0.7831389183457051,
+        0.24748923959827832
+      ]
+    },
+    {
+      "kind": "office",
+      "center": [
+        0.7558139534883722,
+        0.805061559507524
+      ]
+    },
+    {
+      "kind": "restroom",
+      "center": [
+        0.26911544227886053,
+        0.17342799188640973
+      ]
+    }
+  ],
+  "doors": [],
+  "windows": [],
+  "stairs": [],
+  "furniture": []
+}

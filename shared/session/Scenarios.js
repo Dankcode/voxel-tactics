@@ -1,3 +1,4 @@
+import { spreadInsertion } from './Insertion.js';
 import { normalizeInventory } from '../inventory/Inventory.js';
 // Scenario descriptors → missions. Local sessions generate from a descriptor; co-op sessions hydrate
 // the server's compiled mission, then replay the ordered intent list.
@@ -64,6 +65,7 @@ export function squadFor(desc) {
 export function createBattle(desc, mission = null) {
     const squad=squadFor(desc);
     mission ||= buildMission(desc);
+    mission.spawns.player=spreadInsertion(mission.store,mission.spawns.player);
     // The test ground applies to the compiled mission on every peer (and the server) alike.
     const enemies = desc.test ? applyTestGround(mission, sanitizeTest(desc.test), desc.seed ?? 1) : null;
     return new Battle({ mission, squad, seed: desc.seed ?? 1, debug: !!desc.debug, enemies, intel: !!desc.intel, asyncCoop: !!desc.asyncCoop, support: desc.support });

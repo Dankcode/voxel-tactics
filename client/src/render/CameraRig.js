@@ -10,9 +10,9 @@ const DEG = Math.PI / 180;
 export const FOV = 38;                                       // vertical, degrees
 const TACTICAL_PITCH = 45 * DEG;
 const ORTHO_PITCH = TACTICAL_PITCH;
-const MIN_DIST = 12, MAX_DIST = 110, DEFAULT_DIST = 36;
+const MIN_DIST = 8, MAX_DIST = 110, DEFAULT_DIST = 27;
 const PITCH_MIN = 30 * DEG, PITCH_MAX = 85 * DEG;             // clamp for the orbit tilt
-const VH_PER_DIST = 22 / DEFAULT_DIST;                        // ortho frustum height per unit of distance (default = old 22)
+const VH_PER_DIST = 22 / 36;                        // ortho frustum height per unit of distance (default = old 22)
 const STEP = Math.PI / 2, BASE = Math.PI / 4;
 const MARGIN = 2;                                             // how far the target may leave the map
 const ease = (rate, dt) => 1 - Math.exp(-rate * dt);

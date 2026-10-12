@@ -22,45 +22,50 @@ function shell(side, storeys = 4) {
     return { s, b, G, origin };
 }
 
-test('the fire escape is one uniform 6×2 stair module on every facade and storey count (no ladders)', () => {
+test('the fire escape is one uniform 6×2 ladder-linked platforms on every facade and storey count (no exterior stairs)', () => {
     const sizes = new Set();
     for (const storeys of [3, 4]) for (const side of ['n', 'e', 's', 'w']) {
         const { s, G, origin } = shell(side, storeys);
         const params = { side, origin, datum: G, storeys, doors: {} };
         const { cells } = fireEscapeTemplate(params);
         assert.ok(cells.every(c => c.u >= 0 && c.u < FIRE_ESCAPE.along && c.r >= 0 && c.r <= FIRE_ESCAPE.out + FIRE_ESCAPE.lip));
-        assert.ok(!cells.some(c => c.mat === MAT.ladder));
+        assert.ok(cells.filter(c=>c.role==='rung').every(c=>c.u===2&&c.r===2));
+        assert.ok(cells.some(c=>c.mat===MAT.ladder));assert.ok(!cells.some(c=>c.mat===MAT.steel_stair));
         const { a, o } = SIDE_FRAME[side];
         const xs = cells.filter(c => c.r > 0).map(c => c.x), ys = cells.filter(c => c.r > 0).map(c => c.y);
         const along = a[0] ? Math.max(...xs) - Math.min(...xs) + 1 : Math.max(...ys) - Math.min(...ys) + 1;
         const out = o[0] ? Math.max(...xs) - Math.min(...xs) + 1 : Math.max(...ys) - Math.min(...ys) + 1;
         sizes.add(`${along}x${out}`);
-        // Exactly two steps per storey, one 2×2 landing per storey.
-        assert.equal(cells.filter(c => c.role === 'flight').length, 2 * storeys);
-        assert.equal(cells.filter(c => c.role === 'landing').length, 4 * storeys);
+        // Three rungs per storey and a full platform with one ladder well.
+        assert.equal(cells.filter(c=>c.role==='rung').length,3*storeys);
+        assert.equal(cells.filter(c=>c.role==='landing').length,11*storeys);
         const rec = compileFireEscape(s, params);
         assert.ok(validateAccessModule(s, rec));
-        // Every landing and the roof are reachable from the street by stairs alone.
+        // Every platform and roof are reachable only when ladder traversal is enabled.
         const [fx, fy] = [origin[0] + o[0], origin[1] + o[1]];
-        const reach = reachable(s, { x: fx, y: fy, z: G }, Infinity, AGENT_PROFILES.player, { ladders: false, jump: false });
+        const reach = reachable(s, { x: fx, y: fy, z: G }, Infinity, AGENT_PROFILES.player, { jump: false });
         for (const l of rec.landings) assert.ok(reach.costs.has(nodeKey(l.stand)), `${side}/${storeys}: storey ${l.storey}`);
+        const noLadders=reachable(s,{x:fx,y:fy,z:G},Infinity,AGENT_PROFILES.player,{ladders:false,jump:false});
+        assert.ok(rec.landings.every(l=>!noLadders.costs.has(nodeKey(l.stand))));
+        const down=reachable(s,rec.landings.at(-1).stand,Infinity,AGENT_PROFILES.player,{jump:false});
+        assert.ok(down.costs.has(nodeKey({x:fx,y:fy,z:G})));
         // A tampered cell fails the template gate.
         const p = rec.landings[0].cells[0]; s.set(...p, MAT.concrete);
         assert.throws(() => validateAccessModule(s, rec), /access.template/);
     }
-    assert.deepEqual([...sizes], ['6x3']);
+    assert.deepEqual([...sizes], ['6x2']);
 });
 
-test('shooting out a post column drops the landings it carries; the other end stays up', () => {
-    const { s, G, origin } = shell('e', 4);
-    const rec = compileFireEscape(s, { side: 'e', origin, datum: G, storeys: 4, doors: {} });
-    assert.equal(settleUnsupported(s.clone()).removed, 0);
-    const right = rec.landings.filter(l => l.end === 4), left = rec.landings.filter(l => l.end === 0);
-    const post = fireEscapeTemplate(rec.params).cells.find(c => c.role === 'post' && c.u === 5 && c.z === G + 2);
-    s.set(post.x, post.y, post.z, 0);
-    settleUnsupported(s);
-    assert.ok(right.every(l => l.cells.every(p => s.get(...p) === 0)), 'right-end landings fell');
-    assert.ok(left.every(l => l.cells.every(p => s.get(...p) === MAT.grate)), 'left-end landings stand');
+test('beam-free platforms stay facade anchored and fall when their wall anchors are removed',()=>{
+    const {s,G,origin}=shell('e',4),rec=compileFireEscape(s,{side:'e',origin,datum:G,storeys:4,doors:{}});
+    assert.equal(settleUnsupported(s.clone()).removed,0);
+    assert.ok(!fireEscapeTemplate(rec.params).cells.some(c=>c.mat===MAT.steel_post));
+    assert.ok(s.supportGroups.every(g=>g.columns.length===0&&g.anchors.length===6));
+    const target=s.supportGroups[1];s.set(...target.anchors[0],0);settleUnsupported(s);
+    assert.ok(rec.landings.every(l=>l.cells.every(p=>s.get(...p)===MAT.grate)));
+    for(const anchor of target.anchors)s.set(...anchor,0);settleUnsupported(s);
+    assert.ok(target.members.every(p=>s.get(...p)===0));
+
 });
 
 test('roof ladders serve 1–2 storey flat roofs only; manholes and service stairs match their templates', () => {
@@ -82,14 +87,16 @@ test('roof ladders serve 1–2 storey flat roofs only; manholes and service stai
     assert.ok(validateAccessModule(u, mh));
 });
 
-test('Signal House climbs by stairs only and every access structure passes the template gate', () => {
+test('Signal House has interior stairs and an independent ladder fire escape', () => {
     const pkg = MAP_PACKAGES.find(p => p.manifest.id === 'signal-house');
     const m = buildPackagedMap(pkg, { seed: 1 }), b = m.buildings[0];
     assert.equal(b.storeys, 4);
     assert.deepEqual(b.access.map(a => a.module), ['fire_escape']);
     assert.deepEqual(checkAccess(m), { accessTemplates: true, accessByHeight: true });
-    const stairsOnly = reachable(m.store, m.spawns.player[0], Infinity, AGENT_PROFILES.player, { ladders: false, jump: false,
+    const stairsOnly = reachable(m.store, m.spawns.player[0], Infinity, AGENT_PROFILES.player, { jump: false,
         blocked: p => b.stairs.some(r => r.cells.some(c => c.x === p.x && c.y === p.y && c.z === p.z)) });
     for (const e of b.escapes) assert.ok(stairsOnly.costs.has(nodeKey(e.landing)), `storey ${e.floor}`);
-    assert.ok(stairsOnly.costs.has(nodeKey({ x: b.x0 + 1, y: b.y0 + 1, z: b.top })), 'roof by the escape');
+    assert.ok(stairsOnly.costs.has(nodeKey({ x: b.x0 + 1, y: b.y0 + 1, z: b.top })), 'roof by ladder escape');
+    const interior=reachable(m.store,m.spawns.player[0],Infinity,AGENT_PROFILES.player,{ladders:false,jump:false});
+    for(let floor=1;floor<b.storeys;floor++){const run=b.stairs.find(r=>r.storey===floor-1);assert.ok(run);assert.ok(interior.costs.has(nodeKey(run.after)));}
 });

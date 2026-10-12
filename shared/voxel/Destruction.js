@@ -123,6 +123,12 @@ export function settleUnsupported(store, { maxRubble = 600 } = {}) {
     }
     function push(j) { if (!seen[j] && attached(store.mat[j]) && (bears || hangs[j])) { seen[j] = 1; stack.push(j); } }
 
+    // A facade anchor must itself reach bedrock. A floating upper slab cannot keep its balcony suspended.
+    for(const group of store.supportGroups||[]) {
+        if((group.posts||[]).length||(group.columns||[]).length||!group.anchors?.length)continue;
+        if(group.anchors.some(p=>store.inBounds(...p)&&seen[store.index(...p)]))continue;
+        for(const p of group.members)if(store.get(...p)!==AIR){store.set(...p,AIR);standRemoved++;}
+    }
     const loose = [];
     for (let i = 0; i < store.mat.length; i++) if (!seen[i] && attached(store.mat[i])) loose.push(i);
     if (!loose.length) return { fallen: [], removed: standRemoved };

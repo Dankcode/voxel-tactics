@@ -14,6 +14,7 @@ import { RENDER, FALLBACK } from '../RenderTable.js';
 export const SLOTS = {
     self: { tex: 'self', uv: 'world' },
     // Present-day set.
+    frame_white: { tex: null, color: 0xcbd6d5, rough: 0.5, metal: 0.15 },
     frame: { tex: null, color: 0x2c3134, rough: 0.45, metal: 0.35 },                 // window / door frames, caps, legs
     plinth: { tex: 'concrete', uv: 'world', scale: 1.5, color: 0x6c7174, rough: 0.9 },
     leaf: { tex: 'oak_floor', uv: 'mesh', color: 0x8a6a4c, rough: 0.6 },                // door leaves

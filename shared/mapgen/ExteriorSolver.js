@@ -267,12 +267,12 @@ export function classifyBays(W, D, ground, blocked, protectedCells) {
 function bayDomain(bay, poolName, sidewalkAxis) {
     if (bay.blocked) return ['open'];
     const pool = PIECE_POOLS[poolName] || PIECE_POOLS.yard_paved;
-    const surf = bay.cls === 'lane_x' || bay.cls === 'lane_y' ? 'lane' : bay.cls;
+    const surf = bay.cls.startsWith('parking_')?'asphalt':bay.cls === 'lane_x' || bay.cls === 'lane_y' ? 'lane' : bay.cls;
     const out = [];
     for (const p of pieceTiles) {
-        if (!(p.base in pool)) continue;
+        if (!(p.base in pool)||p.base==='lamp') continue;
         if (p.id !== 'open' && (!p.surfaces || !(p.surfaces.includes(surf) || (surf === 'lane' && p.surfaces.includes('asphalt'))))) continue;
-        if (p.base === 'car' && !((bay.cls === 'lane_x' && p.axis === 'x') || (bay.cls === 'lane_y' && p.axis === 'y') || (bay.cls === 'asphalt' && poolName === 'parking'))) continue;
+        if (p.base === 'car' && !((bay.cls === 'lane_x' && p.axis === 'x') || (bay.cls === 'lane_y' && p.axis === 'y') || (bay.cls === 'asphalt' && poolName === 'parking')||bay.cls===`parking_${p.axis}`)) continue;
         if ((bay.cls === 'sidewalk' || surf === 'lane') && p.run && sidewalkAxis && p.run !== sidewalkAxis) continue;
         if (bay.cls === 'sidewalk' && p.base === 'car') continue;
         // Protected cells (routes, openings, exits) may hold nothing.
@@ -310,7 +310,13 @@ export function solveBays({ plot, bayGrid, lotPool, roadAxis, fields, seed, pins
             let domain = bayDomain(bay, lotPool(lot, bay), roadAxis(lot));
             // Multi-bay objects must finish inside this lot.
             domain = domain.filter(t => { const p = BAY_PIECES[t]; if (!p.parts) return true; const off = p.axis === 'x' ? bx - lx * LB : by - ly * LB; return off - p.part >= 0 && off - p.part + p.parts <= LB; });
-            if (pins.has(id) && domain.includes(pins.get(id))) { fixed.set(id, pins.get(id)); domain = [pins.get(id)]; }
+            if(pins.has(id)) {
+                const pin=BAY_PIECES[pins.get(id)],surface=bay.cls.startsWith('parking_')||bay.cls==='carriageway'?'asphalt':bay.cls.startsWith('lane_')?'lane':bay.cls;
+                // A repair may introduce a compatible cover module outside the decorative pool. It still obeys
+                // collision reservations, real surface types and single-bay assembly constraints.
+                const valid=pin&&!bay.blocked&&!pin.parts&&pin.cells.every(([x,y])=>!bay.protected.some(([px,py])=>px===x&&py===y))&&(!pin.surfaces||pin.surfaces.includes(surface)||(surface==='lane'&&pin.surfaces.includes('asphalt')));
+                if(domain.includes(pins.get(id))||valid){fixed.set(id,pins.get(id));domain=[pins.get(id)];}
+            }
             domains.set(id, domain.length ? domain : ['open']);
         }
         const weightOf = (nodeId, tileId) => {

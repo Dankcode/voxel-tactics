@@ -1,3 +1,5 @@
+import { WalkerModel } from './WalkerModel.js';
+import { WALKERS } from '../../../shared/battle/Walker.js';
 // A 2D character standing in the voxel world: a camera-facing quad (depth-tested against voxels),
 // a ground ring, an HP/AP bar, and a SpriteAnimator driving the placeholder atlas.
 import * as THREE from 'three';
@@ -23,7 +25,7 @@ export async function loadCharacterArt(art) {
 }
 
 export class UnitView {
-    constructor(scene, unit, art) {
+    constructor(scene, unit, art, store) {
         this.scene = scene; this.unit = unit; this.id = unit.id; this.art = unit.art;
         this.group = new THREE.Group();
         const m = art.field;
@@ -40,6 +42,7 @@ export class UnitView {
         this.sprite.castShadow = true;
         this.sprite.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: this.texture, alphaTest: 0.5, side: THREE.DoubleSide });
         this.group.add(this.sprite);
+        if(WALKERS[unit.type]){this.group.remove(this.sprite);this.sprite.geometry.dispose();this.sprite.customDepthMaterial.dispose();this.model=new WalkerModel(unit,store,scene.clipping);this.sprite=this.model.root;this.spriteHeight=WALKERS[unit.type].height+.5;this.group.add(this.sprite);}
         this.blob = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false, opacity: 0.55, clippingPlanes: scene.clipping }));
         this.blob.rotation.x = -Math.PI / 2; this.blob.position.y = 0.02;
         this.group.add(this.blob);
@@ -93,7 +96,8 @@ export class UnitView {
     update(dt, yaw, camera = this.scene.camera) {
         // Screen-facing art retains its drawn proportions; the transparent foot baseline stays at local zero.
         // Only the sprite tilts. Ground rings, collision position and elevation cues stay on the world grid.
-        if(camera) {
+        if(this.model){this.model.update(this.pos,dt);this.bar.position.set(0,this.spriteHeight+.25,0);}
+        else if(camera) {
             this.sprite.quaternion.copy(camera.quaternion);
             this.billboardUp.set(0,1,0).applyQuaternion(camera.quaternion);
             this.bar.position.copy(this.billboardUp).multiplyScalar(this.spriteHeight+.18);
@@ -116,7 +120,7 @@ export class UnitView {
     setSelected(on) { this.selRing.visible = on; }
     setVisible(on) { this.group.visible = on; }
     dispose() {
-        this.sprite.customDepthMaterial?.dispose(); this.scene.scene.remove(this.group); this.texture.dispose(); this.material.dispose(); this.barTex.dispose(); }
+        this.model?.dispose();this.sprite.customDepthMaterial?.dispose(); this.scene.scene.remove(this.group); this.texture.dispose(); this.material.dispose(); this.barTex.dispose(); }
 }
 
 let blobTex = null;

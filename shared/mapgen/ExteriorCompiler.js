@@ -22,7 +22,7 @@ export function compilePiece(m, p, district = 'commercial') {
     if (p.base === 'container') { m.container(p.x, p.y, 'x', null, G, unit(`${m.id}:${p.x},${p.y}:stack`) < 0.25); return; }
     if (p.base === 'dumpster') { m.dumpster(p.cells[0][0], p.cells[0][1], p.axis, G); return; }
     if (p.base === 'tree') { m.tree(p.cells[0][0], p.cells[0][1], district === 'residential' || district === 'park' ? (unit(`${m.id}:${p.x},${p.y}:tree`) < 0.3 ? 'conifer' : 'round') : 'round', G); return; }
-    if (p.base === 'lamp') { m.decorAt('streetlight', p.x + 0.5, p.y + 0.5, { z: G + 1, yaw: Math.floor(unit(`${m.id}:${p.x},${p.y}:lamp`) * 4) * Math.PI / 2, free: true }); return; }
+    if (p.base === 'lamp') return; // Old packages may retain lamps; the curb planner replaces them.
     for (const [x, y, stack] of p.cells) stack.forEach((key, k) => s.set(x, y, G + 1 + k, MAT[key]));
     if (p.base === 'bus_stop') m.decorAt('bus_stop', p.x + 1, p.y + 0.5, { z: G + 1, yaw: 0, free: true });
     if (p.base === 'planter' && unit(`${m.id}:${p.x},${p.y}:flowers`) < 0.4) m.decorAt('flowers', p.cells[0][0], p.cells[0][1], { z: G + 2, free: true });
@@ -52,8 +52,12 @@ export function compileV3Map({ site, layout, design, manifest }, { seed = 1, gat
     const { width, depth, height } = layout;
     const m = createMap({ id: site.id, width, depth, height, seed, datum: layout.datum ?? 4, ground: 'concrete' });
     const G = m.G, mats = decodeGround(layout.ground.mat);
-    for (let y = 0; y < depth; y++) for (let x = 0; x < width; x++) m.store.set(x, y, G, MAT[mats[x + y * width]]);
+    for (let y = 0; y < depth; y++) for (let x = 0; x < width; x++) {
+        const material=mats[x+y*width];m.store.set(x,y,G,MAT[material]);
+        if(material==='air')for(let z=0;z<G;z++)m.store.set(x,y,z,0);
+    }
     m.escapeBlocked = () => false;
+    m.lightRoutes=layout.roads||[];
     m.beats = design.beats;
     for (const b of layout.buildings) compileBuilding(m, b);
     const underground = compileUnderground(m, layout.layers);
@@ -94,7 +98,7 @@ export function compileV3Map({ site, layout, design, manifest }, { seed = 1, gat
             cutLevels: [G, ...Array.from({ length: storeysMax }, (_, s) => G + 3 * (s + 1)), Infinity], imageGenerated: true, generatorVersion: layout.generatorVersion, underground, source: site.source,
             flow, briefing: design.mission.briefing, storyBeats: design.beats, congruence: layout.congruence, repairs: layout.repairs, packageId: manifest?.id, concepts: manifest?.concepts || [],
             objectiveBuilding: layout.objective?.building, plot: layout.plot ? { family: layout.plot.family, seed: layout.plot.seed, picture: layout.plot.picture } : null,
-            pockets: layout.pockets || [], lineOfPlay: layout.lineOfPlay, dressing: layout.dressing,
+            parcelAssignments:layout.parcelAssignments||[],roads:layout.roads||[],pockets: layout.pockets || [], lineOfPlay: layout.lineOfPlay, dressing: layout.dressing,
             backdrop: { family: layout.plot?.family, roadExits: (layout.edges || []).filter(e => e.kind === 'barricade').map(e => ({ side: e.side, from: e.cells[0], to: e.cells.at(-1) })) }
         }
     });

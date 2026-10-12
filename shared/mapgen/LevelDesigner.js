@@ -29,7 +29,7 @@ export function designLevel(site,layout,proposal=null) {
         if(proposal.encounters?.some(e=>!e.types?.length||e.types.some(t=>!['cultist','archer','warden_foe','pyromancer','brute'].includes(t))))throw Error('design.encounter: unsupported enemy type');
         return proposal;
     }
-    const target=layout.buildings.slice().sort((a,b)=>b.storeys-a.storeys)[0];
+    const target=layout.buildings.find(b=>b.id===site.objectiveBuilding)||layout.buildings.slice().sort((a,b)=>b.storeys-a.storeys)[0];
     const programmes=layout.buildings.flatMap(b=>Array.from({length:b.storeys},(_,floor)=>({building:b.id,floor,rooms:upperKinds(b,floor).map(kind=>({id:kind,kind,areaShare:0.25,gameplay:!['bathroom','restroom','utility'].includes(kind)})),adjacencies:upperKinds(b,floor).filter(k=>!['bathroom','restroom','utility'].includes(k)).map(kind=>[kind,'hall'])})));
     const primary=programmes.find(p=>p.building===target.id&&p.floor===target.storeys-1).rooms.find(r=>r.gameplay).kind;
     const kind=site.objective || (site.storyHooks?.some(s=>/hostage|evac/i.test(s))?'extract':site.storyHooks?.some(s=>/defend|alarm/i.test(s))?'hold':'recover');

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { VoxelStore } from './VoxelStore.js';
 import { MAT } from './Materials.js';
-import { wallMask, wallFootprint, containsPoint, liquidFootprint } from './ConnectedShapes.js';
+import { wallMask, wallFootprint, containsPoint, liquidFootprint, CURVED_WALL_MASKS } from './ConnectedShapes.js';
 import { castRay, lineOfSight } from './Raycast.js';
 import { coverAt, COVER } from './Cover.js';
 import { traceProjectile } from '../battle/Ballistics.js';
@@ -15,7 +15,7 @@ test('all 16 connection masks reach exactly their neighbour edges, with rounded 
     for(let mask=0;mask<16;mask++) {
         const p=wallFootprint(mask);
         assert.ok(p.every(([x,y])=>x>=0&&x<=1&&y>=0&&y<=1));
-        assert.ok(containsPoint(p,.5,.5));
+        if(!CURVED_WALL_MASKS.has(mask))assert.ok(containsPoint(p,.5,.5));
         for(const [bit,x,y] of [[1,.999,.5],[2,.5,.999],[4,.001,.5],[8,.5,.001]])
             assert.equal(containsPoint(p,x,y),!!(mask&bit),`mask ${mask}, edge ${bit}`);
     }

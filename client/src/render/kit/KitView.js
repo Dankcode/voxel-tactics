@@ -123,7 +123,7 @@ export class KitView {
             });
             return true;
         };
-        const get = (x, y, z) => (z >= cut ? AIR : store.get(x, y, z));
+        const get = (x, y, z) => (z >= cut || opts.hidden?.(x,y,z) ? AIR : store.get(x, y, z));
         const wallLike = (x, y, z) => WALL_LIKE.has(keyOf(get(x, y, z)));
         const intactCache = new Map();
         const intact = (ak) => {
@@ -150,6 +150,7 @@ export class KitView {
         for (const d of this.decorByChunk.get(`${cx},${cy},${cz}`) || []) {
             const x = Math.floor(d.x + 0.5), y = Math.floor(d.y + 0.5);
             const accent = d.tint ? { tint: d.tint, tintSlots: ['canvas_white', 'red'] } : {};
+            if(opts.hidden?.(x,y,d.z))continue;
             if (d.free) { add(d.kind, d.x, d.y, d.z, d.yaw || 0, 'stone', { sx: d.w || 1, sz: d.d || 1, ...accent }); continue; }   // free-standing (canopies, signs)
             if (d.z >= cut) continue;
             if (store.get(x, y, d.z) !== AIR) continue;
@@ -174,7 +175,7 @@ export class KitView {
             out.push(mesh);
         }
         // Roofs: one continuous surface per chunk.
-        const roof = buildRoofGeometry(store, cx, cy, cz, cut);
+        const roof = buildRoofGeometry(store, cx, cy, cz, cut,opts.hidden);
         if (roof) {
             const mesh = new THREE.Mesh(roof, this.kit.material('roof', 'roof', this.clipping));
             mesh.castShadow = true; mesh.receiveShadow = true; mesh.userData.kit = true;
@@ -203,19 +204,29 @@ export class KitView {
         switch (h) {
             case 'wall': {
                 const connections = wallMask(store, x, y, z);
-                add(`joined_wall_${connections}`, x, y, z, 0, k);
-                const above = store.get(x, y, z + 1);
+                const family={concrete_wall:'facade_concrete',siding:'facade_metal',stucco:'facade_stucco'}[k]||'joined_wall';
+                add(`${family}_${connections}`, x, y, z, 0, k);
+                const above = get(x, y, z + 1);
                 if (above === AIR || z + 1 >= cut) add(`joined_cap_${connections}`, x, y, z, 0, k);
                 break;
             }
             case 'window': {
                 const wall = neighbourWall(store, x, y, z) || 'plaster';
                 const yaw = wallAxis();
-                if (MODERN_WALLS.has(wall)) {
-                    add('glaze', x, y, z, yaw, wall);
-                    if (keyOf(store.get(x, y, z - 1)) !== 'glass') add('glaze_sill', x, y, z, yaw, wall);
-                    if (keyOf(store.get(x, y, z + 1)) !== 'glass') add('glaze_head', x, y, z, yaw, wall);
-                } else add('window', x, y, z, yaw, wall);
+                const vertical=[-1,1].some(dz=>keyOf(store.get(x,y,z+dz))==='glass');
+                const style=hint?.windowStyle||(vertical?'curtain':wall==='siding'?'factory':wall==='brick'?'sash':'ribbon');
+                const connections=wallMask(store,x,y,z);
+                if([3,6,9,12].includes(connections)) {
+                    add(`glaze_curve_${connections}`,x,y,z,0,'glass');
+                    if(keyOf(store.get(x,y,z-1))!=='glass')add(`glaze_curve_sill_${connections}`,x,y,z,0,'glass');
+                    if(keyOf(store.get(x,y,z+1))!=='glass')add(`glaze_curve_head_${connections}`,x,y,z,0,'glass');
+                } else {
+                    add(style==='curtain'?'glaze':`window_${style}`,x,y,z,yaw,'glass');
+                    if(style==='curtain') {
+                        if(keyOf(store.get(x,y,z-1))!=='glass')add('glaze_sill',x,y,z,yaw,'glass');
+                        if(keyOf(store.get(x,y,z+1))!=='glass')add('glaze_head',x,y,z,yaw,'glass');
+                    }
+                }
                 if (z + 1 >= cut && store.get(x, y, z + 1) !== AIR) { add('cap_core', x, y, z, 0, wall); add('cap_arm', x, y, z, yaw, wall); add('cap_arm', x, y, z, yaw + Math.PI, wall); }
                 break;
             }
@@ -244,13 +255,28 @@ export class KitView {
                 } else add('lantern', x, y, z, 0, k);
                 break;
             }
-            case 'circulation': add(k,x,y,z,0,k);break;
+            case 'circulation': {
+                add(k,x,y,z,0,k);
+                if(k==='grate')for(const [dx,dy] of DIRS) {
+                    const neighbor=store.get(x+dx,y+dy,z);
+                    // Rails sit inside the tile edge. Leave the wall-side entry into the well open.
+                    if(neighbor!==AIR&&neighbor!==MAT.ladder)continue;
+                    if(neighbor===MAT.ladder) {
+                        const mount=(store.supportGroups||[]).find(g=>g.ladder?.x===x+dx&&g.ladder.y===y+dy&&g.ladder.hi===z)?.ladder;
+                        if(!mount||dx===-mount.backing[0]&&dy===-mount.backing[1])continue;
+                    }
+                    add('escape_rail',x,y,z+1,Math.atan2(dx,dy),'railing');
+                }
+                break;
+            }
             case 'ladder': {
                 // Back against the neighbour it leans on: the side with a solid voxel at this height (or the ledge above).
                 let yaw = 0;
                 const attachment=ladderAttachment(store,x,y,z);
                 if(attachment)yaw=yawToward(...attachment);
                 add(keyOf(get(x, y, z + 1)) === 'ladder' ? 'ladder' : 'ladder_top', x, y, z, yaw, k);
+                const mount=(store.supportGroups||[]).find(g=>g.ladder?.x===x&&g.ladder.y===y&&g.ladder.hi===z)?.ladder;
+                if(mount&&attachment)add('escape_rail',x,y,z+1,Math.atan2(-mount.backing[0],-mount.backing[1]),'railing');
                 break;
             }
             case 'stairs': {
@@ -357,6 +383,7 @@ export class KitView {
 }
 
 function neighbourWall(store, x, y, z) {
+    for(const dz of [-1,1]){const k=keyOf(store.get(x,y,z+dz));if(WALLS.has(k))return k;}
     for (const dz of [0, -1, 1]) for (const [dx, dy] of DIRS) { const k = keyOf(store.get(x + dx, y + dy, z + dz)); if (WALLS.has(k)) return k; }
     return null;
 }

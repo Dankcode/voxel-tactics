@@ -1,6 +1,6 @@
-// Squad classes and hostile types (modern setting, human factions only). Ids are stable (saves, art folders, tests);
+// Squad classes and hostile types (modern setting with experimental climbing constructs). Ids are stable (saves, art folders, tests);
 // names are what the player sees. `art` names the placeholder sprite set in client/public/assets/characters.
-/** Every character has the same small pool; classes differ by armour, mobility, accuracy and kit. Gun damage comes
+/** Human characters have the same small pool; constructs have larger pools; classes differ by armour, mobility, accuracy and kit. Gun damage comes
  *  from the round (shared/content/calibers.js), so a rifle hit is a third of anyone's health. */
 export const UNIT_HP = 30;
 export const BODY = Object.freeze({
@@ -24,6 +24,8 @@ export const CLASSES = Object.freeze({
 });
 
 export const ENEMIES = Object.freeze({
+    wall_strider: {id:'wall_strider',name:'Wall Strider',faction:'construct',art:'wall_strider',hp:60,accuracy:.7,mobility:2.6,will:6,armor:'medium',weapons:['musket','sword'],items:{},abilities:[],role:'Four articulated legs; five occupied tiles. Climbs facades and flanks from rooftops.'},
+    siege_weaver: {id:'siege_weaver',name:'Siege Weaver',faction:'construct',art:'siege_weaver',hp:90,accuracy:.65,mobility:1.8,will:8,armor:'heavy',weapons:['repeater'],items:{},abilities:[],role:'Six articulated legs; seven occupied tiles across a five-tile span. Armoured climbing gun platform.'},
     cultist: { id: 'cultist', name: 'Gunman', faction: 'syndicate', art: 'cultist', hp: UNIT_HP, accuracy: 0.55, mobility: 3, will: 4, armor: 'light',
         weapons: ['musket', 'sword'], items: { fire_flask: 1 }, abilities: [] },
     archer: { id: 'archer', name: 'Lookout', intelName: 'Drone Hunter', droneDetector: true, faction: 'syndicate', art: 'archer', hp: UNIT_HP, accuracy: 0.64, mobility: 3.2, will: 4, armor: 'hide',

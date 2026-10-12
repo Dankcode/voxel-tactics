@@ -32,12 +32,12 @@
     "width": {
       "type": "integer",
       "minimum": 12,
-      "maximum": 64
+      "maximum": 192
     },
     "depth": {
       "type": "integer",
       "minimum": 12,
-      "maximum": 64
+      "maximum": 192
     },
     "height": {
       "type": "integer",
