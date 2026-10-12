@@ -60,3 +60,7 @@ Open `http://localhost:2567/?play=architecture-yard` or choose **Architecture Ya
   panels, stacked glazing, and four rounded glass corners. Use the Buildings control and floor arrows to inspect.
 
 The map and its facade hints serialize through the same mission snapshot as co-op missions.
+
+### Automatic window entry
+
+Half-window sills now register a crossing axis in `VoxelStore.windowOpenings`. Ordinary move searches automatically include a crouched vault through that aperture beneath the ceiling; other low obstacles retain full-height vault clearance. Both building generators reserve the interior landing from furniture. Movement breaks the glass, keeps the sill as half cover, reveals the room entered and emits a crouched vault animation. Opening metadata survives cloning and compiled mission snapshots, so broken windows remain traversable in both directions and online peers agree. Solidly filled apertures, occupied landing tiles and wide units still block entry. Training Facility's outdoor cover pass uses a three-tile target gap to preserve the existing cover gates with the revised furniture layout.

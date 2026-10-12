@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import path from 'node:path';
+import fs from 'node:fs';
 import { execSync } from 'node:child_process';
 
 // Stamp every page with the code it came from, so two runs that look different can be told apart:
@@ -16,7 +17,7 @@ function buildStamp(command) {
 // The client imports the deterministic rules from ../shared, so Vite must be allowed to serve it.
 export default defineConfig(({ command }) => ({
     root: path.resolve(__dirname),
-    define: { __BUILD__: JSON.stringify(buildStamp(command)) },
+    define: { __HAS_KIT_ART__: JSON.stringify(fs.existsSync(path.resolve(__dirname,'public/assets/kit/tileset-art.glb'))), __BUILD__: JSON.stringify(buildStamp(command)) },
     server: { fs: { allow: [path.resolve(__dirname, '..')] } },
-    build: { outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 4000 }
+    build: { rollupOptions: { input: { battle: path.resolve(__dirname, 'index.html'), staging: path.resolve(__dirname, 'staging.html'), campaign: path.resolve(__dirname, 'campaign.html') } }, outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 4000 }
 }));

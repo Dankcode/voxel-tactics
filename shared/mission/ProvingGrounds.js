@@ -70,7 +70,7 @@ export function buildProvingGrounds({ seed = 1 } = {}) {
     m.line(20, 45, 3, 'x', 'jersey'); m.line(26, 45, 3, 'x', 'jersey');
     m.reserve(21, 41, 28, 44);
     m.reserve(0, 7, 16, 16);
-    const cover = m.scatter(DOCKS_PROPS, { maxGap: 4, targetShare: 0.3 });
+    const cover = m.scatter(DOCKS_PROPS, { maxGap: 3, targetShare: 0.3 });
 
     const spawns = {
         player: [{ x: 22, y: 42 }, { x: 24, y: 42 }, { x: 26, y: 42 }, { x: 23, y: 44 }, { x: 25, y: 44 }, { x: 27, y: 44 }].map(p => ({ ...p, z: G })),

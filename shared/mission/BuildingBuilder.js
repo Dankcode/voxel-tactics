@@ -164,6 +164,7 @@ export function buildBuilding(store, spec, ctx) {
                 if (exterior.some(e => Math.abs(e.x - x) + Math.abs(e.y - y) <= 1)) return;
                 store.set(x, y, fz + 2, MAT.glass);
                 result.windows.push({ x, y, z: fz + 2, side: p.side, storey: s });
+                store.windowOpenings.set(`${x},${y},${fz}`,p.side==='n'||p.side==='s'?'y':'x');
             });
         }
     }
@@ -178,7 +179,11 @@ export function buildBuilding(store, spec, ctx) {
             if (run.storey === s) run.cells.forEach(c => obstacles.add(`${c.x},${c.y}`));
             if (run.storey === s - 1) [run.before, run.cells[0], run.cells[1]].forEach(c => obstacles.add(`${c.x},${c.y}`));
         }
-        furnish(store, plan, roomIdsByStorey[s], fz, reserved, rng, anchor, obstacles, spec.modern);
+        const windowReserved=new Set(reserved);
+        for(const w of result.windows.filter(w=>w.storey===s)) {
+            const [dx,dy]=SIDES[w.side];windowReserved.add(`${w.x-dx},${w.y-dy}`);
+        }
+        furnish(store, plan, roomIdsByStorey[s], fz, windowReserved, rng, anchor, obstacles, spec.modern);
         for (const room of roomIdsByStorey[s]) {
             if (spec.modern || !room.lit) continue;
             const wallCell = room.cells.flatMap(([x, y]) => Object.values(SIDES).map(([dx, dy]) => [x + dx, y + dy]))

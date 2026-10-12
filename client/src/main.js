@@ -30,7 +30,7 @@ async function showMenu(opts = {}) {
     menu.innerHTML = `
       <div class="menu-card">
         <h1>FIRETEAM</h1>
-        <p class="tag">Present-day tactical operations · co-op</p>
+        <p class="tag">Present-day tactical operations · co-op</p><p><a href="/staging.html">Co-op briefing lobby</a> · <a href="/campaign.html">Campaign prototype</a></p>
         <nav class="menu-tabs" role="tablist">
           <button data-tab="play" role="tab">Play</button>
           <button data-tab="test" role="tab">Test ground <small>admin</small></button>
@@ -111,7 +111,7 @@ async function showMenu(opts = {}) {
     const launch = (make, { generating = scenario === OPERATION_ID, debug = desc().debug, autopilot = false } = {}) =>
         startBattle(make, { generating, debug, autopilot, status });
     $('#m-local').onclick = () => launch(() => LocalSession.create(desc()));
-    $('#m-host').onclick = () => launch(() => OnlineSession.connect({ url: $('#m-server').value, desc: desc(), support: $('#m-support').value }));
+    $('#m-host').onclick = () => launch(() => OnlineSession.connect({url:$('#m-server').value,desc:desc(),support:$('#m-support').value}));
     $('#m-join').onclick = () => launch(() => OnlineSession.connect({ url: $('#m-server').value, roomId: $('#m-room').value.trim(), support: $('#m-support').value }), { generating: false, debug: false });
     // Test ground (admin): its own panel; launches go through the same path as Play.
     const testLaunch = (online) => (d, client, setup) => {
@@ -147,7 +147,10 @@ async function startBattle(make, { generating = false, debug = false, autopilot 
 }
 
 // Test-ground deep link: ?test=<setup> (made by "Copy link") launches that exact setup.
-if (params.get('test')) {
+if (params.get('staged')) {
+    const launch = JSON.parse(sessionStorage.getItem('fireteam.launch') || 'null');
+    showMenu().then(() => launch ? startBattle(() => OnlineSession.connect(launch), {status: text => { $('#m-status').textContent=text; }}) : $('#m-status').textContent='No staging seat found. Open the co-op briefing lobby.');
+} else if (params.get('test')) {
     let setup = null;
     try { setup = decodeSetup(params.get('test')); setup.desc = sanitizeDesc(setup.desc); } catch (err) { console.error(err); setup = null; }
     if (setup) startBattle(() => LocalSession.create(setup.desc), { generating: setup.desc.scenario === OPERATION_ID, debug: !!setup.desc.debug, autopilot: !!setup.client?.autopilot || !!params.get('auto') });

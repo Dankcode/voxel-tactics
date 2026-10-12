@@ -21,6 +21,7 @@ export class VoxelStore {
         this.profileSurfaceCache = new Map();     // agent profile → (x + y·W → admissible surfaces), TraversalRules
         this.dirtyChunks = new Set();
         this.version = 0;
+        this.windowOpenings = new Map(); // half-window sill cells → crossing axis; survives shattered glazing
         this.listeners = new Set();
         this.recording = null;
         this.rooms = new Int16Array(n).fill(-1);   // interior room id per air voxel (-1 = outside)
@@ -116,6 +117,7 @@ export class VoxelStore {
     }
     clone() {
         const c = new VoxelStore(this.width, this.depth, this.height);
+        c.windowOpenings=new Map(this.windowOpenings);
         c.datum=this.datum;c.supportGroups=structuredClone(this.supportGroups||[]);
         c.mat.set(this.mat); c.hp.set(this.hp); c.rooms.set(this.rooms);
         return c;

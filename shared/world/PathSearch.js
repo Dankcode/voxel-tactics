@@ -7,12 +7,20 @@ const CARDINAL = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
 /** XCOM vault: over a one-voxel-high obstacle you can't stand on (low wall, sandbags, hedge, planter, barrier …). */
 export const VAULT_COST = 2.6;
+export function isWindowVault(world,from,to) {
+    if(from.z!==to.z||Math.abs(to.x-from.x)+Math.abs(to.y-from.y)!==2)return false;
+    const x=(from.x+to.x)/2,y=(from.y+to.y)/2,axis=to.x===from.x?'y':'x';
+    return world.windowOpenings?.get(`${x},${y},${from.z}`)===axis;
+}
 export function canVault(world, from, dx, dy, profile = AGENT_PROFILES.player) {
     if (profile.width !== 1) return null;
     const bx = from.x + dx, by = from.y + dy, z = from.z;
     const ob = materialById(world.get(bx, by, z + 1));
     if (!ob.solid || ob.walkable || ob.liquid || ob.part === 2) return null;
-    for (let h = 2; h <= 1 + profile.clearance; h++) if (world.isSolid(bx, by, z + h)) return null;          // one high, room to go over
+    const window=profile.clearance<=2&&isWindowVault(world,from,{x:bx+dx,y:by+dy,z});
+    // A window vault tucks the body through the one-cell aperture beneath its lintel.
+    // Ordinary open-air vaults still need full standing clearance over the obstacle.
+    for (let h = 2; h <= (window?2:1 + profile.clearance); h++) if (world.isSolid(bx, by, z + h)) return null;          // one high, room to go over
     for (let h = 1; h <= profile.clearance; h++) if (world.isSolid(from.x, from.y, z + h)) return null;
     const land = surfacesAt(world, bx + dx, by + dy, profile).find(s => s.z === z);
     return land ? { x: land.x, y: land.y, z } : null;

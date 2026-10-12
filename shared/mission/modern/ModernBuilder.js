@@ -290,7 +290,7 @@ export function buildModern(store, spec, ctx) {
             }
             for (const { g, cells } of runs) cells.forEach(([x, y], i) => {
                 const n = cells.length;
-                const put = zs => { for (const z of zs) {store.set(x, y, z, MAT.glass);hints[`${x},${y},${z}`]={windowStyle:g==='full'?'curtain':g==='band'?'ribbon':g==='clerestory'?'factory':'sash'};} result.windows.push({ x, y, z: zs[0], side, storey: s, full: zs.length > 1 }); };
+                const put = zs => { for (const z of zs) {store.set(x, y, z, MAT.glass);hints[`${x},${y},${z}`]={windowStyle:g==='full'?'curtain':g==='band'?'ribbon':g==='clerestory'?'factory':'sash'};} result.windows.push({ x, y, z: zs[0], side, storey: s, full: zs.length > 1 });if(zs.length===1)store.windowOpenings.set(`${x},${y},${fz}`,side==='n'||side==='s'?'y':'x'); };
                 if (g === 'full' && !(n > 4 && i % 4 === 3)) put([fz + 1, fz + 2]);
                 else if (g === 'band' && !(n > 5 && i % 5 === 4)) put([fz + 2]);
                 else if (g === 'punched' && (n <= 2 ? i === 0 : i % 3 === 1)) put([fz + 2]);
@@ -306,6 +306,10 @@ export function buildModern(store, spec, ctx) {
         for (const run of result.stairs) {
             if (run.storey === s) { run.cells.forEach(c => obstacles.add(k2(c.x, c.y))); [run.before, run.after].forEach(c => clear.add(k2(c.x, c.y))); }
             if (run.storey === s - 1) { [run.before, run.cells[0], run.cells[1]].forEach(c => obstacles.add(k2(c.x, c.y))); [run.cells[2], run.after].forEach(c => clear.add(k2(c.x, c.y))); }
+        }
+        // Half windows are alternate entrances; keep a standing landing behind their sills.
+        for(const window of result.windows.filter(w=>w.storey===s&&!w.full)) {
+            const [dx,dy]=SIDES[window.side];clear.add(k2(window.x-dx,window.y-dy));
         }
         const keepFree = new Set([...reserved, ...obstacles, ...clear]);
         furnish(store, { floorSet, rooms: byStorey[s], fz, keepFree, obstacles, rng, hints, decor });

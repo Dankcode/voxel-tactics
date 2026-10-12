@@ -10,8 +10,8 @@ test('ladder columns require one continuous backing side',()=>{
  m.store.fill(5,5,2,5,5,5,'concrete');m.ladder(4,5,1,0);assert.deepEqual(ladderAttachment(m.store,4,5,3),[1,0]);assert.ok(validateLadders(m.store));
  m.store.set(5,5,3,0);assert.throws(()=>validateLadders(m.store),/attachment/);
 });
-test('hand-built maps preserve their datum and deterministic hashes under walk-through glass rules',()=>{
- const hashes={'cedar-close':'4db5a19c','main-street':'0be6f856','harbor-yard':'68c840fa','route-9':'5a54ae3b','proving-grounds':'e6265382'};
+test('hand-built maps preserve their datum and deterministic hashes with walk-through glass and reserved window landings',()=>{
+ const hashes={'cedar-close':'23c78674','main-street':'0a135a26','harbor-yard':'e4cf22b4','route-9':'b56efa1b','proving-grounds':'6e16c222'};
  for(const [id,hash] of Object.entries(hashes))assert.equal(MAPS.find(m=>m.id===id).build({seed:1}).store.hash(),hash);
 });
 import { reachable, nodeKey } from '../world/PathSearch.js';

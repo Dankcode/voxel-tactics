@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import colyseus from 'colyseus';
 import { WebSocketTransport } from '@colyseus/ws-transport';
+import { StagingRoom } from './StagingRoom.js';
 import { MissionRoom } from './MissionRoom.js';
 
 const { Server, matchMaker } = colyseus;
@@ -34,4 +35,5 @@ function warnIfStale() {
 const server = http.createServer(app);
 const gameServer = new Server({ transport: new WebSocketTransport({ server }) });
 gameServer.define('mission', MissionRoom);
+gameServer.define('staging', StagingRoom);
 server.listen(PORT, () => console.log(`voxel-tactics server on :${PORT} (ws + http)`));

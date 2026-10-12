@@ -6,7 +6,7 @@ export function packMarkup(slots, interactive=true){
 }
 export class InventoryPrep{
     constructor(root,squad){this.root=root;this.reset(squad);root.addEventListener('click',e=>this.click(e));root.addEventListener('dragstart',e=>{const b=e.target.closest('[data-item]');if(!b)return;this.select(b,false);e.dataTransfer.setData('text/plain',b.dataset.item);});root.addEventListener('dragover',e=>e.preventDefault());root.addEventListener('drop',e=>{e.preventDefault();const c=e.target.closest('[data-cell]');if(c)this.place(+c.dataset.cell);});}
-    reset(squad){this.types=SQUADS[squad];this.packs=this.types.map(t=>packItems(CLASSES[t].items));this.unit=0;this.selected=null;this.serial=0;this.render();}
+    reset(squad){this.types=Array.isArray(squad)?squad:SQUADS[squad];this.packs=this.types.map(t=>packItems(CLASSES[t].items));this.unit=0;this.selected=null;this.serial=0;this.render();}
     inventories(){return this.packs.map(p=>p.map(s=>({...s})));}
     select(b,render=true){const old=this.packs[this.unit].find(s=>s.id===b.dataset.packId);this.selected=old?{...old}:{id:`packed-${++this.serial}`,itemId:b.dataset.item,x:0,y:0,rotated:false};if(render)this.render();}
     click(e){const b=e.target.closest('button');if(!b)return;if(b.dataset.member!==undefined){this.unit=+b.dataset.member;this.selected=null;this.render();}else if(b.dataset.item)this.select(b);else if(b.dataset.cell!==undefined)this.place(+b.dataset.cell);else if(b.dataset.prep==='rotate'&&this.selected){this.selected.rotated=!this.selected.rotated;this.render();}else if(b.dataset.prep==='remove'&&this.selected){this.packs[this.unit]=this.packs[this.unit].filter(s=>s.id!==this.selected.id);this.selected=null;this.render();}}

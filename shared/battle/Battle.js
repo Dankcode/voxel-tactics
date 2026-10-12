@@ -13,7 +13,7 @@ import { LightField } from '../lighting/LightField.js';
 // XCOM 2: side phases, cover readout, flanking, overwatch, grenades, concealed pods.
 // Chaos Zero Nightmare: Stress and Breakdown, and the "back shot" cut-in event on every committed action.
 import { createRng, hashString } from '../util/Rng.js';
-import { reachable, pathTo, nodeKey, stepKind } from '../world/PathSearch.js';
+import { reachable, pathTo, nodeKey, stepKind, isWindowVault } from '../world/PathSearch.js';
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
 import { MAT, AIR, materialById } from '../voxel/Materials.js';
 import { castRay, fitArc, blocksSight } from '../voxel/Raycast.js';
@@ -478,23 +478,26 @@ export class Battle {
         const fromMoveOnly = Math.min(u.moveOnlyAp, ap);
         u.moveOnlyAp -= fromMoveOnly; ap -= fromMoveOnly;
         u.ap -= ap;
-        const walked = [path[0]], kinds = [];
-        const movementEvent=this.emit({t:'move',unitId:u.id,path:walked,kinds,ap:ap+fromMoveOnly});
+        const walked = [path[0]], kinds = [], windowVaults=[];
+        const movementEvent=this.emit({t:'move',unitId:u.id,path:walked,kinds,windowVaults,ap:ap+fromMoveOnly});
         let jumped = false;
         for (let i = 1; i < path.length; i++) {
             const p = path[i];
             const kind = WALKERS[u.type]&&p.z!==path[i-1].z?'climb':stepKind(this.store, path[i - 1], p);
             kinds.push(kind);
+            windowVaults.push(kind==='vault'&&isWindowVault(this.store,path[i-1],p));
             if (kind === 'jump') {jumped = true;this.stats.drops++;this.noise(p.x,p.y,p.z,8,u);}
             if(this.mission.meta?.streetDatum&&p.z<this.mission.meta?.streetDatum)this.stats.undergroundSteps++;
             if(u.side==='player'&&this.flankCells.has(`${p.x},${p.y}`))this.stats.flankSteps++;
             this.openDoorsOnStep(u, path[i - 1], p);
+            this.breakGlassOnStep(u,path[i-1],p,kind);
             u.facing = facingToward(p.x - u.x, p.y - u.y);
             u.x = p.x; u.y = p.y; u.z = p.z;
             if(WALKERS[u.type])u.footprint=occupiedCells(u,{x:u.x,y:u.y,z:u.z},this.store);
             walked.push(p);
             u.movedThisTurn = (u.movedThisTurn || 0) + 1;
             this.revealRoomOf(u);
+            if(windowVaults.at(-1)&&u.side==='player')this.revealRoom(this.roomOf(u),u);
             // Spotting: a unit that steps into view of an unalerted pod alerts it.
             this.updateVisibility({interior:false});
             const before = alive(u);
@@ -511,6 +514,22 @@ export class Battle {
         }
         this.formations.onMoved(u);
         this.noise(u.x, u.y, u.z, 3, u);
+    }
+
+    /** Sweep the body's actual movement, including the skipped tile in a vault. */
+    breakGlassOnStep(u,from,to,kind='walk') {
+        const steps=Math.max(1,Math.abs(to.x-from.x),Math.abs(to.y-from.y),Math.abs(to.z-from.z))*4;
+        const changes=this.store.record(()=>{
+            for(let i=0;i<=steps;i++) {
+                const t=i/steps,x=Math.floor(from.x+.5+(to.x-from.x)*t),y=Math.floor(from.y+.5+(to.y-from.y)*t);
+                const z=Math.floor(from.z+(to.z-from.z)*t+(kind==='vault'?Math.sin(Math.PI*t):0));
+                for(const cell of occupiedCells(u,{x,y,z},this.store))for(let h=1;h<=2;h++) {
+                    if(this.store.get(cell.x,cell.y,cell.z+h)!==MAT.glass)continue;
+                    this.store.set(cell.x,cell.y,cell.z+h,AIR);this.stats.voxelsDestroyed++;
+                }
+            }
+        });
+        if(changes.length)this.emit({t:'voxels',changes});
     }
 
     openDoorsOnStep(u, from, to) {
@@ -1070,7 +1089,7 @@ export class Battle {
             const path=pathTo(search,nodeKey(dest)),walked=[path[0]],kinds=[];
             const event=this.emit({t:'move',unitId:e.id,path:walked,kinds,ap:0,scatter:true});
             for(let i=1;i<path.length&&alive(e);i++) {
-                kinds.push(stepKind(this.store,path[i-1],path[i]));e.facing=facingToward(path[i].x-e.x,path[i].y-e.y);Object.assign(e,path[i]);walked.push(path[i]);this.checkReactions(e,walked);
+                const kind=stepKind(this.store,path[i-1],path[i]);kinds.push(kind);this.breakGlassOnStep(e,path[i-1],path[i],kind);e.facing=facingToward(path[i].x-e.x,path[i].y-e.y);Object.assign(e,path[i]);walked.push(path[i]);this.checkReactions(e,walked);
             }
             event.kinds=kinds.slice(0,walked.length-1);
         }
@@ -1109,7 +1128,7 @@ export class Battle {
     hash() {
         let voxelHp = 0x811c9dc5;
         for (const hp of this.store.hp) { voxelHp ^= hp; voxelHp = Math.imul(voxelHp, 0x01000193); }
-        const state = { intelMode:this.intelMode, asyncCoop:this.asyncCoop, personalTurns:this.personalTurns,supportReady:this.supportReady,supportChoices:this.supportChoices,contacts:this.contacts,drones:this.drones,detected:this.detected,refreshOwner:this.refreshOwner, units: this.units, round: this.round, activeSide: this.activeSide, outcome: this.outcome,
+        const state = { windowOpenings:[...this.store.windowOpenings].sort(([a],[b])=>a<b?-1:a>b?1:0), intelMode:this.intelMode, asyncCoop:this.asyncCoop, personalTurns:this.personalTurns,supportReady:this.supportReady,supportChoices:this.supportChoices,contacts:this.contacts,drones:this.drones,detected:this.detected,refreshOwner:this.refreshOwner, units: this.units, round: this.round, activeSide: this.activeSide, outcome: this.outcome,
             revealedRooms: [...this.revealedRooms].sort((a, b) => a - b), field: this.field.snapshot(),
             formations: this.formations.snapshot(), nextFormationId: this.formations.nextId,
             objective: this.objective, rng: this.rng.state, debugEnabled: this.debugEnabled, controllers: this.controllers, seq: this.seq };

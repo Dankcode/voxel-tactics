@@ -57,13 +57,14 @@ export class EventPlayer {
                     const a = path[i - 1], b = path[i];
                     v.face(b.x - a.x, b.y - a.y);
                     const kind = e.kinds?.[i - 1] || (Math.hypot(b.x - a.x, b.y - a.y) > 1.5 ? 'vault' : 'walk');
+                    const windowVault=!!e.windowVaults?.[i-1];
                     const len = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) * (kind === 'climb' ? 1.6 : 1);
                     if(e.t === 'move') v.animator.play(kind === 'vault' ? 'vault' : kind === 'climb' ? 'climb' : 'walk');
                     const steps = Math.max(1, Math.round(len * 6));
                     for (let s = 1; s <= steps; s++) {
                         const k = s / steps;
                         let px = a.x + (b.x - a.x) * k, py = a.y + (b.y - a.y) * k, pz = a.z + (b.z - a.z) * k;
-                        if (kind === 'vault') pz += Math.sin(k * Math.PI) * 1.1;                // hop over low cover
+                        if (kind === 'vault') {pz += Math.sin(k * Math.PI) * (windowVault?1:1.1);if(windowVault)v.group.scale.y=1-.5*Math.sin(k*Math.PI);}                // hop over low cover
                         else if (kind === 'jump') {
                             // Step off the edge, then drop under gravity.
                             const h = Math.min(1, k / 0.35);
@@ -81,6 +82,7 @@ export class EventPlayer {
                         await wait(len / speed / steps);
                     }
                 }
+                v.group.scale.y=1;
                 v.animator.play('idle');
                 if (e.unitId && g.selected === e.unitId) g.focusUnit(g.battle.unit(e.unitId));
                 break;

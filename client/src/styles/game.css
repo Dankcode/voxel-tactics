@@ -354,3 +354,9 @@ button {text-transform:none;letter-spacing:0;border-radius:8px;}
 .topbar .mission span { display: block; max-width: 430px; max-height: 56px; overflow: auto; }
 .intel-mode .turnbox .phase { max-width: 250px; font-size: 14px; }
 .intel-mode .bigpct { font-size: 18px; }
+/* Compact click controls; keyboard arrows remain available for camera panning. */
+.camera-nav{top:78px;right:14px;width:250px;height:auto;display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;filter:none}
+.camera-nav button{font-size:12px;line-height:1.4;padding:6px 9px;background:#20352e}
+.camera-nav .floor-label{flex:1;align-self:center;text-align:center;font-size:12px;color:var(--yellow)}
+.camera-nav [data-act="rotL"],.camera-nav [data-act="rotR"]{flex:1}
+.dbg-drawer{top:170px;max-height:calc(100vh - 310px)}

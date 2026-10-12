@@ -48,3 +48,14 @@ test('Architecture Yard provides both traversal lanes and round-trips its facade
     assert.deepEqual(copy.visual.hints,m.visual.hints);
     assert.ok(new Set(Object.values(m.visual.hints).map(h=>h.windowStyle)).size>=4);
 });
+
+test('half building windows allow crouched vaults under lintels after glazing shatters',()=>{
+    const s=lane(),from={x:5,y:6,z:1},to={x:5,y:4,z:1};
+    s.set(5,5,2,MAT.brick);s.set(5,5,3,MAT.glass);s.set(5,5,4,MAT.concrete);
+    assert.equal(canVault(s,from,0,-1),null,'ordinary vault cannot intersect a ceiling');
+    s.windowOpenings.set('5,5,1','y');assert.deepEqual(canVault(s,from,0,-1),to);
+    s.set(5,5,3,0);assert.deepEqual(canVault(s,to,0,1),from,'broken window remains traversable both ways');
+    const copy=unpackMission(packMission({store:s})).store;assert.deepEqual(canVault(copy,from,0,-1),to);
+    assert.equal(canVault(s,{x:4,y:5,z:1},1,0),null,'only the window normal is a crossing');
+    s.set(5,5,3,MAT.brick);assert.equal(canVault(s,from,0,-1),null,'a filled aperture still blocks movement');
+});

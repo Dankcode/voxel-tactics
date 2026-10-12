@@ -13,8 +13,8 @@
     "dev:all": "concurrently --kill-others-on-fail --names client,server \"npm run dev --workspace=client\" \"npm start --workspace=server\"",
     "server": "npm start --workspace=server",
     "play": "npm run build && npm start --workspace=server",
-    "build": "npm run build --workspace=client",
-    "test": "node --test shared/voxel/*.test.js shared/elements/*.test.js shared/battle/*.test.js shared/mission/*.test.js shared/mapgen/*.test.js shared/session/*.test.js client/src/render/kit/*.test.js server/test/*.test.js",
+    "build": "npm run content:sync && npm run build --workspace=client",
+    "test": "npm run content:check && node --test shared/voxel/*.test.js shared/elements/*.test.js shared/battle/*.test.js shared/mission/*.test.js shared/mapgen/*.test.js shared/session/*.test.js client/src/render/kit/*.test.js server/test/*.test.js",
     "test:fast": "node --test shared/voxel/*.test.js shared/elements/*.test.js shared/battle/*.test.js shared/mission/*.test.js shared/mapgen/*.test.js shared/session/*.test.js client/src/render/kit/*.test.js",
     "sim": "node tools/sim/battle_sim.mjs --seeds 24",
     "sim:formations": "node tools/sim/battle_sim.mjs --seeds 100 --formations-compare --gate",
@@ -25,7 +25,9 @@
     "sim:all": "node tools/sim/battle_sim.mjs --seeds 4 --scenario all",
     "art:mobile": "python3 tools/art/make_mobile_textures.py",
     "docs:mechanics": "node tools/docs/gen_mechanics_tables.mjs --write",
-    "mapgen": "node tools/mapgen/cli.mjs"
+    "mapgen": "node tools/mapgen/cli.mjs",
+    "content:sync": "node tools/net/content-contract.mjs",
+    "content:check": "node tools/net/content-contract.mjs --check"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

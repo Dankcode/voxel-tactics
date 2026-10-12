@@ -76,7 +76,7 @@ Exposed wall, door, furniture and cover faces also receive filled colors. Their 
 
 ## Tactical camera and sprite presentation
 
-The tactical default is a perspective camera with 45° elevation, 45° diagonal yaw, 38° vertical FOV and distance 36. Zoom changes framing while retaining elevation; manual orbit remains available. Mission entry centres the first soldier instead of overriding modern maps with a distant overview. This is a visual XCOM-style preset, not a claim about exact proprietary camera constants.
+The tactical default is a perspective camera with 45° elevation, 45° diagonal yaw, 38° vertical FOV and distance 27. Zoom changes framing while retaining elevation; manual orbit remains available. Mission entry centres the first soldier instead of overriding modern maps with a distant overview. This is a visual XCOM-style preset, not a claim about exact proprietary camera constants.
 
 Field sprites face the active camera in both axes, keeping the packed atlas foot baseline at the grid position and the drawn proportions intact. Camera-relative facing still selects the atlas row. Ground rings and movement/collision remain on the world grid. Health bars follow camera up above the sprite instead of overlapping its head. The source sheet still approximates the eight facing directions; true authored side/back animation remains an art task.
 
@@ -102,3 +102,17 @@ Interior vision is computed once at movement completion while per-step spotting,
 Room generation runs in workers with two simultaneous jobs, eight waiting jobs, and a 30-second timeout. Co-op init carries an RLE snapshot of the compiled mission; clients hydrate exact voxel materials, HP, room tags and support groups instead of generating the layout again. Battle math retains the existing cross-engine floating-point assumption and hash checks.
 
 Subway Crossing layer gates now cover seeds 1–16. Optional drops seen by starting enemies are closed and recorded as repairs; stairs and manholes remain open.
+
+## Implementation update — 2026-10-12
+
+Battle co-op hardening is implemented: protocol/content fingerprint checks, compiled map hash verification, expected sequence validation, player-scoped command receipts, immediate disconnected-seat reassignment, connected-only turn votes, automatic reconnection, and authoritative replay recovery. Recovery uses the compiled initial map plus the complete ordered command log; it validates the resulting battle hash before exposing the restored battle. This restores terrain damage, unit/body HP, statuses, ammunition, RNG, watch sectors and ownership together. Recovery cost grows with the mission log; compact state checkpoints remain future work.
+
+The separate `staging.html` entry point supports room codes, seats, host mission/seed edits, ownership drafting, validated 6×5 equipment packs and ready votes. Edits reset readiness. Launch freezes the descriptor and ownership map, creates a mission room and issues private seat tickets. Joining order does not change player identities or assignments. The battle menu's Host button now opens this briefing flow; direct battle rooms remain available for admin tests.
+
+The separate `campaign.html` / `client/src/noncombat/` prototype provides headquarters, roster, workshop, regional operations, briefing and debrief navigation with versioned local save/load. Fixture transactions and mission completions are idempotent. It imports no Game or combat renderer and does not consume live battle results. Craft costs and completion data are demonstrative fixtures, not campaign balance. Authoritative campaign co-op progression, production result signatures, internet matchmaking and PvP remain gated roadmap work.
+
+Validation includes real two-peer Earth Cover, Water Mend and watch-sector commands; rejected forged abilities/weapons/ownership; duplicate/stale commands; map/replay verification; reconnect and disconnect voting; staging readiness reset, invalid equipment, ticket checks and reverse-order joins; and campaign save/transaction validation. Run `npm run build` to refresh the shared content fingerprint and all entry points, then `npm test` and `npm run server`. Open `/staging.html` or `/campaign.html` from the battle menu. All peers must use the rebuilt client.
+
+### Quick map testing update
+
+Online Host now launches the selected map directly; the separate optional briefing can launch immediately without party readiness. Zoom depth controls cutaways (distance ≥36: roofs; zoom toward 8: descend through storeys to floor one). Named Lower/Higher floor buttons override the current cut until the next wheel scroll; Rotate left/right remain click actions, and keyboard arrows still pan. Show outside only is a fixed-label toggle. Floor changes update the building mask before rebuilding, avoiding duplicate full-map rebuilds. The optional art override is requested only when present in the build. Walking, vaulting and enemy scatter shatter crossed glazing deterministically, preserving solid sill cover.

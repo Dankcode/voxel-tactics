@@ -257,3 +257,14 @@ test('Earth Cover cannot seal a real Signal House fire-escape landing or remove 
  const hash=b.hash();assert.equal(b.apply({type:'ability',unitId:'p0',abilityId:'earth_cover',to:{x,y,z}}).reason,'unreachable');assert.equal(b.hash(),hash);
  assert.deepEqual([...search().costs.keys()].sort(),[...before.costs.keys()].sort());assert.ok(before.costs.has(nodeKey({x,y,z})));
 });
+
+test('walking and vaulting shatter traversed glazing without removing sill cover',()=>{
+    const walk=arena({walls:[[10,15,2,'glass'],[10,15,3,'glass']]});
+    const other=arena({walls:[[10,15,2,'glass'],[10,15,3,'glass']]});
+    const intent={type:'move',unitId:'p0',to:{x:10,y:14,z:1}};
+    const r=walk.apply(intent);assert.ok(r.ok);assert.ok(r.events.some(e=>e.t==='voxels'));
+    assert.equal(walk.store.get(10,15,2),AIR);assert.equal(walk.store.get(10,15,3),AIR);
+    assert.equal(walk.stats.voxelsDestroyed,2);assert.ok(other.apply(intent).ok);assert.equal(other.hash(),walk.hash());
+    const vault=arena({walls:[[10,15,2,'drystone'],[10,15,3,'glass']]});
+    assert.ok(vault.apply(intent).ok);assert.equal(vault.store.get(10,15,2),MAT.drystone);assert.equal(vault.store.get(10,15,3),AIR);
+});

@@ -1,3 +1,4 @@
+import { floorCutLevels, zoomCutLevel } from './render/FloorCutaway.js';
 import { BuildingView, BUILDING_VIEWS } from './render/BuildingView.js';
 import { pickVisibleTile } from './render/TilePicking.js';
 import { footprint } from '../../shared/battle/IntelOps.js';
@@ -117,6 +118,9 @@ export class Game {
         };
         setGroundStore(store);
         this.voxelView.setVisual(this.battle.mission?.visual);
+        this.cutLevel=this.options.buildingView==='exterior'?Infinity:zoomCutLevel(this.battle.mission,this.scene.rig.distanceTarget);
+        this.voxelView.cutZ=this.cutLevel;this.scene.setCut(this.cutLevel);
+        this.refreshBuildingView({rebuild:false});
         this.voxelView.rebuildAll();
         this.lanterns.scan(store, this.battle.mission?.visual?.decor);
         this.cameraDirector.store = store;
@@ -131,6 +135,12 @@ export class Game {
         this.overlays.showObjective(this.battle);
         session.onEvents = events => this.player.enqueue(events);
         session.onRemoteTurn = () => this.maybeRunAi();
+        session.onState = state => {
+            this.hud.log(`Co-op: ${state === 'recovering' ? 'restoring authoritative battle' : state}`);
+            this.hud.refresh();
+        };
+        session.onError = message => this.hud.log(`Co-op recovery failed: ${message}`);
+        session.onRecovered = async () => { await this.player.whenIdle(); await this.start(session); };
         this.hud.reset();
         this.hud.refresh();
         this.hud.log(`${this.battle.mission.name}: ${this.battle.mission.objective?.text || ''}`);
@@ -139,7 +149,7 @@ export class Game {
         this.levelLocked = false;
         // Each map has a time of day (Main Street at dusk, the docks at night) unless the player picked one.
         if (!this.options.lighting) this.scene.setLighting(this.battle.mission.meta?.timeOfDay || this.battle.mission.meta?.lighting || 'day');
-        this.setLevel(this.battle.mission.meta?.defaultCut ?? Infinity);
+        this.applyZoomCut();
 
     }
     async addView(u) {
@@ -238,7 +248,7 @@ export class Game {
         this.views.get(id)?.setSelected(true);
         this.setMode({ kind: 'move' });
         this.focusUnit(u, !snap);
-        if (!this.levelLocked) this.setLevel(this.battle.store.roomAt(u.x, u.y, u.z + 1) >= 0 ? u.z + 3 : Infinity);
+        if (!this.levelLocked) this.applyZoomCut();
     }
     cycleUnit(d = 1) {
         const list = this.battle.unitsOf(this.battle.activeSide === 'player' ? 'player' : this.battle.activeSide).filter(u => this.controllable(u) || u.side === 'player');
@@ -277,22 +287,43 @@ export class Game {
         this.zones = zones;
         this.overlays.showZones(this.search.nodes, zones);
     }
-    setLevel(top) { this.cutLevel = top; this.scene.setCut(Number.isFinite(top) ? top : Infinity); this.voxelView?.setCut(top); this.scene.rig.minLayerHeight=top===this.battle.mission.meta.streetDatum?2:(this.battle.mission.meta.streetDatum||1)+1;if(top===this.battle.mission.meta.streetDatum){const u=this.selectedUnit(),route=this.battle.mission.meta.underground?.route,p=u&&u.z<top?u:route?.[Math.floor(route.length/2)];this.scene.glide=null;if(p)this.scene.rig.target.set(p.x+.5,2,p.y+.5);else this.scene.rig.target.y=2;} this.refreshBuildingView();this.hud.refresh(); }
+    setLevel(top) {
+        const changed=top!==this.voxelView?.cutZ;
+        this.cutLevel=top;this.scene.setCut(top);
+        this.scene.rig.minLayerHeight=top===this.battle.mission.meta.streetDatum?2:(this.battle.mission.meta.streetDatum||1)+1;
+        if(top===this.battle.mission.meta.streetDatum){
+            const u=this.selectedUnit(),route=this.battle.mission.meta.underground?.route,p=u&&u.z<top?u:route?.[Math.floor(route.length/2)];
+            this.scene.glide=null;if(p)this.scene.rig.target.set(p.x+.5,2,p.y+.5);else this.scene.rig.target.y=2;
+        }
+        // Update the per-building mask before rebuilding cut chunks: one rebuild per floor change.
+        this.refreshBuildingView({rebuild:!changed});
+        this.voxelView?.setCut(top);
+        if(changed)this.refreshRange();
+        this.hud.refresh();
+    }
     setBuildingView(mode) {
         if(!BUILDING_VIEWS.includes(mode))return;
-        this.options.buildingView=mode;this.buildingViewKey=null;this.refreshBuildingView();
+        this.options.buildingView=mode;this.buildingViewKey=null;
+        if(mode==='exterior')this.setLevel(Infinity);else this.applyZoomCut();
+        this.refreshBuildingView();
         this.hud.refresh();this.hud.renderOptions();
     }
-    cycleBuildingView(){const i=BUILDING_VIEWS.indexOf(this.options.buildingView);this.setBuildingView(BUILDING_VIEWS[(i+1)%BUILDING_VIEWS.length]);}
-    refreshBuildingView() {
+    cycleBuildingView(){this.setBuildingView(this.options.buildingView==='exterior'?'auto':'exterior');}
+    applyZoomCut() {
+        if(!this.battle)return;
+        this.levelLocked=false;
+        this.setLevel(this.options.buildingView==='exterior'?Infinity:zoomCutLevel(this.battle.mission,this.scene.rig.distanceTarget));
+    }
+    refreshBuildingView({rebuild=true}={}) {
         if(!this.battle||!this.buildingView)return;
         const u=this.selectedUnit(),units=this.battle.unitsOf('player'),key=`${u?.id}:${units.map(p=>`${p.id}:${p.x},${p.y},${p.z}`).join(';')}:${u?.x},${u?.y},${u?.z}:${this.cutLevel}:${this.options.buildingView}`;
         if(key===this.buildingViewKey)return;this.buildingViewKey=key;
-        if(this.buildingView.update({unit:u,units,cutZ:this.cutLevel,mode:this.options.buildingView})){this.voxelView.rebuildAll();this.refreshRange();}
+        if(this.buildingView.update({unit:u,units,cutZ:this.cutLevel,mode:this.options.buildingView,zoomFloor:Number.isFinite(this.cutLevel)?Math.max(1,Math.round((this.cutLevel-(this.battle.mission.meta.streetDatum??1))/3)):0})){if(rebuild)this.voxelView.rebuildAll();this.refreshRange();}
     }
     changeLevel(d) {
         this.levelLocked = true;
-        const levels = this.battle.mission.meta.cutLevels || [4, 7, 10, 13, Infinity];
+        if(this.options.buildingView==='exterior')this.options.buildingView='auto';
+        const levels = floorCutLevels(this.battle.mission);
         let i = levels.indexOf(this.cutLevel); if (i < 0) i = levels.findIndex(l => l > this.cutLevel);
         i = Math.max(0, Math.min(levels.length - 1, i + d));
         this.setLevel(levels[i]);
@@ -465,7 +496,7 @@ export class Game {
         this.visualRevealedRooms.add(roomId);
         for (const [x, y] of room.cells) for (let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++) for (let h = 0; h <= 3; h++) this.battle.store.markDirty(x+dx, y+dy, room.floorZ + h);
         this.battle.light.flush();this.voxelView.flush();
-        if(this.options.followCamera && !this.levelLocked) this.setLevel(room.floorZ+3);
+        if(!this.levelLocked)this.applyZoomCut();
         this.updateEnemyVisibility();this.overlays.showObjective(this.battle);
     }
     onTurn(e) {
@@ -509,6 +540,7 @@ export class Game {
             e.preventDefault();
             const px = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
             this.scene.zoom(Math.exp(Math.max(-1, Math.min(1, px * 0.0015))));
+            this.applyZoomCut();
         }, { passive: false });
         window.addEventListener('keydown', e => this.onKey(e));
         window.addEventListener('keyup', e => this.keys.delete(e.key.toLowerCase()));
@@ -539,7 +571,7 @@ export class Game {
         if (!this.battle || ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) return;
         const key = e.key.toLowerCase();
         if (this.debug.onKey(e, key)) return;
-        if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) { this.keys.add(key); return; }
+        if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) { e.preventDefault(); this.keys.add(key); return; }
         const u = this.selectedUnit();
         if (this.mode.kind === 'shoot' && PART_KEYS[key] && this.targetInfo) { this.setAimPart(PART_KEYS[key]); return; }
         switch (key) {

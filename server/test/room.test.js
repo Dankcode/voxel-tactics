@@ -1,3 +1,4 @@
+import { CONTENT_CONTRACT } from '../../shared/session/ContentContract.js';
 import { unpackMission } from '../../shared/session/MissionSnapshot.js';
 // Lockstep co-op protocol: two clients join, units are dealt, intents are ordered and validated,
 // both peers' battles reach the server's hash, the squad turn ends on both votes, AI turn streams.
@@ -6,7 +7,20 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import colyseus from 'colyseus';
 import { WebSocketTransport } from '@colyseus/ws-transport';
-import * as Client from 'colyseus.js';
+import * as ColyseusClient from 'colyseus.js';
+const Client = { Client: class extends ColyseusClient.Client {
+    track(room) {
+        let seq = 0;
+        room.onMessage('init', m => { seq = Math.max(seq, m.seq); });
+        room.onMessage('intent', m => { seq = Math.max(seq, m.seq); });
+        room.onMessage('receipt', () => {});
+        const send = room.send.bind(room);
+        room.send = (type, data) => send(type, type === 'intent' ? { expectedSeq: seq, ...data } : data);
+        return room;
+    }
+    async create(...args) { return this.track(await super.create(...args)); }
+    async joinById(...args) { return this.track(await super.joinById(...args)); }
+} };
 import { MissionRoom } from '../src/MissionRoom.js';
 import { createBattle } from '../../shared/session/Scenarios.js';
 
@@ -38,9 +52,9 @@ for (const scenario of ['proving-grounds', 'signal-house', 'operation']) test(`t
             return p;
         };
         const apply = (p, m) => { if (m.seq > p.seq) { p.seq = m.seq; p.battle.apply(m.intent); } };
-        const roomA = await a.create('mission', { desc: { scenario, seed: 4, squad: 'standard', inventories:[[{id:'kit',itemId:'medkit',x:0,y:0,rotated:true}]] }, name: 'A' });
+        const roomA = await a.create('mission', { contract: CONTENT_CONTRACT, desc: { scenario, seed: 4, squad: 'standard', inventories:[[{id:'kit',itemId:'medkit',x:0,y:0,rotated:true}]] }, name: 'A' });
         const pa = mirror(roomA); const initA = await pa.init;
-        const roomB = await b.joinById(roomA.roomId, { name: 'B' });
+        const roomB = await b.joinById(roomA.roomId, { contract: CONTENT_CONTRACT, name: 'B' });
         const pb = mirror(roomB); const initB = await pb.init;
         assert.equal(initA.playerId, 'P1'); assert.equal(initB.playerId, 'P2');
         const peers = [pa, pb];
@@ -79,7 +93,7 @@ test('debug co-op is opt-in, host-only, and broadcasts replayable debug intents'
     const srv = await startServer();
     try {
         const client = new Client.Client(`ws://127.0.0.1:${srv.port}`);
-        const host = await client.create('mission', { desc: { scenario: 'proving-grounds', seed: 2, debug: true } });
+        const host = await client.create('mission', { contract: CONTENT_CONTRACT, desc: { scenario: 'proving-grounds', seed: 2, debug: true } });
         host.onMessage('players', () => {}); host.onMessage('votes', () => {});
         const hostState = await next(host, 'init');
         assert.equal(hostState.desc.debug, true);
@@ -87,7 +101,7 @@ test('debug co-op is opt-in, host-only, and broadcasts replayable debug intents'
         for (const entry of hostState.log) assert.ok(mirror.apply(entry.intent).ok);
         const hashes = []; host.onMessage('hash', m => hashes.push(m));
         host.onMessage('intent', m => { assert.ok(mirror.apply(m.intent).ok); });
-        const guest = await client.joinById(host.roomId, { name: 'Guest' });
+        const guest = await client.joinById(host.roomId, { contract: CONTENT_CONTRACT, name: 'Guest' });
         guest.onMessage('intent', () => {}); guest.onMessage('hash', () => {}); guest.onMessage('players', () => {});
         const guestState = await next(guest, 'init');
         assert.equal(guestState.desc.debug, true);
@@ -109,7 +123,7 @@ test('debug co-op is opt-in, host-only, and broadcasts replayable debug intents'
 test('room creation rejects malformed packs with a readable inventory error', {timeout:15000},async()=>{
  const srv=await startServer();try{
   const client=new Client.Client(`ws://127.0.0.1:${srv.port}`);
-  await assert.rejects(client.create('mission',{desc:{scenario:'operation',inventories:[[{id:'kit',itemId:'medkit',x:5,y:4,rotated:false}]]}}),error=>error.code===4211&&/soldier 1: Item outside pack/.test(error.message));
+  await assert.rejects(client.create('mission',{ contract: CONTENT_CONTRACT,desc:{scenario:'operation',inventories:[[{id:'kit',itemId:'medkit',x:5,y:4,rotated:false}]]}}),error=>error.code===4211&&/soldier 1: Item outside pack/.test(error.message));
  }finally{await srv.close();}
 });
 
@@ -118,14 +132,14 @@ test('four asynchronous peers act independently, reject forged turns, and replay
     try {
         const client=new Client.Client(`ws://127.0.0.1:${srv.port}`);
         for(let i=0;i<4;i++) {
-            const room=i?await client.joinById(rooms[0].roomId,{support:'orbital_laser'}):await client.create('mission',{desc:{scenario:'proving-grounds',seed:4,intel:true,asyncCoop:true}});
+            const room=i?await client.joinById(rooms[0].roomId,{ contract: CONTENT_CONTRACT,support:'orbital_laser'}):await client.create('mission',{ contract: CONTENT_CONTRACT,desc:{scenario:'proving-grounds',seed:4,intel:true,asyncCoop:true}});
             rooms.push(room);const peer={seq:0,early:[],hashes:[]};peers.push(peer);
             const apply=m=>{if(!peer.battle){peer.early.push(m);return;}if(m.seq>peer.seq){assert.equal(m.seq,peer.seq+1);assert.ok(peer.battle.apply(m.intent).ok);peer.seq=m.seq;}};
             room.onMessage('intent',apply);room.onMessage('hash',m=>peer.hashes.push(m));room.onMessage('players',()=>{});room.onMessage('votes',()=>{});room.onMessage('reject',()=>{});
             const init=await next(room,'init');peer.battle=createBattle(init.desc,unpackMission(init.mission));peer.id=init.playerId;
             for(const m of [...init.log,...peer.early])apply(m);
         }
-        const accepted=(room,nonce,intent)=>new Promise(resolve=>{room.onMessage('intent',m=>{if(m.nonce===nonce)resolve(m);});room.send('intent',{nonce,intent});});
+        const accepted=async(room,nonce,intent)=>{await new Promise(r=>setTimeout(r,50));return new Promise(resolve=>{room.onMessage('intent',m=>{if(m.nonce===nonce)resolve(m);});room.send('intent',{nonce,intent});});};
         await accepted(rooms[1],'p2-wait',{type:'wait',unitId:'p1'});
         // P1 can complete and refresh while P2, P3 and P4 never vote.
         await accepted(rooms[0],'p1-end',{type:'endTurn',side:'player'});

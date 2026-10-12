@@ -54,3 +54,11 @@ test('manual Interiors cuts the roof even when the selected soldier stands on it
     const {view}=house();view.update({unit:{x:7,y:7,z:7},mode:'interiors'});
     assert.ok(view.hiddenAt(7,7,7));assert.equal(view.hiddenAt(7,7,4),false);
 });
+
+test('zoom-selected floors override soldier proximity and zooming out restores roofs',()=>{
+    const {view}=house();
+    view.update({mode:'auto',zoomFloor:1,unit:{x:0,y:0,z:1}});
+    assert.equal(view.hiddenAt(7,7,4),true);assert.equal(view.hiddenAt(4,7,3),false);
+    view.update({mode:'auto',zoomFloor:2});assert.equal(view.hiddenAt(7,7,4),false);assert.equal(view.hiddenAt(7,7,7),true);
+    view.update({mode:'auto',zoomFloor:0});assert.equal(view.hiddenAt(7,7,7),false);
+});

@@ -97,7 +97,7 @@ export class KitLibrary {
         };
         try { this.pieces = await read('/assets/kit/tileset.glb'); this.source = 'tileset.glb'; }
         catch (err) { console.warn('[kit] baked tile set missing, building pieces in the browser:', err.message); this.pieces = buildAllPieces(); this.source = 'procedural'; }
-        try { const art = await read('/assets/kit/tileset-art.glb'); for (const [k, v] of art) this.pieces.set(k, v); this.source += ' + tileset-art.glb'; } catch { /* optional */ }
+        try { if(typeof __HAS_KIT_ART__==='undefined'||__HAS_KIT_ART__){const art = await read('/assets/kit/tileset-art.glb'); for (const [k, v] of art) this.pieces.set(k, v); this.source += ' + tileset-art.glb';} } catch { /* optional */ }
         for (const parts of this.pieces.values()) for (const p of parts) { p.geometry.computeBoundingSphere(); }
         return this;
     }
