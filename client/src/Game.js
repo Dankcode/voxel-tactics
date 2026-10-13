@@ -614,7 +614,7 @@ export class Game {
     }
     unitAt(px, py) {
         const ray = this.scene.rayAt(px, py);
-        const meshes = [...this.views.values()].filter(v => v.group.visible && alive(v.unit) && v.unit.z<this.cutLevel && (!this.levelLocked||!Number.isFinite(this.cutLevel)||v.unit.z===this.cutLevel-3)).map(v => v.sprite);
+        const meshes = [...this.views.values()].filter(v => v.group.visible && alive(v.unit) && v.unit.z<this.cutLevel && (!this.levelLocked||!Number.isFinite(this.cutLevel)||v.unit.z>=this.cutLevel-3)).map(v => v.sprite);
         const hit = ray.intersectObjects(meshes, true)[0];
         return hit ? this.battle.unit(hit.object.userData.unitId) : null;
     }

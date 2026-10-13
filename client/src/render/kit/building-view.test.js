@@ -68,3 +68,15 @@ test('chosen-floor picking reaches the interior without redirecting a click onto
     const hit=pickVisibleTile(store,{x:12.5,y:7.5,h:10},{x:5.5,y:7.5,h:0},{cutZ:4,buildingView:view,preferredFloor:1});
     assert.deepEqual(hit.cell,{x:6,y:7,z:1});
 });
+
+test('floor-band picking keeps intermediate stair tops and ramps selectable before the nominal floor plane',()=>{
+    const store=new VoxelStore(16,16,12);store.fill(0,0,0,15,15,1,'concrete');
+    for(const z of [2,3]) {
+        store.setKey(5,5,z,'stairs_stone');
+        const reach=new Map([[`5,5,${z}`,0],['6,5,1',1]]);
+        const hit=pickVisibleTile(store,{x:3.5,y:5.5,h:8},{x:7,y:5.5,h:0},{cutZ:4,preferredFloor:1,reachable:reach});
+        assert.deepEqual(hit?.cell,{x:5,y:5,z});
+    }
+    // Choosing the next floor still excludes the lower terrain beneath it.
+    assert.equal(pickVisibleTile(store,{x:5.5,y:5.5,h:10},{x:5.5,y:5.5,h:0},{cutZ:7,preferredFloor:4}),null);
+});

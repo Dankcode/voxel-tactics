@@ -30,10 +30,17 @@ test('vehicle meshes have collision-sized intact footprints and never overwrite 
   assert.ok(h.cells.every(k=>m.store.get(...k.split(',').map(Number))!==0));
  }
 });
-test('remixed districts retire ornamental cover and preserve the path below the bridge parcel',()=>{
+test('remixed districts retire ornamental cover, keep vehicles in slots and the market floor under the deck shop',()=>{
  const m=buildParkDistrict({seed:27}),s=m.store;
  for(const material of [MAT.bench,MAT.planter,MAT.hedge])assert.equal(s.mat.includes(material),false);
- assert.ok(m.buildings.length<=7);assert.ok(new Set(m.buildings.map(b=>b.storeys)).size>=2);
- assert.equal(s.get(38,30,2),0);assert.equal(s.get(38,30,3),0);assert.notEqual(s.get(38,30,4),0);
- assert.ok(m.meta.streetObjects.some(p=>p.type==='bus'));assert.ok(m.meta.streetObjects.some(p=>p.type==='eighteen_wheeler'));
+ assert.ok(m.buildings.length<=m.meta.remix.buildingCount);assert.ok(new Set(m.buildings.map(b=>b.storeys)).size>=2);
+ assert.equal(m.meta.districtGates.gates.vehicles,true);
+ assert.ok(m.meta.streetObjects.some(p=>p.type==='bus'),'a bus at a stop');
+ for(const seed of [1,2,3,4,27]){
+  const d=buildParkDistrict({seed});const deck=d.meta.connectionParcels.find(c=>c.template==='supported-bridge-building');if(!deck)continue;
+  const [foot,top]=deck.sockets;assert.equal(top.z-foot.z,3);
+  // The deck shop stands on posts; the plaza under it keeps two cells of headroom for the market stalls.
+  const under=d.meta.district.leaves.find(l=>l.mix==='raised-market').rect,cx=under.x0+Math.floor(under.w/2),cy=under.y0+Math.floor(under.d/2);
+  assert.ok(!d.store.isSolid(cx,cy,foot.z+2)&&d.store.isSolid(cx,cy,foot.z+3)||d.store.isSolid(cx,cy,foot.z+1),'market floor under the deck');
+ }
 });

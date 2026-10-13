@@ -26,6 +26,7 @@
     "art:mobile": "python3 tools/art/make_mobile_textures.py",
     "docs:mechanics": "node tools/docs/gen_mechanics_tables.mjs --write",
     "mapgen": "node tools/mapgen/cli.mjs",
+    "mapgen:audit": "node tools/mapgen/district-audit.mjs",
     "content:sync": "node tools/net/content-contract.mjs",
     "content:check": "node tools/net/content-contract.mjs --check"
   },

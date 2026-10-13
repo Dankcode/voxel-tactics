@@ -11,6 +11,7 @@ import { drawOperationPreview } from './ui/OperationPreview.js';
 import { TestGroundPanel, descToSetup } from './ui/TestGroundPanel.js';
 import { saveLastSetup, decodeSetup } from './ui/TestGroundStore.js';
 import { sanitizeDesc } from '../../shared/session/Scenarios.js';
+import { DISTRICT_MAP_IDS } from '../../shared/mission/LargeDistricts.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -85,7 +86,7 @@ async function showMenu(opts = {}) {
     let scenario = pick;
     const select = id => {
         scenario = id;
-        $('#m-district').hidden=!['park-district','mall-district','drainage-district'].includes(id);
+        $('#m-district').hidden=!DISTRICT_MAP_IDS.includes(id);
         $('#m-shape').value=opts.desc?.scenario===id&&opts.desc?.district?.shape?opts.desc.district.shape:id==='mall-district'?'L':id==='drainage-district'?'T':'rectangle';
         menu.querySelectorAll('[data-map]').forEach(o => o.classList.toggle('on', o.dataset.map === id));
     };

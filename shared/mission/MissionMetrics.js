@@ -72,7 +72,8 @@ export function measureMission(mission, { search = null, gates = DEFAULT_GATES }
     // Lanes: shortest route, then block a corridor around it and look again.
     const zone=mission.objective?.zone,inZone=b=>zone&&(zone.x0+zone.x1)/2>=b.x0&&(zone.x0+zone.x1)/2<b.x0+b.w&&(zone.y0+zone.y1)/2>=b.y0&&(zone.y0+zone.y1)/2<b.y0+b.d;
     const targetBuilding=mission.meta?.imageGenerated?mission.buildings.find(b=>b.id===mission.objective?.item?.building)||mission.buildings.find(inZone)||mission.buildings.find(b=>b.id===mission.meta?.objectiveBuilding)||mission.buildings[0]:null;
-    const enemyCentre = targetBuilding?{x:targetBuilding.x0-2,y:targetBuilding.entry.y,z:targetBuilding.baseZ}:centroid(mission.spawns.enemy.map(e => e.pos));
+    const z0=mission.meta?.lanesGoal==='objective'&&mission.objective?.zone,g0=typeof mission.meta?.lanesGoal==='object'?mission.meta.lanesGoal:null;
+    const enemyCentre = g0?g0:z0?{x:(z0.x0+z0.x1)/2,y:(z0.y0+z0.y1)/2,z:z0.z??0}:targetBuilding?{x:targetBuilding.x0-2,y:targetBuilding.entry.y,z:targetBuilding.baseZ}:centroid(mission.spawns.enemy.map(e => e.pos));
     const goal = nodes.reduce((b, n) => (!b || dist(n, enemyCentre) < dist(b, enemyCentre) ? n : b), null);
     let lanes = 0, shortest = Infinity;
     const blocked = new Set();

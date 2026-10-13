@@ -1,4 +1,4 @@
-import {buildParkDistrict,buildMallDistrict,buildDrainageDistrict} from './LargeDistricts.js';
+import {buildParkDistrict,buildMallDistrict,buildDrainageDistrict,buildTerraceHeights} from './LargeDistricts.js';
 import { buildSunkenBoulevard,buildFreightTerraces,buildSunkenJunction } from './ConnectingDistricts.js';
 // Map registry: every playable battlefield, grouped by theme. Present-day settings only (no aliens yet);
 // the opposing force is the Syndicate, a human crime organisation (shared/content/units.js FACTIONS).
@@ -13,9 +13,10 @@ import { buildPackagedMap } from '../mapgen/PackageBuilder.js';
 import { MAP_PACKAGES } from './generated/PackageCatalog.js';
 
 export const MAPS = Object.freeze([
-    {id:'park-district',name:'Park District',theme:'Large districts',text:'96 × 72 rectangle: raised rounded park, broad steps, dense retail and park-side offices.',build:buildParkDistrict},
-    {id:'mall-district',name:'Market Arcade',theme:'Large districts',text:'96 × 72 L footprint: merged shopping interiors, close retail parcels and a terraced park.',build:buildMallDistrict},
+    {id:'park-district',name:'Park District',theme:'Large districts',text:'96 × 72 rectangle: raised rounded park, shop rows, lots and yards solved as parcel mixes.',build:buildParkDistrict},
+    {id:'mall-district',name:'Market Arcade',theme:'Large districts',text:'96 × 72 L footprint: merged shopping interiors, retail parcels with their lots, and a terraced park.',build:buildMallDistrict},
     {id:'drainage-district',name:'Drainage Quarter',theme:'Large districts',text:'96 × 72 T footprint: turning water channels, dry banks, stair entrances and shortcut ladders.',build:buildDrainageDistrict},
+    {id:'terrace-district',name:'Hillside Terraces',theme:'Large districts',text:'Three generated levels: sunken yards, a street terrace and high ground, joined by road ramps, stairs, split-level buildings and ladders.',build:buildTerraceHeights},
     {id:'sunken-junction',name:'Sunken Junction',theme:'Split-level districts',text:'Linked sunken boulevards with a T-junction, covered crossings, rounded retail and square industrial parcels.',build:buildSunkenJunction},
     {id:'sunken-boulevard',name:'Sunken Boulevard',theme:'Split-level districts',text:'A lower street passes beneath an upper boulevard, with road ramps and a covered crossing.',build:buildSunkenBoulevard},
     {id:'freight-terraces',name:'Freight Terraces',theme:'Split-level districts',text:'Low warehouses, raised loading decks, cargo lanes and a service catwalk.',build:buildFreightTerraces},

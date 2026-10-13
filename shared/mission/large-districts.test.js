@@ -28,9 +28,11 @@ test('district dimensions and shapes survive descriptor sanitation',()=>{
  assert.deepEqual(districtParameters({width:Infinity,depth:-1,shape:'bad'}),{width:128,depth:72,shape:'rectangle'});
 });
 
-test('maximum-size drainage rectangle fills extensions and retains tactical design gates',()=>{
+test('maximum-size drainage rectangle fills its blocks with parcel mixes and keeps the tactical gates',()=>{
  const m=buildDrainageDistrict({seed:27,width:128,depth:96,shape:'rectangle',remix:{buildingCount:18,pedestrian:'normal'}});
  assert.equal(m.metrics.pass,true);assert.equal(m.meta.connectorValidation.pass,true);
- assert.ok(m.buildings.some(b=>b.id.startsWith('south-extension')));
- assert.ok(m.buildings.some(b=>b.id==='bank-side-depot'));
+ const g=m.meta.districtGates;assert.equal(g.pass,true,JSON.stringify(g.gates));
+ assert.ok(g.metrics.plainShare<=0.08);
+ assert.ok(m.meta.district.leaves.some(l=>l.rect.y0>=48),'parcels south of the channel');
+ assert.ok(m.meta.district.leaves.length>=4);
 });

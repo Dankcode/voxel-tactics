@@ -1,4 +1,5 @@
 import {remixParameters} from '../../../shared/mapgen/DistrictRemix.js';
+import {DISTRICT_MAP_IDS} from '../../../shared/mission/LargeDistricts.js';
 import {TopographyPreview} from './TopographyPreview.js';
 // Test ground (admin build): set up any map with a chosen squad and hostile roster, preview the placements, launch,
 // save setups, share them as links, and reopen recent after-action reports.
@@ -29,7 +30,7 @@ export function setupToDesc(c) {
     // Intel co-op rules (Codex prototype) are opt-in here exactly as in Play.
     if (c.intel) Object.assign(desc, { intel: true, asyncCoop: true, support: c.support === 'orbital_laser' ? 'orbital_laser' : 'carpet_bomb' });
     if (c.scenario === OPERATION_ID) desc.operation = { plot: c.plot, objective: c.opObjective || null, timeOfDay: c.opTime || null };
-    if(['park-district','mall-district','drainage-district'].includes(c.scenario))desc.district={width:c.width||96,depth:c.depth||72,shape:c.shape||'rectangle',remix:remixParameters(c.remix)};
+    if(DISTRICT_MAP_IDS.includes(c.scenario))desc.district={width:c.width||96,depth:c.depth||72,shape:c.shape||'rectangle',remix:remixParameters(c.remix)};
     desc.test = {
         enemies: c.useMapHostiles ? null : ENEMY_TYPES.filter(t => c.roster[t] > 0).map(type => ({ type, count: c.roster[type] })),
         podSize: c.podSize, alerted: !!c.alerted, objective: c.objective, rounds: c.rounds ? Number(c.rounds) : null, timeOfDay: c.timeOfDay || null
@@ -71,8 +72,8 @@ export class TestGroundPanel {
 
     render() {
         const c = this.c, maps = SCENARIOS, themes = [...new Set(maps.map(s => s.theme))], total = this.total();
-        const op = c.scenario === OPERATION_ID,district=['park-district','mall-district','drainage-district'].includes(c.scenario),r=remixParameters(c.remix);
-        const choice=(label,field,items)=>`<label>${label}<select data-remix="${field}">${items.map(([value,text])=>`<option value="${value}" ${r[field]===value?'selected':''}>${text}</option>`).join('')}</select></label>`;
+        const op = c.scenario === OPERATION_ID,district=DISTRICT_MAP_IDS.includes(c.scenario),r=remixParameters(c.remix);
+        const choice=(label,field,items)=>`<label>${label}<select data-remix="${field}">${items.map(([value,text])=>`<option value="${value}" ${String(r[field])===String(value)?'selected':''}>${text}</option>`).join('')}</select></label>`;
         const enemyRow = t => {
             const e = ENEMIES[t], n = c.roster[t] || 0, st = styleOf(t);
             return `<div class="tg-enemy ${n ? 'on' : ''}"><span class="tg-mark" style="background:${st.color}">${st.letter}</span>
@@ -96,12 +97,12 @@ export class TestGroundPanel {
             ${district?`<section class="tg-remix"><h4>Map remix & collision lab</h4>
             <div class="tg-chips"><button data-tg="collisionLab">Collision lab</button><button data-tg="districtMix">Chaotic district</button><button data-tg="remix">Remix seed & preview</button></div>
             <div class="row"><label>Width<input data-tg-field="width" type="number" min="96" max="128" value="${c.width||96}"></label><label>Depth<input data-tg-field="depth" type="number" min="72" max="96" value="${c.depth||72}"></label><label>Footprint<select data-tg-field="shape">${['rectangle','L','T'].map(v=>`<option ${c.shape===v?'selected':''}>${v}</option>`).join('')}</select></label></div>
-            <div class="row"><label>Building limit<input data-remix="buildingCount" type="number" min="3" max="18" value="${r.buildingCount}"></label><label>Minimum floors<input data-remix="minStoreys" type="number" min="1" max="3" value="${r.minStoreys}"></label><label>Maximum floors<input data-remix="maxStoreys" type="number" min="1" max="3" value="${r.maxStoreys}"></label></div>
-            <div class="row">${choice('Placement','placement',[['noise-wfc','Noise weighted WFC'],['ordered','Ordered parcels']])}${choice('Building parts','parts',[['mixed','Mixed programs'],['retail','Retail'],['industrial','Industrial']])}</div>
+            <div class="row"><label>Building limit<input data-remix="buildingCount" type="number" min="3" max="24" value="${r.buildingCount}"></label><label>Minimum floors<input data-remix="minStoreys" type="number" min="1" max="3" value="${r.minStoreys}"></label><label>Maximum floors<input data-remix="maxStoreys" type="number" min="1" max="3" value="${r.maxStoreys}"></label></div>
+            <div class="row">${choice('Placement','placement',[['noise-wfc','Noise weighted WFC'],['ordered','Ordered parcels']])}${choice('Parcel mix family','parts',[['mixed','Mixed town'],['retail','Retail strip'],['industrial','Industrial yards'],['suburban','Suburban homes']])}${choice('Objective','objective',[['eliminate','Eliminate'],['hold','Hold a zone']])}${c.scenario==='terrace-district'?choice('Levels','levels',[[2,'Two levels'],[3,'Three levels']]):''}</div>
             <div class="row">${choice('Wall kit','wall',[['mixed','Mixed walls'],['brick','Brick'],['stucco','Stucco'],['concrete_wall','Concrete'],['siding','Metal panels']])}${choice('Windows','glazing',[['mixed','Program defaults'],['full','Full glass'],['band','Half cover windows'],['punched','Framed windows']])}${choice('Corners','corners',[['mixed','Mixed'],['rounded','Rounded'],['square','Square']])}</div>
             <div class="row">${choice('Terrain','terrain',[['terraced','Theme terraces'],['flat','Flat collision floor']])}${choice('Traffic','traffic',[['none','None'],['light','Light'],['normal','Normal'],['heavy','Heavy']])}${choice('Pedestrian cover','pedestrian',[['none','None'],['light','Light service props'],['normal','More service props']])}</div>
-            ${[['merges','Connect neighboring interiors'],['elevated','Buildings above bridges / paths'],['furnish','Furnish interiors']].map(([f,label])=>`<label class="check"><input type="checkbox" data-remix="${f}" ${r[f]?'checked':''}>${label}</label>`).join('')}
-            <p class="small">Collision lab keeps a small set of mixed shells. WFC height constraints and parcel bounds protect the walkways. Preview shows sockets, geometry and the actual build count.</p></section>`:`<button data-tg="districtMix">Open map remix lab</button>`}
+            ${[['merges','Connect neighboring interiors'],['elevated','Covered market under a deck shop'],['skybridges','Skybridges over streets'],['furnish','Furnish interiors']].map(([f,label])=>`<label class="check"><input type="checkbox" data-remix="${f}" ${r[f]?'checked':''}>${label}</label>`).join('')}
+            <p class="small">Blocks between the roads are solved as parcel mixes (shops with their lots, yards, warehouses, storage, parks); leftover land becomes alleys, verges and service yards. Vehicles only stand in slots, placed by the noise map. Preview shows land use, sockets and the district gates.</p></section>`:`<button data-tg="districtMix">Open map remix lab</button>`}
             <h4>Squad <span>${c.squad.length} / ${MAX_SQUAD}</span></h4>
             <div class="tg-squad">${c.squad.map((t, i) => `<div class="tg-slot"><span>${i + 1}</span><select data-tg-field="squad" data-arg="${i}" aria-label="Soldier ${i + 1} class">${Object.values(CLASSES).map(k => `<option value="${k.id}" ${k.id === t ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select><button data-tg="removeSoldier" data-arg="${i}" aria-label="Remove soldier ${i + 1}" ${c.squad.length > 1 ? '' : 'disabled'}>✕</button></div>`).join('')}</div>
             <div class="tg-chips"><button data-tg="addSoldier" ${c.squad.length >= MAX_SQUAD ? 'disabled' : ''}>+ Soldier</button>${Object.keys(SQUADS).map(k => `<button data-tg="squadPreset" data-arg="${k}">${cap(k)} squad</button>`).join('')}</div>

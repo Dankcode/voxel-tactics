@@ -1,4 +1,4 @@
-import {districtParameters} from '../mission/LargeDistricts.js';
+import {districtParameters,DISTRICT_MAP_IDS} from '../mission/LargeDistricts.js';
 import { spreadInsertion } from './Insertion.js';
 import { normalizeInventory } from '../inventory/Inventory.js';
 // Scenario descriptors → missions. Local sessions generate from a descriptor; co-op sessions hydrate
@@ -25,7 +25,7 @@ export function sanitizeDesc(d = {}) {
     const scenario = scenarioId(d.scenario);
     const seed = Number.isInteger(Number(d.seed)) && Number(d.seed) >= 0 && Number(d.seed) <= 0xffffffff ? Number(d.seed) : 1;
     const out = { scenario, seed: seed || 1, squad: d.squad || 'standard', debug: d.debug === true, intel: d.intel === true, asyncCoop: d.asyncCoop === true, support: d.support === 'orbital_laser' ? 'orbital_laser' : 'carpet_bomb' };
-    if (['park-district','mall-district','drainage-district'].includes(scenario)&&d.district) out.district=districtParameters(d.district);
+    if (DISTRICT_MAP_IDS.includes(scenario)&&d.district) out.district=districtParameters(scenario==='terrace-district'?{...d.district,shape:'rectangle'}:d.district);
     if (scenario === OPERATION_ID) out.operation = operationOptions(d.operation);
     if (d.inventories!==undefined) {
         const size=Array.isArray(out.squad)?out.squad.length:(SQUADS[out.squad]||SQUADS.standard).length;
