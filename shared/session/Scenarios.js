@@ -1,3 +1,4 @@
+import {districtParameters} from '../mission/LargeDistricts.js';
 import { spreadInsertion } from './Insertion.js';
 import { normalizeInventory } from '../inventory/Inventory.js';
 // Scenario descriptors → missions. Local sessions generate from a descriptor; co-op sessions hydrate
@@ -24,6 +25,7 @@ export function sanitizeDesc(d = {}) {
     const scenario = scenarioId(d.scenario);
     const seed = Number.isInteger(Number(d.seed)) && Number(d.seed) >= 0 && Number(d.seed) <= 0xffffffff ? Number(d.seed) : 1;
     const out = { scenario, seed: seed || 1, squad: d.squad || 'standard', debug: d.debug === true, intel: d.intel === true, asyncCoop: d.asyncCoop === true, support: d.support === 'orbital_laser' ? 'orbital_laser' : 'carpet_bomb' };
+    if (['park-district','mall-district','drainage-district'].includes(scenario)&&d.district) out.district=districtParameters(d.district);
     if (scenario === OPERATION_ID) out.operation = operationOptions(d.operation);
     if (d.inventories!==undefined) {
         const size=Array.isArray(out.squad)?out.squad.length:(SQUADS[out.squad]||SQUADS.standard).length;
@@ -53,7 +55,7 @@ export function operationFor(desc) {
 
 export function buildMission(desc) {
     if (scenarioId(desc.scenario) === OPERATION_ID) return compileV3Map(structuredClone(operationFor(desc)), { seed: desc.seed ?? 1 });
-    return mapById(scenarioId(desc.scenario)).build({ seed: desc.seed ?? 1 });
+    return mapById(scenarioId(desc.scenario)).build({ ...desc.district, seed: desc.seed ?? 1 });
 }
 
 export function squadFor(desc) {

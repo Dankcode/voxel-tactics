@@ -129,7 +129,7 @@ export class KitView {
         const intact = (ak) => {
             if (intactCache.has(ak)) return intactCache.get(ak);
             const h = this.hints[ak];
-            const ok = !!h && h.cells.every(c => { const [x, y, z] = c.split(',').map(Number); const kk = keyOf(store.get(x, y, z)); return h.tree ? true : OBJECTS.has(kk); })
+            const ok = !!h && h.cells.every((c,i) => { const [x, y, z] = c.split(',').map(Number); const kk = keyOf(store.get(x, y, z)); return h.tree ? true : h.materials?store.get(x,y,z)===h.materials[i]:OBJECTS.has(kk); })
                 && (!h.tree || keyOf(store.get(...ak.split(',').map(Number))) === 'trunk');
             intactCache.set(ak, ok);
             return ok;
@@ -195,6 +195,11 @@ export class KitView {
         const sameKey = (ax, ay) => keyOf(get(ax, ay, z)) === k;
         const wallAxis = () => openingAxis(store, x, y, z) === 'x' ? 0 : -Math.PI / 2;
         const hint = this.hints[`${x},${y},${z}`];
+        if(hint?.member&&intact(hint.member))return;
+        if(hint?.cells&&hint?.centre&&intact(`${x},${y},${z}`)){
+            const [ccx,ccy]=hint.centre;
+            add(hint.piece,x,y,z,hint.yaw||0,k,{dx:ccx-x-.5,dy:ccy-y-.5,tint:hint.tint,tintSlots:['carpaint','self']});return;
+        }
         // Grouped cover: one connected module per cell, chosen from the family's face neighbours (same rule as collision).
         const grouped = () => {
             const m2 = bandMask(store, x, y, z, BANDS[k].family);
@@ -204,10 +209,11 @@ export class KitView {
         switch (h) {
             case 'wall': {
                 const connections = wallMask(store, x, y, z);
-                const family={concrete_wall:'facade_concrete',siding:'facade_metal',stucco:'facade_stucco'}[k]||'joined_wall';
+                const square=store.squareCorners?.has(`${x},${y}`);
+                const family=square?'square_wall':{concrete_wall:'facade_concrete',siding:'facade_metal',stucco:'facade_stucco'}[k]||'joined_wall';
                 add(`${family}_${connections}`, x, y, z, 0, k);
                 const above = get(x, y, z + 1);
-                if (above === AIR || z + 1 >= cut) add(`joined_cap_${connections}`, x, y, z, 0, k);
+                if (above === AIR || z + 1 >= cut) add(`${square?'square_cap':'joined_cap'}_${connections}`, x, y, z, 0, k);
                 break;
             }
             case 'window': {
@@ -216,7 +222,7 @@ export class KitView {
                 const vertical=[-1,1].some(dz=>keyOf(store.get(x,y,z+dz))==='glass');
                 const style=hint?.windowStyle||(vertical?'curtain':wall==='siding'?'factory':wall==='brick'?'sash':'ribbon');
                 const connections=wallMask(store,x,y,z);
-                if([3,6,9,12].includes(connections)) {
+                if(!store.squareCorners?.has(`${x},${y}`)&&[3,6,9,12].includes(connections)) {
                     add(`glaze_curve_${connections}`,x,y,z,0,'glass');
                     if(keyOf(store.get(x,y,z-1))!=='glass')add(`glaze_curve_sill_${connections}`,x,y,z,0,'glass');
                     if(keyOf(store.get(x,y,z+1))!=='glass')add(`glaze_curve_head_${connections}`,x,y,z,0,'glass');

@@ -1,3 +1,4 @@
+import { reviewDispatch } from './ui/DispatchScreen.js';
 import { InventoryPrep } from './ui/InventoryPrep.js';
 import { Game } from './Game.js';
 import { LocalSession } from './net/LocalSession.js';
@@ -24,7 +25,7 @@ async function showMenu(opts = {}) {
     menu.classList.remove('hidden');
     const defaultServer = `ws://${location.hostname || 'localhost'}:2567`;
     const themes = [...new Set(SCENARIOS.map(s => s.theme))];
-    const linked = params.get('map');
+    const linked = opts.desc?.scenario || params.get('map');
     const pick = linked === OPERATION_ID || !linked ? OPERATION_ID : SCENARIOS.some(s => s.id === linked) ? linked : SCENARIOS[0].id;
     const op = { plot: PLOT_IDS.includes(params.get('plot')) ? params.get('plot') : 'downtown', objective: OPERATION_OBJECTIVES.includes(params.get('objective')) ? params.get('objective') : '', timeOfDay: OPERATION_TIMES.includes(params.get('time')) ? params.get('time') : '' };
     menu.innerHTML = `
@@ -50,11 +51,16 @@ async function showMenu(opts = {}) {
         <div class="maps" id="m-maps">${themes.map(t => `<div class="theme"><h4>${esc(t)}</h4>${SCENARIOS.filter(s => s.theme === t).map(s =>
             `<button class="map ${s.id === pick ? 'on' : ''}" data-map="${s.id}"><b>${esc(s.name)}</b><span>${esc(s.text)}</span></button>`).join('')}</div>`).join('')}</div>
         <div class="row">
-          <label>Seed <input id="m-seed" type="number" value="${Number(params.get('seed')) || 1}" min="0" max="4294967295"></label>
-          <label>Squad <select id="m-squad">${Object.keys(SQUADS).map(k => `<option>${k}</option>`).join('')}</select></label>
+          <label>Seed <input id="m-seed" type="number" value="${Number(opts.desc?.seed ?? params.get('seed')) || 1}" min="0" max="4294967295"></label>
+          <label>Squad <select id="m-squad">${Object.keys(SQUADS).map(k => `<option ${opts.desc?.squad===k?'selected':''}>${k}</option>`).join('')}</select></label>
         </div>
-        <label class="check"><input id="m-debug" type="checkbox" ${params.get('debug') ? 'checked' : ''}> Debug mode (F1 in battle: spawn, teleport, destroy, elements, overlays, AI stepping, operation generator)</label>
-        <label class="check"><input id="m-intel" type="checkbox" ${params.get('intel') ? 'checked' : ''}> Intel co-op rules (experimental) · sensing roles, drones, quiet cuts, precision shots, independent turns</label>
+        <div class="row" id="m-district" hidden>
+          <label>Width <input id="m-width" type="number" min="96" max="128" value="${Number(opts.desc?.district?.width)||96}"></label>
+          <label>Depth <input id="m-depth" type="number" min="72" max="96" value="${Number(opts.desc?.district?.depth)||72}"></label>
+          <label>Footprint <select id="m-shape"><option value="rectangle">Rectangle</option><option value="L">L shape</option><option value="T">T shape</option></select></label>
+        </div>
+        <label class="check"><input id="m-debug" type="checkbox" ${(opts.desc?.debug??!!params.get('debug')) ? 'checked' : ''}> Debug mode (F1 in battle: spawn, teleport, destroy, elements, overlays, AI stepping, operation generator)</label>
+        <label class="check"><input id="m-intel" type="checkbox" ${(opts.desc?.intel??!!params.get('intel')) ? 'checked' : ''}> Intel co-op rules (experimental) · sensing roles, drones, quiet cuts, precision shots, independent turns</label>
         <label id="m-support-row" ${params.get('intel') ? '' : 'hidden'}>Match support <select id="m-support"><option value="carpet_bomb">Carpet Bomb · circular craters</option><option value="orbital_laser">Orbital Laser · line cut</option></select></label>
         <section id="m-inventory"></section>
         <div class="row buttons">
@@ -74,12 +80,16 @@ async function showMenu(opts = {}) {
       </div>`;
     $('#m-intel').onchange = e => { $('#m-support-row').hidden = !e.target.checked; };
     const prep=new InventoryPrep($('#m-inventory'),$('#m-squad').value);
+    if(opts.desc?.inventories&&opts.desc.inventories.length<=prep.packs.length){prep.packs=prep.packs.map((pack,i)=>structuredClone(opts.desc.inventories[i]??pack));prep.render();}
     $('#m-squad').onchange=()=>prep.reset($('#m-squad').value);
     let scenario = pick;
     const select = id => {
         scenario = id;
+        $('#m-district').hidden=!['park-district','mall-district','drainage-district'].includes(id);
+        $('#m-shape').value=opts.desc?.scenario===id&&opts.desc?.district?.shape?opts.desc.district.shape:id==='mall-district'?'L':id==='drainage-district'?'T':'rectangle';
         menu.querySelectorAll('[data-map]').forEach(o => o.classList.toggle('on', o.dataset.map === id));
     };
+    select(pick);
     menu.querySelectorAll('button[data-map]').forEach(b => b.onclick = () => select(b.dataset.map));
     $('#m-op').onclick = e => { if (!e.target.closest('select, input, button[data-map]')) select(OPERATION_ID); };
     menu.querySelectorAll('[data-plot]').forEach(b => b.onclick = () => {
@@ -91,7 +101,7 @@ async function showMenu(opts = {}) {
     $('#m-time').onchange = e => { op.timeOfDay = e.target.value; select(OPERATION_ID); };
     $('#m-dice').onclick = () => { $('#m-seed').value = 1 + Math.floor(Math.random() * 99999); select(OPERATION_ID); if (!$('#m-preview-box').hidden) preview(); };
     const operation = () => ({ plot: op.plot, objective: op.objective || null, timeOfDay: op.timeOfDay || null });
-    const desc = () => ({ scenario, seed: Number($('#m-seed').value) || 1, squad: $('#m-squad').value, debug: $('#m-debug').checked, intel: $('#m-intel').checked, asyncCoop: $('#m-intel').checked, support: $('#m-support').value, inventories: prep.inventories(), ...(scenario === OPERATION_ID ? { operation: operation() } : {}) });
+    const desc = () => ({ scenario, seed: Number($('#m-seed').value) || 1, squad: $('#m-squad').value, debug: $('#m-debug').checked, intel: $('#m-intel').checked, asyncCoop: $('#m-intel').checked, support: $('#m-support').value, inventories: prep.inventories(), ...(!$('#m-district').hidden?{district:{width:Number($('#m-width').value),depth:Number($('#m-depth').value),shape:$('#m-shape').value}}:{}), ...(scenario === OPERATION_ID ? { operation: operation() } : {}) });
     const status = t => { $('#m-status').textContent = t; };
     const preview = async () => {
         select(OPERATION_ID);
@@ -108,15 +118,15 @@ async function showMenu(opts = {}) {
         } catch (err) { console.error(err); status(`Generation failed: ${err.message}`); }
     };
     $('#m-preview').onclick = preview;
-    const launch = (make, { generating = scenario === OPERATION_ID, debug = desc().debug, autopilot = false } = {}) =>
-        startBattle(make, { generating, debug, autopilot, status });
+    const launch = (make, { generating = scenario === OPERATION_ID, debug = desc().debug, autopilot = false,skipReview } = {}) =>
+        startBattle(make, { generating, debug, autopilot, skipReview, status });
     $('#m-local').onclick = () => launch(() => LocalSession.create(desc()));
     $('#m-host').onclick = () => launch(() => OnlineSession.connect({url:$('#m-server').value,desc:desc(),support:$('#m-support').value}));
     $('#m-join').onclick = () => launch(() => OnlineSession.connect({ url: $('#m-server').value, roomId: $('#m-room').value.trim(), support: $('#m-support').value }), { generating: false, debug: false });
     // Test ground (admin): its own panel; launches go through the same path as Play.
     const testLaunch = (online) => (d, client, setup) => {
         saveLastSetup({ setup });
-        launch(() => online ? OnlineSession.connect({ url: $('#m-server').value, desc: d }) : LocalSession.create(d), { generating: d.scenario === OPERATION_ID, debug: !!d.debug, autopilot: !!client.autopilot });
+        launch(() => online ? OnlineSession.connect({ url: $('#m-server').value, desc: d }) : LocalSession.create(d), { generating: d.scenario === OPERATION_ID, debug: !!d.debug, autopilot: !!client.autopilot,skipReview:true });
     };
     new TestGroundPanel($('#tab-test'), { launch: testLaunch(false), host: testLaunch(true), status }, opts.desc ? descToSetup(opts.desc, opts.client) : null);
     const showTab = tab => {
@@ -130,11 +140,12 @@ async function showMenu(opts = {}) {
 }
 
 /** Build a session, hide the menu and start the battle (Play, Test ground, deep links). */
-async function startBattle(make, { generating = false, debug = false, autopilot = false, status = () => {} } = {}) {
+async function startBattle(make, { generating = false, debug = false, autopilot = false, skipReview = params.has('quick'), status = () => {} } = {}) {
     try {
         status(generating ? 'Generating the operation…' : 'Building the battlefield…');
         await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
         const session = await make();
+        if(!skipReview&&!await reviewDispatch(menu,session)){session.leave?.();session.battle.light.dispose();await showMenu({desc:session.desc});return;}
         menu.classList.add('hidden');
         if (!game) game = new Game({ canvas: $('#view'), hudRoot: $('#hud'), cutinRoot: $('#cutin-layer'), floatRoot: $('#float-layer'), onExit: o => { game.session?.leave?.(); game.autoPlayer = false; showMenu(o); } });
         await game.start(session);
@@ -157,7 +168,9 @@ if (params.get('staged')) {
     else showMenu({ tab: 'test' });
 } else
 // Deep link for quick testing: ?play=cedar-close&seed=3 (&debug=1 &auto=1 &cutins=off)
-if (params.get('play')) {
+if(params.get('play')&&params.has('brief')) {
+    showMenu().then(()=>startBattle(()=>LocalSession.create({scenario:params.get('play'),seed:Number(params.get('seed'))||1,debug:!!params.get('debug')})));
+} else if (params.get('play')) {
     const operation = params.get('play') === OPERATION_ID ? { plot: params.get('plot'), objective: params.get('objective'), timeOfDay: params.get('time') } : undefined;
     LocalSession.create({ scenario: params.get('play'), seed: Number(params.get('seed')) || 1, squad: params.get('squad') || 'standard', debug: !!params.get('debug'), operation, ...(params.get('intel') ? { intel: true, asyncCoop: true, support: params.get('support') === 'orbital_laser' ? 'orbital_laser' : 'carpet_bomb' } : {}) }).then(async session => {
         menu.classList.add('hidden');

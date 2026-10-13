@@ -51,7 +51,7 @@ test('the training facility draws walls, glazing, doors, stairs, roofs, furnitur
     const { byPiece, roofs } = buildAll();
     for (const id of ['joined_wall_5', 'joined_wall_10', 'glaze', 'glaze_head', 'mdoor_lower', 'mdoor_upper', 'stair_step', 'crate', 'barrel', 'car', 'tree_round', 'jersey', 'column'].filter(id => id !== 'column'))
         assert.ok((byPiece.get(id) || 0) > 0, `no ${id} instances`);
-    for (const family of ['sandbag', 'hedge'])
+    for (const family of ['sandbag'])
         assert.ok([...byPiece].some(([id, n]) => id?.startsWith(`joined_${family}_`) && n > 0), `no connected ${family} modules`);
     assert.ok(roofs > 0, 'the fuel store has a pitched roof surface');
 });

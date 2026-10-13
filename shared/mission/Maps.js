@@ -1,3 +1,5 @@
+import {buildParkDistrict,buildMallDistrict,buildDrainageDistrict} from './LargeDistricts.js';
+import { buildSunkenBoulevard,buildFreightTerraces,buildSunkenJunction } from './ConnectingDistricts.js';
 // Map registry: every playable battlefield, grouped by theme. Present-day settings only (no aliens yet);
 // the opposing force is the Syndicate, a human crime organisation (shared/content/units.js FACTIONS).
 import { buildArchitectureYard, ARCHITECTURE_YARD_ID } from './ArchitectureYard.js';
@@ -11,6 +13,12 @@ import { buildPackagedMap } from '../mapgen/PackageBuilder.js';
 import { MAP_PACKAGES } from './generated/PackageCatalog.js';
 
 export const MAPS = Object.freeze([
+    {id:'park-district',name:'Park District',theme:'Large districts',text:'96 × 72 rectangle: raised rounded park, broad steps, dense retail and park-side offices.',build:buildParkDistrict},
+    {id:'mall-district',name:'Market Arcade',theme:'Large districts',text:'96 × 72 L footprint: merged shopping interiors, close retail parcels and a terraced park.',build:buildMallDistrict},
+    {id:'drainage-district',name:'Drainage Quarter',theme:'Large districts',text:'96 × 72 T footprint: turning water channels, dry banks, stair entrances and shortcut ladders.',build:buildDrainageDistrict},
+    {id:'sunken-junction',name:'Sunken Junction',theme:'Split-level districts',text:'Linked sunken boulevards with a T-junction, covered crossings, rounded retail and square industrial parcels.',build:buildSunkenJunction},
+    {id:'sunken-boulevard',name:'Sunken Boulevard',theme:'Split-level districts',text:'A lower street passes beneath an upper boulevard, with road ramps and a covered crossing.',build:buildSunkenBoulevard},
+    {id:'freight-terraces',name:'Freight Terraces',theme:'Split-level districts',text:'Low warehouses, raised loading decks, cargo lanes and a service catwalk.',build:buildFreightTerraces},
     {id:ARCHITECTURE_YARD_ID,name:"Architecture Yard",theme:"Training",text:"Walk through full glass, vault solid window sills, inspect window families and rounded facades.",build:buildArchitectureYard},
     ...MAP_PACKAGES.map(pkg => ({id:pkg.manifest.id,name:pkg.manifest.name,theme:pkg.manifest.theme,text:pkg.design.mission.briefing,concept:`/maps/${pkg.manifest.id}/${pkg.manifest.reference}`,build: options => buildPackagedMap(pkg, { ...options, strict: false })})),
     { id: CEDAR_CLOSE_ID, name: 'Cedar Close', theme: 'Suburbs', text: 'Two modern homes on a quiet close. Glass walls, gardens, a residential street.', build: buildCedarClose },

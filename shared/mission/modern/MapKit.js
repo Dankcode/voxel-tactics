@@ -102,7 +102,7 @@ export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'l
             const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]);
             const centre = [(Math.min(...xs) + Math.max(...xs) + 1) / 2, (Math.min(...ys) + Math.max(...ys) + 1) / 2];
             const yaw = axis === 'x' ? (dir > 0 ? 0 : Math.PI) : (dir > 0 ? -Math.PI / 2 : Math.PI / 2);
-            ctx.hints[ak] = { piece, yaw, centre, z: anchor[2], cells: cells.map(c => c.join(',')), tint };
+            ctx.hints[ak] = { piece, yaw, centre, z: anchor[2], cells: cells.map(c => c.join(',')), materials:cells.map(c=>store.get(...c)), tint };
             for (const c of cells) if (c.join(',') !== ak) ctx.hints[c.join(',')] = { member: ak };
         },
         /** Tree: trunk + canopy voxels (cover and sight); drawn as one tree while its trunk stands. kind 'round' | 'conifer' | 'palm'. */

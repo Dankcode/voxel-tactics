@@ -1,3 +1,5 @@
+import {MODERN_PIECES} from './ModernPieces.js';
+import { CONNECTED_PIECES } from './ConnectedPieces.js';
 // Loads the baked tile set (assets/kit/tileset.glb, optionally overridden by tileset-art.glb) and resolves the
 // pieces' material slots to lit, textured materials. Falls back to building the pieces in the browser.
 //
@@ -7,7 +9,7 @@ import * as THREE from 'three';
 import { materialByKey } from '../../../../shared/voxel/Materials.js';
 import { CONTINUOUS_SURFACES, surfaceFinish } from '../SurfaceFinish.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { buildAllPieces } from './KitPieces.js';
+import { buildAllPieces,PIECES } from './KitPieces.js';
 import { RENDER, FALLBACK } from '../RenderTable.js';
 
 /** slot → { tex (or 'self' = the voxel's own), uv: 'world' | 'mesh', scale, color, rough, metal, emissive, … } */
@@ -98,10 +100,11 @@ export class KitLibrary {
         try { this.pieces = await read('/assets/kit/tileset.glb'); this.source = 'tileset.glb'; }
         catch (err) { console.warn('[kit] baked tile set missing, building pieces in the browser:', err.message); this.pieces = buildAllPieces(); this.source = 'procedural'; }
         try { if(typeof __HAS_KIT_ART__==='undefined'||__HAS_KIT_ART__){const art = await read('/assets/kit/tileset-art.glb'); for (const [k, v] of art) this.pieces.set(k, v); this.source += ' + tileset-art.glb';} } catch { /* optional */ }
+        this.pieces.set('stair_step',PIECES.stair_step.build());
         for (const parts of this.pieces.values()) for (const p of parts) { p.geometry.computeBoundingSphere(); }
         return this;
     }
-    piece(id) { return this.pieces.get(id) || this.pieces.get(`${id}#0`) || null; }
+    piece(id) { if(!this.pieces.has(id)&&MODERN_PIECES[id])this.pieces.set(id,MODERN_PIECES[id].build()); if(id.startsWith('square_')&&!this.pieces.has(id)&&CONNECTED_PIECES[id])this.pieces.set(id,CONNECTED_PIECES[id].build());return this.pieces.get(id) || this.pieces.get(`${id}#0`) || null; }
     /** Material for a slot; `selfKey` is the voxel material that 'self' (and barrels) resolve to. */
     material(slot, selfKey, clipping) {
         const def = SLOTS[slot] || SLOTS.self;

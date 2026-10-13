@@ -326,7 +326,13 @@ export class Game {
         const levels = floorCutLevels(this.battle.mission);
         let i = levels.indexOf(this.cutLevel); if (i < 0) i = levels.findIndex(l => l > this.cutLevel);
         i = Math.max(0, Math.min(levels.length - 1, i + d));
-        this.setLevel(levels[i]);
+        this.chooseFloor(levels[i]);
+    }
+    chooseFloor(top) {
+        this.levelLocked=true;
+        if(this.options.buildingView==='exterior')this.options.buildingView='auto';
+        if(Number.isFinite(top)){this.scene.rig.glide=null;this.scene.rig.target.y=top-2;}
+        this.setLevel(top);this.hoverPick=null;this.hoverCell=null;
     }
     cycleCutins() { const i = CUTIN_MODES.indexOf(this.cutins.mode); this.cutins.mode = CUTIN_MODES[(i + 1) % CUTIN_MODES.length]; this.hud.refresh(); }
 
@@ -540,7 +546,7 @@ export class Game {
             e.preventDefault();
             const px = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
             this.scene.zoom(Math.exp(Math.max(-1, Math.min(1, px * 0.0015))));
-            this.applyZoomCut();
+            if(!this.levelLocked)this.applyZoomCut();
         }, { passive: false });
         window.addEventListener('keydown', e => this.onKey(e));
         window.addEventListener('keyup', e => this.keys.delete(e.key.toLowerCase()));
@@ -604,11 +610,11 @@ export class Game {
         const seg = clipToBox(ray.ray.origin, ray.ray.direction, store);
         if (!seg) return null;
         const { from, to } = seg;
-        return pickVisibleTile(store,from,to,{cutZ:top,buildingView:this.buildingView,interiorVisibility:this.voxelView.interiorVisibility});
+        return pickVisibleTile(store,from,to,{cutZ:top,buildingView:this.buildingView,preferredFloor:Number.isFinite(top)?top-3:null,reachable:this.search?.costs,origin:this.selectedUnit()});
     }
     unitAt(px, py) {
         const ray = this.scene.rayAt(px, py);
-        const meshes = [...this.views.values()].filter(v => v.group.visible && alive(v.unit)).map(v => v.sprite);
+        const meshes = [...this.views.values()].filter(v => v.group.visible && alive(v.unit) && v.unit.z<this.cutLevel && (!this.levelLocked||!Number.isFinite(this.cutLevel)||v.unit.z===this.cutLevel-3)).map(v => v.sprite);
         const hit = ray.intersectObjects(meshes, true)[0];
         return hit ? this.battle.unit(hit.object.userData.unitId) : null;
     }
@@ -725,7 +731,7 @@ export class Game {
     onClick(e) {
         if (!this.battle || this.dragging?.moved) return;
         const unit = this.unitAt(e.clientX, e.clientY);
-        const p = this.hoverPick || this.pick(e.clientX, e.clientY);
+        const p = this.pick(e.clientX, e.clientY);
         if (this.debug.tool) { this.debug.click(p, unit, e); return; }
         const u = this.selectedUnit();
         if (unit && (unit.side === 'player' || this.controllable(unit)) && alive(unit) && unit.side === (u?.side ?? unit.side) && (this.mode.kind === 'move' || !u)) { this.select(unit.id); return; }

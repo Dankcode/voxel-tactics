@@ -1,3 +1,4 @@
+import {installBillboardDepth,billboardDepthSlope} from './BillboardDepth.js';
 import { WalkerModel } from './WalkerModel.js';
 import { WALKERS } from '../../../shared/battle/Walker.js';
 // A 2D character standing in the voxel world: a camera-facing quad (depth-tested against voxels),
@@ -35,6 +36,7 @@ export class UnitView {
         this.texture = art.image.clone();
         this.texture.needsUpdate = true;
         this.material = new THREE.MeshBasicMaterial({ map: this.texture, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide, clippingPlanes: scene.clipping });
+        this.depthSlope=installBillboardDepth(this.material);
         this.sprite = new THREE.Mesh(geo, this.material);
         this.spriteHeight=h;this.billboardUp=new THREE.Vector3();
         this.sprite.userData.unitId = unit.id;
@@ -99,6 +101,7 @@ export class UnitView {
         if(this.model){this.model.update(this.pos,dt);this.bar.position.set(0,this.spriteHeight+.25,0);}
         else if(camera) {
             this.sprite.quaternion.copy(camera.quaternion);
+            this.depthSlope.value=billboardDepthSlope(camera);
             this.billboardUp.set(0,1,0).applyQuaternion(camera.quaternion);
             this.bar.position.copy(this.billboardUp).multiplyScalar(this.spriteHeight+.18);
         } else this.sprite.rotation.y=yaw;

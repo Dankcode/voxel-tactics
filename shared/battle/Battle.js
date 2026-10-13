@@ -1128,7 +1128,7 @@ export class Battle {
     hash() {
         let voxelHp = 0x811c9dc5;
         for (const hp of this.store.hp) { voxelHp ^= hp; voxelHp = Math.imul(voxelHp, 0x01000193); }
-        const state = { windowOpenings:[...this.store.windowOpenings].sort(([a],[b])=>a<b?-1:a>b?1:0), intelMode:this.intelMode, asyncCoop:this.asyncCoop, personalTurns:this.personalTurns,supportReady:this.supportReady,supportChoices:this.supportChoices,contacts:this.contacts,drones:this.drones,detected:this.detected,refreshOwner:this.refreshOwner, units: this.units, round: this.round, activeSide: this.activeSide, outcome: this.outcome,
+        const state = { squareCorners:[...this.store.squareCorners].sort(),windowOpenings:[...this.store.windowOpenings].sort(([a],[b])=>a<b?-1:a>b?1:0), intelMode:this.intelMode, asyncCoop:this.asyncCoop, personalTurns:this.personalTurns,supportReady:this.supportReady,supportChoices:this.supportChoices,contacts:this.contacts,drones:this.drones,detected:this.detected,refreshOwner:this.refreshOwner, units: this.units, round: this.round, activeSide: this.activeSide, outcome: this.outcome,
             revealedRooms: [...this.revealedRooms].sort((a, b) => a - b), field: this.field.snapshot(),
             formations: this.formations.snapshot(), nextFormationId: this.formations.nextId,
             objective: this.objective, rng: this.rng.state, debugEnabled: this.debugEnabled, controllers: this.controllers, seq: this.seq };

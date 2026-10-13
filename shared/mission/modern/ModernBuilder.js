@@ -177,7 +177,8 @@ export function buildModern(store, spec, ctx) {
     const rng = ctx.rng;
     const hints = ctx.hints || (ctx.hints = {}), decor = ctx.decor || (ctx.decor = []);
     const result = { id: spec.id, name: spec.name || spec.id, role: spec.program, program: spec.program, x0, y0, w, d, baseZ, storeys, top, front, wall: wallKey,
-        rooms: [], doors: [], windows: [], stairs: [], approach: [] };
+        rounded:spec.rounded!==false,rooms: [], doors: [], windows: [], stairs: [], approach: [] };
+    if(spec.rounded===false)for(const x of [x0,x0+w-1])for(const y of [y0,y0+d-1])store.squareCorners.add(`${x},${y}`);
 
     // Frame: local (u along the front, v from front to back) → world.
     const W = front === 'n' || front === 's' ? w : d, D = front === 'n' || front === 's' ? d : w;
@@ -188,7 +189,7 @@ export function buildModern(store, spec, ctx) {
 
     // 1. Shell: clear, foundation, slabs, outer walls.
     for (let y = y0; y < y0 + d; y++) for (let x = x0; x < x0 + w; x++) {
-        for (let z = 1; z < baseZ; z++) if (!store.isSolid(x, y, z)) store.set(x, y, z, MAT.concrete);
+        for (let z = 1; spec.foundation!==false && z < baseZ; z++) if (!store.isSolid(x, y, z)) store.set(x, y, z, MAT.concrete);
         for (let z = baseZ; z <= top + 4 && z < store.height; z++) store.set(x, y, z, AIR);
         for (let s = 0; s < storeys; s++) {
             const fz = baseZ + STOREY * s;

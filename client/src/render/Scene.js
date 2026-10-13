@@ -93,8 +93,8 @@ export class Scene {
         this.hemi.color.set(L.sky); this.hemi.groundColor.set(L.ground); this.hemi.intensity = L.hemiI;
         this.scene.environmentIntensity = L.env;
         this.renderer.toneMappingExposure = L.exposure;
-        this.scene.background?.dispose();
-        this.scene.background = gradientTexture(L.bgTop, L.bgBottom);
+        if(!this.backgroundImage){this.backgroundImage=new THREE.TextureLoader().load('/assets/backgrounds/district.svg');this.backgroundImage.colorSpace=THREE.SRGBColorSpace;}
+        this.scene.background=this.backgroundImage;
         this.scene.fog = new THREE.Fog(L.fog, 45, 145);
         this.sunDir = new THREE.Vector3(...L.sunDir).normalize();
         this.back.intensity = (L.backI ?? 0.55);
@@ -103,8 +103,7 @@ export class Scene {
     setMission(mission) {
         this.backdrop?.userData.dispose();
         if (this.backdrop) this.scene.remove(this.backdrop);
-        this.backdrop = missionBackdrop(this.bounds.w, this.bounds.d, mission.id, mission.meta?.backdrop);
-        this.scene.add(this.backdrop);
+        this.backdrop=null;this.mission=mission;
     }
     /** Fit the sun's shadow camera to the battlefield. */
     setBounds(w, d, h) {

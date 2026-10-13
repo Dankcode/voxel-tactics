@@ -127,7 +127,7 @@ export function battleReport(battle, desc = {}, extra = {}) {
         run: { ...extra },
         scenario: {
             id: desc.scenario || m.id || null, name: m.name || m.id || desc.scenario || 'Mission', seed: desc.seed ?? b.seed,
-            squad: desc.squad ?? null, operation: desc.operation || null, test: desc.test || null,
+            squad: desc.squad ?? null, operation: desc.operation || null, district:desc.district||null, test: desc.test || null,
             rules: b.intelMode ? 'intel' : 'classic', ...(b.intelMode ? { intel: { asyncCoop: !!b.asyncCoop, support: desc.support || 'carpet_bomb' } } : {}),
             timeOfDay: m.meta?.timeOfDay || null, size: m.store ? `${m.store.width}×${m.store.depth}×${m.store.height}` : null
         },

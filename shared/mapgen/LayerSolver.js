@@ -1,3 +1,4 @@
+import { connectionContract } from './ConnectingParcels.js';
 import { solveWaveFunctionCollapse } from '../generation/WaveFunctionCollapse.js';
 const dirs=[[1,0],[-1,0],[0,1],[0,-1]],key=(x,y)=>`${x},${y}`;
 export function layerCompatible(a,b,d) {
@@ -33,5 +34,6 @@ export function solveLayers(layout,site,seed=1,opts={}) {
   else fixed.set(id,l===0?(tunnel.has(k)?'tunnel':'rock'):l===1?(socket.get(k)||prior.get(k)||'yard'):(prior.get(k)==='building'?'rooftop':k===key(Math.floor(drop.x/4),Math.floor(drop.y/4))?'bridge':'air'));
  }
  let assignment;try{assignment=solveWaveFunctionCollapse({nodes,tiles:[...new Set(kinds.flat())].map(id=>({id,weight:id==='yard'?5:2})),domains,fixed,compatible:layerCompatible,seed:`${site.id}:layers:${seed}`});}catch(e){throw Error(`layer.socket: ${e.message}`);}
- return {datum:4,parcels:[...assignment].map(([id,kind])=>({id,kind})),route,entrances:[{...a,kind:'stairs'},{...b,kind:'manhole'}],drop,bridge:opts.bridge??(site.underground?.kind==='underpass'||!!site.levels?.includes('bridge')),kind:opts.kind||site.underground?.kind||'subway'};
+ const entrances=[{...a,kind:'stairs'},{...b,kind:'manhole'}];
+ return {connectionParcels:entrances.map(connectionContract),datum:4,parcels:[...assignment].map(([id,kind])=>({id,kind})),route,entrances,drop,bridge:opts.bridge??(site.underground?.kind==='underpass'||!!site.levels?.includes('bridge')),kind:opts.kind||site.underground?.kind||'subway'};
 }

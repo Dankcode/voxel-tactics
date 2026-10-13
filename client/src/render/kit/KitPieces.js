@@ -72,7 +72,7 @@ export const PIECES = {
 
     // --- stairs (rising toward +X)
     stair_block: { meta: { group: 'stairs', text: 'Solid stringer under a stair tread' }, build: () => [{ slot: 'self', geometry: box(1, 1, 1) }] },
-    stair_step: { meta: { group: 'stairs', text: 'Two treads in one voxel, rising toward +X' }, build: () => [{ slot: 'self', geometry: merge([box(1, 0.5, 1), box(0.5, 0.5, 1, 0.25, 0.5)]) }] },
+    stair_step: { meta: { group: 'stairs', text: 'Six compact treads in one tile, rising toward +X' }, build: () => [{ slot: 'self', geometry: merge(Array.from({length:6},(_,i)=>box(1/6,(i+1)/6,.96,-.5+(i+.5)/6))) }] },
     stair_rail: { meta: { group: 'stairs', text: 'Handrail on the open side (+Z)' }, build: () => {
         const rail = new THREE.BoxGeometry(1.42, 0.06, 0.06).rotateZ(Math.PI / 4).translate(0, 1.15, 0.44);
         return [{ slot: 'trim', geometry: merge([rail, box(0.06, 1.1, 0.06, -0.42, 0.3, 0.44), box(0.06, 0.8, 0.06, 0.42, 1, 0.44)]) }];

@@ -1,3 +1,4 @@
+import { navigationFloors } from '../render/FloorCutaway.js';
 import { reportMarkup } from './BattleReportView.js';
 import { reportText } from '../../../shared/session/BattleReport.js';
 import { downloadJson } from './TestGroundStore.js';
@@ -36,7 +37,7 @@ export class Hud {
                 </div></div>
             <div class="camera-nav" aria-label="Camera controls">
                 <button data-act="lvlDown" title="Lower interior floor · Page Down">Lower floor</button>
-                <span class="floor-label">Roof</span>
+                <span class="floor-label">Roof</span><div class="floor-picker"></div>
                 <button data-act="lvlUp" title="Higher floor / roof · Page Up">Higher floor</button>
                 <button data-act="rotL" title="Rotate left · Q">Rotate left</button>
                 <button data-act="rotR" title="Rotate right · E">Rotate right</button>
@@ -72,6 +73,7 @@ export class Hud {
         e.stopPropagation();
         switch (act) {
             case 'floorFollow': g.applyZoomCut();break;
+            case 'chooseFloor': g.chooseFloor(arg==='roof'?Infinity:Number(arg));break;
             case 'equipmentTab': this.equipmentTab=arg;break;
             case 'view': g.cameraDirector.end();g.scene.rig.setPreset(arg); break;
             case 'pan': g.scene.rig.glide=null;g.scene.rig.moveBy(...arg.split(',').map(Number));break;
@@ -127,7 +129,7 @@ export class Hud {
         el.innerHTML = `<h4>Options</h4>${row('autoEndTurn', 'Auto end turn when the squad is spent')}${row('autoNext', 'Auto-select the next ready soldier')}${row('followCamera', 'Camera follows actions')}
             <h4>Camera</h4>${row('edgeScroll', 'Screen-edge scrolling')}<button data-act="proj" class="${g.scene.projection === 'ortho' ? 'on' : ''}">${g.scene.projection === 'ortho' ? '☑' : '☐'} Isometric (orthographic) view (V)</button>
             <div class="camhint" style="font-size:11px;opacity:.7;line-height:1.5;margin:4px 0 2px">WASD / arrows / screen edge pan · right-drag grab · middle-drag orbit · wheel zoom · Q/E rotate · H / Home centre on soldier · V isometric</div>
-            <h4>Buildings</h4><div class="row"><button data-act="buildingCycle" class="${o.buildingView==='exterior'?'on':''}" aria-pressed="${o.buildingView==='exterior'}">Show outside only</button></div><small>Wheel zoom: roof → upper floors → ground floor. Floor buttons select a storey without zooming. Press I to toggle outside only.</small>
+            <h4>Buildings</h4><div class="row"><button data-act="buildingCycle" class="${o.buildingView==='exterior'?'on':''}" aria-pressed="${o.buildingView==='exterior'}">Show outside only</button></div><small>Wheel zoom: roof → upper floors → ground floor. Selected floors stay fixed while zooming. Auto floors restores zoom cutaways. Press I to toggle outside only.</small>
             <h4>Graphics</h4><button data-act="quality" data-arg="mobile" class="${QUALITY.name === 'mobile' ? 'on' : ''}">${QUALITY.name === 'mobile' ? '◉' : '○'} Mobile (light textures, fast)</button><button data-act="quality" data-arg="high" class="${QUALITY.name === 'high' ? 'on' : ''}">${QUALITY.name === 'high' ? '◉' : '○'} High (full textures, AO) — reloads</button>
             <h4>Readability</h4><button data-act="cue" data-arg="uGrid" class="${TERRAIN_CUES.uGrid.value ? 'on' : ''}">${TERRAIN_CUES.uGrid.value ? '☑' : '☐'} Debug tile grid</button><button data-act="cue" data-arg="uRim" class="${TERRAIN_CUES.uRim.value ? 'on' : ''}">${TERRAIN_CUES.uRim.value ? '☑' : '☐'} Ledge rims (orange = 2+ drop)</button><button data-act="ao" class="${g.scene.ao ? 'on' : ''}">${g.scene.ao ? '☑' : '☐'} Ambient occlusion</button>
             <h4>Lighting</h4><div class="row">${['day', 'dusk', 'night'].map(l => `<button data-act="lighting" data-arg="${l}" class="${g.scene.lightingName === l ? 'on' : ''}">${l}</button>`).join('')}</div>`;
@@ -210,7 +212,8 @@ export class Hud {
         if (!b) return;
         this.el('.building-view').classList.toggle('on',g.options.buildingView==='exterior');
         this.el('.building-view').setAttribute('aria-pressed',String(g.options.buildingView==='exterior'));
-        this.el('.floor-label').textContent=Number.isFinite(g.cutLevel)?`Floor ${Math.max(1,Math.round((g.cutLevel-(b.mission.meta.streetDatum??1))/3))}`:'Roof';
+        this.el('.floor-picker').innerHTML=navigationFloors(b.mission).map(f=>`<button data-act="chooseFloor" data-arg="${Number.isFinite(f.cut)?f.cut:'roof'}" class="${g.cutLevel===f.cut?'on':''}" aria-pressed="${g.cutLevel===f.cut}">${f.label}</button>`).join('')+`<button data-act="floorFollow" class="${!g.levelLocked?'on':''}">Auto floors</button>`;
+        this.el('.floor-label').textContent=navigationFloors(b.mission).find(f=>f.cut===g.cutLevel)?.label||'Roof';
         this.root.classList.toggle('enemy-phase', b.activeSide !== 'player');
         this.root.classList.toggle('intel-mode',b.intelMode);
         this.el('.mission b').textContent = b.mission.name;

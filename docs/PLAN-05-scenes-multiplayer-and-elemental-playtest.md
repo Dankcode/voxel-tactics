@@ -116,3 +116,17 @@ Validation includes real two-peer Earth Cover, Water Mend and watch-sector comma
 ### Quick map testing update
 
 Online Host now launches the selected map directly; the separate optional briefing can launch immediately without party readiness. Zoom depth controls cutaways (distance ≥36: roofs; zoom toward 8: descend through storeys to floor one). Named Lower/Higher floor buttons override the current cut until the next wheel scroll; Rotate left/right remain click actions, and keyboard arrows still pan. Show outside only is a fixed-label toggle. Floor changes update the building mask before rebuilding, avoiding duplicate full-map rebuilds. The optional art override is requested only when present in the build. Walking, vaulting and enemy scatter shatter crossed glazing deterministically, preserving solid sill cover.
+
+### Floor navigation and connecting districts — 2026-10-13
+
+Manual floor buttons now lock the chosen floor while zooming; Auto floors restores zoom-based cutaways. Destination picking intersects the chosen floor directly, avoiding wall-side redirects, and upper-floor/clipped soldier sprites do not intercept clicks on a manually selected lower floor. New floor labels include Lower street, Upper street, Loading deck and Catwalk.
+
+Underground access is now compiled through original connecting-parcel contracts with street/lower sockets and reserved footprints. Covered portal and service-access modules replace bare access holes; arbitrary street drops are opt-in. Modules preserve existing flank routes, avoid attaching to building shells, and only retain supported canopy components. The imported More Maps Pack PCP configuration supplies reference provenance; game geometry and connector modules are original.
+
+Two new playable maps are registered: Sunken Boulevard (broad lower street, matching road ramps and a roofed upper crossing), and Freight Terraces (a low warehouse, elevated loading deck, vehicle ramp and service catwalk). These complement the existing sewer, tunnel and tall-building layouts. Multi-seed map gates, room/exit access, structural support, destruction, multiplayer and snapshot tests remain required.
+
+### Larger district playtest
+
+Implemented configurable 96–128 × 72–96 rectangle/L/T districts with real cut boundaries, dense seeded infill, merged retail passages, raised rounded park terraces, turning open drainage banks, alternate stair/ladder access and supported surface bridges. Dispatch topography exports include parcel assignments, reachable sockets and verified network paths. Sprite depth now follows an upright character plane while preserving screen-facing art and wall depth tests. See `LARGE-DISTRICTS.md` for the presets and parameters.
+
+Remix follow-up: test ground now exposes building limits, WFC/noise part selection, floor ranges, wall/window/corner kits, terrain, merged/elevated parcels and traffic/cover density. Collision lab uses empty interiors and immediate dispatch. Retired bush/bench cover is replaced at compilation; street vehicles and service props use coherent bays and material-aware render assemblies. Public stairs are compact six-tread meshes with matching foot height.

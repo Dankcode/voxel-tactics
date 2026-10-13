@@ -62,3 +62,9 @@ test('zoom-selected floors override soldier proximity and zooming out restores r
     view.update({mode:'auto',zoomFloor:2});assert.equal(view.hiddenAt(7,7,4),false);assert.equal(view.hiddenAt(7,7,7),true);
     view.update({mode:'auto',zoomFloor:0});assert.equal(view.hiddenAt(7,7,7),false);
 });
+
+test('chosen-floor picking reaches the interior without redirecting a click onto an outer wall',()=>{
+    const {view,store}=house();view.update({mode:'auto',zoomFloor:1,cutZ:4});
+    const hit=pickVisibleTile(store,{x:12.5,y:7.5,h:10},{x:5.5,y:7.5,h:0},{cutZ:4,buildingView:view,preferredFloor:1});
+    assert.deepEqual(hit.cell,{x:6,y:7,z:1});
+});

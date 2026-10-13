@@ -104,6 +104,7 @@ export const renderFor = key => RENDER[key] || FALLBACK;
 export function groundDrop(store, x, y, z) {
     const id = store.get(x, y, z);
     if (!id || store.isSolid(x, y, z + 1)) return 0;
+    if(MATERIALS[id]?.part===4)return 1/3; // Six-tread mesh: cell centre stands on its fourth tread.
     return RENDER[MATERIALS[id]?.key]?.drop || 0;
 }
 export const KIND_GROUP = { opaque: 0, glass: 1, water: 2 };

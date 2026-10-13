@@ -17,6 +17,7 @@ const unit = s => (hashString(s) >>> 0) / 4294967296;
 
 /** One bay piece into voxels (+ whole-object hints and decor) at the street datum. */
 export function compilePiece(m, p, district = 'commercial') {
+    if(m.connectorFootprint?.has(`${Math.floor(p.x)},${Math.floor(p.y)}`))return;
     const G = m.G, s = m.store;
     if (p.base === 'car') { m.car(p.x, p.y, p.axis, unit(`${m.id}:${p.x},${p.y}:car`) < 0.5 ? 1 : -1, null, G); return; }
     if (p.base === 'container') { m.container(p.x, p.y, 'x', null, G, unit(`${m.id}:${p.x},${p.y}:stack`) < 0.25); return; }
@@ -60,6 +61,7 @@ export function compileV3Map({ site, layout, design, manifest }, { seed = 1, gat
     m.lightRoutes=layout.roads||[];
     m.beats = design.beats;
     for (const b of layout.buildings) compileBuilding(m, b);
+    m.connectorPaths=new Set([...(layout.lineOfPlay?.main||[]),...(layout.lineOfPlay?.flanks||[]).flatMap(f=>f.path)].map(([x,y])=>`${x},${y}`));
     const underground = compileUnderground(m, layout.layers);
     const district = (x, y) => layout.plot?.lots?.find(l => l.lx === x >> 3 && l.ly === y >> 3)?.district || 'commercial';
     for (const p of layout.pieces) compilePiece(m, p, district(p.x, p.y));

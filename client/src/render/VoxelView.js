@@ -6,7 +6,7 @@ import { CHUNK } from '../../../shared/voxel/VoxelStore.js';
 import { MATERIALS } from '../../../shared/voxel/Materials.js';
 import { renderFor } from './RenderTable.js';
 
-const APRON = 22;          // cells the ground continues past the map edge (visual only), fading into the background
+const APRON = 0;          // cells the ground continues past the map edge (visual only), fading into the background
 
 export class VoxelView {
     constructor(scene, store, library, kit = null) {
@@ -50,7 +50,7 @@ export class VoxelView {
         const old = this.chunks.get(key);
         if (old) { for (const m of old) { this.group.remove(m); if (m.userData.kit) m.dispose?.(); if (!m.isInstancedMesh) m.geometry.dispose(); } }
         const hidden = (x,y,z) => this.buildingView?.hiddenAt(x,y,z)||false;
-        const parts = meshChunk(this.store, cx, cy, cz, { hidden, tint: this.tint, cutZ: this.cutZ, kit: this.kitView ? kitHandler : null, apron: true });
+        const parts = meshChunk(this.store, cx, cy, cz, { hidden, tint: this.tint, cutZ: this.cutZ, kit: this.kitView ? kitHandler : null, apron: false });
         const meshes = [];
         for (const p of parts) {
             if (!p.indices.length) continue;
@@ -89,61 +89,8 @@ export class VoxelView {
         cells.forEach((c,i)=>{matrix.identity();matrix.setPosition(c.x+.5,c.z,c.y+.5);mesh.setMatrixAt(i,matrix);});
         mesh.instanceMatrix.needsUpdate=true;mesh.userData.noAO=true;this.concealment=mesh;this.group.add(mesh);
     }
-    /**
-     * The ground continues past the map edge as an apron (no gameplay, no grid), so the battlefield reads as part of a
-     * neighbourhood rather than a floating block. Each edge cell's ground is stretched outward and fades out.
-     */
-    buildApron() {
-        const s = this.store, W = s.width, D = s.depth;
-        const ground = (x, y) => {
-            let z = 0;
-            while (z + 1 < s.height) {
-                const m = MATERIALS[s.get(x, y, z + 1)];
-                if (!m.solid || m.liquid || (this.kitView && kitHandler(s, x, y, z + 1))) break;
-                z++;
-            }
-            const above = MATERIALS[s.get(x, y, z + 1)];
-            if (above.liquid) return { key: above.key, h: z + 1.9 };
-            const key = MATERIALS[s.get(x, y, z)].key;
-            return { key, h: z + 1 - (renderFor(key).drop || 0) };
-        };
-        const bufs = new Map();
-        const buf = key => { if (!bufs.has(key)) bufs.set(key, { p: [], n: [], uv: [], c: [], i: [] }); return bufs.get(key); };
-        const rect = (key, h, ax, ay, bx, by, fadeAt) => {
-            const b = buf(key), r = renderFor(key), sc = r.scale || 1, st = b.p.length / 3;
-            const pts = [[ax, ay], [bx, ay], [bx, by], [ax, by]];
-            for (const [x, y] of pts) {
-                b.p.push(x, h, y); b.n.push(0, 1, 0); b.uv.push(x / sc, y / sc);
-                const k = fadeAt(x, y); b.c.push(k, k, k);
-            }
-            b.i.push(st, st + 2, st + 1, st, st + 3, st + 2);
-        };
-        const fade = (x, y) => {
-            const dx = Math.max(0, -x, x - W), dy = Math.max(0, -y, y - D);
-            const d = Math.hypot(dx, dy) / APRON;
-            return Math.max(0.12, 0.92 - d * 0.85);
-        };
-        for (let x = 0; x < W; x++) { const n = ground(x, 0), so = ground(x, D - 1); rect(n.key, n.h, x, -APRON, x + 1, 0, fade); rect(so.key, so.h, x, D, x + 1, D + APRON, fade); }
-        for (let y = 0; y < D; y++) { const w = ground(0, y), e = ground(W - 1, y); rect(w.key, w.h, -APRON, y, 0, y + 1, fade); rect(e.key, e.h, W, y, W + APRON, y + 1, fade); }
-        for (const [cx, cy, ax, ay] of [[0, 0, -APRON, -APRON], [W - 1, 0, W, -APRON], [0, D - 1, -APRON, D], [W - 1, D - 1, W, D]]) {
-            const g = ground(cx, cy); rect(g.key, g.h, ax, ay, ax + APRON, ay + APRON, fade);
-        }
-        this.apron = new THREE.Group();
-        for (const [key, b] of bufs) {
-            const g = new THREE.BufferGeometry();
-            g.setAttribute('position', new THREE.Float32BufferAttribute(b.p, 3));
-            g.setAttribute('normal', new THREE.Float32BufferAttribute(b.n, 3));
-            g.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2));
-            g.setAttribute('color', new THREE.Float32BufferAttribute(b.c, 3));
-            g.setAttribute('aRim', new THREE.Float32BufferAttribute(new Float32Array(b.p.length / 3 * 4), 4));
-            g.setAttribute('aGrid', new THREE.Float32BufferAttribute(new Float32Array(b.p.length / 3), 1));
-            g.setIndex(b.i);
-            const mesh = new THREE.Mesh(g, this.library.get(key));
-            mesh.receiveShadow = true;
-            this.apron.add(mesh);
-        }
-        this.scene.scene.add(this.apron);
-    }
+    /** Hard tactical boundary: off-map scenery is a screen-space image. */
+    buildApron() { /* The tactical map ends at its bounds; a 2D background replaces off-map geometry. */ }
     /** Storey cutaway: hide voxels at z >= top and cap what is cut. Rebuilds every chunk when it changes. */
     setCut(top) {
         const z = Number.isFinite(top) ? top : Infinity;

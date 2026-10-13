@@ -31,6 +31,8 @@ export function prismGeometry(poly, bottom = 0, top = 1, sides = true) {
 }
 export const CONNECTED_PIECES={};
 for(let mask=0;mask<16;mask++) {
+    CONNECTED_PIECES[`square_wall_${mask}`]={meta:{group:'square-wall'},build:()=>[{slot:'self',geometry:prismGeometry(wallFootprint(mask,false))}]};
+    CONNECTED_PIECES[`square_cap_${mask}`]={meta:{group:'square-wall'},build:()=>[{slot:'cap',geometry:prismGeometry(wallFootprint(mask,false),1,1.008,false)}]};
     CONNECTED_PIECES[`joined_wall_${mask}`]={meta:{group:'connected-wall',text:'Rounded connected wall; shared collision silhouette'},build:()=>[{slot:'self',geometry:prismGeometry(wallFootprint(mask))}]};
     CONNECTED_PIECES[`joined_cap_${mask}`]={meta:{group:'connected-wall'},build:()=>[{slot:'cap',geometry:prismGeometry(wallFootprint(mask),1,1.008,false)}]};
 }

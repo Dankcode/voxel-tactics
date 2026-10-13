@@ -43,7 +43,7 @@ export function curvedCornerFootprint(mask, thickness=WALL_THICKNESS, steps=12) 
     const poly=points.map(([x,y])=>{for(let i=0;i<turns;i++)[x,y]=[1-y,x];return [Math.max(0,Math.min(1,x)),Math.max(0,Math.min(1,y))];});
     curveCache.set(key,poly);return poly;
 }
-export function wallFootprint(mask) { return curvedCornerFootprint(mask)||bandFootprint(mask, WALL_THICKNESS, 0.12); }
+export function wallFootprint(mask,rounded=true) { return (rounded?curvedCornerFootprint(mask):null)||bandFootprint(mask, WALL_THICKNESS, 0.12); }
 
 /**
  * Grouped cover (hedges, planters, sandbags, barriers, field walls, fences) uses the same post-and-arm silhouette as
@@ -104,10 +104,10 @@ export function collisionFootprint(store, x, y, z) {
     if (key === 'ice' || key === 'deep_ice') return liquidFootprint(store,x,y,z);
     const band = BANDS[key];
     if (band) return bandFootprint(bandMask(store, x, y, z, band.family), band.thickness, band.radius);
-    if (WALL_KEYS.has(key)) return wallFootprint(wallMask(store, x, y, z));
+    if (WALL_KEYS.has(key)) return wallFootprint(wallMask(store, x, y, z),!store.squareCorners?.has(`${x},${y}`));
     if (key === 'glass' || key === 'door' || key === 'door_locked') {
         const t = key === 'glass' ? 0.035 : 0.08, a = (1-t)/2, b=1-a;
-        if(key==='glass'){const curve=curvedCornerFootprint(wallMask(store,x,y,z),t);if(curve)return curve;}
+        if(key==='glass'&&!store.squareCorners?.has(`${x},${y}`)){const curve=curvedCornerFootprint(wallMask(store,x,y,z),t);if(curve)return curve;}
         return openingAxis(store,x,y,z) === 'x' ? [[0,a],[1,a],[1,b],[0,b]] : [[a,0],[b,0],[b,1],[a,1]];
     }
     return null;
