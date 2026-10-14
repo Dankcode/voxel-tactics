@@ -41,7 +41,7 @@ Deep links for testing:
 | `/?play=proving-grounds` | Training Facility: the test map with every system in it |
 | `/?play=operation&plot=downtown&seed=4` | Generated operation (PLAN-04): a new map per seed. `plot` = `downtown` · `industrial` · `suburb`; optional `objective` (`recover` · `extract` · `hold` · `eliminate`) and `time` (`day` · `dawn` · `dusk` · `overcast` · `night` · `night-ops`) |
 | `…&auto=1` | Squad plays itself (AI vs AI), useful to watch balance |
-| `/?tab=test` · `/?test=…` | Open the Test ground tab · launch a copied test-ground setup |
+| `/?test=…` | Launch a previously copied scenario setup (legacy links remain supported) |
 | `…&cutins=off` | Skip back shots (`always` / `first` / `off`) |
 | `…&debug=1` | Start with debug mode on (or tick *Debug mode* in the menu, or press F1 in battle) |
 
@@ -121,7 +121,7 @@ Map generation replaces the current local battle and resets its progress.
 ## One game, two rule sets, two ways to run it
 
 - **Classic rules** (default): the XCOM-style squad game, team End turn votes in co-op, physical reticle aiming.
-- **Intel co-op rules** (experimental, opt-in): tick *Intel co-op rules* in Play or the Test ground (or add
+- **Intel co-op rules** (experimental, opt-in): tick *Intel co-op rules* in Play (or add
   `&intel=1` to a `?play=` link). Classes gain sensing roles (Faultfinder, Tidekeeper, Skywatch, Ghostwright),
   scout drones, quiet wall cuts, high-precision fire without hit percentages, independent 2–4-player turns and
   per-player support strikes. See [docs/INTEL-COOP-TEST.md](docs/INTEL-COOP-TEST.md).
@@ -130,21 +130,18 @@ Map generation replaces the current local battle and resets its progress.
 `npm run build`, so after pulling or editing code use **`npm run play`** (build, then server); the server warns
 when its build is older than the source. The menu footer shows which commit a page was built from.
 
-## Test ground (admin) and after-action reports
+## Play and after-action reports
 
-The menu's **Test ground** tab sets up a battle scenario to test: any map (or a generated operation), a squad of
-1–6 soldiers of any class, and either the map's own hostile pods or a custom roster of up to 24 hostiles (up to 12
-of a type, in mixed pods of 1–4). Rules can start every hostile alerted, switch the objective to *eliminate*,
-set a round deadline, change the time of day, let the AI play the squad (autopilot), and turn on the F1 debug
-tools. **Preview placements** draws the map with the squad spawns, each hostile (coloured and lettered by type)
-and the objective. Setups can be saved in the browser, shared with **Copy link** (`?test=…` launches that exact
-setup) or hosted online — the server and every peer place the same roster.
+Play is the single battlefield launcher. Prepare each soldier's inventory, choose an authored map or generated
+operation, then dispatch. **Full arsenal for testing** supplies all weapons, consumables and spare containers on
+that same map, using the same art and gameplay. F1 debug tools remain available through **Debug mode**.
+Previously copied `?test=…` setup links still launch their saved mission and roster.
 
-Every battle — test ground or not — ends with an **after-action report**: outcome, rounds, first contact, a
+Every battle ends with an **after-action report**: outcome, rounds, first contact, a
 per-soldier table (status and HP, kills, shots hit, damage dealt and taken, reactions, tiles moved, abilities and
 items used, disabled limbs), hostiles by type and per unit, weapons per side, field stats (voxels destroyed, fires,
 breaches, doors kicked, collapses, drops, flank steps) and a timeline. **Copy summary** and **Download JSON** export
-it; the last 20 reports stay in the Test ground tab (view or replay them). The same report runs headless:
+it. Recent reports remain stored in the browser. The same report runs headless:
 
 ```bash
 npm run sim -- --seeds 8 --scenario main-street --enemies cultist:4,brute:2 --pod 3 --alerted --objective eliminate --deadline 20 --report
@@ -169,7 +166,7 @@ See [docs/TEST-GROUND.md](docs/TEST-GROUND.md) for placement rules and the repor
 - **Cover**: physical — walls stop the rays that hit them; XCOM shields on the HUD read the voxels. Units lean
   out of corners. Flanking is simply having no wall in the way.
 - **Destruction**: every voxel has hit points; bullets chip, bombs and powder kegs blast, unsupported floors and
-  walls collapse into rubble, and units on vanished floors fall.
+  walls disappear cleanly without debris, and units on vanished upper floors fall. Grenades preserve ground floors.
 - **Interiors**: room reveal, dim rooms, noise through doors and walls, **breach** (door or charge) with surprise.
 - **Voxel elemental system** (an element on every voxel): fire ignites and spreads through timber, furniture and
   fences and burns them down; water douses and wets; cold freezes water into walkable ice bridges and frozen ground; wind

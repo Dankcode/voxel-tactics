@@ -52,7 +52,7 @@ for (const scenario of ['proving-grounds', 'signal-house', 'operation']) test(`t
             return p;
         };
         const apply = (p, m) => { if (m.seq > p.seq) { p.seq = m.seq; p.battle.apply(m.intent); } };
-        const roomA = await a.create('mission', { contract: CONTENT_CONTRACT, desc: { scenario, seed: 4, squad: 'standard', inventories:[[{id:'kit',itemId:'medkit',x:0,y:0,rotated:true}]] }, name: 'A' });
+        const roomA = await a.create('mission', { contract: CONTENT_CONTRACT, desc: { scenario, seed: 4, squad: 'standard', inventories:[[{id:'kit',itemId:'medkit',x:0,y:0,rotated:true},{id:'smoke',itemId:'smoke_pot',x:0,y:3,rotated:false}]] }, name: 'A' });
         const pa = mirror(roomA); const initA = await pa.init;
         const roomB = await b.joinById(roomA.roomId, { contract: CONTENT_CONTRACT, name: 'B' });
         const pb = mirror(roomB); const initB = await pb.init;
@@ -85,6 +85,13 @@ for (const scenario of ['proving-grounds', 'signal-house', 'operation']) test(`t
         }
         await new Promise(r=>setTimeout(r,100));
         for(const peer of peers){assert.equal(peer.battle.unit('p0').pocketInventory[0].itemId,'ammo_shotgun');assert.equal(peer.battle.markers.at(-1).color,'blue');assert.equal(peer.battle.formations.of(peer.battle.unit('p0')).template,'wedge');}
+        // Rotate and move a real grenade, then consume that exact slot on both peers.
+        for(const [nonce,intent] of [
+            ['move-grenade',{type:'inventoryMove',unitId:'p0',from:'backpack',to:'rig',itemId:'smoke',x:2,y:1,rotated:true}],
+            ['throw-grenade',{type:'throw',unitId:'p0',itemId:'smoke_pot',cargo:{path:'rig',id:'smoke'},to:{x:soldier.x,y:soldier.y,z:soldier.z}}]
+        ]){const receipt=next(roomA,'receipt');roomA.send('intent',{nonce,intent});assert.ok((await receipt).ok,nonce);}
+        await new Promise(r=>setTimeout(r,100));
+        for(const peer of peers){assert.ok(!peer.battle.unit('p0').rigInventory.some(s=>s.id==='smoke'));assert.equal(peer.battle.unit('p0').items.smoke_pot,undefined);}
         assert.equal(peers[0].battle.hash(),peers[1].battle.hash());
         // End turn needs both votes; then the server streams the AI turn.
         roomA.send('intent', { nonce: 'e1', intent: { type: 'endTurn', side: 'player' } });

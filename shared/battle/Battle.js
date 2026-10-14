@@ -1,9 +1,9 @@
-import { reserveAmmo, consumeAmmo, inventoryMove, equipCargo, grantTestArsenal } from '../inventory/Equipment.js';
+import { reserveAmmo, consumeAmmo, inventoryMove, equipCargo, grantTestArsenal, itemCount, consumeItem, syncItems } from '../inventory/Equipment.js';
 import { fireModes, roundsFor, weaponBuild, projectileDamage } from './FireControl.js';
 import { validateMark, putMark, settleMarks } from './Markers.js';
 import { WALKERS, occupiedCells, walkerReach, walkerFits, fitWalkerSpawn } from './Walker.js';
 import { validateIntel, executeIntel, intelSpread, refreshDrones } from './IntelOps.js';
-import { consumeItem, normalizeInventory, inventoryCounts } from '../inventory/Inventory.js';
+import { normalizeInventory } from '../inventory/Inventory.js';
 import { watchSector, inWatchSector } from './WatchSector.js';
 import { LightField } from '../lighting/LightField.js';
 // The deterministic battle engine (PLAN-01 rev 2 §9–§14).
@@ -20,7 +20,7 @@ import { reachable, pathTo, nodeKey, stepKind, isWindowVault } from '../world/Pa
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
 import { MAT, AIR, materialById } from '../voxel/Materials.js';
 import { castRay, fitArc, blocksSight } from '../voxel/Raycast.js';
-import { damageVoxel, explodeVoxels, settleUnsupported } from '../voxel/Destruction.js';
+import { damageVoxel, explodeVoxels, settleUnsupported, groundFloorLevels } from '../voxel/Destruction.js';
 import { coverAgainst, COVER } from '../voxel/Cover.js';
 import { ElementField, elementStatusesFor, STATUS_DEFS } from '../elements/Elements.js';
 import { WEAPONS, THROWABLES } from '../content/weapons.js';
@@ -47,7 +47,9 @@ export class Battle {
         this.mission = mission;
         this.debugEnabled = !!debug;
         this.store = mission.store;
-        this.field = new ElementField(this.store);
+        this.grenadeGroundLevels = groundFloorLevels(mission);
+        // Ground can carry fire hazards, but secondary flames must not burn away the protected floor.
+        this.field = new ElementField(this.store, { canBurn: (x, y, z) => z > this.grenadeGroundLevels[x + y * this.store.width] });
         this.light=new LightField(this.store,{timeOfDay:mission.meta?.timeOfDay||'day',decor:mission.visual?.decor||[],fires:this.field.fires});
         this.seed = seed;
         this.rng = createRng(hashString(`battle:${seed}:${mission.id || mission.name || ''}`));
@@ -69,7 +71,7 @@ export class Battle {
         squad.forEach((s, i) => {
             const pos = ps[i % ps.length];
             const u=createUnit(s.type,'player',pos,`p${i}`,{owner:s.owner||'player',name:s.name});
-            if(s.inventory){u.inventory=normalizeInventory(s.inventory);u.items=inventoryCounts(u.inventory);}
+            if(s.inventory){u.inventory=normalizeInventory(s.inventory);syncItems(u);}
             if(testArsenal)grantTestArsenal(u);
             this.units.push(u);
         });
@@ -236,7 +238,7 @@ export class Battle {
             }
             case 'throw': {
                 const t = THROWABLES[intent.itemId];
-                if (!t || t.kind==='gadget' || !(u.items[t.id] > 0)) return 'no_item';
+                if (!t || t.kind==='gadget' || !itemCount(u,t.id,intent.cargo)) return 'no_item';
                 if (u.ap < t.ap) return 'no_ap';
                 const to = intent.to; if (!to) return 'bad_intent';
                 if (Math.hypot(to.x - u.x, to.y - u.y) > t.range + 0.01) return 'out_of_range';
@@ -255,7 +257,7 @@ export class Battle {
             case 'mark': return validateMark(this,u,intent);
             case 'reload': { const w = WEAPONS[intent.weaponId || u.weapon]; if (!w?.ammo || w.boltAction || !u.weapons.includes(w.id)||u.ammo[w.id]>=w.ammo) return 'bad_intent'; if(reserveAmmo(u,w)<1)return 'no_ammo';return u.ap < w.reloadAp ? 'no_ap' : null; }
             case 'gadget': {const item=THROWABLES[intent.itemId],target=this.unit(intent.targetId);
-                if(item?.kind!=='gadget'||!(u.items[item.id]>0))return 'no_item';
+                if(item?.kind!=='gadget'||!itemCount(u,item.id,intent.cargo))return 'no_item';
                 if(u.ap<item.ap)return 'no_ap';
                 if(!target||!alive(target)||target.side!==u.side||target.hp>=target.maxHp)return 'no_target';
                 return this.distance(u,target)<=item.range && this.sees(u,target)?null:'out_of_range';}
@@ -349,7 +351,7 @@ export class Battle {
             case 'inventoryMove': inventoryMove(u,intent,true);this.emit({t:'inventory',unitId:u.id});break;
             case 'equipCargo': equipCargo(u,intent,true);this.emit({t:'inventory',unitId:u.id});break;
             case 'mark': putMark(this,u,intent);break;
-            case 'gadget': {const item=THROWABLES[intent.itemId],target=this.unit(intent.targetId),amount=Math.min(item.heal,target.maxHp-target.hp);u.ap-=item.ap;consumeItem(u,item.id);target.hp+=amount;if(!target.parts.torso.disabled)target.parts.torso.hp=Math.min(target.parts.torso.max,target.parts.torso.hp+amount);this.emit({t:'heal',unitId:target.id,sourceId:u.id,itemId:item.id,amount});break;}
+            case 'gadget': {const item=THROWABLES[intent.itemId],target=this.unit(intent.targetId),amount=Math.min(item.heal,target.maxHp-target.hp);u.ap-=item.ap;consumeItem(u,item.id,intent.cargo);target.hp+=amount;if(!target.parts.torso.disabled)target.parts.torso.hp=Math.min(target.parts.torso.max,target.parts.torso.hp+amount);this.emit({t:'heal',unitId:target.id,sourceId:u.id,itemId:item.id,amount});break;}
             case 'wait': u.ap=0;u.moveOnlyAp=0;this.emit({t:'wait',unitId:u.id});break;
             case 'switchWeapon': u.weapon = intent.weaponId; this.emit({ t: 'weapon', unitId: u.id, weaponId: u.weapon }); break;
             case 'ability': this.doAbility(u, intent); break;
@@ -788,7 +790,7 @@ export class Battle {
     doThrow(u, intent) {
         const t = THROWABLES[intent.itemId];
         u.ap -= t.ap;
-        consumeItem(u,t.id);
+        consumeItem(u,t.id,intent.cargo);
         const ts = this.stats.throwables[t.id] ||= { thrown: 0, unitDamage: 0, voxels: 0 };
         ts.thrown++;
         this.emit({ t: 'cutin', unitId: u.id, kind: t.cutIn || 'throw', itemId: t.id, targetIds: [] });
@@ -820,8 +822,12 @@ export class Battle {
         this.noise(Math.floor(centre.x), Math.floor(centre.y), Math.floor(centre.h), t.noise ?? 14, by);
     }
     explode(b) {
+        const item = THROWABLES[b.item];
+        const canDamage = item && !item.placed
+            ? (x, y, z) => z > this.grenadeGroundLevels[x + y * this.store.width]
+            : null;
         const changes = this.store.record(() => {
-            const { destroyed, explosions } = b.power > 0 ? explodeVoxels(this.store, b) : { destroyed: [], explosions: [b] };
+            const { destroyed, explosions } = b.power > 0 ? explodeVoxels(this.store, b, { canDamage }) : { destroyed: [], explosions: [b] };
             this.stats.voxelsDestroyed += destroyed.length;
             if (b.item && this.stats.throwables[b.item]) this.stats.throwables[b.item].voxels += destroyed.length;
             for (const e of explosions) {
@@ -979,7 +985,7 @@ export class Battle {
             const room = this.roomBeyond(d, u);
             if (room >= 0) out.push({ x: d.x, y: d.y, z: d.z, roomId: room, entry: 'door' });
         }
-        if(u.items.breach_charge>0)for(const [dx,dy] of [[1,0],[-2,0],[0,1],[0,-2]]) {
+        if(itemCount(u,'breach_charge')>0)for(const [dx,dy] of [[1,0],[-2,0],[0,1],[0,-2]]) {
             const d={x:u.x+dx,y:u.y+dy,z:u.z,entry:'floor'};
             if(this.validFloorBreach(d))out.push(d);
         }
@@ -1012,13 +1018,13 @@ export class Battle {
         if (units.some(u => !u || !alive(u) || u.side !== this.activeSide || u.ap < 1)) return 'no_ap';
         if(intent.entry==='floor') {
             if(units.length!==1)return 'bad_intent';
-            if(!units[0].items.breach_charge)return 'no_item';
+            if(!itemCount(units[0],'breach_charge'))return 'no_item';
             if(Math.max(Math.abs(d.x-units[0].x),Math.abs(d.y-units[0].y))>2||d.z!==units[0].z)return 'not_adjacent';
             return this.validFloorBreach(d)?null:'no_door';
         }
         const doorId = this.store.get(d.x, d.y, d.z + 1);
         if (intent.entry === 'charge') {
-            if (!units.some(u => u.items.breach_charge > 0)) return 'no_item';
+            if (!units.some(u => itemCount(u,'breach_charge') > 0)) return 'no_item';
             if (doorId === AIR) return 'no_door';
         } else if (doorId !== MAT.door) return 'no_door';
         if (units.some(u => Math.max(Math.abs(d.x - u.x), Math.abs(d.y - u.y)) > 2 || Math.abs(d.z - u.z) > 1)) return 'not_adjacent';
@@ -1040,7 +1046,7 @@ export class Battle {
         this.emit({ t: 'cutin', unitId: units[0].id, kind: 'breach', group: units.map(u => u.id), targetIds: [] });
         const formationBonus = this.formations.breachNoiseMult(units[0]);
         if (intent.entry === 'charge') {
-            const carrier = units.find(u => u.items.breach_charge > 0);
+            const carrier = units.find(u => itemCount(u,'breach_charge') > 0);
             consumeItem(carrier,'breach_charge');
             this.detonate(THROWABLES.breach_charge, { x: d.x + 0.5, y: d.y + 0.5, h: d.z + 1.5 }, carrier, { excludeUnits: ids });
         } else {

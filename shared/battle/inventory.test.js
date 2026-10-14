@@ -20,7 +20,7 @@ test('prepared pack is authoritative and medical gadget heals once, spends AP an
  const b=fixture(),u=b.unit('p0');assert.deepEqual(u.items,{medkit:1,smoke_pot:1});u.hp-=12;
  assert.equal(b.apply({type:'throw',unitId:u.id,itemId:'medkit',to:u}).reason,'no_item');
  assert.ok(b.apply({type:'gadget',unitId:u.id,itemId:'medkit',targetId:u.id}).ok);
- assert.equal(u.hp,u.maxHp-4);assert.equal(u.ap,3);assert.equal(u.items.medkit,0);assert.equal(u.inventory.length,1);
+ assert.equal(u.hp,u.maxHp-4);assert.equal(u.ap,3);assert.equal(u.items.medkit,undefined);assert.equal(u.inventory.length,1);
  const before=b.hash();assert.equal(b.apply({type:'gadget',unitId:u.id,itemId:'medkit',targetId:u.id}).reason,'no_item');assert.equal(b.hash(),before);
 });
 test('window reveals interior sightlines and enemies; opaque wall hides them again',()=>{
@@ -37,4 +37,24 @@ test('medical kits preserve disabled torso state and heal existing torso damage 
  assert.ok(b.apply({type:'gadget',unitId:u.id,itemId:'medkit',targetId:u.id}).ok);assert.equal(u.parts.torso.hp,13);
  const c=fixture(),t=c.unit('p0');t.hp=20;t.parts.torso.hp=0;t.parts.torso.disabled=true;
  assert.ok(c.apply({type:'gadget',unitId:t.id,itemId:'medkit',targetId:t.id}).ok);assert.equal(t.parts.torso.hp,0);assert.equal(t.parts.torso.disabled,true);
+});
+
+test('consumables in rigs, pockets and nested containers are removed from the selected slot',()=>{
+ for(const root of ['rig','pockets','backpack/spare']){
+  const b=fixture(),u=b.unit('p0');u.hp-=16;
+  u.inventory=[slot('spare','pouch_utility',0,0),slot('other-kit','medkit',3,0)];
+  const selected=slot('selected','water_flask',0,0);
+  if(root==='rig')u.rigInventory=[selected];else if(root==='pockets')u.pocketInventory=[selected];else u.inventory[0].contents=[selected];
+  u.items.water_flask=99; // stale summaries cannot manufacture or retain physical items.
+  const intent={type:'throw',unitId:u.id,itemId:'water_flask',cargo:{path:root,id:'selected'},to:{x:2,y:5,z:1}};
+  assert.ok(b.apply(intent).ok);assert.equal(u.items.water_flask,undefined);
+  assert.equal(b.apply(intent).reason,'no_item');
+ }
+});
+test('a selected medical kit is consumed even when another kit exists elsewhere',()=>{
+ const b=fixture(),u=b.unit('p0');u.hp-=16;u.rigInventory=[slot('rig-kit','medkit',0,0)];
+ const i={type:'gadget',unitId:u.id,itemId:'medkit',targetId:u.id,cargo:{path:'rig',id:'rig-kit'}};
+ assert.ok(b.apply(i).ok);assert.equal(u.rigInventory.length,0);assert.ok(u.inventory.some(s=>s.id==='kit'));assert.equal(u.items.medkit,1);
+ assert.equal(b.apply(i).reason,'no_item');assert.equal(u.items.medkit,1);
+ u.inventory=[];assert.equal(b.apply({...i,cargo:undefined}).reason,'no_item');
 });

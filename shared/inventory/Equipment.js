@@ -12,6 +12,17 @@ export function storageOf(u,path,create=false){
     return {slots,capacity};
 }
 export function allCargo(u){return STORAGE_ROOTS.flatMap(root=>[...walkInventory(u[fields[root]]||[])]);}
+/** Physical storage is authoritative; the HUD count is only a derived summary. */
+export function itemCount(u,itemId,cargo=null){
+    if(cargo){const s=storageOf(u,cargo.path)?.slots.find(s=>s.id===cargo.id&&s.itemId===itemId);return s?(s.quantity||1):0;}
+    return allCargo(u).filter(s=>s.itemId===itemId).reduce((n,s)=>n+(s.quantity||1),0);
+}
+export function consumeItem(u,itemId,cargo=null){
+    let taken=0;
+    if(cargo){const slots=storageOf(u,cargo.path)?.slots,s=slots?.find(s=>s.id===cargo.id&&s.itemId===itemId);if(s){if((s.quantity||1)>1)s.quantity--;else slots.splice(slots.indexOf(s),1);taken=1;}}
+    else for(const root of STORAGE_ROOTS){taken=takeFrom(u[fields[root]]||[],itemId,1);if(taken)break;}
+    syncItems(u);return taken;
+}
 export function reserveAmmo(u,weapon){const id=AMMO[weapon.ammoType]?.id;return id?allCargo(u).filter(s=>s.itemId===id).reduce((n,s)=>n+(s.quantity||1),0):0;}
 export function consumeAmmo(u,weapon,n){const id=AMMO[weapon.ammoType]?.id;if(!id)return 0;let left=n;for(const root of STORAGE_ROOTS)left-=takeFrom(u[fields[root]]||[],id,left);return n-left;}
 export function carryWeight(u){

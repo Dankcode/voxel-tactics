@@ -8,8 +8,7 @@ import { SCENARIOS, OPERATION_ID, operationFor } from '../../shared/session/Scen
 import { PLOT_FAMILIES, PLOT_IDS } from '../../shared/mapgen/PlotCatalogue.js';
 import { OPERATION_OBJECTIVES, OPERATION_TIMES } from '../../shared/mapgen/Generator.js';
 import { drawOperationPreview } from './ui/OperationPreview.js';
-import { TestGroundPanel, descToSetup } from './ui/TestGroundPanel.js';
-import { saveLastSetup, decodeSetup } from './ui/TestGroundStore.js';
+import { decodeSetup } from './ui/TestGroundStore.js';
 import { sanitizeDesc } from '../../shared/session/Scenarios.js';
 import { DISTRICT_MAP_IDS } from '../../shared/mission/LargeDistricts.js';
 
@@ -33,10 +32,6 @@ async function showMenu(opts = {}) {
       <div class="menu-card">
         <h1>FIRETEAM</h1>
         <p class="tag">Present-day tactical operations · co-op</p><p><a href="/staging.html">Co-op briefing lobby</a> · <a href="/campaign.html">Campaign prototype</a></p>
-        <nav class="menu-tabs" role="tablist">
-          <button data-tab="play" role="tab">Play</button>
-          <button data-tab="test" role="tab">Test ground <small>admin</small></button>
-        </nav>
         <div id="tab-play" role="tabpanel">
         <section class="operation ${pick === OPERATION_ID ? 'on' : ''}" id="m-op" data-map="${OPERATION_ID}">
           <div class="op-head"><b>Generated operation</b><span>A new map every seed: a plot, its lots and buildings, interiors, cover along the line of advance, a tunnel flank and a fire escape — checked by the same gates as the authored maps.</span></div>
@@ -61,6 +56,7 @@ async function showMenu(opts = {}) {
           <label>Footprint <select id="m-shape"><option value="rectangle">Rectangle</option><option value="L">L shape</option><option value="T">T shape</option></select></label>
         </div>
         <label class="check"><input id="m-debug" type="checkbox" ${(opts.desc?.debug??!!params.get('debug')) ? 'checked' : ''}> Debug mode (F1 in battle: spawn, teleport, destroy, elements, overlays, AI stepping, operation generator)</label>
+        <label class="check"><input id="m-arsenal" type="checkbox" ${opts.desc?.test?'checked':''}> Full arsenal for testing · all weapons and grenades, ammo and spare containers on the selected map</label>
         <label class="check"><input id="m-intel" type="checkbox" ${(opts.desc?.intel??!!params.get('intel')) ? 'checked' : ''}> Intel co-op rules (experimental) · sensing roles, drones, quiet cuts, precision shots, independent turns</label>
         <label id="m-support-row" ${params.get('intel') ? '' : 'hidden'}>Match support <select id="m-support"><option value="carpet_bomb">Carpet Bomb · circular craters</option><option value="orbital_laser">Orbital Laser · line cut</option></select></label>
         <section id="m-inventory"></section>
@@ -69,7 +65,6 @@ async function showMenu(opts = {}) {
           <button id="m-host">Host online co-op</button>
         </div>
         </div>
-        <section id="tab-test" class="tg" role="tabpanel" hidden></section>
         <div class="row">
           <label>Server <input id="m-server" value="${defaultServer}"></label>
           <label>Room <input id="m-room" placeholder="room code"></label>
@@ -102,7 +97,7 @@ async function showMenu(opts = {}) {
     $('#m-time').onchange = e => { op.timeOfDay = e.target.value; select(OPERATION_ID); };
     $('#m-dice').onclick = () => { $('#m-seed').value = 1 + Math.floor(Math.random() * 99999); select(OPERATION_ID); if (!$('#m-preview-box').hidden) preview(); };
     const operation = () => ({ plot: op.plot, objective: op.objective || null, timeOfDay: op.timeOfDay || null });
-    const desc = () => ({ scenario, seed: Number($('#m-seed').value) || 1, squad: $('#m-squad').value, debug: $('#m-debug').checked, intel: $('#m-intel').checked, asyncCoop: $('#m-intel').checked, support: $('#m-support').value, inventories: prep.inventories(), ...(!$('#m-district').hidden?{district:{width:Number($('#m-width').value),depth:Number($('#m-depth').value),shape:$('#m-shape').value}}:{}), ...(scenario === OPERATION_ID ? { operation: operation() } : {}) });
+    const desc = () => ({ scenario, seed: Number($('#m-seed').value) || 1, squad: $('#m-squad').value, debug: $('#m-debug').checked, intel: $('#m-intel').checked, asyncCoop: $('#m-intel').checked, support: $('#m-support').value, inventories: prep.inventories(), ...($('#m-arsenal').checked?{test:{}}:{}), ...(!$('#m-district').hidden?{district:{width:Number($('#m-width').value),depth:Number($('#m-depth').value),shape:$('#m-shape').value}}:{}), ...(scenario === OPERATION_ID ? { operation: operation() } : {}) });
     const status = t => { $('#m-status').textContent = t; };
     const preview = async () => {
         select(OPERATION_ID);
@@ -124,23 +119,10 @@ async function showMenu(opts = {}) {
     $('#m-local').onclick = () => launch(() => LocalSession.create(desc()));
     $('#m-host').onclick = () => launch(() => OnlineSession.connect({url:$('#m-server').value,desc:desc(),support:$('#m-support').value}));
     $('#m-join').onclick = () => launch(() => OnlineSession.connect({ url: $('#m-server').value, roomId: $('#m-room').value.trim(), support: $('#m-support').value }), { generating: false, debug: false });
-    // Test ground (admin): its own panel; launches go through the same path as Play.
-    const testLaunch = (online) => (d, client, setup) => {
-        saveLastSetup({ setup });
-        launch(() => online ? OnlineSession.connect({ url: $('#m-server').value, desc: d }) : LocalSession.create(d), { generating: d.scenario === OPERATION_ID, debug: !!d.debug, autopilot: !!client.autopilot,skipReview:true });
-    };
-    new TestGroundPanel($('#tab-test'), { launch: testLaunch(false), host: testLaunch(true), status }, opts.desc ? descToSetup(opts.desc, opts.client) : null);
-    const showTab = tab => {
-        $('#tab-play').hidden = tab !== 'play'; $('#tab-test').hidden = tab !== 'test';
-        menu.querySelectorAll('[data-tab]').forEach(b => { b.classList.toggle('on', b.dataset.tab === tab); b.setAttribute('aria-selected', b.dataset.tab === tab); });
-        try { localStorage.setItem('fireteam.menuTab', tab); } catch { /* storage unavailable */ }
-    };
-    menu.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => showTab(b.dataset.tab));
-    let lastTab = 'play'; try { lastTab = localStorage.getItem('fireteam.menuTab') || 'play'; } catch { /* storage unavailable */ }
-    showTab(opts.tab || (params.get('tab') === 'test' ? 'test' : lastTab));
+
 }
 
-/** Build a session, hide the menu and start the battle (Play, Test ground, deep links). */
+/** Build a session, hide the menu and start the battle (Play and saved deep links). */
 async function startBattle(make, { generating = false, debug = false, autopilot = false, skipReview = params.has('quick'), status = () => {} } = {}) {
     try {
         status(generating ? 'Generating the operation…' : 'Building the battlefield…');
@@ -166,7 +148,7 @@ if (params.get('staged')) {
     let setup = null;
     try { setup = decodeSetup(params.get('test')); setup.desc = sanitizeDesc(setup.desc); } catch (err) { console.error(err); setup = null; }
     if (setup) startBattle(() => LocalSession.create(setup.desc), { generating: setup.desc.scenario === OPERATION_ID, debug: !!setup.desc.debug, autopilot: !!setup.client?.autopilot || !!params.get('auto') });
-    else showMenu({ tab: 'test' });
+    else showMenu();
 } else
 // Deep link for quick testing: ?play=cedar-close&seed=3 (&debug=1 &auto=1 &cutins=off)
 if(params.get('play')&&params.has('brief')) {

@@ -44,10 +44,7 @@ the pane it crosses.
 
 ## Destroyed voxels and debris (`Destruction.destroyVoxel`)
 
-A destroyed voxel becomes its `debris` material when the voxel below is solid and not liquid and
-`(7x + 13y + z) mod 3 ≠ 0` (a fixed two-in-three pattern, so a blown wall leaves broken low cover); otherwise air.
-Debris: masonry, concrete, paving, planters, barriers, boulders → `rubble`; grass, lawn, forest floor → `soil`;
-soil → `rubble`. Rubble is walkable (cost 1.5, hp 3) and, one voxel high beside a unit, is half cover.
+Destroyed voxels become air. Direct damage, explosions, burning structures, and unsupported collapse never deposit rubble or ash. The renderer rebuilds the affected chunks without spawning flying fragment meshes; explosion flashes, camera shake, and collapse feedback remain. Authored rubble used as map scenery is unchanged.
 
 ## Explosions (`Destruction.explodeVoxels`, `Battle.explode`)
 
@@ -59,14 +56,13 @@ soil → `rubble`. Rubble is walkable (cost 1.5, hp 3) and, one voxel high besid
   applies its element over its radius ([06](06-elements.md)), and the structure settles.
 - An item with power 0 (Extinguisher, water drum) skips voxel damage but still applies its element and unit effects.
 
-Worked examples (from running `explodeVoxels` on a flat test map):
+### Protected ground floors
 
-- **Frag Grenade** (power 8, radius 2.6, geo ×2 vs stone) landing one tile from a two-high wall destroys 6 stucco
-  voxels, 1 brick voxel, no concrete wall, car or container voxels, 3 sandbag voxels, and about 9 ground voxels
-  (a crater, partly refilled with debris).
-- **Breaching Charge** (power 16, radius 1.7, geo) on a door in a two-high wall blows the door, the wall cells either
-  side (brick, stucco, siding: both layers; concrete wall: the lower layer) and the ground or floor around the
-  threshold (a one-voxel dip).
+At battle creation, the rules capture the initial ground/foundation height per column. Contiguous ground handles terraces; authored building bases handle slabs above basements and raised decks. Overlapping buildings use their lowest base, so an upper shop floor remains destructible.
+
+Thrown grenades skip damage at and below that boundary, including every blast in a fuel-drum chain. Ground material and HP remain unchanged across repeated grenades. Ground can still carry burning surface hazards, but the floor itself does not ignite or burn away. Walls, props, upper slabs, and roofs above the protected boundary retain normal damage and collapse rules.
+
+Placed breaching charges and debug demolition retain their ability to open floors. The low-level `explodeVoxels` accepts a `canDamage(x, y, z)` filter; `Battle.explode` supplies the grenade floor guard.
 
 ## Explosive materials
 
@@ -91,10 +87,8 @@ voxel out, and after debug destroys.
 
 - Every voxel that is neither air nor liquid must connect (6-neighbour, through non-air, non-liquid voxels) to a
   voxel in the bottom layer (z = 0, bedrock). Everything else is loose.
-- Loose voxels are removed. Per column, loose voxels of `structural` materials (not glass) become a rubble pile of
-  min(2, ceil(n ÷ 3)) voxels on the first solid voxel below the column's highest loose voxel (at most 600 rubble
-  voxels per settle). Non-structural loose voxels (furniture, props, doors, glass, foliage) simply vanish.
-- In practice: a floor slab or roof whose supporting walls are gone drops as rubble.
+- Loose voxels are removed without creating replacement material. Per-column fall coordinates remain in collapse events for feedback and statistics.
+- In practice: destroying supporting walls removes disconnected slabs and roofs cleanly, exposing the surviving floor below.
 
 ## Falling units and knockback
 
@@ -104,7 +98,7 @@ voxel out, and after debug destroys.
 |---|---|
 | its surface still exists with headroom ≥ 2 | nothing |
 | surface gone, a lower surface with headroom ≥ 2 exists | falls to it; legs take (levels − 1) × `B.fallDamagePerLevel` (5), pierce 99, if it fell more than 1 level; stress +8 |
-| a surface 1–2 voxels above exists (rubble piled on it) | climbs onto it, `B.crushDamage` (5) torso damage, pierce 99 ("crushed") |
+| a surface 1–2 voxels above exists (terrain raised onto it) | climbs onto it, `B.crushDamage` (5) torso damage, pierce 99 ("crushed") |
 | no surface at, below or just above | dies (falls to −1), e.g. on melted `deep_ice` |
 | surface exists but headroom < 2 and nothing above | stays (no rule) |
 

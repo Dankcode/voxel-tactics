@@ -586,7 +586,7 @@ export class Game {
             if(['i','escape','tab','r'].includes(key))e.preventDefault();
             if(key==='i'||key==='escape')this.hud.equipment.toggle();
             else if(key==='tab')this.cycleUnit(e.shiftKey?-1:1);
-            else if(key==='r'&&this.hud.equipment.selected){this.hud.equipment.selected.rotated=!this.hud.equipment.selected.rotated;this.hud.equipment.render();}
+            else if(key==='r'&&this.hud.equipment.selected){this.hud.equipment.rotate();}
             return;
         }
         if (this.debug.onKey(e, key)) return;
@@ -605,7 +605,7 @@ export class Game {
             case 'i': this.hud.equipment.toggle(); break;
             case 'v': this.scene.toggleProjection(); this.hud.toast(this.scene.projection === 'ortho' ? 'Camera: isometric' : 'Camera: perspective'); break;
             case 'o': this.setMode({ kind: 'overwatch' }); break;
-            case 'r': if(this.hud.equipment.open&&this.hud.equipment.selected){this.hud.equipment.selected.rotated=!this.hud.equipment.selected.rotated;this.hud.equipment.render();}else this.intent({ type: 'reload' }); break;
+            case 'r': if(this.hud.equipment.open&&this.hud.equipment.selected){this.hud.equipment.rotate();}else this.intent({ type: 'reload' }); break;
             case 't': if (u) { const id = Object.keys(u.items).find(k => u.items[k] > 0); if (id&& !THROWABLES[id].placed) this.setMode({ kind: THROWABLES[id].kind==='gadget'?'gadget':'throw', itemId: id }); } break;
             case 'f': this.hud.showFormationPanel(); break;
             case 'b': if (u && this.battle.breachPoints(u).length) this.hud.showBreachPanel(); break;
@@ -690,7 +690,7 @@ export class Game {
                 this.hud.cursorTip(e.clientX, e.clientY, inRange ? `${t.name} · ${t.ap} AP` : '<i class="flank">Out of range</i>');
                 break;
             }
-            case 'gadget': {const reason=this.battle.validate({type:'gadget',unitId:u.id,itemId:this.mode.itemId,targetId:unit?.id,by:'*'});this.overlays.showAbilityTile(unit,!reason);this.hud.cursorTip(e.clientX,e.clientY,reason?`Medical kit · ${reasonText(reason)}`:'Click ally · heal 8 HP · 1 AP');break;}
+            case 'gadget': {const reason=this.battle.validate({type:'gadget',unitId:u.id,itemId:this.mode.itemId,cargo:this.mode.cargo,targetId:unit?.id,by:'*'});this.overlays.showAbilityTile(unit,!reason);this.hud.cursorTip(e.clientX,e.clientY,reason?`Medical kit · ${reasonText(reason)}`:'Click ally · heal 8 HP · 1 AP');break;}
             case 'ability': {
                 const a = ABILITIES[this.mode.abilityId];
                 const intent = {type:'ability', unitId:u.id, abilityId:a.id, to:this.hoverCell, targetId:unit?.id, by:'*'};
@@ -763,8 +763,8 @@ export class Game {
             case 'mark':if(p?.voxel)this.intent({type:'mark',color:this.mode.color,at:p.voxel});break;
             case 'shoot':this.updateFreeAim(e.clientX,e.clientY,p);this.confirmFire();break;
             case 'melee': if (unit && unit.side !== u.side) this.intent({ type: 'melee', weaponId: this.mode.weaponId, targetId: unit.id, part: 'torso' }); break;
-            case 'throw': if (p?.cell) this.intent({ type: 'throw', itemId: this.mode.itemId, to: p.cell }); break;
-            case 'gadget': this.intent({type:'gadget',itemId:this.mode.itemId,targetId:unit?.id});break;
+            case 'throw': if (p?.cell) this.intent({ type: 'throw', itemId: this.mode.itemId, cargo:this.mode.cargo, to: p.cell }); break;
+            case 'gadget': this.intent({type:'gadget',itemId:this.mode.itemId,cargo:this.mode.cargo,targetId:unit?.id});break;
             case 'ability': this.intent({type:'ability',abilityId:this.mode.abilityId,to:this.hoverCell,targetId:unit?.id}); break;
             case 'overwatch': { const toward = p?.cell || p?.voxel; if(toward) this.intent({ type: 'overwatch', weaponId: watchWeapon(u), toward: {x:toward.x,y:toward.y} }); break; }
         }

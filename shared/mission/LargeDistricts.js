@@ -12,7 +12,7 @@ import {interiorHoldZone,secureHoldSpawns} from '../mapgen/district/HoldZone.js'
 
 /** Every map id built by the district generator (descriptors carry width/depth/shape/remix for these). */
 export const DISTRICT_MAP_IDS=Object.freeze(['park-district','mall-district','drainage-district','terrace-district']);
-// PLAN-06: large districts are a road skeleton plus landmark features (the merged arcade, the raised park, the
+// PLAN-06: large districts are a road skeleton plus landmark features (the merged arcade, the
 // drainage channels, the insertion cordon), and everything between the roads is solved as parcel mixes. There is
 // no scatter pass and no free-placed cover: every prop has an origin, every vehicle a slot.
 
@@ -43,32 +43,6 @@ function lane(m,id,x,y,dx,dy,length,z) {
 export function mergeDistrictBuildings(m,a,b) {
  if(a.baseZ!==b.baseZ||a.x0+a.w!==b.x0)throw Error('Mall parcels require aligned adjacent shells');
  return mergeShells(m,a,b);
-}
-function raisedPark(m) {
- const s=m.store,origin='level:raised-park';
- // Nested rounded terraces rise one voxel per contour. Existing ground autotiling rounds the edge pieces.
- for(let y=8;y<=32;y++)for(let x=60;x<=89;x++){
-  const r=Math.hypot((x-74.5)/16,(y-20)/14);
-  const z=r<=.62?4:r<=.76?3:r<=.9?2:1;
-  for(let h=2;h<=z;h++)s.set(x,y,h,h===z?MAT.lawn:MAT.soil);
-  if(r<=1)tag(m,x,y,'park');
- }
- const routes=[];
- for(const [x,y,dx,dy] of [[62,18,1,0],[72,31,0,-1]]){
-  const cells=[];for(let i=0;i<3;i++)for(let w=0;w<2;w++){
-   const px=x+dx*i-dy*w,py=y+dy*i+dx*w,z=i+2;
-   for(let h=2;h<=4;h++)s.set(px,py,h,h<=z?(h===z?MAT.stairs_stone:MAT.paving):0);
-   m.reserve(px-1,py-1,px+1,py+1);if(w===0)cells.push({x:px,y:py,z});
-  }routes.push(connector(m,`park-steps-${x}-${y}`,cells,'terraced-park-stairs'));
- }
- // Raised paths cross the crown; low brick seat walls line them (park furniture, not scattered crates).
- for(let x=66;x<=83;x++)s.set(x,20,4,MAT.paving);
- for(let y=13;y<=27;y++)s.set(75,y,4,MAT.paving);
- const seats=[[68,18,'x'],[80,22,'x'],[73,12,'y'],[77,26,'y']];
- return {routes,dress(){
-  for(const [x,y] of [[66,13],[83,14],[65,27],[83,27]]){m.tree(x,y,'round',s.topSolid(x,y));registerSolids(m,{x0:x-1,y0:y-1,w:3,d:3},`${origin}/tree`);}
-  for(const [x,y,ax] of seats)for(let i=0;i<2;i++){const px=x+(ax==='x'?i:0),py=y+(ax==='y'?i:0),z=s.topSolid(px,py);if(z===4&&!s.isSolid(px,py,z+1))put(m,px,py,z+1,'brick',`${origin}/seat-wall`);}
- }};
 }
 function drainage(m) {
  const s=m.store,routes=[],origin='level:drainage';
@@ -132,13 +106,11 @@ export function buildLargeDistrict({seed=1,theme='park',...options}={}) {
  const connectors=[],features=[];
  // Landmark features first: they shape the blocks around them.
  if(theme==='mall'){
-  const a=m.building({id:'market-west',program:'shop',x0:7,y0:7,w:24,d:22,rounded:false,furnish:false,...(remix.wall!=='mixed'?{wall:remix.wall}:{})});
-  const b=m.building({id:'market-east',program:'shop',x0:31,y0:7,w:24,d:22,rounded:false,furnish:false,...(remix.wall!=='mixed'?{wall:remix.wall}:{})});
+  const a=m.building({id:'market-west',program:'shop',x0:7,y0:7,w:24,d:22,rounded:false,furnish:remix.furnish,...(remix.wall!=='mixed'?{wall:remix.wall}:{})});
+  const b=m.building({id:'market-east',program:'shop',x0:31,y0:7,w:24,d:22,rounded:false,furnish:remix.furnish,...(remix.wall!=='mixed'?{wall:remix.wall}:{})});
   for(const s of [a,b])tagRect(m,{x0:s.x0,y0:s.y0,w:s.w,d:s.d},'building',{force:true});
   if(remix.merges){const c=mergeDistrictBuildings(m,a,b);if(c)connectors.push(c);}
-  if(remix.furnish)for(const shop of [a,b])for(let x=shop.x0+4;x<shop.x0+shop.w-3;x+=5)for(const y of [15,21])m.line(x,y,2,'x','cabinet');
  }
- if(theme!=='drainage'&&remix.terrain!=='flat'){const f=raisedPark(m);connectors.push(...f.routes);features.push(f);}
  if(theme==='drainage'){const f=drainage(m);connectors.push(...f.routes);features.push(f);}
  // The insertion: a cordon of jersey barriers covering the drop zone (a story beat), and the promenade the squad
  // follows into the district.
@@ -162,7 +134,7 @@ export function buildLargeDistrict({seed=1,theme='park',...options}={}) {
  const far=[...m.buildings].filter(b=>b.rooms.length&&(!zone||Math.hypot(b.x0+b.w/2-(zone.x0+zone.x1)/2,b.y0+b.d/2-(zone.y0+zone.y1)/2)>=24)).sort((a,b)=>Math.hypot(b.x0-spawn.x,b.y0-spawn.y)-Math.hypot(a.x0-spawn.x,a.y0-spawn.y));
  const enemy=[{type:'warden_foe',group:0,...(far[0]?{room:{building:far[0].id}}:{at:{x:p.width-10,y:15,z:datum}})},{type:'cultist',group:1,...(far[1]?{room:{building:far[1].id}}:{at:{x:p.width-20,y:p.depth-14,z:datum}})}];
  const objective=zone?{kind:'hold',zone:{x0:zone.x0,y0:zone.y0,x1:zone.x1,y1:zone.y1,z:zone.z,dz:1},rounds:4,needed:1,text:'Take the marked ground and hold it for four rounds. Its cover will not last — fall back to the barriers if it burns.'}:{kind:'eliminate',text:'Secure the district through its linked parcels and alternate elevation routes.'};
- const result=m.finish({name:{park:'Park District',mall:'Market Arcade',drainage:'Drainage Quarter'}[theme],spawns:{player:[{x:2,y:25,z:datum},{x:2,y:27,z:datum},{x:3,y:26,z:datum},{x:4,y:25,z:datum},{x:4,y:27,z:datum},{x:3,y:29,z:datum}],enemy},objective,meta:{generatorVersion:'district-mix-v3',lanesGoal:zone?'objective':entryGoal(far[0]),remix,streetObjects:report.streetObjects,partAssignments:report.assignments,theme:'Large districts',lighting:'overcast',streetDatum:datum,footprint:p,connectionParcels:connectors,cutLevels:[4,7,10,13,Infinity],defaultCut:datum+3,floorNames:datum===4?{4:'Drainage banks',7:'Street district',10:'Upper interiors',13:'High floors'}:{4:'Street interiors',7:'Upper / bridge interiors',10:'Third floors',13:'High roofs'},designDecisions:[`Playable ${p.shape} footprint: ${p.width} × ${p.depth}; cells outside it are removed.`,'Parcel mixes fill every block between the roads; leftover land becomes alleys, verges, paths and greens.','No scatter pass: every prop carries an origin and every vehicle stands in a slot chosen by the noise map.',theme==='mall'?'Adjacent retail parcels merge through a three-wide indoor passage.':theme==='drainage'?'Only the drainage theme excavates lower banks, with elemental water and service ladders.':'Rounded planted contours connect to stair promenades and neighboring retail.']}});
+ const result=m.finish({name:{park:'Civic District',mall:'Market Arcade',drainage:'Drainage Quarter'}[theme],spawns:{player:[{x:2,y:25,z:datum},{x:2,y:27,z:datum},{x:3,y:26,z:datum},{x:4,y:25,z:datum},{x:4,y:27,z:datum},{x:3,y:29,z:datum}],enemy},objective,meta:{generatorVersion:'district-mix-v3',lanesGoal:zone?'objective':entryGoal(far[0]),remix,streetObjects:report.streetObjects,partAssignments:report.assignments,theme:'Large districts',lighting:'overcast',streetDatum:datum,footprint:p,connectionParcels:connectors,cutLevels:[4,7,10,13,Infinity],defaultCut:datum+3,floorNames:datum===4?{4:'Drainage banks',7:'Street district',10:'Upper interiors',13:'High floors'}:{4:'Street interiors',7:'Upper / bridge interiors',10:'Third floors',13:'High roofs'},designDecisions:[`Playable ${p.shape} footprint: ${p.width} × ${p.depth}; cells outside it are removed.`,'Parcel mixes fill every block between the roads; leftover land becomes alleys, verges, paths and greens.','No scatter pass: every prop carries an origin and every vehicle stands in a slot chosen by the noise map.',theme==='mall'?'Adjacent retail parcels merge through a three-wide indoor passage.':theme==='drainage'?'Only the drainage theme excavates lower banks, with elemental water and service ladders.':'Street-level retail, yards and service paths fill the district.']}});
  const search=reachable(result.store,result.spawns.player[0],Infinity,AGENT_PROFILES.player);
  const failures=connectors.flatMap(c=>c.sockets.filter(s=>![0,1,-1].some(dz=>search.costs.has(nodeKey({...s,z:s.z+dz})))).map(s=>({connector:c.id,socket:s})));
  result.meta.connectorValidation={pass:failures.length===0,failures};

@@ -119,7 +119,7 @@ export class EventPlayer {
             }
             case 'explosion': fx.explosion(e, e.radius, e.element); await this.d(0.15); break;
             case 'smoke': fx.syncField(g.battle.field); break;
-            case 'voxels': g.voxelView.flush(); fx.debris(e.changes || []); break;
+            case 'voxels': g.voxelView.flush(); break;
             case 'collapse': g.voxelView.flush(); fx.float(new THREE.Vector3(e.fallen?.[0]?.x ?? 0, e.fallen?.[0]?.to ?? 1, e.fallen?.[0]?.y ?? 0), 'COLLAPSE', '#ffcc66', 22); g.scene.shake = 0.6; await this.d(0.25); break;
             case 'elements': g.voxelView.flush(); fx.syncField(g.battle.field); break;
             case 'door': { const v=this.view(e.unitId); if(e.kicked){v?.animator.play('vault',{restart:true});fx.float(v?.worldPosition()||new THREE.Vector3(),'KICK!','#ffd54f',22);g.scene.shake=.18;await this.d(.3);} g.voxelView.flush(); break; }

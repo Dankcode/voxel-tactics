@@ -30,4 +30,3 @@ export function packItems(items){
     }return slots;
 }
 export function takeFrom(slots,itemId,amount=1){let left=amount;for(let i=slots.length-1;i>=0&&left;i--){const s=slots[i];if(s.itemId===itemId){const n=Math.min(left,s.quantity||1);left-=n;if((s.quantity||1)===n)slots.splice(i,1);else s.quantity-=n;}else if(s.contents)left-=takeFrom(s.contents,itemId,left);}return amount-left;}
-export function consumeItem(unit,itemId){unit.items[itemId]--;let taken=takeFrom(unit.inventory||[],itemId,1);if(!taken)taken=takeFrom(unit.rigInventory||[],itemId,1);if(!taken)takeFrom(unit.pocketInventory||[],itemId,1);}

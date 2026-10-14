@@ -38,7 +38,7 @@ All three are part of the lockstep hash ([12](12-co-op-and-determinism.md)).
 
 | Element | To voxels in the area | To units hit | Voxel damage ×family |
 |---|---|---|---|
-| `pyro` | ice / deep ice **melt** (to `water` / `deep_water`); flammable voxels **ignite** (3 rounds) unless their surface is wet; surfaces become `burning` (2 rounds) | `burning`, unless `wet` | wood 1.5, plant 3, ice 3 |
+| `pyro` | ice / deep ice **melt** (to `water` / `deep_water`); flammable voxels **ignite** (3 rounds) unless their surface is wet or they are protected ground; surfaces become `burning` (2 rounds) | `burning`, unless `wet` | wood 1.5, plant 3, ice 3 |
 | `hydro` | fires **extinguished**; lava → stone floor; non-liquid surfaces become `wet` (3 rounds) | `wet` (removes `burning`) | everything 0 except earth 0.3, ice 0.5 |
 | `cryo` | water / deep water with air above **freeze** (to `ice` / `deep_ice`); otherwise fires extinguished and `wet` surfaces become `frozen` (3 rounds) | `frozen` if wet, else `chilled` | glass 1.5, ice 0 |
 | `anemo` | smoke in the area cleared; every burning voxel in the area ignites its 6 neighbours (if flammable and not wet) | none (the Concussion Grenade's knockback is separate) | plant 1.5, glass 1.5 |
@@ -60,7 +60,7 @@ All three are part of the lockstep hash ([12](12-co-op-and-determinism.md)).
 Once per round, after the enemy phase, using the battle RNG:
 
 1. **Fires** (in sorted key order): a fire on a voxel that is no longer flammable goes out. Otherwise the voxel
-   loses 1 HP; at 0 it becomes its `burnTo` material (ash) or is destroyed (debris rules,
+   loses 1 HP; at 0 it is removed cleanly, with no ash or debris (
    [05](05-destruction.md)); else its rounds tick down and it burns out at 0. Each fire then has a
    `B.fireSpreadChance` = **0.3** chance to try to ignite one random face neighbour (cap 220 fires).
 2. **Surfaces** lose a round; removed at 0.

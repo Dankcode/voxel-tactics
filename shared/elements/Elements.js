@@ -43,8 +43,9 @@ const parse = k => k.split(',').map(Number);
 const NEIGHBOURS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
 
 export class ElementField {
-    constructor(store) {
+    constructor(store, { canBurn = null } = {}) {
         this.store = store;
+        this.canBurn = canBurn;
         this.surfaces = new Map();  // surface voxel key → { effect, rounds }
         this.fires = new Map();     // burning voxel key → rounds left
         this.smoke = new Map();     // air voxel key → rounds left (blocks sight)
@@ -61,7 +62,7 @@ export class ElementField {
     }
     ignite(x, y, z, rounds = 3) {
         const m = materialById(this.store.get(x, y, z));
-        if (!m.flammable) return false;
+        if (!m.flammable || (this.canBurn && !this.canBurn(x, y, z))) return false;
         const k = key(x, y, z);
         if (this.surfaces.get(k)?.effect === 'wet') return false;
         this.fires.set(k, Math.max(rounds, this.fires.get(k) || 0));
@@ -143,7 +144,7 @@ export class ElementField {
             const hp = store.hpAt(x, y, z) - 1;
             if (hp <= 0) {
                 this.fires.delete(k);
-                if (m.burnTo) store.set(x, y, z, MAT[m.burnTo]); else destroyVoxel(store, x, y, z);
+                if (m.burnTo && m.burnTo !== 'ash') store.set(x, y, z, MAT[m.burnTo]); else destroyVoxel(store, x, y, z);
                 burnedOut.push([x, y, z, m.key]);
                 if (m.explosive) explosions.push({ x: x + 0.5, y: y + 0.5, h: z + 0.5, ...m.explosive, source: m.key });
                 changes.push({ t: 'burned', x, y, z });

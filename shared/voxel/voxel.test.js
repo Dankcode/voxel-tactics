@@ -62,13 +62,14 @@ test('voxels take damage, explosions chain through powder kegs, unsupported piec
     s.set(8, 8, 2, MAT.barrel_powder); s.set(10, 8, 2, MAT.barrel_powder);
     const { explosions } = explodeVoxels(s, { x: 8.5, y: 8.5, h: 2.5, radius: 1.5, power: 5 });
     assert.ok(explosions.length >= 2, 'keg chained');
-    // A floating slab: pillar removed → slab falls as rubble.
+    // A floating slab: pillar removed → slab disappears without rubble.
     s.set(15, 15, 2, MAT.stone); s.set(15, 15, 3, MAT.stone); for (let x = 15; x < 18; x++) s.set(x, 15, 4, MAT.plank);
     s.set(15, 15, 2, AIR); s.set(15, 15, 3, AIR);
     const { removed } = settleUnsupported(s);
     assert.equal(removed, 3);
     assert.equal(s.get(16, 15, 4), AIR);
-    assert.equal(s.get(16, 15, 2), MAT.rubble);
+    assert.equal(s.get(16, 15, 2), AIR);
+    assert.ok(!s.mat.includes(MAT.rubble), 'collapse creates no rubble');
 });
 
 test('cover readout: half behind a 1-high wall, full behind a 2-high wall, flanked from the side', () => {

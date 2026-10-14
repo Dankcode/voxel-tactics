@@ -1,7 +1,6 @@
-// Transient effects: tracers, muzzle flashes, explosions, voxel debris, fire and smoke on the element
+// Transient effects: tracers, muzzle flashes, explosions, fire and smoke on the element
 // field, and floating combat text (DOM).
 import * as THREE from 'three';
-import { MATERIALS } from '../../../shared/voxel/Materials.js';
 import { ELEMENT_COLORS } from '../../../shared/elements/Elements.js';
 
 const w2t = p => new THREE.Vector3(p.x, p.h, p.y);   // world {x,y,h} → three
@@ -11,7 +10,6 @@ export class Fx {
         this.scene = scene; this.floatRoot = floatRoot;
         this.items = [];
         this.group = new THREE.Group(); scene.scene.add(this.group);
-        this.debrisGeo = new THREE.BoxGeometry(0.22, 0.22, 0.22);
         this.fireGroup = new THREE.Group(); this.group.add(this.fireGroup);
         this.fireMat = new THREE.MeshBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0.75, depthWrite: false, clippingPlanes: scene.clipping });
         this.smokeMat = new THREE.MeshBasicMaterial({ color: 0x9aa0a6, transparent: true, opacity: 0.35, depthWrite: false, clippingPlanes: scene.clipping });
@@ -36,21 +34,6 @@ export class Fx {
         m.position.copy(w2t(at)); m.scale.setScalar(0.2); this.group.add(m);
         this.items.push({ obj: m, life: 0.45, max: 0.45, kind: 'fade', grow: radius });
         this.scene.shake = Math.max(this.scene.shake, 0.25 + radius * 0.08);
-    }
-    debris(changes) {
-        let n = 0;
-        for (const [x, y, z, before, after] of changes) {
-            if (after !== 0 || before === 0 || n > 140) continue;
-            const m = MATERIALS[before];
-            if (m.liquid) continue;
-            for (let k = 0; k < 2; k++, n++) {
-                const mesh = new THREE.Mesh(this.debrisGeo, new THREE.MeshBasicMaterial({ color: m.color }));
-                mesh.position.set(x + 0.5, z + 0.5, y + 0.5);
-                const v = new THREE.Vector3((Math.random() - 0.5) * 5, 3 + Math.random() * 4, (Math.random() - 0.5) * 5);
-                this.group.add(mesh);
-                this.items.push({ obj: mesh, life: 1.1, max: 1.1, kind: 'debris', v });
-            }
-        }
     }
     float(pos, text, color = '#fff', size = 18) {
         const el = document.createElement('div');
@@ -85,10 +68,9 @@ export class Fx {
         this.items = this.items.filter(it => {
             it.life -= dt;
             const k = Math.max(0, it.life / it.max);
-            if (it.kind === 'debris') { it.v.y -= 12 * dt; it.obj.position.addScaledVector(it.v, dt); it.obj.rotation.x += dt * 6; }
             if (it.grow) it.obj.scale.setScalar(Math.max(0.2, it.grow * (1 - k)));
             if (it.obj.material) { it.obj.material.transparent = true; it.obj.material.opacity = Math.min(1, k * 1.4); }
-            if (it.life <= 0) { this.group.remove(it.obj); it.obj.geometry !== this.debrisGeo && it.obj.geometry?.dispose(); it.obj.material?.dispose(); return false; }
+            if (it.life <= 0) { this.group.remove(it.obj); it.obj.geometry?.dispose(); it.obj.material?.dispose(); return false; }
             return true;
         });
         this.floats = this.floats.filter(f => {

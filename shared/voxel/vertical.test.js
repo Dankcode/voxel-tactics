@@ -11,7 +11,7 @@ test('ladder columns require one continuous backing side',()=>{
  m.store.set(5,5,3,0);assert.throws(()=>validateLadders(m.store),/attachment/);
 });
 test('hand-built maps preserve their datum and deterministic hashes with walk-through glass, reserved window landings and retired ornamental cover',()=>{
- const hashes={'cedar-close':'b0d2dabb','main-street':'6334ece8','harbor-yard':'e4cf22b4','route-9':'8288592f','proving-grounds':'007a460d'};
+ const hashes={'cedar-close':'b0d2dabb','main-street':'df99af70','harbor-yard':'d19c1c56','route-9':'e6749d4f','proving-grounds':'7d3f4d86'};
  for(const [id,hash] of Object.entries(hashes))assert.equal(MAPS.find(m=>m.id===id).build({seed:1}).store.hash(),hash);
 });
 import { reachable, nodeKey } from '../world/PathSearch.js';
@@ -36,11 +36,11 @@ test('generated street datum leaves three underground voxels and keeps compilati
 import { createBattle } from '../session/Scenarios.js';
 import { canJumpDown } from '../world/PathSearch.js';
 test('a floor charge consumes one item/AP and opens a 2×2 controlled drop',()=>{
- const b=createBattle({scenario:'signal-house',seed:1,debug:true}),u=b.units[0];u.items.breach_charge=1;u.ap=4;
+ const b=createBattle({scenario:'signal-house',seed:1,debug:true}),u=b.units[0];u.inventory=[{id:'charge',itemId:'breach_charge',x:0,y:0,rotated:false}];u.items.breach_charge=1;u.ap=4;
  const room=b.mission.rooms.find(r=>r.gameplay&&r.storey===1&&r.kind!=='hall'),[x,y]=room.cells.find(([x,y])=>b.store.surfaces(x,y).some(s=>s.z===4));
  // Isolate a clear slab and landing, retaining the rest of the real building.
  for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++){b.store.set(x+dx,y+dy,7,MAT.oak_floor);for(let z=5;z<=6;z++)b.store.set(x+dx,y+dy,z,0);}
  u.x=x-1;u.y=y;u.z=7;for(let z=8;z<=9;z++)b.store.set(u.x,u.y,z,0);b.store.set(u.x,u.y,7,MAT.oak_floor);
  const intent={type:'breach',unitId:u.id,unitIds:[u.id],door:{x,y,z:7},entry:'floor'};assert.equal(b.validate(intent),null);b.doBreach(intent);
- assert.equal(u.items.breach_charge,0);assert.equal(u.ap,3);assert.deepEqual(canJumpDown(b.store,u,1,0),{x,y,z:4});assert.ok(b.store.isSolid(b.mission.buildings[0].x0+8,b.mission.buildings[0].y0+2,10));
+ assert.equal(u.items.breach_charge,undefined);assert.equal(u.ap,3);assert.deepEqual(canJumpDown(b.store,u,1,0),{x,y,z:4});assert.ok(b.store.isSolid(b.mission.buildings[0].x0+8,b.mission.buildings[0].y0+2,10));
 });

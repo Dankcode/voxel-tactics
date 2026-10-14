@@ -51,4 +51,9 @@ The legacy Crossfire intent remains available to AI and rule fixtures; the playe
 
 ## Testing
 
-Launch from **Test ground admin** for all weapons, every grenade/gadget, all three ammo families, an optic, a precision barrel, a spare rig with ammo inside it, a pouch, and an alternate helmet. Standard missions retain their class loadouts. The shared rules and server tests cover ammunition conservation, nested storage, protection, weight, marks after destruction, formation reactions, and co-op replay.
+Enable **Full arsenal for testing** in Play for all weapons, every grenade/gadget, all three ammo families, an optic, a precision barrel, a spare rig with ammo inside it, a pouch, and an alternate helmet. Standard missions retain their class loadouts. The shared rules and server tests cover ammunition conservation, nested storage, protection, weight, marks after destruction, formation reactions, and co-op replay.
+
+
+Play uses one shared renderer and launch flow; there is no separate Test ground tab. The raised park and deck-market parcels are retired; the former Park District is now Civic District (its stable map ID remains `park-district` for saved links). Shop interiors mix gondolas, low produce displays, pegboards and drinks coolers; warehouses use open pallet racks.
+
+Drag cargo between backpacks, rigs, pockets and opened containers. Press **R** to rotate a selected or held item; green/red previews indicate valid/blocked placements. Click an item and destination cell as a keyboard/mouse alternative. Consumables are counted from actual stored items, including nested storage, and using an inventory tile consumes that exact tile. Ammo reloads remove the transferred quantity from real loose-ammo stacks.

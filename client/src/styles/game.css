@@ -400,3 +400,8 @@ button{background:rgba(15,15,18,.68);border-color:var(--line);border-radius:4px}
  .equipment-overlay .body-status{margin-bottom:12px}
  .equipment-overlay .equipment-workspace{padding-bottom:30px}
 }
+
+/* Inventory drag targets also work over existing item tiles. */
+.cargo-item,.pack-item,.pack-catalog [data-item]{touch-action:none;user-select:none}
+.cargo-placement{position:absolute;z-index:5;pointer-events:none;display:grid;place-items:center;font-size:10px;color:#fff;border:2px solid #a8d0c1;background:#86c9a840;box-shadow:0 0 15px #0006}
+.cargo-placement.invalid{border-color:#ef8787;background:#de515145}

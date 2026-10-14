@@ -13,8 +13,8 @@ import { buildPackagedMap } from '../mapgen/PackageBuilder.js';
 import { MAP_PACKAGES } from './generated/PackageCatalog.js';
 
 export const MAPS = Object.freeze([
-    {id:'park-district',name:'Park District',theme:'Large districts',text:'96 × 72 rectangle: raised rounded park, shop rows, lots and yards solved as parcel mixes.',build:buildParkDistrict},
-    {id:'mall-district',name:'Market Arcade',theme:'Large districts',text:'96 × 72 L footprint: merged shopping interiors, retail parcels with their lots, and a terraced park.',build:buildMallDistrict},
+    {id:'park-district',name:'Civic District',theme:'Large districts',text:'96 × 72 rectangle: street-level shop rows, lots and yards solved as parcel mixes.',build:buildParkDistrict},
+    {id:'mall-district',name:'Market Arcade',theme:'Large districts',text:'96 × 72 L footprint: merged shopping interiors, retail parcels with their lots and service paths.',build:buildMallDistrict},
     {id:'drainage-district',name:'Drainage Quarter',theme:'Large districts',text:'96 × 72 T footprint: turning water channels, dry banks, stair entrances and shortcut ladders.',build:buildDrainageDistrict},
     {id:'terrace-district',name:'Hillside Terraces',theme:'Large districts',text:'Three generated levels: sunken yards, a street terrace and high ground, joined by road ramps, stairs, split-level buildings and ladders.',build:buildTerraceHeights},
     {id:'sunken-junction',name:'Sunken Junction',theme:'Split-level districts',text:'Linked sunken boulevards with a T-junction, covered crossings, rounded retail and square industrial parcels.',build:buildSunkenJunction},

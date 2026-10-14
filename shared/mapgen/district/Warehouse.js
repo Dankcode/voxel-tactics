@@ -125,6 +125,11 @@ export function layoutWarehouse(m, b, { variant = null, seed = 1, origin = null 
         for (const c of far.slice(0, 4)) for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) if (!ok && tryPut(c.x + dx, c.y + dy, 'pallet', 1, 'bulk-stack')) ok = true;
         if (!ok) break;
     }
+    // Racking uses open steel beams; workshop benches use a table/pegboard silhouette.
+    for(const p of placed)if(p.key==='shelving')for(let h=0;h<p.h;h++){
+        const piece=p.part==='workbench'?'workbench':h===0?'warehouse_rack_lower':'warehouse_rack_upper';
+        m.hints[k3(p.x,p.y,z+1+h)]={piece,yaw:longX?Math.PI/2:0};
+    }
     const report = warehouseReport(m, b, hall, { variant, cells, box, z, landing });
     m.district?.warehouses.push(report);
     return report;

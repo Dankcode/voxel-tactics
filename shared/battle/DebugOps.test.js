@@ -62,3 +62,11 @@ test('debug: element and endSide', () => {
     b.apply({ type: 'debug', op: 'endSide' });
     assert.equal(b.activeSide, 'enemy');
 });
+
+test('explicit refill restores physical consumables while preserving nested equipment and ammo',()=>{
+ const b=make(),u=b.unit('p0');u.inventory=[{id:'spare',itemId:'rig_scout',x:0,y:0,rotated:false,contents:[{id:'nested-ammo',itemId:'ammo_ar',quantity:17,x:0,y:0,rotated:false}]}];u.items={};
+ const rig=structuredClone(u.rigInventory);
+ assert.ok(b.apply({type:'debug',op:'refill',unitId:u.id}).ok);
+ assert.deepEqual(u.inventory.find(s=>s.id==='spare').contents,[{id:'nested-ammo',itemId:'ammo_ar',quantity:17,x:0,y:0,rotated:false}]);
+ assert.deepEqual(u.rigInventory,rig);assert.equal(u.items.fire_flask,2);assert.equal(u.items.smoke_pot,2);
+});

@@ -135,6 +135,10 @@ const ITEMS = {
     washer: { mat: 'appliance', len: 1, dep: 1, h: 1, place: 'wall', piece: () => 'washer' },
     aisle: { mat: 'shelving', len: 3, dep: 1, h: 2, place: 'center', piece: (i, j, n, h) => (h === 0 ? 'store_shelf_lower' : 'store_shelf_upper') },
     wall_shelf: { mat: 'shelving', len: 3, dep: 1, h: 2, place: 'wall', piece: (i, j, n, h) => (h === 0 ? 'store_shelf_lower' : 'store_shelf_upper') },
+    produce: {mat:'shelving',len:2,dep:1,h:1,place:'center',piece:()=> 'produce_display'},
+    hardware_shelf: {mat:'shelving',len:2,dep:1,h:2,place:'wall',piece:(i,j,n,h)=>h===0?'pegboard_lower':'pegboard_upper'},
+    warehouse_rack: {mat:'shelving',len:3,dep:1,h:2,place:'center',piece:(i,j,n,h)=>h===0?'warehouse_rack_lower':'warehouse_rack_upper'},
+    stock_rack: {mat:'shelving',len:2,dep:1,h:2,place:'wall',piece:(i,j,n,h)=>h===0?'warehouse_rack_lower':'warehouse_rack_upper'},
     checkout: { mat: 'cabinet', len: 2, dep: 1, h: 1, place: 'center', piece: () => 'checkout', decor: (f, add) => add('register', f.top(0)) },
     cooler: { mat: 'appliance', len: 2, dep: 1, h: 2, place: 'wall', piece: (i, j, n, h) => (h === 0 ? 'cooler_lower' : 'cooler_upper') },
     booth: { mat: 'sofa', len: 1, dep: 1, h: 1, place: 'wall', piece: () => 'booth', decor: (f, add) => add('cafe_table', f.front(1)) },
@@ -152,8 +156,8 @@ const ITEMS = {
 export const ROOM_FURNITURE = {
     living: ['sofa', 'tv', 'loveseat'], kitchen: ['kitchen', 'fridge', 'island'], bedroom: ['bed', 'wardrobe'], study: ['desk', 'bookcase'],
     bathroom: ['vanity'], restroom: ['vanity'], bath: ['vanity'], utility: ['washer', 'wall_shelf'],
-    sales: ['aisle', 'aisle', 'checkout', 'cooler', 'aisle'], storeroom: ['wall_shelf', 'pallets', 'crates', 'water_drum'], office: ['desk', 'filing', 'loveseat'],
-    dining: ['booth', 'booth', 'booth', 'counter', 'booth'], galley: ['kitchen', 'fridge', 'island'], warehouse: ['aisle', 'aisle', 'pallet_stack', 'pallet_stack', 'drums', 'crates', 'pallets'],
+    sales: ['aisle', 'produce', 'checkout', 'cooler', 'hardware_shelf'], storeroom: ['stock_rack', 'pallets', 'crates', 'water_drum'], office: ['desk', 'filing', 'loveseat'],
+    dining: ['booth', 'booth', 'booth', 'counter', 'booth'], galley: ['kitchen', 'fridge', 'island'], warehouse: ['warehouse_rack', 'warehouse_rack', 'pallet_stack', 'pallet_stack', 'drums', 'crates', 'pallets'],
     loading: ['pallets', 'pallet_stack', 'crates'], workshop: ['workbench', 'drums', 'wall_shelf', 'pallet_stack'], lobby: ['reception', 'loveseat'],
     open_office: ['desk_pair', 'desk_pair', 'desk_pair', 'filing'], meeting: ['conference', 'tv'], hall: ['filing'], unit: ['bed', 'tv', 'desk'],
     barracks: ['bunks', 'bunks', 'lockers', 'bunks'], armory: ['lockers', 'crates', 'drums', 'wall_shelf']

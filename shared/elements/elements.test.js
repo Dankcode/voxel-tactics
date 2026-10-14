@@ -27,7 +27,7 @@ test('fire ignites timber, burns it down over rounds and water puts it out', () 
     let burned = 0;
     for (let r = 0; r < 6; r++) burned += f.tick(rng, { spreadChance: 1 }).burnedOut.length;
     assert.ok(burned >= 1, 'timber burned out');
-    assert.ok(s.get(5, 4, 2) === MAT.ash || s.get(5, 4, 2) === 0);
+    assert.equal(s.get(5, 4, 2), MAT.air, 'burned structures leave no ash or debris');
     f.ignite(7, 4, 2);
     f.applyArea('hydro', 7.5, 4.5, 2.5, 1);
     assert.ok(!f.isBurning(7, 4, 2));

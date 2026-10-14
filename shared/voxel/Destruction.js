@@ -17,7 +17,7 @@ export function voxelDamageMultiplier(material, element) {
 }
 
 /**
- * Damage one voxel. Destroyed voxels become debris or air, explosive ones queue an explosion.
+ * Damage one voxel. Destroyed voxels become air; explosive ones queue an explosion.
  * @returns {{ destroyed: boolean, material, explosion?: {x,y,h,...} }}
  */
 export function damageVoxel(store, x, y, z, amount, { element = null } = {}) {
@@ -34,12 +34,35 @@ export function damageVoxel(store, x, y, z, amount, { element = null } = {}) {
     return result;
 }
 
-/** Remove a voxel, leaving rubble where a structural voxel rested on solid ground (alternating, so walls leave low cover). */
+/** Remove a voxel cleanly; destruction never creates replacement debris. */
 export function destroyVoxel(store, x, y, z) {
-    const m = materialById(store.get(x, y, z));
-    const below = materialById(store.get(x, y, z - 1));
-    const leavesRubble = m.debris && below.solid && !below.liquid && ((x * 7 + y * 13 + z) % 3 !== 0);
-    store.set(x, y, z, leavesRubble ? MAT[m.debris] : AIR);
+    store.set(x, y, z, AIR);
+}
+
+/** Capture the initial ground/foundation boundary, excluding furniture, walls and upper storeys. */
+export function groundFloorLevels(mission) {
+    const { store } = mission, { width: W, depth: D, height: H } = store;
+    const levels = new Int16Array(W * D).fill(-1);
+    for (let y = 0; y < D; y++) for (let x = 0; x < W; x++) {
+        for (let z = 0; z < H; z++) {
+            const m = store.material(x, y, z);
+            if (!m.solid || !m.walkable || !m.structural || m.part) break;
+            levels[x + y * W] = z;
+        }
+    }
+    // Authored building bases also cover slabs above basements or raised loading decks.
+    // A shop above another building is an upper storey, not a second protected ground floor.
+    const bases = new Int16Array(W * D).fill(-1);
+    for (const b of mission.buildings || []) {
+        if (!Number.isInteger(b.baseZ)) continue;
+        for (let y = Math.max(0, b.y0); y < Math.min(D, b.y0 + b.d); y++)
+            for (let x = Math.max(0, b.x0); x < Math.min(W, b.x0 + b.w); x++) {
+                const i = x + y * W;
+                bases[i] = bases[i] < 0 ? b.baseZ : Math.min(bases[i], b.baseZ);
+            }
+    }
+    for (let i = 0; i < levels.length; i++) if (bases[i] >= 0) levels[i] = bases[i];
+    return levels;
 }
 
 /**
@@ -47,7 +70,7 @@ export function destroyVoxel(store, x, y, z) {
  * Powder kegs caught in the blast chain into further explosions (breadth-first, capped).
  * @returns {{ destroyed: [x,y,z,matKey][], explosions: object[] }}
  */
-export function explodeVoxels(store, blast, { maxChain = 8, maxVoxels = 900 } = {}) {
+export function explodeVoxels(store, blast, { maxChain = 8, maxVoxels = 900, canDamage = null } = {}) {
     const queue = [blast], explosions = [], destroyed = [];
     let chain = 0;
     while (queue.length && chain <= maxChain) {
@@ -64,6 +87,7 @@ export function explodeVoxels(store, blast, { maxChain = 8, maxVoxels = 900 } = 
         cells.sort((a, c) => a[3] - c[3] || a[2] - c[2] || a[1] - c[1] || a[0] - c[0]);
         for (const [x, y, z, d] of cells) {
             if (destroyed.length >= maxVoxels) break;
+            if (canDamage && !canDamage(x, y, z)) continue;
             const falloff = 1 - d / (r + 0.5);
             const before = materialById(store.get(x, y, z));
             const res = damageVoxel(store, x, y, z, b.power * falloff, { element: b.element });
@@ -78,10 +102,10 @@ export function explodeVoxels(store, blast, { maxChain = 8, maxVoxels = 900 } = 
 
 /**
  * Structural support: every non-liquid, non-air voxel must connect (6-neighbour) to the bedrock layer.
- * Unsupported pieces fall straight down and settle as rubble (structural) or vanish (glass, leaves, doors).
+ * Unsupported pieces are removed without depositing rubble. Fall locations remain in collapse events.
  * @returns {{ fallen: {x,y,from,to,material}[], removed: number }}
  */
-export function settleUnsupported(store, { maxRubble = 600 } = {}) {
+export function settleUnsupported(store) {
     let standRemoved=0;
     // Steel stands (fire escapes, bridges): a group falls once every post is gone, every post column is broken
     // somewhere along its height (PLAN-04 §5.2 posts) and no wall anchor holds it. Groups with no support listed never fall here.
@@ -132,7 +156,7 @@ export function settleUnsupported(store, { maxRubble = 600 } = {}) {
     const loose = [];
     for (let i = 0; i < store.mat.length; i++) if (!seen[i] && attached(store.mat[i])) loose.push(i);
     if (!loose.length) return { fallen: [], removed: standRemoved };
-    // Remove every loose voxel, then drop a rubble pile per column onto the ground below.
+    // Remove every loose voxel and retain column fall metadata for collapse feedback.
     const columns = new Map();
     for (const i of loose) {
         const z = Math.floor(i / WD), rem = i - z * WD, y = Math.floor(rem / W), x = rem - y * W;
@@ -140,19 +164,13 @@ export function settleUnsupported(store, { maxRubble = 600 } = {}) {
         store.set(x, y, z, AIR);
         if (m.structural && m.family !== 'glass') {
             const key = x + y * W;
-            const c = columns.get(key) || { x, y, count: 0, top: 0, material: m.key };
-            c.count++; c.top = Math.max(c.top, z); columns.set(key, c);
+            const c = columns.get(key) || { x, y, top: 0, material: m.key };
+            c.top = Math.max(c.top, z); columns.set(key, c);
         }
     }
     const fallen = [];
-    let rubble = 0;
     for (const c of [...columns.values()].sort((a, b) => a.y - b.y || a.x - b.x)) {
         let floor = c.top; while (floor >= 0 && !store.isSolid(c.x, c.y, floor)) floor--;
-        const pile = Math.min(2, Math.ceil(c.count / 3));
-        for (let k = 1; k <= pile && rubble < maxRubble; k++) {
-            if (floor + k >= store.height || store.isSolid(c.x, c.y, floor + k)) break;
-            store.set(c.x, c.y, floor + k, MAT.rubble); rubble++;
-        }
         fallen.push({ x: c.x, y: c.y, from: c.top, to: floor + 1, material: c.material });
     }
     return { fallen, removed: loose.length+standRemoved };

@@ -1,5 +1,6 @@
 import { WALKERS, walkerFits } from './Walker.js';
-import { packItems, inventoryCounts } from '../inventory/Inventory.js';
+import { findSpace } from '../inventory/Inventory.js';
+import { STORAGE_ROOTS, storageOf, allCargo, itemCount, syncItems } from '../inventory/Equipment.js';
 // Debug intents: `{ type: 'debug', op, ... }`. They go through Battle.apply like every other intent, so the
 // event player animates them and lockstep peers stay in sync, but Battle only accepts them when it was
 // created with `debug: true` (local sessions with ?debug=1, or an online room created in debug mode).
@@ -71,7 +72,16 @@ export function applyDebug(b, i) {
         case 'status': b.giveStatus(u, i.status, i.rounds ?? 2); break;
         case 'refill':
             for (const w of u.weapons) if (WEAPONS[w]?.ammo) u.ammo[w] = WEAPONS[w].ammo;
-            for (const k of Object.keys(u.items)) while((u.items[k]||0)<2){const counts={...u.items,[k]:(u.items[k]||0)+1};try{const slots=packItems(counts);u.inventory=slots;u.items=inventoryCounts(slots);}catch{break;}}
+            // Refill actual containers without repacking or discarding equipment and nested storage.
+            for(const [itemId,count] of Object.entries({...((CLASSES[u.type]||ENEMIES[u.type])?.items||{}),...u.items})){
+                while(itemCount(u,itemId)<Math.max(2,count)){
+                    const ids=new Set(allCargo(u).map(s=>s.id));let serial=0;while(ids.has(`refill-${itemId}-${serial}`))serial++;
+                    let added=false;
+                    for(const root of STORAGE_ROOTS){const c=storageOf(u,root),slot=c&&findSpace(c.slots,{id:`refill-${itemId}-${serial}`,itemId},c.capacity);if(slot){c.slots.push(slot);added=true;break;}}
+                    if(!added)break;
+                }
+            }
+            syncItems(u);
             u.will = u.maxWill; note({}); break;
         case 'teleport': {
             const from = { x: u.x, y: u.y, z: u.z };

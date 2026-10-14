@@ -380,21 +380,6 @@ export const MIXES = Object.freeze({
             block(m, R(ctx, 3, F.V - 4, 2, 1), 'appliance', 1, `${ctx.origin}/control-cabinet`, { landUse: 'utility' });
         }
     },
-    playground: {
-        name: 'Pocket park and playground', U: [12, 26], V: [12, 24], frontage: false, buildings: 0,
-        weights: { suburban: 2, mixed: 1.4, retail: 0.6, industrial: 0.2 }, fill: ['green', 'lawn'],
-        dress(ctx) {
-            const { F, m } = ctx;
-            paint(m, ctx.R, 'lawn', 'green', { z: ctx.z });
-            paint(m, R(ctx, Math.floor(F.U / 2) - 1, 0, 2, F.V), 'gravel', 'path', { z: ctx.z });
-            paint(m, R(ctx, 0, Math.floor(F.V / 2) - 1, F.U, 2), 'gravel', 'path', { z: ctx.z });
-            fenceRect(m, ctx.R, 'rail', `${ctx.origin}/park-rail`, { gates: { n: [0.5], s: [0.5], e: [0.5], w: [0.5] } });
-            const pr = R(ctx, 2, 2, 5, 5); paint(m, pr, 'deck', 'green', { z: ctx.z });
-            playFrame(m, pr.x0 + 1, pr.y0 + 1, `${ctx.origin}/play-frame`);
-            if (F.U >= 18) { const pr2 = R(ctx, F.U - 7, F.V - 7, 5, 5); paint(m, pr2, 'deck', 'green', { z: ctx.z }); playFrame(m, pr2.x0 + 1, pr2.y0 + 1, `${ctx.origin}/play-frame`); }
-            for (const [u, v] of [[F.U - 3, 2], [2, F.V - 3], [Math.floor(F.U / 2) + 3, Math.floor(F.V / 2) + 3]]) plantTree(m, ...F.at(u, v), `${ctx.origin}/tree`);
-        }
-    },
     construction: {
         name: 'Construction site', U: [14, 40], V: [14, 34], frontage: false, buildings: 0,
         weights: { mixed: 1, industrial: 1.5, retail: 0.7, suburban: 0.5 }, fill: ['construction', 'gravel'],
@@ -447,53 +432,8 @@ export const MIXES = Object.freeze({
             run(m, [F.at(2, F.V - 3), F.at(3, F.V - 3)], 'barrel_water', 1, `${ctx.origin}/water-butts`);
             plantTree(m, ...F.at(1, 1), `${ctx.origin}/tree`);
         }
-    },
-    'raised-market': {
-        name: 'Covered market under a supported deck shop', U: [22, 28], V: [16, 22], frontage: true, landmark: true, buildings: 1, requires: 'elevated',
-        weights: { retail: 1.5, mixed: 1.5, industrial: 0.8, suburban: 0.5 }, fill: ['plaza', 'paving'],
-        plan(ctx) {
-            const { F, m } = ctx, z = ctx.z, dz = z + 3, deck = R(ctx, 2, 2, F.U - 4, F.V - 4);
-            // Grate deck on posts; the plaza below keeps two cells of headroom for the market stalls.
-            for (let y = deck.y0; y < deck.y0 + deck.d; y++) for (let x = deck.x0; x < deck.x0 + deck.w; x++) put(m, x, y, dz, 'grate', `${ctx.origin}/deck`);
-            const posts = [];
-            for (let y = deck.y0; y < deck.y0 + deck.d; y += Math.max(3, deck.d - 1)) for (let x = deck.x0; x < deck.x0 + deck.w; x += 6) posts.push([x, y]);
-            for (const y of [deck.y0, deck.y0 + deck.d - 1]) posts.push([deck.x0 + deck.w - 1, y]);
-            for (const [x, y] of posts) for (let h = z + 1; h < dz; h++) put(m, x, y, h, 'steel_post', `${ctx.origin}/post`);
-            const b = building(ctx, { u0: 5, v0: 4, uw: Math.min(12, F.U - 10), vd: Math.min(8, F.V - 8) }, { program: ctx.family === 'industrial' ? 'garage' : 'shop', storeys: 1, part: 'deck-shop', baseZ: dz, foundation: false, rounded: false });
-            // Stair to the deck on the left: two wide, three steps.
-            const steps = [];
-            for (let i = 0; i < 3; i++) for (let w = 0; w < 2; w++) {
-                const [x, y] = F.at(w, 4 + i), h = z + 1 + i;
-                for (let zz = z + 1; zz <= dz + 2; zz++) if (zz > h) m.store.set(x, y, zz, 0);
-                for (let zz = z + 1; zz <= h; zz++) put(m, x, y, zz, zz === h ? 'stairs_stone' : 'concrete', `${ctx.origin}/stair`);
-                m.reserve(x - 1, y - 1, x + 1, y + 1); tag(m, x, y, 'level');
-                if (w === 0) steps.push({ x, y, z: h });
-            }
-            // The shop stands on the deck: the ground beneath its footprint is market floor, not a building.
-            if (b) tagRect(m, { x0: b.x0, y0: b.y0, w: b.w, d: b.d }, 'plaza', { force: true });
-            const [lx, ly] = F.at(2, 6);
-            for (let zz = dz + 1; zz <= dz + 2; zz++) m.store.set(lx, ly, zz, 0);
-            const foot = F.at(0, 3);
-            ctx.connector({ id: `${ctx.origin}-access`, template: 'supported-bridge-building', sockets: [{ x: foot[0], y: foot[1], z }, { x: lx, y: ly, z: dz }], cells: [{ x: foot[0], y: foot[1], z }, ...steps, { x: lx, y: ly, z: dz }] });
-            return { b, deck, dz, landing: [lx, ly] };
-        },
-        dress(ctx, st) {
-            const { F, m } = ctx;
-            paint(m, ctx.R, 'paving', 'plaza', { z: ctx.z });
-            // Railings on the deck edge, except at the stair landing.
-            const d = st.deck;
-            for (let x = d.x0; x < d.x0 + d.w; x++) for (const y of [d.y0, d.y0 + d.d - 1]) if (!m.store.isSolid(x, y, st.dz + 1) && !(x === st.landing[0] && y === st.landing[1])) put(m, x, y, st.dz + 1, 'railing', `${ctx.origin}/deck-rail`);
-            for (let y = d.y0; y < d.y0 + d.d; y++) for (const x of [d.x0, d.x0 + d.w - 1]) if (!m.store.isSolid(x, y, st.dz + 1) && Math.abs(x - st.landing[0]) + Math.abs(y - st.landing[1]) > 1) put(m, x, y, st.dz + 1, 'railing', `${ctx.origin}/deck-rail`);
-            // The market below: stall counters in two rows with an aisle between.
-            // Stalls stand under the deck, so test the cells by height rather than by the top surface.
-            for (let v = 4; v < F.V - 4; v += 3) for (let u = 3; u + 2 < F.U - 3; u += 4) for (const du of [0, 1]) {
-                const [x, y] = F.at(u + du, v), z = ctx.z;
-                if (m.keep.has(`${x},${y}`) || m.store.isSolid(x, y, z + 1) || m.store.isSolid(x, y, z + 2) || !m.store.isSolid(x, y, z)) continue;
-                put(m, x, y, z + 1, 'stall', `${ctx.origin}/market-stall`);
-            }
-            frontage(ctx, 'bollard', []);
-        }
     }
+
 });
 export const MIX_IDS = Object.freeze(Object.keys(MIXES));
 export const mixWeight = (id, family) => W(MIXES[id].weights, family);
@@ -501,6 +441,7 @@ export const mixWeight = (id, family) => W(MIXES[id].weights, family);
 /** Does a mix fit a parcel of local size U × V (and, if it needs one, a road frontage)? */
 export function mixFits(id, { U, V, frontage }, { elevated = true } = {}) {
     const x = MIXES[id];
+    if (!x) return false;
     if (x.requires === 'elevated' && !elevated) return false;
     if (x.frontage && !frontage) return false;
     return U >= x.U[0] && U <= x.U[1] && V >= x.V[0] && V <= x.V[1];

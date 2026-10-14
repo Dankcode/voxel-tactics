@@ -29,7 +29,7 @@ export const BEAT_ITEMS = Object.freeze({
     squat: { mat: 'bed', len: 1, dep: 2, h: 1, place: 'wall', piece: (i, j) => (j === 0 ? 'bed_head_single' : 'bed_foot_single') }
 });
 const ITEMS = { ...FURNITURE_ITEMS, ...BEAT_ITEMS };
-const COVER_ITEMS = new Set(['sofa', 'loveseat', 'kitchen', 'island', 'desk', 'desk_pair', 'conference', 'counter', 'reception', 'checkout', 'aisle', 'wall_shelf', 'crates', 'pallet_stack', 'pallets', 'workbench', 'booth', 'bookcase', 'filing', 'wardrobe', 'lockers', 'cctv_bank', 'cash_table', 'arms_cache']);
+const COVER_ITEMS = new Set(['sofa', 'loveseat', 'kitchen', 'island', 'desk', 'desk_pair', 'conference', 'counter', 'reception', 'checkout', 'aisle', 'produce', 'hardware_shelf', 'warehouse_rack', 'stock_rack', 'wall_shelf', 'crates', 'pallet_stack', 'pallets', 'workbench', 'booth', 'bookcase', 'filing', 'wardrobe', 'lockers', 'cctv_bank', 'cash_table', 'arms_cache']);
 const BEAT_FOR = { climax: { office: 'cctv_bank', warehouse: 'cctv_bank', garage: 'cctv_bank', house: 'cash_table', apartment: 'cash_table', shop: 'cash_table', diner: 'cash_table' }, escalation: 'arms_cache' };
 
 /** Wall runs and centre chunks of a room (cells already free of doors, stairs and the core). */
