@@ -9,10 +9,12 @@ Data: `shared/content/units.js` (classes, Syndicate types, abilities, squads), `
 <!-- generated:units -->
 | id | name | side | HP | part HP head/torso/arm/legs | accuracy | tiles per AP (base + armour) | Will | armour | weapons (first = default) | items | abilities |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `vanguard` | Assault | squad | 30 | 12/30/12/17 | 0.9 | 3.2 (3.4 -0.2) | 6 | `medium` | Combat Shotgun, Sidearm, Combat Knife | Incendiary Grenade ×1, Smoke Grenade ×1 | Sprint, Rally |
-| `grenadier` | Grenadier | squad | 30 | 12/30/12/17 | 0.85 | 2.5 (2.9 -0.4) | 6 | `heavy` | Assault Rifle | Frag Grenade ×2, Concussion Grenade ×1 | Demolition, Suppressive Fire |
-| `marksman` | Sharpshooter | squad | 30 | 12/30/12/17 | 1 | 3.1 (3.1) | 7 | `light` | Sniper Rifle, Sidearm | Smoke Grenade ×1, Cryo Canister ×1 | Snap Shot, Deadeye |
-| `warden` | Breacher | squad | 30 | 12/30/12/17 | 0.88 | 2.5 (2.9 -0.4) | 7 | `plate` | Suppressed Carbine, Combat Knife | Breaching Charge ×2, Extinguisher Grenade ×1 | Shield Wall, Rally |
+| `vanguard` | Assault | squad | 30 | 12/30/12/17 | 0.9 | 3.2 (3.4 -0.2) | 6 | `medium` | Combat Shotgun, Sidearm, Combat Knife | Incendiary Grenade ×1, Smoke Grenade ×1 | Seismic Sense, Earth Cover, Sprint |
+| `grenadier` | Grenadier | squad | 30 | 12/30/12/17 | 0.85 | 2.5 (2.9 -0.4) | 6 | `heavy` | Assault Rifle | Frag Grenade ×2, Concussion Grenade ×1 | Water Sense, Water Mend, Demolition, Suppressive Fire |
+| `marksman` | Sharpshooter | squad | 30 | 12/30/12/17 | 1 | 3.1 (3.1) | 7 | `light` | Sniper Rifle, Sidearm | Smoke Grenade ×1, Cryo Canister ×1 | Scout Drone, Snap Shot, Deadeye |
+| `warden` | Breacher | squad | 30 | 12/30/12/17 | 0.88 | 2.5 (2.9 -0.4) | 7 | `plate` | Suppressed Carbine, Combat Knife | Breaching Charge ×2, Extinguisher Grenade ×1 | Quiet Cut, Shield Wall, Rally |
+| `wall_strider` | Wall Strider | Syndicate | 60 | 24/60/24/33 | 0.7 | 2.4 (2.6 -0.2) | 6 | `medium` | AK Rifle, Combat Knife | — | — |
+| `siege_weaver` | Siege Weaver | Syndicate | 90 | 36/90/36/50 | 0.65 | 1.4 (1.8 -0.4) | 8 | `heavy` | Assault Rifle | — | — |
 | `cultist` | Gunman | Syndicate | 30 | 12/30/12/17 | 0.55 | 3 (3) | 4 | `light` | AK Rifle, Combat Knife | Incendiary Grenade ×1 | — |
 | `archer` | Lookout | Syndicate | 30 | 12/30/12/17 | 0.64 | 3.2 (3.2) | 4 | `hide` | Marksman Rifle | — | — |
 | `pyromancer` | Arsonist | Syndicate | 30 | 12/30/12/17 | 0.68 | 2.8 (2.8) | 6 | `light` | Flamethrower | Incendiary Grenade ×2 | — |
@@ -57,8 +59,17 @@ Data: `shared/content/units.js` (classes, Syndicate types, abilities, squads), `
 <!-- generated:abilities -->
 | id | name | Will | AP | text (from data) | who has it |
 |---|---|---|---|---|---|
+| `killstreak_strike` | Commander Strike | 0 | 0 | One charge per three squad kills. A destructive blast at the marked location; allies are vulnerable too. |  |
+| `seismic_sense` | Seismic Sense | 1 | 1 | Share grounded enemy contacts within 14 tiles and two levels, through walls. Contacts are snapshots. | Assault |
+| `water_sense` | Water Sense | 1 | 1 | Share contacts within 14 tiles near water, through walls. Contacts are snapshots. | Grenadier |
+| `scout_drone` | Scout Drone | 1 | 1 | Scout from a tile within 18. Drone sees 10 tiles through clear sight. Enemies detect within 2; Drone Hunters within 8. Recast to reposition. | Sharpshooter |
+| `quiet_cut` | Quiet Cut | 1 | 1 | Remove two wall voxels within 3 without noise. Enemy sight can still expose you. | Breacher |
+| `carpet_bomb` | Carpet Bomb | 0 | 1 | After detection: three circular craters, radius 3. Damages allies too. Recharges after 10 of your turns. |  |
+| `orbital_laser` | Orbital Laser | 0 | 1 | After detection: cut an east-west line, 17 tiles long and 3 wide. Damages allies too. Recharges after 10 of your turns. |  |
+| `earth_cover` | Earth Cover | 2 | 1 | Raise destructible half cover on an empty visible tile within 6. Persists until destroyed. | Assault |
+| `water_mend` | Water Mend | 2 | 1 | Restore 8 HP to a visible living ally within 6 and extinguish burning. Disabled limbs stay disabled. | Grenadier |
 | `dash` | Sprint | 2 | 0 | +1 AP that can only be spent moving. | Assault |
-| `rally` | Rally | 2 | 1 | Allies within 6 lose 25 stress and gain 1 WP. | Assault, Breacher |
+| `rally` | Rally | 2 | 1 | Allies within 6 lose 25 stress and gain 1 WP. | Breacher |
 | `demolish` | Demolition | 1 | 0 | Next shot or blast deals double damage to walls and cover. | Grenadier |
 | `suppress` | Suppressive Fire | 2 | 2 | Burst at a visible target; it is Suppressed (accuracy ×0.6) for two own turns. | Grenadier |
 | `quick_aim` | Snap Shot | 2 | 0 | Next shot costs 1 AP less. | Sharpshooter |

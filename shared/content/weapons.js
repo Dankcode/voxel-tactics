@@ -9,6 +9,16 @@
 // Gun damage, pierce and wall damage come from the round (`caliber`, shared/content/calibers.js); every character
 // has 30 HP.
 import { withCaliber } from './calibers.js';
+const CONFIG={
+ repeater:{ammoType:'ar',ammo:30,projectiles:1,perShot:1,spread:.42,fireModes:['single','burst','auto'],defaultMode:'burst',weight:3.4},
+ blunderbuss:{ammoType:'shotgun',ammo:8,pellets:8,projectiles:8,perShot:1,shellDamage:30,spread:2.4,weight:3.8},
+ longrifle:{ammoType:'high',ammo:1,perShot:1,spread:.12,boltAction:true,scoped:true,weight:5.2},
+ handcannon:{ammoType:'ar',spread:.55,weight:.9},
+ crossbow:{ammoType:'ar',ammo:30,spread:.3,fireModes:['single','burst','auto'],defaultMode:'burst',weight:2.8},
+ shortbow:{ammoType:'ar',ammo:20,spread:.24,scoped:true,weight:3.6},
+ musket:{ammoType:'ar',ammo:30,spread:.5,fireModes:['single','burst','auto'],defaultMode:'burst',weight:3.7},
+ firelance:{ammoType:'shotgun',ammo:10,pellets:5,shellDamage:30,spread:3.5,weight:7}
+};
 
 export const WEAPONS = Object.freeze(Object.fromEntries(Object.entries({
     repeater: { name: 'Assault Rifle', kind: 'ballistic', caliber: '5.56', ap: 2, projectiles: 3, shred: 0,
@@ -30,7 +40,7 @@ export const WEAPONS = Object.freeze(Object.fromEntries(Object.entries({
         spread: 4.2, range: 8, maxRange: 12, ammo: 3, perShot: 1, reloadAp: 1, voxel: 1, noise: 10, element: 'pyro', cutIn: 'heavy' },
     sword: { name: 'Combat Knife', kind: 'melee', ap: 1, damage: 10, pierce: 2, shred: 0, reach: 1.5, voxel: 1, noise: 4, cutIn: 'melee' },
     maul: { name: 'Sledgehammer', kind: 'melee', ap: 2, damage: 16, pierce: 3, shred: 1, reach: 1.5, voxel: 4, knockback: 2, noise: 8, cutIn: 'melee' }
-}).map(([id, w]) => [id, Object.freeze(withCaliber({ id, ...w }))])));
+}).map(([id, w]) => [id, Object.freeze({...withCaliber({ id, ...w }),critRange:5,...CONFIG[id],...(CONFIG[id]?.ammoType?{farDamage:CONFIG[id].ammoType==='high'?10:5}: {})})])));
 
 export const THROWABLES = Object.freeze({
     medkit: {id:'medkit',name:'Medical Kit',kind:'gadget',ap:1,range:1.5,heal:8},

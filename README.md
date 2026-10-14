@@ -57,11 +57,14 @@ teammates use *Join*. Soldiers are dealt round-robin; the squad's turn ends when
    faces (half / full cover; a red **!** shield when a visible enemy would flank you there).
 3. **Click** to move. The action bar stays up while the soldier has AP.
 4. **Act**: pick a weapon (`1`–`9` or click). Targeting mode frames the shot, lists visible enemies as red icons
-   above the bar (`Tab` cycles), shows the hit chance per body part (`Z X C V G`), and **Space / the Fire button
+   above the bar (`Tab` cycles), shows body-part health and a physical accuracy reticle (`Z X C V G`), and **Space / the Fire button
    / clicking the target again** fires. `Esc` backs out.
 5. When a soldier is out of AP the next ready soldier is selected; when the whole squad is spent the turn ends on
    its own (Options ⚙ → *Auto end turn*), or press **End turn** / `Enter`.
 6. **Enemy activity**: the camera follows each hostile that acts; then the next round starts.
+
+Loose ammo, fire modes, persistent overwatch, equipment weight, markers, and formation assembly are described in
+[the tactical loadout guide](docs/TACTICAL-LOADOUT.md).
 
 ## Controls
 
@@ -73,8 +76,9 @@ teammates use *Join*. Soldiers are dealt round-robin; the squad's turn ends when
 | `Tab` / `Shift+Tab` | next / previous soldier (in targeting: next / previous target) |
 | `Space` | fire (targeting) · `Enter` end turn |
 | `Z X C V G` | aim at head / torso / L arm / R arm / legs |
-| `Alt` + click | free aim at any voxel (shoot cover away) |
-| `T` throw · `O` overwatch · `R` reload · `F` formation · `B` breach | |
+| Mouse in targeting mode | aim freely at a body part, cover, or an unseen world point |
+| `I` | open body status and equipment; left portraits switch soldiers; double-click stored rigs/pouches |
+| `T` throw · `O` overwatch · `R` reload · `F` formation · `B` breach | `R` rotates a selected inventory item while inventory is open |
 | WASD / arrows / screen edges / right-drag | pan the camera |
 | `Q` / `E` | rotate 90° · middle-drag orbits freely |
 | wheel | zoom (the camera tilts up as it zooms out) |
@@ -84,7 +88,7 @@ teammates use *Join*. Soldiers are dealt round-robin; the squad's turn ends when
 
 ## Debug mode
 
-Turn it on with `?debug=1`, the menu checkbox, the bug button in the top bar, or `F1`. The drawer has five tabs:
+Turn it on with `?debug=1`, the menu checkbox, Settings → Test / debug tools, or `F1`. The drawer has five tabs:
 
 | Tab | Tools |
 |---|---|
@@ -116,7 +120,7 @@ Map generation replaces the current local battle and resets its progress.
 
 ## One game, two rule sets, two ways to run it
 
-- **Classic rules** (default): the XCOM-style squad game, team End turn votes in co-op, hit percentages.
+- **Classic rules** (default): the XCOM-style squad game, team End turn votes in co-op, physical reticle aiming.
 - **Intel co-op rules** (experimental, opt-in): tick *Intel co-op rules* in Play or the Test ground (or add
   `&intel=1` to a `?play=` link). Classes gain sensing roles (Faultfinder, Tidekeeper, Skywatch, Ghostwright),
   scout drones, quiet wall cuts, high-precision fire without hit percentages, independent 2–4-player turns and
@@ -160,8 +164,8 @@ See [docs/TEST-GROUND.md](docs/TEST-GROUND.md) for placement rules and the repor
   privacy fences, low walls, jersey barriers, bins, benches, pallets, fuel drums (explode), fuel pumps (explode) —
   then a cover pass fills gaps until no outdoor tile is more than ~4 moves from cover. Every map passes the design
   gates (cover gap ≤ 6, spawn safety, lanes, breaching …) on several seeds.
-- **Targeting** (Phoenix Point): each shot fires real rays inside an accuracy cone; hit % per body part is a
-  deterministic Monte-Carlo of the same tracer. Disabled arms cost accuracy, legs cost movement, head costs Will.
+- **Targeting** (Phoenix Point): each bullet fires a real ray inside the weapon’s accuracy reticle; the physical
+  tracer resolves hits, cover, and environmental shots. Disabled arms cost accuracy, legs cost movement, head costs Will.
 - **Cover**: physical — walls stop the rays that hit them; XCOM shields on the HUD read the voxels. Units lean
   out of corners. Flanking is simply having no wall in the way.
 - **Destruction**: every voxel has hit points; bullets chip, bombs and powder kegs blast, unsupported floors and

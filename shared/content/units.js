@@ -39,6 +39,7 @@ export const ENEMIES = Object.freeze({
 });
 
 export const ABILITIES = Object.freeze({
+    killstreak_strike:{id:'killstreak_strike',name:'Commander Strike',commander:true,targeting:'tile',wp:0,ap:0,range:40,text:'One charge per three squad kills. A destructive blast at the marked location; allies are vulnerable too.'},
     seismic_sense: {id:'seismic_sense',name:'Seismic Sense',intel:true,wp:1,ap:1,text:'Share grounded enemy contacts within 14 tiles and two levels, through walls. Contacts are snapshots.'},
     water_sense: {id:'water_sense',name:'Water Sense',intel:true,wp:1,ap:1,text:'Share contacts within 14 tiles near water, through walls. Contacts are snapshots.'},
     scout_drone: {id:'scout_drone',name:'Scout Drone',intel:true,targeting:'tile',range:18,wp:1,ap:1,text:'Scout from a tile within 18. Drone sees 10 tiles through clear sight. Enemies detect within 2; Drone Hunters within 8. Recast to reposition.'},

@@ -1,3 +1,4 @@
+import { sensorMarks } from './Markers.js';
 import { occupiedCells } from './Walker.js';
 // Experimental intel rules. Contacts are observations, never permission to shoot through cover.
 import { ABILITIES, ENEMIES } from '../content/units.js';
@@ -32,6 +33,7 @@ export function validateIntel(b,u,intent) {
 }
 function observe(b,source,enemies) {
     for(const e of enemies)b.contacts[e.id]={enemyId:e.id,x:e.x,y:e.y,z:e.z,source,round:b.round};
+    sensorMarks(b,source,enemies.map(e=>b.contacts[e.id]));
     b.emit({t:'intel',source,contacts:enemies.map(e=>b.contacts[e.id])});
 }
 export function executeIntel(b,u,intent) {

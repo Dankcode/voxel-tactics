@@ -58,7 +58,8 @@ test('autopilot spends a full movement turn on an affordable tall ladder instead
     const b=arena({squad:['grenadier'],enemies:[],player:[{x:10,y:14,z:1}],objective:{kind:'recover',item:{x:10,y:13,z:8}},build:s=> {
         for(let z=2;z<=8;z++){s.set(10,13,z,MAT.concrete);s.set(10,14,z,MAT.ladder);}
     }});
-    const u=b.unit('p0'),intent=decide(b,u);
+    const u=b.unit('p0');u.mobility*=2.5/b.mobility(u); // Isolate the ladder's four-AP traversal; weight is covered separately.
+    const intent=decide(b,u);
     assert.equal(intent?.type,'move');assert.deepEqual(intent.to,{x:10,y:13,z:8});
     const preview=b.preview(intent);assert.ok(preview.ok,preview.reason);assert.equal(preview.ap,4);
     assert.ok(b.apply(intent).ok);assert.equal(u.ap,0);assert.equal(u.z,8);assert.equal(u.hp,30);
@@ -75,12 +76,13 @@ test('every human character has 30 HP and every gun takes its damage from its ca
         assert.equal(w.damage, c.damage, w.id); assert.equal(w.pierce, c.pierce, w.id); assert.equal(w.voxel, c.voxel, w.id);
     }
     // Heavier rounds hit harder and pierce more.
-    assert.ok(CALIBERS['338'].damage > CALIBERS['7.62'].damage && CALIBERS['7.62'].damage > CALIBERS['5.56'].damage && CALIBERS['5.56'].damage > CALIBERS['9mm'].damage);
+    assert.equal(CALIBERS['338'].damage,30);
+    for(const id of ['7.62','5.56','9mm'])assert.equal(CALIBERS[id].damage,10,'AR-family damage is shared; gun builds determine accuracy');
     assert.ok(CALIBERS['338'].pierce > CALIBERS['5.56'].pierce);
-    // A sniper round is more than half of anyone's health through light armour.
+    // A close high-caliber round is lethal through light armour.
     const b = arena(), e = b.units.find(u => u.side === 'enemy');
     b.dealDamage(e, 'torso', WEAPONS.longrifle.damage, { pierce: WEAPONS.longrifle.pierce });
-    assert.equal(e.hp, 30 - 18);
+    assert.equal(e.hp, 0);
 });
 
 test('glass is cosmetic: no cover, never stops a shot, but the pane still breaks', () => {

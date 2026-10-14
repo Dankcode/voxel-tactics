@@ -10,6 +10,7 @@ import { nodeKey, pathTo, reachable } from '../world/PathSearch.js';
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
 import { MAT } from '../voxel/Materials.js';
 import { inZone, extractionOpen, objectiveGoal } from './Objectives.js';
+import { reserveAmmo } from '../inventory/Equipment.js';
 
 export const DEFAULT_POLICY = Object.freeze({ formations: false, breach: true, grenadeMinTargets: 2, shootThreshold: 0.9, samples: 24 });
 
@@ -46,7 +47,8 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
     if (u.ap <= 0 && u.moveOnlyAp <= 0) return null;
     const known = knownEnemies(battle, u);
     if(WALKERS[u.type] && !known.length){const target=nearest(u,battle.enemiesOf(u));if(!target)return null;const step=approach(battle,u,target,0);return step?{type:'move',unitId:u.id,to:step}:null;}
-    const ranged = u.weapons.map(id => WEAPONS[id]).find(w => w.kind === 'ballistic');
+    const guns = u.weapons.map(id => WEAPONS[id]).filter(w => w.kind === 'ballistic');
+    const ranged = guns.find(w => (u.ammo[w.id] || 0) > 0) || guns.find(w => !w.boltAction && reserveAmmo(u, w) > 0);
     const melee = u.weapons.map(id => WEAPONS[id]).find(w => w.kind === 'melee');
 
     // Objectives (squad side): extract from the zone, pick up the item, and steer movement toward the goal.
@@ -80,8 +82,9 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
         }
     }
 
-    const ammoOk = (u.ammo[ranged.id] ?? 0) >= (ranged.perShot || 1);
-    if (!ammoOk && u.ap >= ranged.reloadAp) return { type: 'reload', unitId: u.id, weaponId: ranged.id };
+    const ammoOk = (u.ammo[ranged.id] ?? 0) >= 1;
+    const canReload = !ranged.boltAction && reserveAmmo(u, ranged) > 0 && u.ap >= ranged.reloadAp;
+    if (!ammoOk && canReload) return { type: 'reload', unitId: u.id, weaponId: ranged.id };
     if (u.weapon !== ranged.id) return { type: 'switchWeapon', unitId: u.id, weaponId: ranged.id };
     const shotAp = battle.shotAp(u, ranged);
 
@@ -141,7 +144,7 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
         const t = nearest(u, known.length ? known : battle.enemiesOf(u));
         if (t) return { type: 'overwatch', unitId: u.id, weaponId: ranged.id, toward: { x: t.x, y: t.y } };
     }
-    if (!ammoOk && u.ap >= ranged.reloadAp) return { type: 'reload', unitId: u.id, weaponId: ranged.id };
+    if (!ammoOk && canReload) return { type: 'reload', unitId: u.id, weaponId: ranged.id };
     return null;
 }
 

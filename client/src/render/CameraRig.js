@@ -108,7 +108,7 @@ export class CameraRig {
             this.yaw = this.yawTarget; this.distance = this.distanceTarget;
             return this.apply();
         }
-        this.yaw += Math.abs(this.yawTarget - this.yaw) > 1e-4 ? (this.yawTarget - this.yaw) * ease(9, dt) : this.yawTarget - this.yaw;
+        this.yaw += Math.abs(this.yawTarget - this.yaw) > 1e-4 ? (this.yawTarget - this.yaw) * ease(9*(this.rotationSpeed||1), dt) : this.yawTarget - this.yaw;
         this.distance += Math.abs(this.distanceTarget - this.distance) > 1e-3 ? (this.distanceTarget - this.distance) * ease(10, dt) : this.distanceTarget - this.distance;
         // Key / edge pan with a little momentum; speed scales with the zoom distance.
         const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw), speed = this.distance * 0.65;

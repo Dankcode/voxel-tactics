@@ -74,6 +74,18 @@ for (const scenario of ['proving-grounds', 'signal-house', 'operation']) test(`t
         roomA.send('intent', { nonce: 'x2', intent: { type: 'move', unitId: 'p0', to: { x:destination.x,y:destination.y,z:destination.z } } });
         await new Promise(r => setTimeout(r, 300));
         assert.deepEqual(peers.map(p=>[p.battle.unit('p0').x,p.battle.unit('p0').y,p.battle.unit('p0').z]),[[destination.x,destination.y,destination.z],[destination.x,destination.y,destination.z]]);
+        // New HUD commands are authoritative intents too: ammo moves, fire mode, and shared block marks.
+        for(const [nonce,intent] of [
+            ['cargo',{type:'inventoryMove',unitId:'p0',from:'rig',to:'pockets',itemId:'reserve-shotgun',x:0,y:0,rotated:false}],
+            ['mode',{type:'setFireMode',unitId:'p0',mode:'single'}],
+            ['mark',{type:'mark',unitId:'p0',color:'blue',at:{x:soldier.x,y:soldier.y,z:soldier.z}}],
+            ['plan',{type:'formation_plan',unitId:'p0',template:'wedge',facing:'n'}]
+        ]){
+            const received=next(roomA,'receipt');roomA.send('intent',{nonce,intent});assert.ok((await received).ok,nonce);
+        }
+        await new Promise(r=>setTimeout(r,100));
+        for(const peer of peers){assert.equal(peer.battle.unit('p0').pocketInventory[0].itemId,'ammo_shotgun');assert.equal(peer.battle.markers.at(-1).color,'blue');assert.equal(peer.battle.formations.of(peer.battle.unit('p0')).template,'wedge');}
+        assert.equal(peers[0].battle.hash(),peers[1].battle.hash());
         // End turn needs both votes; then the server streams the AI turn.
         roomA.send('intent', { nonce: 'e1', intent: { type: 'endTurn', side: 'player' } });
         await new Promise(r => setTimeout(r, 200));

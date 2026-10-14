@@ -11,6 +11,7 @@ export class CameraDirector {
         const s=this.store;
         return !s || (!s.isSolid(Math.floor(v.x),Math.floor(v.z),Math.floor(v.y)) && !castRay(s,this.head,{x:v.x,y:v.z,h:v.y},{blocks:(store,x,y,z)=>store.isSolid(x,y,z)}).hit);
     }
+    prepareAim(shooter,target){if(!this.begin(shooter,target.clone().add(new THREE.Vector3(0,-1.1,0)),'prepare'))return;this.look.copy(target);this.apply(0);}
     prepare(shooter,target) { this.begin(shooter,target,'prepare'); }
     begin(shooter,target,phase='action') {
         this.phase=phase; this.elapsed=0;

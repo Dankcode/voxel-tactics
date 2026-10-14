@@ -8,7 +8,7 @@ targets' body-part cylinders. Code: `shared/battle/Ballistics.js`, `Battle.fireW
 
 - **Aim at a body part** (`Ballistics.aimPointOf` → `partCentre`): the centre of that part's hitbox on the target,
   arms offset sideways from the target's facing. HUD keys `Z X C V G` = head, torso, left arm, right arm, legs.
-- **Free aim** (`Alt`+click): any point, e.g. a wall voxel to shoot away. Target-dependent modifiers (height,
+- **Free aim** (move the reticle, then click or press Space): any point, e.g. a wall voxel to shoot away. Target-dependent modifiers (height,
   smoke, dim room, formation) are skipped because there is no target unit.
 - **Muzzle and leaning** (`chooseMuzzle`): the shoulder (tile centre, z+1+1.35), or that point shifted **0.55
   tiles** right, then left, perpendicular to the aim line: the first candidate that is not inside a solid voxel and
@@ -32,9 +32,7 @@ Spread is the cone's half-angle in degrees. Every modifier multiplies:
 | Shield Line | × up to 1.3 | target in a Shield Line slot, shooter in its front 90° ([09](09-formations.md)) |
 | smoke | × 1.6 | target's z+1 or z+2 cell has smoke |
 
-Example: a Gunman (accuracy 0.55) with the AK Rifle (1.6°, range 16) at 20 tiles: 1.6 ÷ 0.55 × 1.25 = 3.64°,
-a lateral spread of about 1.3 tiles at the target against a torso radius of 0.25. A Sharpshooter (1.0) with the
-Sniper Rifle (0.6°, range 30) at the same distance: 0.6°, about 0.2 tiles.
+Example: a Gunman (accuracy 0.55) with an AK Rifle (0.5°, range 16) at 20 tiles has about 1.14° spread. A Sharpshooter with a scoped Sniper Rifle has 0.072° before situational modifiers. Scopes multiply base spread by 0.6; precision barrels by 0.8 and extend range.
 
 Rays are drawn uniformly over the cone's circular cross-section (`sampleCone`: radius tan(spread)·√u, angle 2πu)
 with the battle RNG.
@@ -61,15 +59,14 @@ A disabled head, arm or legs (part HP 0) no longer stops rays (`rayUnit`).
 
 ## Hit chance (`Ballistics.estimateShot`)
 
-The HUD's percentage is a deterministic Monte Carlo of the **same tracer**: N rays from the same muzzle and cone,
+The internal estimate used by AI and previews is a deterministic Monte Carlo of the **same tracer**: N rays from the same muzzle and cone,
 with an RNG seeded from the shooter, its tile, the aim point and the spread (it never touches the battle RNG).
 
 - Samples: 96 for `Battle.preview` (`B.estimateSamples`), 64 per body part in the HUD target panel
-  (`Game.aimAt`), 24 for the AI, 32 for the Alt free-aim cone preview.
+  (`Game.aimAt`), 24 for the AI. The displayed reticle projects the actual spread cone.
 - Outputs: `hit` (share of rays that hit the aimed unit anywhere), `parts` (per part), `partHit`, `cover` (share
   stopped by a voxel more than 0.3 short of the aim point), `friendly`, `other`, `miss`, and
-  `expectedHits = hit × projectiles`. The HUD shows, for the selected part, the share of rays that hit **that part**
-  when aiming at it.
+  `expectedHits = hit × projectiles`. The player HUD displays body-part condition and physical obstruction instead of percentage hit rolls.
 - The live shot draws fresh rays from the battle RNG, so outcomes scatter around the estimate. Minor difference:
   the estimate traces to min(`maxRange` ?? 40, max(d + 8, 1.5 d)) instead of the live d + 10 / 1.6 d.
 - The HUD computes one spread (aimed at the torso centre) and reuses it for every part.
@@ -79,7 +76,7 @@ with an RNG seeded from the shooter, its tile, the aim point and the spread (it 
 Per projectile that hits a part:
 
 1. Effective armour = max(0, part armour (+4 while `braced`) − weapon `pierce`).
-2. Damage = max(0, round(weapon damage) − effective armour); −1 more if the hit is `pyro` and the target is `wet`.
+2. `FireControl.projectileDamage` chooses close/far damage and distributes shotgun shell damage across pellets. Damage = max(0, round(projectile damage) − effective armour); −1 more if the hit is `pyro` and the target is `wet`.
    For guns, damage and pierce are the round's ([calibers](#ammunition-calibers)).
 3. `shred` then permanently lowers that part's armour.
 4. The damage comes off the part's HP **and** the unit's HP (the torso gauge mirrors unit HP). The unit dies at
@@ -95,47 +92,33 @@ Per projectile that hits a part:
 
 There are **no crits, grazes or dodges**. Debug god mode sets damage to 0.
 
-Every character has 30 HP (`UNIT_HP`). Examples:
-
-| Shot | Target part (armour) | Per projectile |
-|---|---|---|
-| Assault Rifle (5.56, 9 dmg, pierce 2) | Riot Guard torso (plate 6) | 5 (a full 3-round burst on the torso: 15 of 30) |
-| Assault Rifle | Riot Guard head (plate 3) | 8 |
-| Assault Rifle | Riot Guard torso while `braced` (10) | 1 |
-| AK Rifle (7.62×39, 10 dmg, pierce 2) | Assault torso (medium 3) | 9 |
-| Sniper Rifle (.338, 18 dmg, pierce 5) | Riot Guard torso (plate 6) | 17 |
-| Combat Shotgun (12-gauge, 4 dmg, pierce 0) | Gunman torso (light 2) / Riot Guard torso (plate 6) | 2 / 0 per pellet |
-| Sidearm (9 mm, 7 dmg, pierce 0) | Lookout torso (hide 1) | 6 |
+Human characters have 30 HP (`UNIT_HP`); constructs can have more. Within five tiles, AR rounds do 10 damage, high-caliber rounds 30, and a shotgun shell distributes 30 total across its pellets. Beyond five tiles the respective values are 5, 10, and 5. Armor and penetration apply after this selection. For example, a close 5.56 hit against plate torso armor 6 with pierce 2 deals 6 damage; a close .338 hit against the same torso deals 29. Helmet equipment supplies head protection separately from body armor.
 
 ## Overwatch
 
-- **Set** (`Battle.doOverwatch`): needs AP ≥ the weapon's AP and ammo; spends all AP and move-only AP. The cone
-  points at the clicked tile (else 5 tiles along the unit's facing); half-angle **50°** (`halfAngleDeg`, the client
-  never changes it); range **1.25 × weapon `range`**.
-- **Trigger** (`Battle.checkReactions`, after every step of an enemy's move and every step of a breach entry): the
-  mover's tile is within range, at least 0.5 away, inside the cone, and the watcher **sees** it. The watcher fires
-  one normal shot of its overwatch weapon at the mover's torso with reaction spread.
-- One reaction per turn (`reactionsLeft` 1; 2 in a Crossfire); overwatch ends after the last reaction, and in any
-  case at the start of the watcher's next turn. `surprised` units cannot react.
-- Not triggered by knockback, falls, formation slot moves or debug teleports.
+- **Set** (`Battle.doOverwatch`): requires the weapon's AP cost and ammo, then spends remaining AP. The clicked direction sets the cone. Gun build and armor determine its width; a scope narrows it. Range is capped by sight range and 1.25 × weapon range.
+- **Trigger**: an enemy movement or breach entry crosses the cone while visible and in range. The watcher fires one normal salvo at the mover's torso, spending actual rounds. Each watcher reacts at most once per movement event and can react to successive movers.
+- **Persistence**: turn refresh does not remove overwatch. It ends on a wound, a status effect, or empty loaded ammo. `surprised` units cannot react. Bolt actions automatically cycle available loose rounds.
+- Normal formation following triggers reactions; knockback, falls, and debug teleports do not.
 
 ## Ammunition (calibers)
 
 Gun damage comes from the round, not the gun (`shared/content/calibers.js`). Every ballistic weapon names a
 `caliber`; `withCaliber` fills its `damage`, `pierce` and `voxel` from `CALIBERS`, and any of those set on the weapon
-itself wins. Guns differ only in how they deliver the round: projectiles per shot, spread, range, AP, magazine and
-noise. The Flamethrower has no caliber (fuel jets; its numbers are set on the weapon).
+itself wins. Guns differ in spread, attachments, range, AP, capacity, fire modes, and noise. Carried ammo has three physical families: AR, high caliber, and shotgun. Caliber IDs below retain penetration and flavor. The Flamethrower prototype draws the shotgun-family stack and distributes a 30-damage payload while retaining pyro effects.
+
+Single spends 1 round, burst 3, auto at most 5; each bullet traces independently. Supported rifles default to burst. Reload transfers loose carried ammo up to capacity. Bolt actions cycle without a manual reload. See [the loadout guide](../TACTICAL-LOADOUT.md#guns-and-free-aiming).
 
 <!-- generated:calibers -->
 | id | round | dmg/proj. | pierce | voxel dmg | fired by |
 |---|---|---|---|---|---|
-| `338` | .338 Lapua Magnum | 18 | 5 | 3 | Sniper Rifle |
-| `9mm` | 9×19 mm | 7 | 0 | 1 | Sidearm |
-| `5.56` | 5.56×45 mm NATO | 9 | 2 | 1 | Assault Rifle, Marksman Rifle |
+| `338` | .338 Lapua Magnum | 30 | 5 | 3 | Sniper Rifle |
+| `9mm` | 9×19 mm | 10 | 0 | 1 | Sidearm |
+| `5.56` | 5.56×45 mm NATO | 10 | 2 | 1 | Assault Rifle, Marksman Rifle |
 | `300blk` | .300 BLK subsonic | 10 | 2 | 1 | Suppressed Carbine |
 | `7.62x39` | 7.62×39 mm | 10 | 2 | 2 | AK Rifle |
-| `7.62` | 7.62×51 mm NATO | 12 | 3 | 2 | — |
-| `12g` | 12-gauge 00 buckshot | 4 | 0 | 1 | Combat Shotgun |
+| `7.62` | 7.62×51 mm NATO | 10 | 3 | 2 | — |
+| `12g` | 12-gauge 00 buckshot | 3.75 | 0 | 1 | Combat Shotgun |
 <!-- /generated:calibers -->
 
 `7.62×51 mm NATO` is defined but no current weapon fires it.
@@ -145,18 +128,18 @@ noise. The Flamethrower has no caliber (fuel jets; its numbers are set on the we
 <!-- generated:weapons -->
 | id | name | round | AP | proj. | dmg/proj. | pierce | shred | spread | range | max range | ammo | reload AP | voxel dmg | noise | element |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `repeater` | Assault Rifle | 5.56×45 mm NATO | 2 | 3 | 9 | 2 | — | 1.6° | 18 | 34 | 9 (3/shot) | 1 | 1 | 14 | — |
-| `blunderbuss` | Combat Shotgun | 12-gauge 00 buckshot | 2 | 8 | 4 | 0 | — | 6.5° | 7 | 14 | 4 (1/shot) | 1 | 1 | 14 | — |
-| `longrifle` | Sniper Rifle | .338 Lapua Magnum | 3 | 1 | 18 | 5 | — | 0.6° | 30 | 48 | 3 (1/shot) | 1 | 3 | 18 | — |
-| `handcannon` | Sidearm | 9×19 mm | 1 | 1 | 7 | 0 | — | 1.8° | 12 | 22 | 12 (1/shot) | 1 | 1 | 12 | — |
-| `crossbow` | Suppressed Carbine | .300 BLK subsonic | 2 | 1 | 10 | 2 | — | 0.9° | 20 | 32 | 6 (1/shot) | 1 | 1 | 2 | — |
-| `shortbow` | Marksman Rifle | 5.56×45 mm NATO | 2 | 1 | 9 | 2 | — | 1.4° | 16 | 26 | 8 (1/shot) | 1 | 1 | 12 | — |
-| `musket` | AK Rifle | 7.62×39 mm | 2 | 1 | 10 | 2 | — | 1.6° | 16 | 28 | 6 (1/shot) | 1 | 2 | 14 | — |
-| `firelance` | Flamethrower | — (fuel) | 2 | 5 | 4 | 0 | — | 4.2° | 8 | 12 | 3 (1/shot) | 1 | 1 | 10 | pyro |
+| `repeater` | Assault Rifle | 5.56×45 mm NATO | 2 | 1 | 10 | 2 | — | 0.42° | 18 | 34 | 30 (1/shot) | 1 | 1 | 14 | — |
+| `blunderbuss` | Combat Shotgun | 12-gauge 00 buckshot | 2 | 8 | 3.75 | 0 | — | 2.4° | 7 | 14 | 8 (1/shot) | 1 | 1 | 14 | — |
+| `longrifle` | Sniper Rifle | .338 Lapua Magnum | 3 | 1 | 30 | 5 | — | 0.12° | 30 | 48 | 1 (1/shot) | 1 | 3 | 18 | — |
+| `handcannon` | Sidearm | 9×19 mm | 1 | 1 | 10 | 0 | — | 0.55° | 12 | 22 | 12 (1/shot) | 1 | 1 | 12 | — |
+| `crossbow` | Suppressed Carbine | .300 BLK subsonic | 2 | 1 | 10 | 2 | — | 0.3° | 20 | 32 | 30 (1/shot) | 1 | 1 | 2 | — |
+| `shortbow` | Marksman Rifle | 5.56×45 mm NATO | 2 | 1 | 10 | 2 | — | 0.24° | 16 | 26 | 20 (1/shot) | 1 | 1 | 12 | — |
+| `musket` | AK Rifle | 7.62×39 mm | 2 | 1 | 10 | 2 | — | 0.5° | 16 | 28 | 30 (1/shot) | 1 | 2 | 14 | — |
+| `firelance` | Flamethrower | — (fuel) | 2 | 5 | 4 | 0 | — | 3.5° | 8 | 12 | 10 (1/shot) | 1 | 1 | 10 | pyro |
 <!-- /generated:weapons -->
 
 Notes: `voxel dmg` is the damage each projectile deals to a voxel it hits (doubled by Demolition). The Assault
-Rifle fires 3 rays and spends 3 rounds per shot. The Flamethrower's rays carry `pyro` (status and a 0.6-radius
+Rifle fires 1/3/5 bullet rays in single/burst/auto. Shotguns trace their pellet count per shell. The Flamethrower's rays carry `pyro` (status and a 0.6-radius
 fire impact on units, 0.8 on voxels). Display names are what the player sees; ids are legacy and stable. The HUD
 weapon tooltip (`Hud.js`) shows name · round · shot AP · damage (× projectiles) · pierce (when > 0) · range.
 
@@ -189,6 +172,7 @@ roll. The Sledgehammer knocks the target 2 tiles away. Melee deals no voxel dama
 <!-- generated:throwables -->
 | id | name | AP | range | radius | unit dmg | voxel power | element | shred | knockback | smoke | noise | delivery |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `medkit` | Medical Kit | 1 | 1.5 |  |  |  | — | — | — | — |  | thrown (arc + scatter) |
 | `fire_flask` | Incendiary Grenade | 2 | 12 | 2.2 | 6 | 2 | pyro | — | — | — | 10 | thrown (arc + scatter) |
 | `frost_flask` | Cryo Canister | 2 | 12 | 2.5 | 5 | 1 | cryo | — | — | — | 8 | thrown (arc + scatter) |
 | `water_flask` | Extinguisher Grenade | 1 | 12 | 2.6 | 0 | 0 | hydro | — | — | — | 4 | thrown (arc + scatter) |

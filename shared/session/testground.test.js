@@ -42,13 +42,17 @@ test('custom rosters are placed deterministically, reachable, spread into pods a
     }
 });
 
-test('map hostiles can be kept and only alerted; no test settings leaves the mission untouched', () => {
+test('test settings preserve map hostiles and supply the squad arsenal; normal missions keep their loadouts', () => {
     const plain = createBattle(sanitizeDesc({ scenario: 'cedar-close', seed: 2 }));
     const alerted = createBattle(sanitizeDesc({ scenario: 'cedar-close', seed: 2, test: { alerted: true } }));
     const pos = b => b.units.filter(u => u.side === 'enemy').map(u => `${u.type}@${u.x},${u.y},${u.z}`);
     assert.deepEqual(pos(alerted), pos(plain));
     assert.ok(alerted.units.filter(u => u.side === 'enemy').every(u => u.alerted));
-    assert.equal(createBattle(sanitizeDesc({ scenario: 'cedar-close', seed: 2, test: {} })).hash(), plain.hash());
+    const testGround = createBattle(sanitizeDesc({ scenario: 'cedar-close', seed: 2, test: {} }));
+    assert.deepEqual(pos(testGround), pos(plain));
+    assert.equal(testGround.store.hash(), plain.store.hash());
+    assert.ok(testGround.unit('p0').weapons.length > plain.unit('p0').weapons.length);
+    assert.ok(testGround.unit('p0').items.frost_flask > 0);
 });
 
 test('the after-action report adds up and survives a JSON round trip', () => {

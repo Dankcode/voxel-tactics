@@ -1,3 +1,6 @@
+import { EquipmentPanel } from './EquipmentPanel.js';
+import { reserveAmmo } from '../../../shared/inventory/Equipment.js';
+import { fireMode, fireModes } from '../../../shared/battle/FireControl.js';
 import { navigationFloors } from '../render/FloorCutaway.js';
 import { reportMarkup } from './BattleReportView.js';
 import { reportText } from '../../../shared/session/BattleReport.js';
@@ -12,7 +15,7 @@ import { ABILITIES, CLASSES, ENEMIES, displayName } from '../../../shared/conten
 import { FORMATIONS } from '../../../shared/content/formations.js';
 import { alive } from '../../../shared/battle/Units.js';
 import { inZone, extractionOpen, objectiveStatus } from '../../../shared/battle/Objectives.js';
-import { ICONS } from './Icons.js';
+import { ICONS, weaponIcon } from './Icons.js';
 import { TERRAIN_CUES } from '../render/MaterialLibrary.js';
 import { QUALITY, setQuality } from '../render/Quality.js';
 
@@ -25,27 +28,22 @@ export class Hud {
         this.root = root; this.game = game;
         root.innerHTML = `
             <div class="topbar">
-                <div class="mission"><b></b><span></span></div>
-                <div class="turnbox"><div class="round"></div><div class="phase"></div><div class="objstat"></div></div>
-                <div class="tools">
-                    <button data-act="rotL" title="Rotate camera (Q) · middle-drag to orbit">${ICONS.rotL}</button><button data-act="rotR" title="Rotate camera (E) · middle-drag to orbit">${ICONS.rotR}</button>
-                    <button data-act="lvlDown" title="Cutaway down (PgDn)">${ICONS.down}</button><span class="level"></span><button data-act="lvlUp" title="Cutaway up (PgUp)">${ICONS.up}</button>
-                    <button data-act="cutins" class="cutin-mode" title="Back-shot cut-ins"></button>
-                    <button data-act="buildingCycle" class="building-view" title="Building cutaway (I)">SHOW OUTSIDE ONLY</button><button data-act="options" title="Options">${ICONS.gear}</button>
-                    <button data-act="debug" class="debug-btn" title="Debug mode (F1)">${ICONS.bug}</button>
-                    <button data-act="menu" title="Menu">${ICONS.menu}</button>
-                </div></div>
+                <div class="map-marks" aria-label="Map markers">${['red','blue','green'].map(c=>`<button data-act="mark" data-arg="${c}" aria-label="Mark ${c} block" title="Mark ${c} block · click again on the same block to clear" style="--mark:${c==='red'?'#ff4949':c==='blue'?'#4c9cff':'#56ef93'}">!</button>`).join('')}</div>
+                <div class="turnbox"><div class="round"></div><div class="phase"></div><div class="objstat hidden"></div><button data-act="endTurn" class="endturn" title="End turn (Enter)">END TURN</button></div>
+                <div class="tools"><button data-act="options" title="Settings" aria-label="Settings">${ICONS.gear}</button></div>
+            </div>
             <div class="camera-nav" aria-label="Camera controls">
-                <button data-act="lvlDown" title="Lower interior floor · Page Down">Lower floor</button>
-                <span class="floor-label">Roof</span><div class="floor-picker"></div>
-                <button data-act="lvlUp" title="Higher floor / roof · Page Up">Higher floor</button>
-                <button data-act="rotL" title="Rotate left · Q">Rotate left</button>
-                <button data-act="rotR" title="Rotate right · E">Rotate right</button>
+                <button data-act="lvlUp" class="nav-up" title="Upper floor · Page Up" aria-label="Upper floor">${ICONS.up}</button>
+                <button data-act="rotL" class="nav-left" title="Rotate left · Q" aria-label="Rotate left">${ICONS.rotL}</button>
+                <span class="nav-cube" aria-hidden="true">${ICONS.cube}</span>
+                <button data-act="rotR" class="nav-right" title="Rotate right · E" aria-label="Rotate right">${ICONS.rotR}</button>
+                <button data-act="lvlDown" class="nav-down" title="Lower floor · Page Down" aria-label="Lower floor">${ICONS.down}</button>
+                <span class="floor-label">Roof</span>
             </div>
             <div class="squad"></div>
-            <div class="unitpanel hidden"></div>
+            <div class="unitpanel hidden"></div><div class="equipment-overlay hidden"></div><div class="aim-reticle hidden" aria-label="Weapon accuracy reticle"><i class="reticle-ring outer"></i><i class="reticle-ring inner"></i><i class="reticle-cross"></i><span></span></div>
             <div class="targets"></div>
-            <div class="actionbar"><div class="slotname"></div><div class="slots"></div><button data-act="endTurn" class="endturn" title="End turn (Enter)"><span>END TURN</span><kbd>⏎</kbd></button></div>
+            <div class="actionbar"><div class="slotname"></div><div class="slots"></div></div>
             <div class="target hidden"></div>
             <div class="panel hidden"></div>
             <div class="options hidden"></div>
@@ -63,8 +61,10 @@ export class Hud {
         root.addEventListener('mouseout', e => { if (e.target.closest('.slot')) this.el('.slotname').innerHTML = this.activeSlotName || ''; });
         this.lines = [];
         this.slots = [];
+        this.equipment=new EquipmentPanel(this.el('.equipment-overlay'),game);
+        root.addEventListener('change',e=>{const k=e.target.dataset.setting;if(!k)return;const v=Number(e.target.value);game.options[k]=v;if(k==='turnSpeed')game.player.speed=v;localStorage.setItem('tactics-settings',JSON.stringify(game.options));});
     }
-    reset() { this.report = null; this.el('.outcome').classList.add('hidden'); this.hidePanel(); this.squadSpent(false); }
+    reset() { this.report = null; this.equipment.open=false;this.equipment.nested=null;this.equipment.selected=null;this.el('.outcome').classList.add('hidden'); this.hidePanel(); this.squadSpent(false); }
     onClick(e) {
         const b = e.target.closest('[data-act]');
         if (!b || b.disabled) return;
@@ -74,6 +74,9 @@ export class Hud {
         switch (act) {
             case 'floorFollow': g.applyZoomCut();break;
             case 'chooseFloor': g.chooseFloor(arg==='roof'?Infinity:Number(arg));break;
+            case 'inventory': this.equipment.toggle();break;
+            case 'mark': g.setMode({kind:'mark',color:arg});break;
+            case 'fireMode': {const u=g.selectedUnit(),w=WEAPONS[u.weapon],modes=fireModes(w);g.intent({type:'setFireMode',mode:modes[(modes.indexOf(fireMode(u,w))+1)%modes.length]});break;}
             case 'equipmentTab': this.equipmentTab=arg;break;
             case 'view': g.cameraDirector.end();g.scene.rig.setPreset(arg); break;
             case 'pan': g.scene.rig.glide=null;g.scene.rig.moveBy(...arg.split(',').map(Number));break;
@@ -81,14 +84,14 @@ export class Hud {
             case 'home': g.focusUnit(g.selectedUnit());break;
             case 'weapon': this.chooseWeapon(arg);break;
             case 'reloadWeapon': g.intent({type:'reload',weaponId:arg});break;
-            case 'item': g.setMode({kind:THROWABLES[arg].kind==='gadget'?'gadget':THROWABLES[arg].placed?'breach':'throw',itemId:arg});if(THROWABLES[arg].placed)this.showBreachPanel();break;
+            case 'item': this.hidePanel();g.setMode({kind:THROWABLES[arg].kind==='gadget'?'gadget':THROWABLES[arg].placed?'breach':'throw',itemId:arg});if(THROWABLES[arg].placed)this.showBreachPanel();break;
             case 'equip': g.intent({type:'switchWeapon',weaponId:arg}); break;
             case 'rotL': g.cameraDirector.end();g.scene.rotate(-1); break; case 'rotR': g.cameraDirector.end();g.scene.rotate(1); break;
             case 'lvlUp': g.changeLevel(1); break; case 'lvlDown': g.changeLevel(-1); break;
             case 'cutins': g.cycleCutins(); break;
             case 'debug': g.debug.toggle(); break;
             case 'options': this.toggleOptions(); break;
-            case 'opt': g.options[arg] = !g.options[arg]; this.renderOptions(); break;
+            case 'opt': g.options[arg] = !g.options[arg];localStorage.setItem('tactics-settings',JSON.stringify(g.options)); this.renderOptions(); break;
             case 'lighting': g.scene.setLighting(arg); g.options.lighting = arg; this.renderOptions(); break;
             case 'ao': g.scene.setAO(!g.scene.ao); this.renderOptions(); break;
             case 'proj': g.scene.toggleProjection(); this.renderOptions(); break;
@@ -126,10 +129,10 @@ export class Hud {
         const g = this.game, o = g.options, el = this.el('.options');
         if (el.classList.contains('hidden')) return;
         const row = (k, label) => `<button data-act="opt" data-arg="${k}" class="${o[k] ? 'on' : ''}">${o[k] ? '☑' : '☐'} ${label}</button>`;
-        el.innerHTML = `<h4>Options</h4>${row('autoEndTurn', 'Auto end turn when the squad is spent')}${row('autoNext', 'Auto-select the next ready soldier')}${row('followCamera', 'Camera follows actions')}
+        el.innerHTML = `<h3>Settings <button data-act="options">✕</button></h3><h4>Gameplay</h4><label>Turn / animation speed<select data-setting="turnSpeed">${[.5,1,1.5,2,3].map(n=>`<option value="${n}" ${Number(o.turnSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label><label>Camera rotation<select data-setting="rotateSpeed">${[.5,1,1.5,2].map(n=>`<option value="${n}" ${Number(o.rotateSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('confirmMoves','Confirm movement destinations')}${row('showEnemyBars','Show enemy health')}${row('aimSway','Reticle breathing / sprite inertia')}<button data-act="cutins">Back-shot cut-ins: ${g.cutins.mode}</button><button data-act="debug">Test / debug tools (F1)</button><button data-act="inventory">Equipment and body status (I)</button><button data-act="menu">Return to menu</button>${row('autoEndTurn', 'Auto end turn when the squad is spent')}${row('autoNext', 'Auto-select the next ready soldier')}${row('followCamera', 'Camera follows actions')}
             <h4>Camera</h4>${row('edgeScroll', 'Screen-edge scrolling')}<button data-act="proj" class="${g.scene.projection === 'ortho' ? 'on' : ''}">${g.scene.projection === 'ortho' ? '☑' : '☐'} Isometric (orthographic) view (V)</button>
             <div class="camhint" style="font-size:11px;opacity:.7;line-height:1.5;margin:4px 0 2px">WASD / arrows / screen edge pan · right-drag grab · middle-drag orbit · wheel zoom · Q/E rotate · H / Home centre on soldier · V isometric</div>
-            <h4>Buildings</h4><div class="row"><button data-act="buildingCycle" class="${o.buildingView==='exterior'?'on':''}" aria-pressed="${o.buildingView==='exterior'}">Show outside only</button></div><small>Wheel zoom: roof → upper floors → ground floor. Selected floors stay fixed while zooming. Auto floors restores zoom cutaways. Press I to toggle outside only.</small>
+            <h4>Buildings</h4><div class="row"><button data-act="buildingCycle" class="${o.buildingView==='exterior'?'on':''}" aria-pressed="${o.buildingView==='exterior'}">Show outside only</button></div><small>Wheel zoom: roof → upper floors → ground floor. Selected floors stay fixed while zooming. Auto floors restores zoom cutaways. Use the cube arrows for floor changes. I opens equipment.</small>
             <h4>Graphics</h4><button data-act="quality" data-arg="mobile" class="${QUALITY.name === 'mobile' ? 'on' : ''}">${QUALITY.name === 'mobile' ? '◉' : '○'} Mobile (light textures, fast)</button><button data-act="quality" data-arg="high" class="${QUALITY.name === 'high' ? 'on' : ''}">${QUALITY.name === 'high' ? '◉' : '○'} High (full textures, AO) — reloads</button>
             <h4>Readability</h4><button data-act="cue" data-arg="uGrid" class="${TERRAIN_CUES.uGrid.value ? 'on' : ''}">${TERRAIN_CUES.uGrid.value ? '☑' : '☐'} Debug tile grid</button><button data-act="cue" data-arg="uRim" class="${TERRAIN_CUES.uRim.value ? 'on' : ''}">${TERRAIN_CUES.uRim.value ? '☑' : '☐'} Ledge rims (orange = 2+ drop)</button><button data-act="ao" class="${g.scene.ao ? 'on' : ''}">${g.scene.ao ? '☑' : '☐'} Ambient occlusion</button>
             <h4>Lighting</h4><div class="row">${['day', 'dusk', 'night'].map(l => `<button data-act="lighting" data-arg="${l}" class="${g.scene.lightingName === l ? 'on' : ''}">${l}</button>`).join('')}</div>`;
@@ -167,13 +170,17 @@ export class Hud {
     /** Build the ability slots for a unit (also used by number keys). */
     slotsFor(u) {
         const b = this.game.battle, mode = this.game.mode, s = [];
-        const ap = u.ap;
+        const ap = u.ap,w=WEAPONS[u.weapon];
+        s.push({act:w.kind==='melee'?'melee':'weapon',arg:w.id,group:'weapon',icon:weaponIcon(w),name:w.kind==='melee'?'Melee':'Shoot',cost:String(b.shotAp(u,w)),sub:w.ammo?`${u.ammo[w.id]||0} − ${reserveAmmo(u,w)} · ${fireMode(u,w).toUpperCase()}`:'',on:mode.kind==='shoot',disabled:ap<b.shotAp(u,w)||(w.ammo&&u.ammo[w.id]<1),tip:`${w.name} · aim the reticle at a body part or any world point`});
         const ow = WEAPONS[watchWeapon(u)];
-        if (ow) s.push({ act: 'overwatch', icon: ICONS.overwatch, name: 'Overwatch', cost: 'all', disabled: ap < ow.ap || (u.ammo[ow.id] ?? 0) < (ow.perShot || 1), on: mode.kind === 'overwatch', tip: '<b>Overwatch</b> · choose direction · all AP · <span style="color:#5ff2d6">Teal ≥65%</span> / <span style="color:#ffb347">Amber &lt;65%</span> estimated hit' });
-        for (const a of [...u.abilities.filter(id=>!ABILITIES[id].intel||b.intelMode), ...(b.intelMode?[b.supportChoices[u.owner]||'carpet_bomb']:[])]) { const ab = ABILITIES[a]; s.push({ act: 'ability', arg: a, icon: ICONS[a] || ICONS.ability, name: ab.name, on: mode.abilityId === a || (a === 'suppress' && !!mode.suppress), cost: `${ab.ap || 0}`, sub: `${ab.wp} WP`, disabled: (ab.support && (!b.detected || (b.personalTurns[u.owner]||0)<(b.supportReady[u.owner]||0))) || u.will < ab.wp || ap < (ab.ap || 0) || u.statuses.some(s => s.id === 'panicked') || (a === 'suppress' && (u.ammo.repeater ?? 0) < (WEAPONS.repeater.perShot || 1)), tip: `<b>${ab.name}</b> · ${ab.wp} Will${ab.ap ? ` · ${ab.ap} AP` : ''}<br>${esc(ab.text)}` }); }
+        if (ow) s.push({ group:'weapon',act: 'overwatch', icon: ICONS.overwatch, name: 'Overwatch', cost: 'all', disabled: ap < ow.ap || (u.ammo[ow.id] ?? 0) < (ow.perShot || 1), on: mode.kind === 'overwatch', tip: '<b>Overwatch</b> · choose direction · all AP · <span style="color:#5ff2d6">Teal ≥65%</span> / <span style="color:#ffb347">Amber &lt;65%</span> estimated hit' });
+        s.push({act:'reload',icon:ICONS.reload,name:'Reload',group:'weapon',cost:'1',disabled:w.boltAction||!w.ammo||ap<w.reloadAp||u.ammo[w.id]>=w.ammo||reserveAmmo(u,w)<1,tip:w.boltAction?'Bolt cycles loose rounds automatically':'Reload from carried loose rounds'});
+        if(Object.values(u.items).some(n=>n>0))s.push({act:'grenades',group:'equipment',icon:ICONS.grenade,name:'Gear',cost:'',tip:'Grenades and medical equipment'});
+        for (const a of [...u.abilities.filter(id=>!ABILITIES[id].intel||b.intelMode), ...(b.intelMode?[b.supportChoices[u.owner]||'carpet_bomb']:[])]) { const ab = ABILITIES[a]; s.push({group:ab.support||a==='rally'?'commander':['brace','demolish','suppress'].includes(a)?'equipment':'augmentation', act: 'ability', arg: a, icon: ICONS[a] || ICONS.ability, name: ab.name, on: mode.abilityId === a || (a === 'suppress' && !!mode.suppress), cost: `${ab.ap || 0}`, sub: `${ab.wp} WP`, disabled: (ab.support && (!b.detected || (b.personalTurns[u.owner]||0)<(b.supportReady[u.owner]||0))) || u.will < ab.wp || ap < (ab.ap || 0) || u.statuses.some(s => s.id === 'panicked') || (a === 'suppress' && (u.ammo.repeater ?? 0) < (WEAPONS.repeater.perShot || 1)), tip: `<b>${ab.name}</b> · ${ab.wp} Will${ab.ap ? ` · ${ab.ap} AP` : ''}<br>${esc(ab.text)}` }); }
+        if(!b.intelMode)s.push({act:'ability',arg:'killstreak_strike',group:'commander',icon:ICONS.ability,name:'Strike',cost:'3 KILLS',disabled:Math.floor(b.units.filter(o=>o.side==='player').reduce((n,o)=>n+o.stats.kills,0)/3)<=(b.supportUsed||0),tip:'Commander strike · one charge per three team kills'});
         const f = b.formations.of(u);
-        s.push(f ? { act: 'formBreak', arg: f.id, icon: ICONS.formation, name: `Break ${FORMATIONS[f.template].name}`, cost: '0', tip: 'Dissolve the formation' }
-            : { act: 'formation', icon: ICONS.formation, name: 'Formation', cost: '1', tip: '<b>Formation</b> (F) · Shield Line, Breach Stack, Crossfire' });
+        s.push(f ? { group:'commander',act: 'formBreak', arg: f.id, icon: ICONS.formation, name: `Break ${FORMATIONS[f.template].name}`, cost: '0', tip: 'Dissolve the formation' }
+            : { group:'commander',act: 'formation', icon: ICONS.formation, name: 'Formation', cost: '0', tip: '<b>Formation</b> (F) · plan slots, then assemble your squad' });
         if (b.breachPoints(u).length) s.push({ act: 'breach', icon: ICONS.breach, name: 'Breach', cost: '1', tip: '<b>Breach</b> (B) · stack up and storm the room; one free shot each' });
         const o = b.objective;
         if (o?.kind === 'recover' && !o.item.carrier && !o.item.secured && Math.max(Math.abs(o.item.x - u.x), Math.abs(o.item.y - u.y)) <= 1 && Math.abs(o.item.z - u.z) <= 1)
@@ -183,12 +190,14 @@ export class Hud {
         const door=this.game.nearestDoor(u);
         if(door) { const closed=b.store.get(door.x,door.y,door.z+1)===MAT.door; s.push({act:'door',icon:ICONS.door,name:closed?'Kick door':'Close door',cost:'1',disabled:ap<1,tip:closed?'Kick open the adjacent door · 1 AP · reveal the room':'Close the adjacent door · 1 AP'}); }
         s.push({act:'wait',icon:ICONS.overwatch,name:'Finish soldier',cost:'all',disabled:ap+u.moveOnlyAp<=0,tip:'Spend remaining AP and select the next ready soldier. End Turn starts the enemy phase.'});
-        return s;
+        const groups=['weapon','equipment','augmentation','commander'];
+        return s.sort((a,b)=>groups.indexOf(a.group||'equipment')-groups.indexOf(b.group||'equipment'));
     }
     runSlot(i) {
         const s = this.slots[i], g = this.game; if (!s || s.disabled) return;
         const u = g.selectedUnit(); if (!u) return;
         switch (s.act) {
+            case 'grenades':this.showGearPanel();break;
             case 'weapon': g.setMode(g.mode.kind === 'shoot' && g.mode.weaponId === s.arg ? { kind: 'move' } : { kind: 'shoot', weaponId: s.arg }); break;
             case 'melee': g.setMode({ kind: 'melee', weaponId: s.arg }); break;
             case 'throw': g.setMode({ kind: 'throw', itemId: s.arg }); break;
@@ -210,14 +219,10 @@ export class Hud {
     refresh() {
         const g = this.game, b = g.battle;
         if (!b) return;
-        this.el('.building-view').classList.toggle('on',g.options.buildingView==='exterior');
-        this.el('.building-view').setAttribute('aria-pressed',String(g.options.buildingView==='exterior'));
-        this.el('.floor-picker').innerHTML=navigationFloors(b.mission).map(f=>`<button data-act="chooseFloor" data-arg="${Number.isFinite(f.cut)?f.cut:'roof'}" class="${g.cutLevel===f.cut?'on':''}" aria-pressed="${g.cutLevel===f.cut}">${f.label}</button>`).join('')+`<button data-act="floorFollow" class="${!g.levelLocked?'on':''}">Auto floors</button>`;
         this.el('.floor-label').textContent=navigationFloors(b.mission).find(f=>f.cut===g.cutLevel)?.label||'Roof';
+        for(const button of this.root.querySelectorAll('[data-act="mark"]')){const active=g.mode.kind==='mark'&&g.mode.color===button.dataset.arg;button.classList.toggle('on',active);button.setAttribute('aria-pressed',String(active));}
         this.root.classList.toggle('enemy-phase', b.activeSide !== 'player');
         this.root.classList.toggle('intel-mode',b.intelMode);
-        this.el('.mission b').textContent = b.mission.name;
-        this.el('.mission span').textContent = b.intelMode ? `${b.mission.objective?.text||''} · ${Object.values(b.contacts).map(c=>`${c.source}: (${c.x},${c.y},${c.z}) @ beat ${c.round}`).join(' · ')||'No sensor contacts'} · Support ${b.detected?'unlocked':'awaiting detection'}${g.selectedUnit()?` · ready in ${Math.max(0,(b.supportReady[g.selectedUnit().owner]||0)-(b.personalTurns[g.selectedUnit().owner]||0))} personal turns`:''}` : b.mission.objective?.text || '';
         this.el('.turnbox .objstat').textContent = objectiveStatus(b.objective, id => b.unit(id)?.name || id);
         this.el('.round').textContent = b.asyncCoop ? `ENEMY BEAT ${b.round} · YOUR TURN ${(b.personalTurns[g.session.local?'player':g.session.playerId]||0)+1}` : `ROUND ${b.round}`;
         this.el('.endturn').textContent=b.asyncCoop?'END MY TURN':'END TURN';
@@ -225,38 +230,15 @@ export class Hud {
         phase.textContent = b.outcome ? 'MISSION OVER' : b.activeSide === 'player' ? (b.asyncCoop ? 'INDEPENDENT TURNS' : 'SQUAD PHASE') : 'ENEMY ACTIVITY';
         phase.className = `phase ${b.activeSide}`;
         this.el('.enemyturn').classList.toggle('hidden', !(b.activeSide !== 'player' && !b.outcome && !g.debug.manualEnemy));
-        this.el('.level').textContent = Number.isFinite(g.cutLevel) ? (g.cutLevel===b.mission.meta.streetDatum?'BELOW':`L${Math.round((g.cutLevel - (b.mission.meta.streetDatum||1)) / 3)}`) : 'ALL';
-        this.el('.cutin-mode').textContent = `BACK SHOT · ${g.cutins.mode.toUpperCase()}`;
-        this.el('.debug-btn').classList.toggle('on', g.debug.enabled);
         // Squad column.
-        this.el('.squad').innerHTML = b.units.filter(u => u.side === 'player').map((u, i) => {
-            const f = b.formations.of(u);
-            const done = alive(u) && b.activeSide === 'player' && !g.canStillAct(u);
-            return `<div class="card ${u.id === g.selected ? 'sel' : ''} ${u.dead ? 'dead' : ''} ${done ? 'done' : ''}" data-act="select" data-arg="${u.id}">
-                <img src="/assets/characters/test-soldier/portrait.png" alt="">
-                <div class="info"><div class="name">${esc(u.name)} <span class="owner">${u.owner !== 'player' ? esc(u.owner) : ''}</span></div>
-                <div class="hp seg">${segs(u.hp, u.maxHp)}</div>
-                <div class="pips">${pips(u.ap + u.moveOnlyAp, u.maxAp, 'ap')}${u.overwatch ? `<em class="ow">${ICONS.overwatch}</em>` : ''}${f ? `<em class="form">${FORMATIONS[f.template].name}</em>` : ''}</div></div>
-                ${done ? '<div class="donetag">DONE</div>' : ''}${u.dead ? '<div class="donetag kia">KIA</div>' : ''}</div>`;
-        }).join('');
-        // Selected soldier panel.
-        const u = g.selectedUnit();
-        const up = this.el('.unitpanel');
-        if (u) {
-            up.classList.remove('hidden');
-            const def = CLASSES[u.type] || ENEMIES[u.type] || {};
-            const w = WEAPONS[u.weapon], vision = visionProfile(u, watchWeapon(u));
-            const enabled=g.controllable(u)&&g.canAct();
-            up.innerHTML = `<div class="character-heading"><img src="/assets/characters/test-soldier/portrait.png" alt=""><div><div class="uname">${esc(u.name)}</div><div class="uclass">${esc(displayName(u.type, b.intelMode))}</div><div class="nums"><span>HP ${u.hp}/${u.maxHp}</span><span>AP ${u.ap}/${u.maxAp}</span><span>Will ${u.will}</span></div></div></div><div class="hp seg">${segs(u.hp,u.maxHp)}</div>
-            <div class="equipment-tabs"><button data-act="equipmentTab" data-arg="weapons" class="${this.equipmentTab==='weapons'?'on':''}">Weapons</button><button data-act="equipmentTab" data-arg="pack" class="${this.equipmentTab!=='weapons'?'on':''}">Pack · ${u.inventory?.length||0}</button></div><div class="${this.equipmentTab==='weapons'?'':'hidden'}">${u.weapons.map(id=>{const w=WEAPONS[id];return `<div class="weapon-row"><button data-act="weapon" data-arg="${id}" ${!enabled||u.ap<b.shotAp(u,w)||(w.ammo&&(u.ammo[id]||0)<(w.perShot||1))?'disabled':''}><b>${esc(w.name)}</b><small>${w.ammo?`${u.ammo[id]||0}/${w.ammo} rounds · `:''}${w.ap} AP</small></button>${w.ammo?`<button data-act="reloadWeapon" data-arg="${id}" title="Reload ${esc(w.name)}" ${!enabled||u.ap<w.reloadAp||u.ammo[id]===w.ammo?'disabled':''}>↻</button>`:''}</div>`;}).join('')}
-            </div><div class="${this.equipmentTab!=='weapons'?'':'hidden'}">${packMarkup(u.inventory||[],false)}</div><small class="vision-info">Vision ${vision.sightRange} tiles · reaction ${vision.halfAngleDeg*2}° / ${vision.range} tiles · ${vision.armor} armour</small><div class="tags">${u.statuses.map(s=>`<span>${s.id}</span>`).join('')}</div>`;
-            up.querySelectorAll('.pack-item').forEach(el=>{el.dataset.act='item';el.dataset.arg=el.dataset.item;el.disabled=!enabled||u.ap<THROWABLES[el.dataset.item].ap;});
-        } else up.classList.add('hidden');
+        this.el('.squad').innerHTML = b.units.filter(u=>u.side==='player').map((u,i)=>`<button class="squad-head ${u.id===g.selected?'sel':''} ${u.dead?'dead':''}" data-act="select" data-arg="${u.id}" aria-label="Select ${esc(u.name)}" title="${esc(u.name)} · ${u.hp}/${u.maxHp} HP · ${u.ap} AP"><img src="/assets/characters/${esc(u.art)}/portrait.png" alt="${esc(u.name)}"><b>${u.hp}<small>/${u.maxHp}</small></b><span>${u.dead?'KIA':`${u.ap} AP`}</span>${u.overwatch?'<em>WATCH</em>':''}</button>`).join('')+`<button class="inventory-toggle" data-act="inventory" aria-label="Open inventory">${ICONS.backpack}<kbd>I</kbd></button>`;
+        const u=g.selectedUnit();this.equipment.render(u);
         // Ability bar.
         const canAct = u && g.controllable(u) && !b.outcome && !g.aiRunning;
         this.slots = canAct ? this.slotsFor(u) : [];
-        this.el('.slots').innerHTML = this.slots.map((s, i) => `<button class="slot ${s.on ? 'on' : ''}" aria-label="${esc(s.name)}" data-act="slot" data-arg="${i}" ${s.disabled ? 'disabled' : ''} data-tip="${esc(s.tip || s.name)}">
+        this.el('.slots').innerHTML = this.slots.map((s, i) => `<button class="slot ${s.on ? 'on' : ''} ${i>0&&s.group!==this.slots[i-1].group?'group-start':''}" aria-label="${esc(s.name)}" data-act="slot" data-arg="${i}" ${s.disabled ? 'disabled' : ''} data-tip="${esc(s.tip || s.name)}">
             <kbd>${i < 9 ? i + 1 : ''}</kbd>${s.icon}<span class="slot-label">${esc(s.name)}</span><span class="cost">${s.cost}</span>${s.sub ? `<span class="sub">${s.sub}</span>` : ''}</button>`).join('');
+        if(u&&fireModes(WEAPONS[u.weapon]).length>1)this.el('.slots').insertAdjacentHTML('afterbegin',`<button class="mode-switch" data-act="fireMode" aria-label="Change fire mode">${fireMode(u,WEAPONS[u.weapon]).toUpperCase()} ↻</button>`);
         const active = this.slots.find(s => s.on);
         this.activeSlotName = active ? active.tip : (u && canAct ? `<b>${esc(u.name)}</b> · ${modeText(g.mode)}` : (b.activeSide !== 'player' ? '' : 'Select a soldier'));
         this.el('.slotname').innerHTML = this.activeSlotName;
@@ -267,33 +249,17 @@ export class Hud {
     renderTargets() {
         const g = this.game, u = g.selectedUnit(), el = this.el('.targets');
         if (!u || !g.controllable(u) || g.battle.outcome) { el.innerHTML = ''; return; }
-        const list = g.targetsFor(u, u.weapons.find(id => WEAPONS[id].kind === 'ballistic') || u.weapon);
+        const list = g.targetsFor(u, g.mode.weaponId || watchWeapon(u));
         const cur = g.targetInfo?.target?.id;
         el.innerHTML = list.map(t => {
-            const hit = cur === t.id && g.targetInfo ? pct(g.targetInfo.byPart[g.targetInfo.part] ?? 0) : '';
-            return `<button class="tgt ${cur === t.id ? 'on' : ''}" data-act="target" data-arg="${t.id}" title="${esc(t.name)}"><img src="/assets/characters/test-soldier/portrait.png" alt=""><span>${g.battle.intelMode ? 'LOS' : hit}</span></button>`;
+            return `<button class="tgt ${cur === t.id ? 'on' : ''}" data-act="target" data-arg="${t.id}" title="${esc(t.name)}"><img src="/assets/characters/${esc(t.art)}/portrait.png" alt="${esc(t.name)}"></button>`;
         }).join('');
     }
-    renderTarget() {
-        const g = this.game, t = g.targetInfo, el = this.el('.target');
-        if (!t || g.mode.kind !== 'shoot') { el.classList.add('hidden'); return; }
-        el.classList.remove('hidden');
-        const u = t.target, w = WEAPONS[g.mode.weaponId];
-        const main = t.byPart[t.part] ?? 0;
-        el.innerHTML = `<div class="thead"><img src="/assets/characters/test-soldier/portrait.png" alt=""><div><div class="tname">${esc(u.name)}</div><div class="thp seg">${segs(u.hp, u.maxHp)}</div></div><div class="bigpct ${main < 0.35 ? 'low' : main < 0.65 ? 'mid' : 'high'}">${this.game.battle.intelMode ? (t.blocked>.5?'OBSTRUCTED':'CLEAR AIM') : pct(main)}</div></div>
-            <div class="tcover">${t.flanked ? '<b class="flank">FLANKED</b>' : `<b class="cov">${['NO COVER', 'HALF COVER', 'FULL COVER'][t.cover] || ''}</b>`} · ${t.distance.toFixed(1)} tiles${t.lean ? ` · lean ${t.lean}` : ''}${t.inRange ? '' : ' · <b class="flank">OUT OF RANGE</b>'}</div>
-            <div class="parts">${(g.mode.suppress ? PARTS.filter(([k]) => k === 'torso') : PARTS).map(([k, label, key]) => `<button data-act="part" data-arg="${k}" class="${t.part === k ? 'on' : ''} ${u.parts[k].disabled ? 'dis' : ''}">
-                <b>${label}</b><span>${g.battle.intelMode ? '' : pct(t.byPart[k] ?? 0)}</span><small>armor ${u.parts[k].armor} · ${u.parts[k].hp}/${u.parts[k].max}</small><kbd>${key}</kbd></button>`).join('')}</div>
-            <div class="tsum">${this.game.battle.intelMode ? 'Physical cover still intercepts bullets' : `Any hit ${pct(t.anyHit)} · cover blocks ${pct(t.blocked)}`}${t.friendly > 0.01 ? ` · <b class="warn">friendly ${pct(t.friendly)}</b>` : ''}</div>
-            <div class="mods">${t.mods.map(([k, v]) => `<span>${k} ×${v}</span>`).join('')}</div>
-            <div class="tbtns"><button data-act="cancel" class="ghost">BACK <kbd>Esc</kbd></button><button data-act="fire" class="firebtn">${esc(g.mode.suppress ? 'SUPPRESSIVE FIRE' : w?.name?.toUpperCase() || 'FIRE')} · ${t.ap} AP${g.mode.suppress ? ` · ${ABILITIES.suppress.wp} WP` : ''} <kbd>Space</kbd></button></div>`;
-        this.renderTargets();
-    }
+    renderTarget(){const g=this.game,t=g.targetInfo,el=this.el('.target');if(g.mode.kind!=='shoot'||!t){el.classList.add('hidden');return;}el.classList.remove('hidden');const u=t.target,w=WEAPONS[g.mode.weaponId];el.innerHTML=`<header><b>${esc(u.name)}</b><span>${u.hp}/${u.maxHp} HP · ${t.distance.toFixed(1)} M</span></header><div class="parts">${PARTS.map(([k,label,key])=>`<button data-act="part" data-arg="${k}" class="${t.part===k?'on':''}"><b>${label}</b><small>${u.parts[k].hp}/${u.parts[k].max} · ARM ${u.parts[k].armor}</small></button>`).join('')}</div><p>${t.blocked>.5?'Cover intercepts this angle':'Aim freely at a body part or the environment'}</p><div class="tbtns"><button data-act="cancel">Back</button><button data-act="fire">Fire · ${t.ap} AP <kbd>Space</kbd></button></div>`;}
+    showGearPanel(){const u=this.game.selectedUnit(),p=this.el('.panel');p.classList.remove('hidden');p.innerHTML=`<h3>Equipment <button data-act="closePanel">✕</button></h3><div class="gear-quick">${Object.entries(u.items).filter(([id,n])=>n>0&&THROWABLES[id]).map(([id,n])=>`<button data-act="item" data-arg="${id}">${ICONS.grenade}<b>${esc(THROWABLES[id].name)}</b><small>${n} carried · ${THROWABLES[id].ap} AP</small></button>`).join('')}</div>`;}
     showFormationPanel() {
-        const g = this.game, u = g.selectedUnit(); if (!u) return;
-        const p = this.el('.panel'); p.classList.remove('hidden');
-        p.innerHTML = `<h3>Formation <button data-act="closePanel">✕</button></h3><p>Leader: ${esc(u.name)}. Facing: toward the hovered tile (or camera forward). Nearby soldiers fill the slots; stragglers within 3 tiles move in for 1 AP.</p>` +
-            Object.values(FORMATIONS).map(f => `<button data-act="formTpl" data-arg="${f.id}" class="wide"><b>${f.name}</b> (${f.min}–${f.max})<br><small>${esc(f.text)}</small></button>`).join('');
+        const p=this.el('.panel');p.classList.toggle('hidden');if(p.classList.contains('hidden'))return;
+        p.innerHTML=`<h3>Formation <button data-act="closePanel">✕</button></h3><p>Choose a formation, then move at least one teammate onto a highlighted slot. Group movement uses the lowest remaining movement budget.</p>${Object.values(FORMATIONS).filter(f=>f.slots).map(f=>`<button data-act="formTpl" data-arg="${f.id}" class="wide"><b>${f.name}</b><small>${esc(f.text)}</small></button>`).join('')}`;
     }
     showBreachPanel() {
         const g = this.game, u = g.selectedUnit(); if (!u) return;
@@ -333,6 +299,7 @@ function modeText(m) {
         case 'throw': return `throw ${THROWABLES[m.itemId].name} — click a tile`;
         case 'ability': return `${ABILITIES[m.abilityId]?.name} — click ${ABILITIES[m.abilityId]?.targeting === 'ally' ? 'an injured ally (self allowed)' : 'an empty visible tile'}`;
         case 'overwatch': return 'overwatch — click the direction to watch';
+        case 'mark': return `click a block to mark ${m.color} · click it again to clear · Esc exits`;
         default: return 'click a tile to move · <span class="blue">blue</span> keeps an action · <span class="yellow">yellow</span> is a dash';
     }
 }

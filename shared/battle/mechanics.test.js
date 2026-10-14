@@ -81,7 +81,7 @@ test('formation validation rejects zero-AP alignment, duplicate members and inva
     c.y = 15; c.ap = 0;
     const intent = { type: 'formation', unitId: a.id, leaderId: a.id, memberIds: [a.id, c.id], template: 'shield_line', facing: 'n' };
     const before = b.hash(); assert.equal(b.apply(intent).reason, 'formation_invalid'); assert.equal(b.hash(), before);
-    c.ap = 1; assert.ok(b.apply(intent).ok); assert.equal(c.ap, 0);
+    c.ap = 1; assert.ok(b.apply(intent).ok); assert.equal(c.ap, 1);assert.equal(c.y,15,'declaration never teleports the member');
     const fresh = arena();
     assert.equal(fresh.apply({ ...intent, memberIds: ['p0', 'p0'] }).reason, 'formation_invalid');
     assert.equal(fresh.apply({ ...intent, leaderId: 'e0' }).reason, 'formation_invalid');

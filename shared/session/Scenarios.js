@@ -70,5 +70,5 @@ export function createBattle(desc, mission = null) {
     mission.spawns.player=spreadInsertion(mission.store,mission.spawns.player);
     // The test ground applies to the compiled mission on every peer (and the server) alike.
     const enemies = desc.test ? applyTestGround(mission, sanitizeTest(desc.test), desc.seed ?? 1) : null;
-    return new Battle({ mission, squad, seed: desc.seed ?? 1, debug: !!desc.debug, enemies, intel: !!desc.intel, asyncCoop: !!desc.asyncCoop, support: desc.support });
+    return new Battle({ mission, squad, seed: desc.seed ?? 1, debug: !!desc.debug, enemies, intel: !!desc.intel, asyncCoop: !!desc.asyncCoop, support: desc.support, testArsenal:!!desc.test });
 }

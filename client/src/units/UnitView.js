@@ -84,23 +84,17 @@ export class UnitView {
     face(dx, dy) { if (dx || dy) this.facingVec = [dx, dy]; }
     worldPosition() { return this.pos.clone(); }
     drawBar() {
-        // XCOM-style overhead: segmented health pips, AP ticks underneath, a thin stress line.
-        const u = this.unit, c = this.barCanvas.getContext('2d'), W = this.barCanvas.width, H = this.barCanvas.height;
-        c.clearRect(0, 0, W, H);
-        const n = Math.min(u.maxHp, 30), gap = 2, pw = (W - 4 - gap * (n - 1)) / n, per = u.maxHp / n;
-        const on = u.side === 'player' ? '#5ff2a0' : '#ff5a4a', off = 'rgba(20,20,24,0.75)';
-        c.fillStyle = 'rgba(4,10,16,0.75)'; c.fillRect(0, 0, W, 16);
-        for (let i = 0; i < n; i++) { c.fillStyle = u.hp > i * per + per / 2 - 1e-6 ? on : off; c.fillRect(2 + i * (pw + gap), 2, pw, 12); }
-        for (let i = 0; i < u.maxAp; i++) { c.fillStyle = i < u.ap ? '#ffc845' : 'rgba(30,30,36,0.7)'; c.fillRect(2 + i * 18, 19, 15, 5); }
-        if (u.stress > 0) { c.fillStyle = '#b58cff'; c.fillRect(W - 2 - Math.round(40 * u.stress / 100), 19, Math.round(40 * u.stress / 100), 5); }
+        const u=this.unit,c=this.barCanvas.getContext('2d'),W=this.barCanvas.width,H=this.barCanvas.height;c.clearRect(0,0,W,H);c.textAlign='center';c.font='600 17px sans-serif';c.fillStyle=u.side==='player'?'#e5e5e9':'#ff7777';c.shadowColor='#000';c.shadowBlur=5;c.fillText(`${u.hp}/${u.maxHp}  ·  ${u.ap} AP`,W/2,18);
         this.barTex.needsUpdate = true;
     }
     update(dt, yaw, camera = this.scene.camera) {
+        this.breathTime=(this.breathTime||0)+dt;
         // Screen-facing art retains its drawn proportions; the transparent foot baseline stays at local zero.
         // Only the sprite tilts. Ground rings, collision position and elevation cues stay on the world grid.
         if(this.model){this.model.update(this.pos,dt);this.bar.position.set(0,this.spriteHeight+.25,0);}
         else if(camera) {
             this.sprite.quaternion.copy(camera.quaternion);
+            if(this.swayEnabled!==false){this.sprite.rotateZ(Math.sin(this.breathTime*1.7+this.id.length)*.004);this.sprite.position.x=Math.sin(this.breathTime*1.3)*.008;}else this.sprite.position.x=0;
             this.depthSlope.value=billboardDepthSlope(camera);
             this.billboardUp.set(0,1,0).applyQuaternion(camera.quaternion);
             this.bar.position.copy(this.billboardUp).multiplyScalar(this.spriteHeight+.18);

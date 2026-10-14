@@ -1,3 +1,4 @@
+import { initializeEquipment, loadPenalty } from '../inventory/Equipment.js';
 import { packItems } from '../inventory/Inventory.js';
 // Units: Phoenix Point body parts on an XCOM-style squad member, plus Will and Stress.
 import { CLASSES, ENEMIES, PARTS, BODY } from '../content/units.js';
@@ -26,7 +27,7 @@ export function createUnit(typeId, side, pos, id, overrides = {}) {
     }
     const ammo = {};
     for (const w of def.weapons) if (WEAPONS[w]?.ammo) ammo[w] = WEAPONS[w].ammo;
-    return {
+    const unit = {
         id, type: typeId, name: overrides.name || def.name, art: def.art, side, owner: overrides.owner || side,
         x: pos.x, y: pos.y, z: pos.z, facing: overrides.facing || (side === 'player' ? 'n' : 's'),
         hp: def.hp, maxHp: def.hp, parts, accuracy: def.accuracy, mobility: def.mobility + (armor.mobility || 0),
@@ -36,6 +37,8 @@ export function createUnit(typeId, side, pos, id, overrides = {}) {
         down: false, dead: false, formationId: null, buffs: {}, stats: { shots: 0, hits: 0, damage: 0, kills: 0 },
         ...overrides.extra
     };
+    initializeEquipment(unit,def);
+    return unit;
 }
 
 /** On the map and able to act (not dead, downed or extracted). */
@@ -65,7 +68,7 @@ export function accuracyMult(u) {
     return m;
 }
 export function mobilityPerAp(u, formationPenalty = 0) {
-    let m = u.mobility + formationPenalty;
+    let m = (u.mobility + formationPenalty)*(1-loadPenalty(u));
     if (u.parts.legs.disabled) m *= 0.5;
     if (hasStatus(u, 'frozen')) return 0;
     return Math.max(0.5, m);

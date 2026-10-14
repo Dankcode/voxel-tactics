@@ -1,3 +1,6 @@
+import { reserveAmmo, consumeAmmo, inventoryMove, equipCargo, grantTestArsenal } from '../inventory/Equipment.js';
+import { fireModes, roundsFor, weaponBuild, projectileDamage } from './FireControl.js';
+import { validateMark, putMark, settleMarks } from './Markers.js';
 import { WALKERS, occupiedCells, walkerReach, walkerFits, fitWalkerSpawn } from './Walker.js';
 import { validateIntel, executeIntel, intelSpread, refreshDrones } from './IntelOps.js';
 import { consumeItem, normalizeInventory, inventoryCounts } from '../inventory/Inventory.js';
@@ -39,8 +42,8 @@ export class Battle {
      * @param {{ mission, squad: {type, owner?, name?}[], seed, controllers? }} o
      * mission: { store, rooms, buildings, spawns: { player: pos[], enemy: {pos, type, group}[] }, name, id }
      */
-    constructor({ mission, squad, seed = 1, controllers = { player: 'human', enemy: 'ai' }, enemies = null, debug = false, intel = false, asyncCoop = false, support = 'carpet_bomb' }) {
-        this.intelMode=intel; this.asyncCoop=asyncCoop; this.personalTurns={}; this.supportReady={}; this.supportChoices={player:support || 'carpet_bomb'}; this.contacts={}; this.drones={}; this.detected=false; this.refreshOwner=null;
+    constructor({ mission, squad, seed = 1, controllers = { player: 'human', enemy: 'ai' }, enemies = null, debug = false, intel = false, asyncCoop = false, support = 'carpet_bomb', testArsenal = false }) {
+        this.intelMode=intel; this.asyncCoop=asyncCoop; this.personalTurns={}; this.supportReady={}; this.supportChoices={player:support || 'carpet_bomb'}; this.contacts={}; this.markers=[];this.supportUsed=0; this.drones={}; this.detected=false; this.refreshOwner=null;
         this.mission = mission;
         this.debugEnabled = !!debug;
         this.store = mission.store;
@@ -67,6 +70,7 @@ export class Battle {
             const pos = ps[i % ps.length];
             const u=createUnit(s.type,'player',pos,`p${i}`,{owner:s.owner||'player',name:s.name});
             if(s.inventory){u.inventory=normalizeInventory(s.inventory);u.items=inventoryCounts(u.inventory);}
+            if(testArsenal)grantTestArsenal(u);
             this.units.push(u);
         });
         (enemies || mission.spawns.enemy).forEach((e, i) => {
@@ -117,7 +121,7 @@ export class Battle {
         return false;
     }
 
-    moveBudget(u) { return (u.ap + u.moveOnlyAp) * this.mobility(u); }
+    moveBudget(u) { return this.formations.groupBudget(u)??((u.ap + u.moveOnlyAp) * this.mobility(u)); }
     mobility(u) { return mobilityPerAp(u, this.formations.mobilityPenalty(u)); }
     reach(u, budget = this.moveBudget(u)) {
         if(WALKERS[u.type])return walkerReach(this,u,budget);
@@ -129,7 +133,8 @@ export class Battle {
 
     /** Spread in degrees for a shot, with every modifier listed for the HUD. */
     spreadFor(shooter, weapon, aimPoint, { reaction = false, breach = false, target = null } = {}) {
-        if(this.intelMode)return intelSpread(shooter,weapon,this,target);
+        if(this.intelMode)return intelSpread(shooter,weaponBuild(shooter,weapon),this,target);
+        weapon=weaponBuild(shooter,weapon);
         const mods = [];
         let s = weapon.spread / Math.max(0.2, accuracyMult(shooter));
         mods.push(['accuracy', +(1 / Math.max(0.2, accuracyMult(shooter))).toFixed(2)]);
@@ -208,7 +213,8 @@ export class Battle {
                 const w = WEAPONS[intent.weaponId || u.weapon];
                 if (!w || !u.weapons.includes(w.id) || w.kind !== 'ballistic') return 'bad_intent';
                 if (u.ap < this.shotAp(u, w)) return 'no_ap';
-                if ((u.ammo[w.id] ?? 0) < (w.perShot || 1)) return 'no_ammo';
+                if ((u.ammo[w.id] ?? 0) < 1) return 'no_ammo';
+                if(intent.fireMode&&!fireModes(w).includes(intent.fireMode))return 'bad_intent';
                 if (intent.suppress) return 'bad_intent'; // Suppression is a paid ability, never a shot flag.
                 if (!intent.aim || (!intent.aim.point && !this.unit(intent.aim.unitId))) return 'no_target';
                 if (intent.aim.unitId) {
@@ -216,7 +222,8 @@ export class Battle {
                     if (!target || !alive(target) || !this.visibleTo(u.side).has(target.id)) return 'no_target';
                 }
                 const p = aimPointOf(this, intent.aim);
-                if (Math.hypot(p.x - u.x - 0.5, p.y - u.y - 0.5) > w.maxRange) return 'out_of_range';
+                if(!p||![p.x,p.y,p.h].every(Number.isFinite))return 'bad_intent';
+                if (Math.hypot(p.x - u.x - 0.5, p.y - u.y - 0.5) > weaponBuild(u,w).maxRange) return 'out_of_range';
                 return null;
             }
             case 'melee': {
@@ -239,10 +246,14 @@ export class Battle {
                 const w = WEAPONS[intent.weaponId || u.weapon];
                 if (!w || w.kind !== 'ballistic' || !u.weapons.includes(w.id) || !watchSector(u, intent.toward, w.id)) return 'bad_intent';
                 if (u.ap < w.ap) return 'no_ap';
-                if ((u.ammo[w.id] ?? 0) < (w.perShot || 1)) return 'no_ammo';
+                if ((u.ammo[w.id] ?? 0) < 1) return 'no_ammo';
                 return null;
             }
-            case 'reload': { const w = WEAPONS[intent.weaponId || u.weapon]; if (!w?.ammo || !u.weapons.includes(w.id)) return 'bad_intent'; return u.ap < w.reloadAp ? 'no_ap' : null; }
+            case 'setFireMode': {const w=WEAPONS[intent.weaponId||u.weapon];return w&&u.weapons.includes(w.id)&&fireModes(w).includes(intent.mode)?null:'bad_intent';}
+            case 'inventoryMove': return inventoryMove(u,intent)?'bad_intent':null;
+            case 'equipCargo': return equipCargo(u,intent)?'bad_intent':null;
+            case 'mark': return validateMark(this,u,intent);
+            case 'reload': { const w = WEAPONS[intent.weaponId || u.weapon]; if (!w?.ammo || w.boltAction || !u.weapons.includes(w.id)||u.ammo[w.id]>=w.ammo) return 'bad_intent'; if(reserveAmmo(u,w)<1)return 'no_ammo';return u.ap < w.reloadAp ? 'no_ap' : null; }
             case 'gadget': {const item=THROWABLES[intent.itemId],target=this.unit(intent.targetId);
                 if(item?.kind!=='gadget'||!(u.items[item.id]>0))return 'no_item';
                 if(u.ap<item.ap)return 'no_ap';
@@ -252,10 +263,11 @@ export class Battle {
             case 'switchWeapon': return u.weapons.includes(intent.weaponId) ? null : 'bad_intent';
             case 'ability': {
                 const a = ABILITIES[intent.abilityId];
-                if (!a || !(u.abilities.includes(a.id)||(a.support && this.intelMode))) return 'bad_intent';
+                if (!a || !(u.abilities.includes(a.id)||(a.support && this.intelMode)||(a.commander&&u.side==='player'))) return 'bad_intent';
                 if (u.will < a.wp) return 'no_will';
                 if (u.ap < a.ap) return 'no_ap';
                 if (hasStatus(u, 'panicked')) return 'no_will';
+                if(a.commander){const t=intent.to,kills=this.units.filter(o=>o.side==='player').reduce((n,o)=>n+o.stats.kills,0);if(!t||![t.x,t.y,t.z].every(Number.isInteger)||!this.store.inBounds(t.x,t.y,t.z)||this.distance(u,t)>a.range)return 'out_of_range';if(Math.floor(kills/3)<=this.supportUsed)return 'no_item';}
                 if(a.intel)return validateIntel(this,u,intent);
                 if (a.id === 'earth_cover') {
                     const t = intent.to;
@@ -277,7 +289,7 @@ export class Battle {
                     if (!u.weapons.includes('repeater')) return 'bad_intent';
                     const target = this.unit(intent.targetId), w = WEAPONS.repeater;
                     if (!target || !alive(target) || !this.visibleTo(u.side).has(target.id)) return 'no_target';
-                    if ((u.ammo[w.id] ?? 0) < (w.perShot || 1)) return 'no_ammo';
+                    if ((u.ammo[w.id] ?? 0) < 1) return 'no_ammo';
                     if (Math.hypot(target.x - u.x, target.y - u.y) > w.maxRange) return 'out_of_range';
                 }
                 return null;
@@ -291,6 +303,7 @@ export class Battle {
                 return null;
             }
             case 'breach': return this.validateBreach(intent);
+            case 'formation_plan': return this.formations.validatePlan(intent);
             case 'formation': return this.formations.validate(intent);
             case 'formation_break': {
                 const f = this.formations.list.get(intent.formationId);
@@ -331,13 +344,18 @@ export class Battle {
             case 'melee': this.doMelee(u, intent); break;
             case 'throw': this.doThrow(u, intent); break;
             case 'overwatch': this.doOverwatch(u, intent); break;
-            case 'reload': { const w = WEAPONS[intent.weaponId || u.weapon]; u.ap -= w.reloadAp; u.ammo[w.id] = w.ammo; this.emit({ t: 'reload', unitId: u.id, weaponId: w.id }); break; }
+            case 'reload': { const w = WEAPONS[intent.weaponId || u.weapon]; const n=Math.min(w.ammo-u.ammo[w.id],reserveAmmo(u,w));u.ap -= w.reloadAp; u.ammo[w.id] += consumeAmmo(u,w,n); this.emit({ t: 'reload', unitId: u.id, weaponId: w.id,rounds:n }); break; }
+            case 'setFireMode': u.fireModes[intent.weaponId||u.weapon]=intent.mode;this.emit({t:'fireMode',unitId:u.id,mode:intent.mode});break;
+            case 'inventoryMove': inventoryMove(u,intent,true);this.emit({t:'inventory',unitId:u.id});break;
+            case 'equipCargo': equipCargo(u,intent,true);this.emit({t:'inventory',unitId:u.id});break;
+            case 'mark': putMark(this,u,intent);break;
             case 'gadget': {const item=THROWABLES[intent.itemId],target=this.unit(intent.targetId),amount=Math.min(item.heal,target.maxHp-target.hp);u.ap-=item.ap;consumeItem(u,item.id);target.hp+=amount;if(!target.parts.torso.disabled)target.parts.torso.hp=Math.min(target.parts.torso.max,target.parts.torso.hp+amount);this.emit({t:'heal',unitId:target.id,sourceId:u.id,itemId:item.id,amount});break;}
             case 'wait': u.ap=0;u.moveOnlyAp=0;this.emit({t:'wait',unitId:u.id});break;
             case 'switchWeapon': u.weapon = intent.weaponId; this.emit({ t: 'weapon', unitId: u.id, weaponId: u.weapon }); break;
             case 'ability': this.doAbility(u, intent); break;
             case 'door': this.doDoor(u, intent.door); break;
             case 'breach': this.doBreach(intent); break;
+            case 'formation_plan': this.formations.plan(intent);break;
             case 'formation': this.formations.declare(intent); break;
             case 'formation_break': this.formations.dissolve(intent.formationId, 'ordered'); break;
             case 'face': u.facing = intent.facing; this.emit({ t: 'face', unitId: u.id, facing: u.facing }); break;
@@ -351,7 +369,10 @@ export class Battle {
     emit(e) { e.seq = ++this.seq; e.round = this.round; this.log.push(e); return e; }
 
     afterAction() {
+        // A bolt-action chambers a newly supplied loose round without a separate reload action.
+        for(const u of this.units)for(const id of u.weapons){const w=WEAPONS[id];if(w.boltAction&&!u.ammo[id]&&reserveAmmo(u,w)>0)u.ammo[id]=consumeAmmo(u,w,1);}
         for(const u of this.units)if(WALKERS[u.type])u.footprint=occupiedCells(u,{x:u.x,y:u.y,z:u.z},this.store);
+        settleMarks(this);
         this.updateVisibility();
         if(this.intelMode)refreshDrones(this);
         if(this.intelMode && this.unitsOf('enemy').some(e=>e.alerted))this.detected=true;
@@ -378,7 +399,6 @@ export class Battle {
             u.ap = first ? u.maxAp : Math.max(0, ap);
             u.moveOnlyAp = 0;
             u.reactionsLeft = 1;
-            u.overwatch = null;
             u.buffs = {};
             if (!first) u.will = Math.min(u.maxWill, u.will + B.willRegen);
             u.movedThisTurn = 0;
@@ -478,7 +498,7 @@ export class Battle {
         const fromMoveOnly = Math.min(u.moveOnlyAp, ap);
         u.moveOnlyAp -= fromMoveOnly; ap -= fromMoveOnly;
         u.ap -= ap;
-        const walked = [path[0]], kinds = [], windowVaults=[];
+        const walked = [path[0]], kinds = [], windowVaults=[], reacted=new Set();
         const movementEvent=this.emit({t:'move',unitId:u.id,path:walked,kinds,windowVaults,ap:ap+fromMoveOnly});
         let jumped = false;
         for (let i = 1; i < path.length; i++) {
@@ -501,7 +521,7 @@ export class Battle {
             // Spotting: a unit that steps into view of an unalerted pod alerts it.
             this.updateVisibility({interior:false});
             const before = alive(u);
-            this.checkReactions(u, walked);
+            this.checkReactions(u, walked, reacted);
             if (before && !alive(u)) break;
             if (u.statuses.some(s => s.id === 'frozen')) break;
         }
@@ -601,19 +621,21 @@ export class Battle {
     }
 
     /** Overwatch: enemies of the mover whose cone contains its new position and who can see it shoot. */
-    checkReactions(mover, walked) {
+    checkReactions(mover, walked, reacted = new Set()) {
         for (const w of this.enemiesOf(mover)) {
             if (!alive(mover)) return;
-            if (!w.overwatch || w.reactionsLeft <= 0 || hasStatus(w, 'surprised')) continue;
+            if (!w.overwatch || hasStatus(w, 'surprised')) continue;
             const ow = w.overwatch;
             if (!inWatchSector(w, ow, mover) || !this.sees(w, mover)) continue;
             const weapon = WEAPONS[ow.weaponId];
-            if (!w.weapons.includes(ow.weaponId) || (w.ammo[ow.weaponId] ?? 0) < (weapon?.perShot || 1)) { w.overwatch = null; continue; }
-            w.reactionsLeft--;
+            if (!w.weapons.includes(ow.weaponId) || (w.ammo[ow.weaponId] ?? 0) < 1) { w.overwatch = null; continue; }
+            // One salvo per movement event; the watch remains active for subsequent movers.
+            if(reacted.has(w.id))continue;
+            reacted.add(w.id);
             this.stats.reactions++;
             this.emit({ t: 'reaction', watcherId: w.id, targetId: mover.id });
             this.fireWeapon(w, WEAPONS[ow.weaponId], { unitId: mover.id, part: 'torso' }, { reaction: true });
-            if (w.reactionsLeft <= 0) w.overwatch = null;
+            if ((w.ammo[ow.weaponId]||0)===0) w.overwatch = null;
         }
     }
 
@@ -623,19 +645,21 @@ export class Battle {
         u.ap -= this.shotAp(u, w);
         u.buffs.quickAim = false;
         const targetIds = intent.aim.unitId ? [intent.aim.unitId] : [];
-        this.emit({ t: 'cutin', unitId: u.id, kind: w.cutIn || 'shot', weaponId: w.id, targetIds });
-        this.fireWeapon(u, w, intent.aim, {});
+        this.emit({ t: 'cutin', unitId: u.id, kind: w.cutIn || 'shot', weaponId: w.id, targetIds,aimPoint:aimPointOf(this,intent.aim) });
+        this.fireWeapon(u, w, intent.aim, { fireMode:intent.fireMode });
         u.buffs.deadeye = false;
     }
 
     /** Fire one shot of `w` at `aim`, resolving every projectile with the battle RNG. */
-    fireWeapon(u, w, aim, { reaction = false, breach = false } = {}) {
-        if ((u.ammo[w.id] ?? 0) < (w.perShot || 1)) return;
-        u.ammo[w.id] -= w.perShot || 1;
+    fireWeapon(u, w, aim, { reaction = false, breach = false, fireMode = null } = {}) {
+        const rounds=roundsFor(u,w,fireMode);if(!rounds)return;
+        u.ammo[w.id]-=rounds;
+        const count=rounds*(w.pellets||w.projectiles||1);
         const target = aim.unitId ? this.unit(aim.unitId) : null;
         const aimPoint = aimPointOf(this, aim);
         u.facing = facingToward(aimPoint.x - u.x - 0.5, aimPoint.y - u.y - 0.5);
         const { spread } = this.spreadFor(u, w, aimPoint, { reaction, breach, target });
+        w=weaponBuild(u,w);
         const muzzle = chooseMuzzle(this.store, u, aimPoint);
         const dv = [aimPoint.x - muzzle.x, aimPoint.y - muzzle.y, aimPoint.h - muzzle.h];
         const dist = Math.hypot(...dv);
@@ -643,18 +667,20 @@ export class Battle {
         const maxDist = Math.min(w.maxRange, Math.max(dist + 10, dist * 1.6));
         const projectiles = [];
         const ws = this.weaponStats(w.id);
-        ws.shots++; ws.projectiles += w.projectiles; ws.ap += reaction ? 0 : this.shotAp(u, w);
+        ws.shots++; ws.projectiles += count; ws.ap += reaction ? 0 : this.shotAp(u, w);
         u.stats.shots++;
         let targetHit = false;
+        const threatened=new Map();
         const changes = this.store.record(() => {
-            for (let i = 0; i < w.projectiles; i++) {
+            for (let i = 0; i < count; i++) {
                 const d = sampleCone(dir, spread, this.rng);
                 const res = traceProjectile(this, muzzle, d, maxDist, { ignore: u.id });
                 for (const [gx, gy, gz] of res.glass) if (this.store.get(gx, gy, gz) === MAT.glass) { this.store.set(gx, gy, gz, AIR); this.stats.voxelsDestroyed++; }
                 const p = { to: res.point, kind: res.kind };
                 if (res.kind === 'unit') {
+                    if(!reaction&&res.unit.side!==u.side&&!threatened.has(res.unit.id))threatened.set(res.unit.id,{unit:res.unit,visible:this.sees(res.unit,u)});
                     p.unitId = res.unit.id; p.part = res.part;
-                    const dealt = this.dealDamage(res.unit, res.part, w.damage, { pierce: w.pierce, shred: w.shred, element: w.element, source: u.id });
+                    const dealt = this.dealDamage(res.unit, res.part, projectileDamage(w,res.t,i), { pierce: w.pierce, shred: w.shred, element: w.element, source: u.id });
                     p.damage = dealt;
                     ws.hits++; ws.damage += dealt; u.stats.hits++; u.stats.damage += dealt;
                     if (target && res.unit.id === target.id) targetHit = true;
@@ -672,12 +698,14 @@ export class Battle {
             }
         });
         u.buffs.demolish = false;
-        this.emit({ t: 'shot', unitId: u.id, weaponId: w.id, muzzle, aim: aimPoint, projectiles, reaction, breach });
+        this.emit({ t: 'shot', unitId: u.id, weaponId: w.id, muzzle, aim: aimPoint, projectiles, reaction, breach, rounds });
+        if(w.boltAction&&reserveAmmo(u,w)>0)u.ammo[w.id]+=consumeAmmo(u,w,1);
         if (changes.length) this.emit({ t: 'voxels', changes });
         if (target && alive(target) && !targetHit) this.addStress(target, B.stressOnNearMiss, 'near miss');
         this.noise(u.x, u.y, u.z, w.noise ?? 12, u);
         if (changes.some(c => materialById(c[3]).structural)) this.settle();
         this.checkFalls();
+        for(const t of threatened.values())if(alive(t.unit))this.formations.onIncomingFire(t.unit,u,t.visible);
     }
 
     doMelee(u, intent) {
@@ -704,6 +732,7 @@ export class Battle {
         if (element === 'pyro' && hasStatus(t, 'wet')) dmg = Math.max(0, dmg - 1);
         if (shred) p.armor = Math.max(0, p.armor - shred);
         if (dmg > 0) {
+            t.overwatch=null;
             p.hp = Math.max(0, p.hp - dmg);
             t.hp -= dmg;
             if (part === 'torso') t.parts.torso.hp = Math.max(0, t.hp);
@@ -732,6 +761,7 @@ export class Battle {
     }
     giveStatus(u, id, rounds) {
         const s = addStatus(u, id, rounds);
+        if (s) u.overwatch=null;
         if (s) this.emit({ t: 'status', unitId: u.id, statusId: id, rounds: s.rounds });
     }
     addStress(u, amount, why) {
@@ -902,6 +932,7 @@ export class Battle {
         this.emit({ t: 'ability', unitId: u.id, abilityId: a.id });
         if(a.intel){executeIntel(this,u,intent);return;}
         switch (a.id) {
+            case 'killstreak_strike':this.supportUsed++;this.explode({x:intent.to.x+.5,y:intent.to.y+.5,h:intent.to.z+1.5,radius:3,damage:25,power:12,element:'geo',by:u.id});break;
             case 'earth_cover': {
                 const t = intent.to;
                 const changes = this.store.record(() => this.store.set(t.x,t.y,t.z+1,MAT.drystone));
@@ -1036,8 +1067,8 @@ export class Battle {
             const cell = cells.find(c => search.costs.has(nodeKey(c)) && !this.occupant(c.x, c.y, c.z));
             if (cell) {
                 const path = pathTo(search, nodeKey(cell));
-                const walked = [path[0]];
-                for (let i = 1; i < path.length && alive(u); i++) { this.openDoorsOnStep(u, path[i - 1], path[i]); Object.assign(u, path[i]); walked.push(path[i]); this.checkReactions(u, walked); }
+                const walked = [path[0]],reacted=new Set();
+                for (let i = 1; i < path.length && alive(u); i++) { this.openDoorsOnStep(u, path[i - 1], path[i]); Object.assign(u, path[i]); walked.push(path[i]); this.checkReactions(u, walked, reacted); }
                 this.emit({ t: 'move', unitId: u.id, path: walked, ap: 1, breach: true });
             }
             if (!alive(u)) continue;
@@ -1128,7 +1159,7 @@ export class Battle {
     hash() {
         let voxelHp = 0x811c9dc5;
         for (const hp of this.store.hp) { voxelHp ^= hp; voxelHp = Math.imul(voxelHp, 0x01000193); }
-        const state = { squareCorners:[...this.store.squareCorners].sort(),windowOpenings:[...this.store.windowOpenings].sort(([a],[b])=>a<b?-1:a>b?1:0), intelMode:this.intelMode, asyncCoop:this.asyncCoop, personalTurns:this.personalTurns,supportReady:this.supportReady,supportChoices:this.supportChoices,contacts:this.contacts,drones:this.drones,detected:this.detected,refreshOwner:this.refreshOwner, units: this.units, round: this.round, activeSide: this.activeSide, outcome: this.outcome,
+        const state = { supportUsed:this.supportUsed,markers:this.markers,squareCorners:[...this.store.squareCorners].sort(),windowOpenings:[...this.store.windowOpenings].sort(([a],[b])=>a<b?-1:a>b?1:0), intelMode:this.intelMode, asyncCoop:this.asyncCoop, personalTurns:this.personalTurns,supportReady:this.supportReady,supportChoices:this.supportChoices,contacts:this.contacts,drones:this.drones,detected:this.detected,refreshOwner:this.refreshOwner, units: this.units, round: this.round, activeSide: this.activeSide, outcome: this.outcome,
             revealedRooms: [...this.revealedRooms].sort((a, b) => a - b), field: this.field.snapshot(),
             formations: this.formations.snapshot(), nextFormationId: this.formations.nextId,
             objective: this.objective, rng: this.rng.state, debugEnabled: this.debugEnabled, controllers: this.controllers, seq: this.seq };

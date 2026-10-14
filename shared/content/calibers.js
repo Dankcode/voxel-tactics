@@ -12,13 +12,13 @@
 //
 // Ids are stable (weapons, tests, the sim report); names are what the player sees.
 export const CALIBERS = Object.freeze({
-    '9mm': { id: '9mm', name: '9×19 mm', damage: 7, pierce: 0, voxel: 1 },
-    '5.56': { id: '5.56', name: '5.56×45 mm NATO', damage: 9, pierce: 2, voxel: 1 },
+    '9mm': { id: '9mm', name: '9×19 mm', damage: 10, pierce: 0, voxel: 1 },
+    '5.56': { id: '5.56', name: '5.56×45 mm NATO', damage: 10, pierce: 2, voxel: 1 },
     '300blk': { id: '300blk', name: '.300 BLK subsonic', damage: 10, pierce: 2, voxel: 1 },
     '7.62x39': { id: '7.62x39', name: '7.62×39 mm', damage: 10, pierce: 2, voxel: 2 },
-    '7.62': { id: '7.62', name: '7.62×51 mm NATO', damage: 12, pierce: 3, voxel: 2 },
-    '338': { id: '338', name: '.338 Lapua Magnum', damage: 18, pierce: 5, voxel: 3 },
-    '12g': { id: '12g', name: '12-gauge 00 buckshot', damage: 4, pierce: 0, voxel: 1 }
+    '7.62': { id: '7.62', name: '7.62×51 mm NATO', damage: 10, pierce: 3, voxel: 2 },
+    '338': { id: '338', name: '.338 Lapua Magnum', damage: 30, pierce: 5, voxel: 3 },
+    '12g': { id: '12g', name: '12-gauge 00 buckshot', damage: 3.75, pierce: 0, voxel: 1 }
 });
 
 /** Fill a ballistic weapon's damage, pierce and voxel from its caliber (explicit fields on the weapon win). */

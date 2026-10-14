@@ -26,7 +26,7 @@ test('moving spends AP by path cost / mobility and is rejected beyond the budget
     const u = b.unit('p0');
     const r = b.apply({ type: 'move', unitId: 'p0', to: { x: 10, y: 13, z: 1 } });
     assert.ok(r.ok);
-    assert.equal(u.ap, 3);
+    assert.equal(u.ap, 2);
     assert.equal(b.apply({ type: 'move', unitId: 'p0', to: { x: 10, y: 1, z: 1 } }).reason, 'no_ap');
 });
 
@@ -122,7 +122,7 @@ test('Proving Grounds: breach a bunker room — door opens, room revealed, defen
 
 test('formations: shield line costs mobility, grants front-arc defense, and clustered units take bonus blast damage', () => {
     const b = arena({ squad: ['warden', 'warden', 'vanguard'], player: [{ x: 9, y: 16, z: 1 }, { x: 10, y: 16, z: 1 }, { x: 11, y: 16, z: 1 }] });
-    const r = b.apply({ type: 'formation', template: 'shield_line', unitId: 'p1', leaderId: 'p1', memberIds: ['p1', 'p0', 'p2'], facing: 'n' });
+    const r = b.apply({ type: 'formation', template: 'shield_line', unitId: 'p1', leaderId: 'p1', memberIds: ['p1', 'p2', 'p0'], facing: 'n' });
     assert.ok(r.ok, r.reason);
     const u = b.unit('p1'), e = b.units.find(x => x.side === 'enemy');
     assert.ok(b.formations.mobilityPenalty(u) < 0);
@@ -169,8 +169,8 @@ test('overwatch rejects forged weapons and invalid directions, ignores enemies b
     assert.equal(b.apply({...intent,weaponId:'repeater'}).reason,'bad_intent');
     assert.ok(b.apply(intent).ok);b.apply({type:'endTurn',side:'player'});
     const e=b.unit('e0');e.x=10;e.y=18;e.alerted=true;b.checkReactions(e,[e]);assert.equal(b.stats.reactions,0);
-    e.x=10;e.y=12;b.checkReactions(e,[e]);assert.equal(b.stats.reactions,1);assert.equal(u.overwatch,null);
-    b.checkReactions(e,[e]);assert.equal(b.stats.reactions,1);
+    e.x=10;e.y=12;b.checkReactions(e,[e]);assert.equal(b.stats.reactions,1);assert.ok(u.overwatch);
+    b.checkReactions(e,[e]);assert.equal(b.stats.reactions,2);
 });
 
 test('elemental intents replay deterministically and blocked cover casts never spend resources', () => {

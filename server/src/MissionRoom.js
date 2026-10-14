@@ -159,7 +159,7 @@ export class MissionRoom extends Room {
             return this.endPlayerTurn(m.nonce);
         }
         if (intent.type === 'debug' && p.id !== this.hostPlayer) return this.rejectCommand(client, m.nonce, 'not_your_unit' );
-        if (['owners','personalEnd'].includes(intent.type) || !['move','shoot','melee','throw','overwatch','reload','gadget','wait','switchWeapon','ability','door','breach','formation','formation_break','face','extract','recover','debug'].includes(intent.type)) return this.rejectCommand(client, m.nonce, 'bad_intent' );
+        if (['owners','personalEnd'].includes(intent.type) || !['setFireMode','inventoryMove','equipCargo','mark','formation_plan','move','shoot','melee','throw','overwatch','reload','gadget','wait','switchWeapon','ability','door','breach','formation','formation_break','face','extract','recover','debug'].includes(intent.type)) return this.rejectCommand(client, m.nonce, 'bad_intent' );
         const r = this.commit(intent, m.nonce);
         if (!r.ok) this.rejectCommand(client, m.nonce, r.reason );
     }

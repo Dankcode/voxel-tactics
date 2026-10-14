@@ -1,6 +1,10 @@
 // Formations (PLAN-01 rev 2 §14). Slots are [right, forward] offsets from the leader, in tiles, in the
 // leader's facing frame. A member is "in slot" within ±1 tile and ±1 voxel. Numbers are tunables.
 export const FORMATIONS = Object.freeze({
+    wedge:{id:'wedge',name:'Wedge',min:2,max:4,slots:[[0,0],[-1,-1],[1,-1],[0,-2]],bonus:{counterattack:true},cost:{mobilityPerAp:0},text:'A broad advance. Members in position return fire together after a hostile attack; each spends real ammunition.'},
+    file:{id:'file',name:'Patrol File',min:2,max:4,slots:[[0,0],[0,-2],[0,-4],[0,-6]],bonus:{repositionOnAmbush:true},cost:{mobilityPerAp:.2},text:'A spaced patrol for narrow routes. On fire from an unseen attacker, members with AP step toward nearby cover.'},
+    line:{id:'line',name:'Skirmish Line',min:2,max:4,slots:[[0,0],[-2,0],[2,0],[4,0]],bonus:{counterattack:true},cost:{mobilityPerAp:-.2},text:'A wide base of fire. Positioned members counterattack a shooter in sight. Vulnerable to flanking and explosives.'},
+
     shield_line: {
         id: 'shield_line', name: 'Shield Line', min: 2, max: 4,
         slots: [[0, 0], [1, 0], [-1, 0], [2, 0]],

@@ -45,7 +45,7 @@ export class EventPlayer {
                 const sub = !g.battle.intelMode && g.lastPreview?.unitId === e.unitId && g.lastPreview.hit != null ? `${Math.round(g.lastPreview.hit * 100)}% on target` : (target ? `→ ${target.name}` : '');
                 const sv = this.view(e.unitId), tv = target ? this.view(target.id) : null;
                 await g.cutins.play({ units: group, kind: e.kind, title, subtitle: sub, side: u.side,
-                    shooterPos: sv?.worldPosition(), targetPos: tv ? tv.worldPosition() : sv?.worldPosition().clone().add(new THREE.Vector3(...faceVec(u)).multiplyScalar(4)) });
+                    shooterPos: sv?.worldPosition(), targetPos: e.aimPoint?new THREE.Vector3(e.aimPoint.x,e.aimPoint.h-1.1,e.aimPoint.y):tv ? tv.worldPosition() : sv?.worldPosition().clone().add(new THREE.Vector3(...faceVec(u)).multiplyScalar(4)) });
                 break;
             }
             case 'move': case 'knockback': {

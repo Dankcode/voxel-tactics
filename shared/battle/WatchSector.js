@@ -1,13 +1,14 @@
+import { weaponBuild } from './FireControl.js';
 import { WEAPONS } from '../content/weapons.js';
 import { CLASSES, ENEMIES } from '../content/units.js';
 import { B } from '../content/balance.js';
 
 // Spotting stays panoramic; the equipment-dependent reaction sector is a planar wedge.
 export function visionProfile(unit, weaponId = unit.weapon) {
-    const weapon = WEAPONS[weaponId];
-    const armor = unit.armorId || (CLASSES[unit.type] || ENEMIES[unit.type])?.armor || 'light';
+    const weapon = WEAPONS[weaponId]&&weaponBuild(unit,WEAPONS[weaponId]);
+    const armor = unit.equipment?.armor?.replace('armor_', '') || unit.armorId || (CLASSES[unit.type] || ENEMIES[unit.type])?.armor || 'light';
     const penalty = armor === 'plate' ? 10 : armor === 'heavy' ? 5 : 0;
-    const halfAngleDeg = Math.max(15, (weapon?.range >= 25 ? 25 : weapon?.spread > 4 ? 55 : 40) - penalty);
+    const halfAngleDeg = Math.max(15, (weapon?.scoped ? 18 : weapon?.range >= 25 ? 25 : weapon?.spread > 4 ? 55 : 40) - penalty);
     return { armor, sightRange: B.sightRange, halfAngleDeg, range: Math.min(B.sightRange, (weapon?.range || 0) * 1.25) };
 }
 export function watchWeapon(unit) {

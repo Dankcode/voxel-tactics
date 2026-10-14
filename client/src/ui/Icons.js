@@ -3,9 +3,16 @@
 const svg = (body, vb = '0 0 24 24') => `<svg viewBox="${vb}" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
 
 export const ICONS = {
+    cube:svg('<path d="M12 2L22 7V17L12 22L2 17V7ZM2 7L12 12L22 7M12 12V22M12 2V12"/>'),
+    helmet:svg('<path d="M3 15V11A9 9 0 0 1 21 11V16H15L12 20L9 16H3M3 12H21"/>'),
+    armor:svg('<path d="M8 3L10 6H14L16 3L21 8L17 12V21H7V12L3 8Z"/><path d="M9 9H15V17H9Z"/>'),
+    backpack:svg('<rect x="5" y="6" width="14" height="16" rx="3"/><path d="M9 6V3H15V6M5 13H19M9 16V19M15 16V19"/>'),
+
     fire: svg('<circle cx="12" cy="12" r="7"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/>'),
-    rifle: svg('<circle cx="12" cy="12" r="8"/><path d="M12 4v4M12 16v4M4 12h4M16 12h4"/><path d="M9 12h6M12 9v6" stroke-width="1"/>'),
-    shotgun: svg('<path d="M4 12h9"/><path d="M13 8l7-3M13 12h8M13 16l7 3"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/>'),
+    rifle: svg('<path d="M2 10H6V7H16V9H22V11H15L13 15H10L9 11H6L3 15H2ZM10 7V5H14V7M5 10V7M17 9V6"/>'),
+    shotgun: svg('<path d="M2 12H6V8H22V11H12L10 15H7L6 12L3 16H2ZM12 8V6H22M13 11V13H18"/>'),
+    pistol: svg('<path d="M4 7H21V11H13L10 20H5L8 11H4ZM14 11V14H11M5 7V5H9V7"/>'),
+    sniper: svg('<path d="M2 12H8V9H20V11H23M8 12L6 17H3L4 12M11 12L12 16H15L14 12M12 9V5H18V9M10 6H20"/>'),
     melee: svg('<path d="M14.5 3.5l6 0 0 6-10 10-6-6z"/><path d="M4 20l3-3M7 14l3 3"/>'),
     grenade: svg('<circle cx="11" cy="14" r="6"/><path d="M11 8V5h3l2 2"/><path d="M17 4l2-1M18 7h2"/>'),
     overwatch: svg('<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
@@ -25,3 +32,4 @@ export const ICONS = {
     bug: svg('<rect x="7" y="8" width="10" height="12" rx="5"/><path d="M12 8v12M9 5l1.5 2M15 5l-1.5 2M3 13h4M17 13h4M4 8l3 2M20 8l-3 2M4 19l3-2M20 19l-3-2"/>'),
     menu: svg('<path d="M4 6h16M4 12h16M4 18h16"/>')
 };
+export function weaponIcon(w){return ICONS[w.kind==='melee'?'melee':w.id==='handcannon'?'pistol':w.ammoType==='shotgun'?'shotgun':w.scoped?'sniper':'rifle'];}

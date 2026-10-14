@@ -1,5 +1,7 @@
 // Formations with their own balancing rules (PLAN-01 rev 2 §14): slots, cohesion tiers, a cost, hard caps,
 // static decay, the universal "clustered" counter for area attacks, and dissolution on losses.
+import { WEAPONS } from '../content/weapons.js';
+import { coverAt } from '../voxel/Cover.js';
 import { FORMATIONS, FORMATION_RULES as R } from '../content/formations.js';
 import { nodeKey, pathTo } from '../world/PathSearch.js';
 import { alive } from './Units.js';
@@ -12,7 +14,7 @@ export class Formations {
 
     of(u) { return u?.formationId ? this.list.get(u.formationId) || null : null; }
     members(f) { return f.members.map(id => this.battle.unit(id)).filter(u => u && alive(u)); }
-    tier(f) { return !f ? 0 : f.cohesion >= R.fullAt ? 1 : f.cohesion >= R.halfAt ? 0.5 : 0; }
+    tier(f) { return !f || f.assembling ? 0 : f.cohesion >= R.fullAt ? 1 : f.cohesion >= R.halfAt ? 0.5 : 0; }
 
     slotsFor(f, leader = this.battle.unit(f.leaderId)) {
         const tpl = FORMATIONS[f.template];
@@ -20,7 +22,7 @@ export class Formations {
         const [fx, fy] = CARDINAL[f.facing] || CARDINAL.n;
         const rx = -fy, ry = fx;
         return f.members.map((_, i) => {
-            const [r, fwd] = tpl.slots[i];
+            const [r, fwd] = tpl.slots[f.assignments?.[f.members[i]]??i];
             const x = leader.x + rx * r + fx * fwd, y = leader.y + ry * r + fy * fwd;
             const s = this.battle.store.surfaceNear(x, y, leader.z);
             return { x, y, z: s ? s.z : leader.z };
@@ -72,27 +74,49 @@ export class Formations {
         const leaderId = intent.leaderId || ids[0];
         const f = { id: `f${this.nextId++}`, template: tpl.id, side: b.unit(leaderId).side, facing: intent.facing || 'n',
             members: [leaderId, ...ids.filter(id => id !== leaderId)], leaderId, cohesion: 100, staticPhases: 0 };
-        if (tpl.slots) {
-            const slots = this.slotsFor(f);
-            f.members.forEach((id, i) => {
-                const u = b.unit(id), slot = slots[i];
-                if (u.x === slot.x && u.y === slot.y && u.z === slot.z) return;
-                const search = b.reach(u, 4 * b.mobility(u));
-                const target = [slot, ...neighbours(slot)].find(c => search.costs.has(nodeKey(c)) && !b.occupant(c.x, c.y, c.z));
-                if (!target) return;
-                const path = pathTo(search, nodeKey(target));
-                u.ap -= 1; u.x = target.x; u.y = target.y; u.z = target.z;
-                b.emit({ t: 'move', unitId: u.id, path, ap: 1, formation: f.id });
-            });
-        } else {
-            for (const id of f.members) b.unit(id).reactionsLeft = 1 + (tpl.bonus.extraReactions || 0);
-        }
+        // Formation declarations never teleport soldiers. Assemble by moving into highlighted slots.
         for (const id of f.members) b.unit(id).formationId = f.id;
         this.list.set(f.id, f);
         f.cohesion = Math.max(0, 100 - R.cohesionLossPerStray * this.strays(f));
         const st = b.stats.formations[tpl.id] ||= { declared: 0, phasesActive: 0, dissolved: 0, breaches: 0 };
         st.declared++;
         b.emit({ t: 'formation', action: 'declare', formation: { ...f } });
+    }
+
+    validatePlan(i){
+        const b=this.battle,u=b.unit(i.unitId),tpl=FORMATIONS[i.template];
+        if(!u||u.formationId||!tpl?.slots||!['n','e','s','w'].includes(i.facing))return 'formation_invalid';
+        const active=[...this.list.values()].filter(f=>f.side===u.side).length;
+        if(active>=Math.max(1,Math.floor(b.unitsOf(u.side).length/R.perSoldiers)))return 'formation_invalid';
+        if(tpl.requiresDoor&&!b.breachPoints(u).length)return 'formation_invalid';
+        return null;
+    }
+    plan(i){
+        const u=this.battle.unit(i.unitId),f={id:`f${this.nextId++}`,template:i.template,side:u.side,facing:i.facing,leaderId:u.id,members:[u.id],assignments:{[u.id]:0},assembling:true,open:true,cohesion:100,staticPhases:0};
+        this.list.set(f.id,f);u.formationId=f.id;
+        this.battle.stats.formations[f.template]||={declared:0,phasesActive:0,dissolved:0,breaches:0};this.battle.stats.formations[f.template].declared++;
+        this.recruit(f);this.battle.emit({t:'formation',action:'plan',formation:{...f}});
+    }
+    plannedSlots(f){const leader=this.battle.unit(f.leaderId),tpl=FORMATIONS[f.template];if(!leader||!tpl.slots)return [];
+        return this.slotsFor({...f,members:tpl.slots.map((_,i)=>`slot${i}`),assignments:null},leader);
+    }
+    recruit(f){if(!f.open)return;const slots=this.plannedSlots(f),tpl=FORMATIONS[f.template];
+        for(const u of this.battle.unitsOf(f.side)){
+            if(u.formationId||f.members.length>=tpl.max)continue;
+            const idx=slots.findIndex((p,i)=>i>0&&!Object.values(f.assignments).includes(i)&&u.x===p.x&&u.y===p.y&&u.z===p.z);
+            if(idx>=0){u.formationId=f.id;f.members.push(u.id);f.assignments[u.id]=idx;this.battle.emit({t:'formation',action:'join',formationId:f.id,unitId:u.id});}
+        }
+        f.assembling=f.members.length<tpl.min;
+    }
+    groupBudget(u){const f=this.of(u);if(!f||f.assembling||f.leaderId!==u.id)return null;return Math.min(...this.members(f).map(m=>(m.ap+m.moveOnlyAp)*this.battle.mobility(m)));}
+    onIncomingFire(target,shooter,wasVisible){
+        const f=this.of(target),tpl=f&&FORMATIONS[f.template],b=this.battle;if(!f||!this.tier(f))return;
+        if(tpl.bonus.counterattack){for(const u of this.members(f)){const w=WEAPONS[u.weapon];if(!alive(shooter))break;if(w?.kind==='ballistic'&&u.ammo[w.id]>0&&b.sees(u,shooter)&&b.distance(u,shooter)<=w.maxRange){b.stats.reactions++;b.emit({t:'reaction',watcherId:u.id,targetId:shooter.id,formation:true});b.fireWeapon(u,w,{unitId:shooter.id,part:'torso'},{reaction:true});}}}
+        if(tpl.bonus.repositionOnAmbush&&!wasVisible){for(const u of this.members(f)){if(u.ap<1)continue;const search=b.reach(u,b.mobility(u));
+            const score=p=>{const c=coverAt(b.store,p.x,p.y,p.z);return Math.max(c.n,c.e,c.s,c.w)*10+b.distance(p,shooter);};
+            const candidates=[...search.nodes.values()].filter(p=>!b.occupant(p.x,p.y,p.z)&&b.distance(p,u)<=2).sort((a,c)=>score(c)-score(a));
+            if(candidates[0]&&score(candidates[0])>score(u))b.doMove(u,candidates[0]);
+        }}
     }
 
     dissolve(id, why) {
@@ -115,12 +139,12 @@ export class Formations {
             if (!target) return;
             const cost = search.costs.get(nodeKey(target));
             const ap = b.apForCost(u, cost);
-            if (ap > u.ap) return;
+            if (ap > u.ap + u.moveOnlyAp) return;
             b.doMove(u, target);
         });
         this.recompute(f);
     }
-    onMoved(u) { const f = this.of(u); if (f) this.recompute(f); }
+    onMoved(u) {for(const f of this.list.values())this.recruit(f);const f=this.of(u);if(f&&!f.assembling)this.recompute(f);}
     recompute(f) {
         if (f.template === 'crossfire') {
             const [a, c] = this.members(f);
@@ -136,8 +160,13 @@ export class Formations {
         const f = this.of(u); if (!f) return;
         f.members = f.members.filter(id => id !== u.id);
         u.formationId = null;
-        if (f.leaderId === u.id) f.leaderId = f.members[0];
-        if (f.members.length < FORMATIONS[f.template].min) this.dissolve(f.id, 'member lost'); else this.recompute(f);
+        if (!f.members.length) { this.dissolve(f.id, 'member lost'); return; }
+        if (f.leaderId === u.id) {
+            f.leaderId = f.members[0];
+            // Rebase the slots around the new leader rather than leaving it assigned to an old wing.
+            if(f.assignments)f.assignments=Object.fromEntries(f.members.map((id,i)=>[id,i]));
+        } else if(f.assignments)delete f.assignments[u.id];
+        if (f.members.length < FORMATIONS[f.template].min && !f.assembling) this.dissolve(f.id, 'member lost'); else if(!f.assembling)this.recompute(f);
     }
     onOverwatch(u) { const f = this.of(u); if (f?.template === 'crossfire') u.reactionsLeft = 1 + (FORMATIONS.crossfire.bonus.extraReactions || 0); }
     onBreach(units) {
