@@ -137,13 +137,56 @@ export function driveway(m, x, y, side, width = 4, depth = 6) {
     return cells;
 }
 
-export function plantTree(m, x, y, origin, kind = 'round') {
+/**
+ * Tree species and their gameplay canopies (cover and sight) — each matches its mesh in the tile set:
+ *   oak         short trunk, wide low crown (radius 2)      parks, edge belts, big yards
+ *   maple       the round street tree                         greens, plazas, yards
+ *   birch       slender, tall narrow crown                    yards, park edges
+ *   ornamental  compact head on a short trunk                 street pits, lot islands, plazas
+ *   cypress     columnar evergreen                            boundaries, cemetery-like edges
+ *   conifer     tiered evergreen                              edge belts, parks
+ * The species comes from the planting context (the origin) and the cell, so rows vary instead of repeating one shape.
+ */
+export const TREE_SPECIES = Object.freeze({
+    oak: { piece: 'tree_oak', radius: 2, trunk: 3, crown: [[3, 2], [4, 1]] },
+    maple: { piece: 'tree_round', radius: 1, trunk: 3, crown: [[3, 1], [4, 1], [5, 0]] },
+    birch: { piece: 'tree_birch', radius: 1, trunk: 3, crown: [[4, 1], [5, 0], [6, 0]] },
+    ornamental: { piece: 'tree_ornamental', radius: 1, trunk: 2, crown: [[3, 1], [4, 0]] },
+    cypress: { piece: 'tree_cypress', radius: 1, trunk: 1, crown: [[2, 0], [3, 1], [4, 0], [5, 0], [6, 0]] },
+    conifer: { piece: 'tree_conifer', radius: 1, trunk: 1, crown: [[2, 1], [3, 0], [4, 0], [5, 0]] }
+});
+const CONTEXT_SPECIES = [
+    [/street-tree|island-tree|tree-pit/, ['ornamental', 'ornamental', 'maple', 'birch']],
+    [/yard-tree|garden|play/, ['birch', 'maple', 'ornamental', 'oak']],
+    [/tree-belt|edge|boundary/, ['oak', 'conifer', 'cypress', 'oak', 'maple']],
+    [/overgrowth|vacant/, ['oak', 'birch', 'conifer']],
+    [/park|green|playground|repair/, ['oak', 'maple', 'birch', 'conifer', 'maple']]
+];
+export function speciesFor(origin = '', x = 0, y = 0) {
+    const pool = (CONTEXT_SPECIES.find(([re]) => re.test(origin)) || [null, ['maple', 'oak', 'birch', 'ornamental', 'conifer']])[1];
+    const h = (((x * 73856093) ^ (y * 19349663)) >>> 0) % 997;
+    return pool[h % pool.length];
+}
+export function plantTree(m, x, y, origin, kind = null) {
     if (!canStand(m, x, y)) return false;
-    // The canopy spreads one cell around the trunk: keep it inside the playable footprint.
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (!inMap(m, x + dx, y + dy) || !m.district.contains(x + dx, y + dy)) return false;
+    const sp = TREE_SPECIES[kind] || TREE_SPECIES[speciesFor(origin, x, y)], R = sp.radius;
+    // The crown spreads around the trunk: keep it inside the playable footprint and off door approaches.
+    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) if (!inMap(m, x + dx, y + dy) || !m.district.contains(x + dx, y + dy)) return false;
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (m.keep.has(k2(x + dx, y + dy))) return false;
-    m.tree(x, y, kind, groundAt(m, x, y));
-    registerSolids(m, { x0: x - 1, y0: y - 1, w: 3, d: 3 }, origin);
+    const g = groundAt(m, x, y), s = m.store, cells = [];
+    const set = (cx, cy, cz, key) => { if (s.inBounds(cx, cy, cz) && !s.isSolid(cx, cy, cz)) { s.set(cx, cy, cz, MAT[key]); cells.push([cx, cy, cz]); } };
+    for (let h = 1; h <= sp.trunk; h++) set(x, y, g + h, 'trunk');
+    for (const [dz, r] of sp.crown) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.abs(dx) + Math.abs(dy) > r + (r >= 2 ? 0 : 0) || (dx === 0 && dy === 0 && dz <= sp.trunk)) continue;
+        // Ragged edge: drop some outer cells by hash so crowns are not perfect diamonds.
+        if (Math.abs(dx) + Math.abs(dy) === r && r >= 1 && ((x * 31 + y * 17 + dx * 7 + dy * 13 + dz) % 5 === 0)) continue;
+        set(x + dx, y + dy, g + dz, 'leaves');
+    }
+    if (!cells.length) return false;
+    const base = `${x},${y},${g + 1}`, hh = (((x * 92837111) ^ (y * 689287499)) >>> 0) / 4294967296;
+    m.hints[base] = { piece: sp.piece, yaw: hh * 6.28, scale: 0.86 + ((hh * 7) % 1) * 0.3, tree: true, cells: cells.map(c => c.join(',')) };
+    for (const c of cells) if (c.join(',') !== base) m.hints[c.join(',')] = { member: base, tree: true };
+    for (const c of cells) m.district.origins.set(c.join(','), `${origin}/${kind || 'tree'}`);
     return true;
 }
 

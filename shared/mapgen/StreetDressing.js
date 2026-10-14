@@ -56,7 +56,7 @@ const nearDriveway = (m, r, i, pad = 2) => { for (let di = -pad; di <= pad + 4; 
 export function kerbStalls(m, roads, { avoid = () => false } = {}) {
     let count = 0;
     for (const r of roads) {
-        if (r.hi - r.lo + 1 < 5) continue;
+        if (r.hi - r.lo + 1 < 5 || r.parking === false) continue;
         const service = r.kind === 'service', len = service ? 12 : 4, step = service ? 14 : 7;
         for (let i = r.from + 8, n = 0; i + len < r.to - 4; i += step, n++) {
             if (nearJunction(roads, r, i) || nearJunction(roads, r, i + len) || nearDriveway(m, r, i) || avoid(...along(r, i, r.lo))) continue;
@@ -122,6 +122,18 @@ export function roadSets(m, roads, { spawn = null } = {}) {
                 const [jx, jy] = along(c, i + 5, c.lo + 2);
                 if (!m.store.isSolid(jx, jy, c.z + 1) && !m.keep.has(k2(jx, jy))) put(m, jx, jy, c.z + 1, 'jersey', `roadset:${c.id}/crash`);
                 out.push({ type: 'crash', road: c.id, at: i });
+            }
+        }
+        // A divided road gets a jersey-barrier median in runs of six with three-cell crossings (low cover mid-road).
+        if (r.median && r.hi - r.lo + 1 >= 8) {
+            const j0 = Math.floor((r.lo + r.hi) / 2);
+            for (let i = r.from + 10; i + 6 < r.to - 2; i += 9) {
+                if (nearJunction(roads, r, i, 4) || nearJunction(roads, r, i + 5, 4)) continue;
+                const cells = [];
+                for (let k = 0; k < 6; k++) for (const j of [j0, j0 + 1]) cells.push(along(r, i + k, j));
+                if (!cells.every(([x, y]) => !m.store.isSolid(x, y, z + 1) && !m.district.stallCells.has(k2(x, y)) && !m.keep.has(k2(x, y)))) continue;
+                for (const [x, y] of cells) put(m, x, y, z + 1, 'jersey', `roadset:${r.id}/median`);
+                out.push({ type: 'median', road: r.id, at: i });
             }
         }
         for (let i = r.from + 26; i + 5 < r.to - 6; i += 30) {

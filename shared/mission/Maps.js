@@ -1,4 +1,4 @@
-import {buildParkDistrict,buildMallDistrict,buildDrainageDistrict,buildTerraceHeights} from './LargeDistricts.js';
+import {buildParkDistrict,buildMallDistrict,buildDrainageDistrict,buildTerraceHeights,buildSuburbDistrict,buildDowntownDistrict,buildDocksideDistrict,buildHighwayDistrict} from './LargeDistricts.js';
 import { buildSunkenBoulevard,buildFreightTerraces,buildSunkenJunction } from './ConnectingDistricts.js';
 // Map registry: every playable battlefield, grouped by theme. Present-day settings only (no aliens yet);
 // the opposing force is the Syndicate, a human crime organisation (shared/content/units.js FACTIONS).
@@ -16,6 +16,10 @@ export const MAPS = Object.freeze([
     {id:'park-district',name:'Civic District',theme:'Large districts',text:'96 × 72 rectangle: street-level shop rows, lots and yards solved as parcel mixes.',build:buildParkDistrict},
     {id:'mall-district',name:'Market Arcade',theme:'Large districts',text:'96 × 72 L footprint: merged shopping interiors, retail parcels with their lots and service paths.',build:buildMallDistrict},
     {id:'drainage-district',name:'Drainage Quarter',theme:'Large districts',text:'96 × 72 T footprint: turning water channels, dry banks, stair entrances and shortcut ladders.',build:buildDrainageDistrict},
+    {id:'suburb-district',name:'Maple Heights',theme:'Large districts',text:'A suburb on two avenues: houses with driveways and fenced yards, semis, a fire station, sports court and corner shops.',build:buildSuburbDistrict},
+    {id:'downtown-district',name:'Downtown Core',theme:'Large districts',text:'A dense grid of 2–3 storey shop rows, offices, plazas and a parking deck, joined by skybridges over busy streets.',build:buildDowntownDistrict},
+    {id:'dockside-district',name:'Dockside Yards',theme:'Large districts',text:'A quay on deep water: warehouses with catwalks, container stacks, a scrapyard, bus depot and loading aprons.',build:buildDocksideDistrict},
+    {id:'highway-district',name:'Interstate Strip',theme:'Large districts',text:'A four-lane highway strip: motel, gas stations, car dealership, car wash, diner drive-thru and a police compound.',build:buildHighwayDistrict},
     {id:'terrace-district',name:'Hillside Terraces',theme:'Large districts',text:'Three generated levels: sunken yards, a street terrace and high ground, joined by road ramps, stairs, split-level buildings and ladders.',build:buildTerraceHeights},
     {id:'sunken-junction',name:'Sunken Junction',theme:'Split-level districts',text:'Linked sunken boulevards with a T-junction, covered crossings, rounded retail and square industrial parcels.',build:buildSunkenJunction},
     {id:'sunken-boulevard',name:'Sunken Boulevard',theme:'Split-level districts',text:'A lower street passes beneath an upper boulevard, with road ramps and a covered crossing.',build:buildSunkenBoulevard},

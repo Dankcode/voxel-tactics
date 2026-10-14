@@ -27,7 +27,7 @@ const FURNITURE = new Set(['sofa', 'cabinet', 'bed', 'desk', 'appliance', 'shelv
 const PROPS = new Set(['planter', 'privacy_fence', 'chainlink', 'railing', 'jersey', 'bench', 'bin', 'pump']);
 const OBJECTS = new Set(['car_body', 'car_cabin', 'container', 'dumpster']);
 // Outdoor objects taller than a storey are not sliced by the storey cutaway (trees, street lights, signs).
-const NO_CLIP = new Set(['canopy', 'tree_round', 'tree_conifer', 'streetlight', 'floodlight', 'price_sign', 'motel_sign', 'crane_leg', 'bus_stop', 'umbrella', 'gate_sign']);
+const NO_CLIP = new Set(['canopy', 'tree_round', 'tree_conifer', 'tree_oak', 'tree_birch', 'tree_ornamental', 'tree_cypress', 'streetlight', 'floodlight', 'price_sign', 'motel_sign', 'crane_leg', 'bus_stop', 'umbrella', 'gate_sign']);
 const DIRS = [[1, 0, 0], [0, 1, -Math.PI / 2], [-1, 0, Math.PI], [0, -1, Math.PI / 2]];   // dx, dy, yaw (+X arm → dir)
 const keyOf = id => MATERIALS[id]?.key;
 const yawToward = (dx, dy) => Math.atan2(-dx, -dy);          // rotation that points a piece's −Z (its back) at (dx, dy)

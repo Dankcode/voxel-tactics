@@ -1,6 +1,21 @@
 # Large districts: parcel mixes, levels, warehouses and hold zones (PLAN-06)
 
-Select **Park District**, **Market Arcade**, **Drainage Quarter** or **Hillside Terraces** under Large districts.
+Select a map under Large districts:
+
+| Map | Theme | Roads | Character |
+|---|---|---|---|
+| **Civic District** | park | main street, cross street, service road | mixed street-level town: shop rows, lots and yards |
+| **Market Arcade** | mall (L) | as park | merged arcade landmark, retail mixes |
+| **Drainage Quarter** | drainage (T) | main street, cross street | industrial, channels with banks, ladders and bridges |
+| **Hillside Terraces** | terraces | ramped street corridor | three levels from a sunken start |
+| **Maple Heights** | suburb | main street, two avenues | houses, townhouses, fire station, sports courts; light traffic, max 2 storeys |
+| **Downtown Core** | downtown | main street, centre avenue, service road | city blocks with rear alleys, office plazas, parking decks; 2–3 storeys, up to 13 buildings (denser fails the sightline gate), heavy traffic |
+| **Dockside Yards** | docks | main street, quay road, yard road | deep water and a quay along the north edge, warehouse yards, scrapyards |
+| **Interstate Strip** | highway | 10-lane interstate with a jersey median, frontage road, exit road | motels, dealerships, car washes, bus depot; no kerb parking on the interstate |
+
+Each theme is a row in `DISTRICT_THEMES` (`shared/mission/LargeDistricts.js`): its family, remix defaults and a
+per-mix **bias** (docks triples warehouse yards, highway damps homes), plus a road skeleton in `districtRoads`.
+
 - **Width** (96–128), **depth** (72–96) and **footprint** (rectangle, L or T) controls appear below the map
   selection. Hillside Terraces is always a rectangle.
 - Play opens the dispatch review and the topography debugger; dispatch starts the battle.
@@ -16,7 +31,6 @@ A district is a **skeleton** plus **parcel mixes**.
 - the roads, as data: main street, cross street and rear service road;
 - landmark features:
   - the merged arcade;
-  - the raised park;
   - the drainage channels with their banks, stairs, ladders and bridges;
   - the insertion cordon.
 
@@ -49,23 +63,33 @@ catalogue is `MixCatalogue.js`:
 | self-storage | gated chain-link yard, office, rows of steel unit blocks with drive lanes |
 | surface-lot | pay-and-display car park: bays, islands, pay booth, low-wall boundary (favoured on narrow parcels) |
 | utility | fenced substation with transformers |
-| playground | railed pocket park, play frames, paths, trees |
 | community-garden | picket fence, raised beds, tool shed, water butts |
 | construction | hoarding, a half-built concrete frame with a ladder up to the slab, material piles, portacabin, plant |
 | vacant-lot | chain-link frontage, overgrowth, one dumped car (one per map) |
-| raised-market | covered market stalls under a grate deck that carries a shop, reached by a stair (Remix: *Covered market under a deck shop*) |
+| city-block | street wall of 2–3 shops/offices, 2-cell passages to a rear service alley (dumpsters, bins, loading bay), and on deep blocks a back row of walk-ups facing the alley |
+| car-dealership | glazed showroom, display rows of cars (high occupancy), customer lot, price pylon |
+| fire-station | apparatus bays merged with an office, apron with engines nose-out, hose rack |
+| police-compound | station, fenced vehicle pound, cruiser stalls |
+| motel | single-storey motel row behind its lot, chain-link-fenced pool, sign, privacy fence at the back |
+| sports-court | chain-link court with hoops and bleachers |
+| car-wash | wash bays under a canopy with bay dividers, pay booth, vacuum stations, queue lane |
+| parking-deck | two-level deck on columns, ramp on whichever side is clear of a neighbour's door, parapet, lift core and jersey dividers on the roof, stalls on both levels; falls back to a surface lot when neither side is clear |
+| scrapyard | gravel yard, crushed-car bale stacks with lanes between, wrecks, container site office |
+| bus-depot | garage, bus bays, fuel island under a canopy |
 
 **WFC rules for choosing mixes:**
 - fit by size, frontage and options;
 - no identical neighbours, except repeatable homes;
-- zoning: no warehouse yard beside homes or a playground;
+- zoning: no warehouse yard beside homes;
 - one landmark per map;
 - per-mix caps;
 - the building limit;
 - the hold-zone host is pinned first.
 
-The weights come from the family (Remix: *Parcel mix family*: mixed, retail, industrial, suburban) and from seeded
-noise.
+The weights come from the family (Remix: *Parcel mix family*: mixed, retail, industrial, suburban, roadside, urban),
+the theme's bias and seeded noise. The partition favours mixes with buildings (×1.5), and if the solve leaves fewer
+than four buildings the largest open parcels take the best building mix they fit, so every district has rooms to
+fight through.
 
 **Build pass, then dress pass.** All buildings go up first, so every door approach is reserved before any fence,
 lot or prop is placed.
@@ -106,6 +130,7 @@ until it reaches its target occupancy:
 **Road sets** are level design, not scatter:
 - a jersey-barrier roadblock and a wreck at the insertion end of the main street, with a lane left through;
 - stalled cars every ~30 cells of straight main street, as sightline breakers;
+- on a divided road (`median: true`), a jersey-barrier median in runs of six with three-cell crossings;
 - wrecks either side of each junction;
 - a crash at the mouth of each cross street.
 
@@ -123,7 +148,7 @@ Road, kerb, sidewalk and driveway cells own their air column. The only solids al
 - doorways are cut through both facades;
 - the corridor is a room with two doors.
 
-The old elevated bridge parcel now stands inside its own parcel (raised-market) instead of over road rows 34–38.
+The raised park, the raised-market deck parcel and the playground mix are retired (Leon, 2026-10-14); nothing stands over road rows 34–38.
 
 ## Hillside Terraces (levels)
 
@@ -167,7 +192,32 @@ and a forklift.
 - **Cover:** every open cell within 2 moves of cover.
 - **Door landings:** kept clear.
 
-The warehouse gate also checks dead ends and at least 3 entrances on at least 2 sides.
+The warehouse gate also checks dead ends (no blind slot longer than 6 cells; every prop placement is refused if it
+would create one) and at least 3 entrances on at least 2 sides. Cold stores keep a 2-cell aisle in front of their cage
+line.
+
+**Catwalks.** Warehouse-yard warehouses are 2-storey shells. `addCatwalk` removes the storey-2 slab over the hall
+except a 2-wide grate ring along the walls and a cross bridge at mid-hall, keeps slab around the building's own stair
+(joined to the ring), and adds two 3-step steel stairs up from the floor (searching along the wall until the racking
+leaves a gap). Railings line every edge that faces the void. Shooters on the catwalk see down onto the floor; the
+floor sees them back through the railings. The gate checks that both stair tops are reachable.
+
+## Trees
+
+Trees are species, not voxel blobs. `plantTree` picks a species from the origin (park, verge, yard, plaza) and a
+cell hash:
+
+| Species | Piece | Shape |
+|---|---|---|
+| oak | `tree_oak` | broad, low crown (radius 2) |
+| maple | `tree_round` | round crown |
+| birch | `tree_birch` | tall, narrow, pale trunk |
+| ornamental | `tree_ornamental` | small, for plazas and street pits |
+| cypress | `tree_cypress` | tall column |
+| conifer | `tree_conifer` | cone |
+
+The voxels (trunk and a ragged crown) stay for line of sight, bullets and fire. The renderer draws the species piece
+from the hint (`{piece, yaw, scale, tree: true, cells}`) and hides the leaf voxels (`NO_CLIP`).
 
 ## Hold zones
 
@@ -294,8 +344,8 @@ Preview, save/load, share links and reports keep every setting.
 
 ## Notes and limits
 
-- Interiors keep the 3-voxel storey rule, so warehouse halls are one storey (2 voxels clear) and the office sits in
-  the front row; a mezzanine over the floor would need a new tall-hall building kind.
+- Interiors keep the 3-voxel storey rule. Warehouse-yard halls get their height by removing most of the storey-2
+  slab (the catwalk), not from a new tall-hall building kind.
 - The builder only reaches upper floors on offices 14+ cells wide and 2-storey homes 10+ deep, so the mixes respect
   those sizes.
 - Cedar Close, Main Street, Harbor Yard, Route 9 and the Training Facility still use the old cover scatter until they

@@ -87,9 +87,10 @@ export function frontageOf(m, r) {
 }
 
 /** 2. Partition a block into parcel leaves. */
-export function partitionBlock(m, block, { seed, family, elevated, rng }) {
+export function partitionBlock(m, block, { seed, family, elevated, rng, bias = {} }) {
+    const wt = id => mixWeight(id, family) * (bias[id] ?? 1);
     const leaves = [], scraps = [];
-    const allowed = MIX_IDS.filter(id => mixWeight(id, family) > 0 && (MIXES[id].requires !== 'elevated' || elevated));
+    const allowed = MIX_IDS.filter(id => wt(id) > 0 && (MIXES[id].requires !== 'elevated' || elevated));
     const front = frontageOf(m, block);
     const visit = (r, depth) => {
         const fs = frontageOf(m, r), frontage = !!fs, side = fs || front || 's';
@@ -118,7 +119,7 @@ export function partitionBlock(m, block, { seed, family, elevated, rng }) {
             const rest = F.U - u;
             const fit = fitV.filter(id => MIXES[id].U[0] <= rest);
             if (!fit.length) { if (rest >= 2) scraps.push(F.rect(u, 0, rest, F.V)); break; }
-            const pick = weightedPick(fit, id => mixWeight(id, family) * (MIXES[id].narrowBonus && Math.min(rest, F.V) < 18 ? MIXES[id].narrowBonus : 1) * (frontage && !MIXES[id].frontage ? 0.15 : 1) * (0.4 + fbm(`${seed}:mix:${id}`, r.x0 + u, r.y0, { frequency: 1 / 11 })), rng);
+            const pick = weightedPick(fit, id => wt(id) * (MIXES[id].buildings ? 1.5 : 1) * (MIXES[id].narrowBonus && Math.min(rest, F.V) < 18 ? MIXES[id].narrowBonus : 1) * (frontage && !MIXES[id].frontage ? 0.15 : 1) * (0.4 + fbm(`${seed}:mix:${id}`, r.x0 + u, r.y0, { frequency: 1 / 11 })), rng);
             const [lo, hi] = MIXES[pick].U;
             const t = rng.next(); let w = Math.min(hi, rest, lo + Math.round((Math.min(hi, rest) - lo) * t * t * 0.6 / 2) * 2);
             const after = rest - w;
@@ -145,10 +146,11 @@ const touches = (a, b) => {
 };
 
 /** 3. Assign a mix to every leaf. */
-export function assignMixes(m, leaves, { seed, family, elevated, buildingCap = Infinity, hold = null, spawn = null }) {
+export function assignMixes(m, leaves, { seed, family, elevated, buildingCap = Infinity, hold = null, spawn = null, bias = {} }) {
+    const wt = id => mixWeight(id, family) * (bias[id] ?? 1);
     const sizeOf = l => { const F = frame({ ...l.rect, front: l.front }); return { U: F.U, V: F.V, frontage: l.frontage }; };
     const domains = new Map();
-    for (const l of leaves) domains.set(l.id, MIX_IDS.filter(id => mixWeight(id, family) > 0 && mixFits(id, sizeOf(l), { elevated })));
+    for (const l of leaves) domains.set(l.id, MIX_IDS.filter(id => wt(id) > 0 && mixFits(id, sizeOf(l), { elevated })));
     const usable = leaves.filter(l => domains.get(l.id).length);
     // Hold zone: pin the host first, as far from the insertion as the map allows.
     let host = null;
@@ -159,7 +161,7 @@ export function assignMixes(m, leaves, { seed, family, elevated, buildingCap = I
     }
     const nodes = usable.map(l => ({ id: l.id, neighbors: usable.filter(o => o !== l && touches(l.rect, o.rect)).map(o => ({ id: o.id, direction: 'adjacent' })) }));
     const weightOf = (node, tile) => {
-        const l = leaves.find(x => x.id === node), base = mixWeight(tile, family);
+        const l = leaves.find(x => x.id === node), base = wt(tile);
         const noise = (hashWaveSeed(`${seed}:${node}:${tile}`) % 1000) / 1000;
         const sz = sizeOf(l), narrow = Math.min(sz.U, sz.V) < 18 && MIXES[tile].narrowBonus ? MIXES[tile].narrowBonus : 1;
         return base * narrow * (0.35 + noise) * (l.hint === tile ? 2.5 : 1) * (l.frontage && !MIXES[tile].frontage ? 0.15 : 1);
@@ -193,6 +195,17 @@ export function assignMixes(m, leaves, { seed, family, elevated, buildingCap = I
             if (alt) assignment.set(k, alt); else assignment.set(k, 'open-green');
         }
     }
+    // Building floor: a district needs rooms to fight through (and enemy groups need a building to hold). If the
+    // solve left fewer than four buildings, the largest open parcels take the best-weighted building mix they fit.
+    const floor = Math.min(buildingCap, 4);
+    if (total < floor) {
+        const open = [...assignment].filter(([k, id]) => !(MIXES[id]?.buildings) && k !== host?.id).map(([k]) => leaves.find(x => x.id === k)).filter(Boolean).sort((a, b) => b.rect.w * b.rect.d - a.rect.w * a.rect.d);
+        for (const l of open) {
+            if (total >= floor) break;
+            const alt = (domains.get(l.id) || []).filter(id => MIXES[id].buildings > 0).sort((a, b) => wt(b) - wt(a))[0];
+            if (alt) { assignment.set(l.id, alt); total += MIXES[alt].buildings; }
+        }
+    }
     return { assignment, host: host?.id || null };
 }
 
@@ -220,7 +233,21 @@ export function mergeShells(m, a, b) {
     }
     // Exits that now open into the neighbour keep their landings clear.
     const inUnion = (x, y) => [L, Rr].some(s => x >= s.x0 && x < s.x0 + s.w && y >= s.y0 && y < s.y0 + s.d);
-    for (const s of [L, Rr]) for (const e of s.exits || []) { const [dx, dy] = SIDES[e.side]; for (let i = 1; i <= 2; i++) { const x = e.x + dx * i, y = e.y + dy * i; if (inUnion(x, y) && !stairCells.has(`${x},${y}`)) for (let h = 1; h <= 2; h++) { m.store.set(x, y, z + h, 0); delete m.hints[`${x},${y},${z + h}`]; } } }
+    // An exit whose landing is a protected stair or closed room cannot open: it is walled up and dropped.
+    for (const s of [L, Rr]) {
+        const keep = [];
+        for (const e of s.exits || []) {
+            const [dx, dy] = SIDES[e.side];
+            const landing = [1, 2].map(i => [e.x + dx * i, e.y + dy * i]).filter(([x, y]) => inUnion(x, y));
+            if (e.storey == null && landing.length && stairCells.has(`${landing[0][0]},${landing[0][1]}`)) {
+                for (let h = 1; h <= 2; h++) { m.store.set(e.x, e.y, z + h, MAT[s.wall] ?? MAT.brick); delete m.hints[`${e.x},${e.y},${z + h}`]; }
+                continue;
+            }
+            for (const [x, y] of landing) if (!stairCells.has(`${x},${y}`)) for (let h = 1; h <= 2; h++) { m.store.set(x, y, z + h, 0); delete m.hints[`${x},${y},${z + h}`]; }
+            keep.push(e);
+        }
+        if (s.exits) s.exits.splice(0, s.exits.length, ...keep);
+    }
     (a.mergedWith ||= []).push(b.id); (b.mergedWith ||= []).push(a.id);
     return { id: `${a.id}-${b.id}`, template: 'merged-retail-passage', cells, sockets: [cells[0], cells.at(-1)] };
 }

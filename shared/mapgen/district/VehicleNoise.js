@@ -12,7 +12,7 @@ import { registerCells } from './Core.js';
 
 export const OCCUPANCY = Object.freeze({
     stall: [0.35, 0.7], kerb: [0.3, 0.5], driveway: [0.5, 0.85], dock: [0.5, 0.85], salvage: [1, 1], forecourt: [0.4, 0.8],
-    queue: [0.5, 0.8], pump: [0.3, 0.6], site: [1, 1], lane: [0.3, 0.6], 'bus-stop': [1, 1], service: [0.5, 0.8]
+    queue: [0.5, 0.8], pump: [0.3, 0.6], site: [1, 1], lane: [0.3, 0.6], 'bus-stop': [1, 1], service: [0.5, 0.8], display: [0.85, 1]
 });
 const TRAFFIC = Object.freeze({ none: 0, light: 0.6, normal: 1, heavy: 1.35 });
 const NIGHT = new Set(['night', 'night-ops', 'dusk']);

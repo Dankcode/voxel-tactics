@@ -25,14 +25,14 @@ export function snapshotGround(m) {
  * Fill the district. opts: { seed, remix, family, roads, spawn, target, hold, extraBuildings }
  * Returns a report the caller stores in mission.meta.
  */
-export function fillDistrict(m, { seed = 1, remix, family = 'mixed', roads = [], spawn = null, target = null, hold = false, existingBuildings = m.buildings.length, glaze = null } = {}) {
+export function fillDistrict(m, { seed = 1, remix, family = 'mixed', roads = [], spawn = null, target = null, hold = false, existingBuildings = m.buildings.length, glaze = null, bias = {} } = {}) {
     const d = m.district, rng = createRng(hashString(`district:${m.id}:${seed}`));
     const avail = (x, y) => d.contains(x, y) && tagAt(m, x, y) === 'plain' && !inBuilding(m, x, y) && m.store.topSolid(x, y) === groundAt(m, x, y);
     const blocks = extractBlocks(m, avail);
     const leaves = [], scraps = [];
-    for (const b of blocks) { const r = partitionBlock(m, b, { seed, family, elevated: remix.elevated, rng }); leaves.push(...r.leaves.map(l => ({ ...l, id: `${b.id}-${l.id}` }))); scraps.push(...r.scraps); }
+    for (const b of blocks) { const r = partitionBlock(m, b, { seed, family, elevated: remix.elevated, rng, bias }); leaves.push(...r.leaves.map(l => ({ ...l, id: `${b.id}-${l.id}` }))); scraps.push(...r.scraps); }
     const cap = Math.max(0, remix.buildingCount - existingBuildings);
-    const { assignment, host } = assignMixes(m, leaves, { seed, family, elevated: remix.elevated, buildingCap: cap, hold, spawn });
+    const { assignment, host } = assignMixes(m, leaves, { seed, family, elevated: remix.elevated, buildingCap: cap, hold, spawn, bias });
     const { assignments, connectors } = layoutLeaves(m, leaves, assignment, { seed, family, remix, hostId: host, buildingCap: cap, glaze });
     d.connectors.push(...connectors);
     const strips = dressStrips(m, (x, y) => d.contains(x, y) && !inBuilding(m, x, y) && m.store.topSolid(x, y) === groundAt(m, x, y), { seed });

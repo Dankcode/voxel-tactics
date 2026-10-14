@@ -530,3 +530,33 @@ used the §11 defaults:
 - **Rooms and exits.** Every gameplay room and exit is reachable on 7 maps × 6 seeds.
 - **Tests.** `npm run test:fast`: 237 / 238 pass. The one failure needs a concept PNG that was not in the review
   copy; it passes in the repo. Server tests: 10 / 10.
+
+## 13. Second pass (2026-10-14): catwalks, more mixes, species trees, four new maps
+
+Leon asked for a catwalk over the warehouse floor, more mixes, trees that are not blocky, and more maps.
+
+| Change | Where |
+|---|---|
+| **Warehouse catwalk.** Warehouse-yard warehouses are now 2-storey shells. The storey-2 slab over the hall is removed except a 2-wide grate ring and a mid-hall bridge; slab stays around the building's stair; two steel stairs climb from the floor (the search walks the wall until the racking leaves a gap); railings face the void. This supersedes "No warehouse mezzanine" above. | `district/Warehouse.js` `addCatwalk` |
+| **Dead-end guard.** Every warehouse prop placement is refused if it would leave a blind slot longer than 6 cells; cold stores keep an aisle in front of the cages. | `district/Warehouse.js` |
+| **10 new mixes** (28 total): city-block, car-dealership, fire-station, police-compound, motel, sports-court, car-wash, parking-deck, scrapyard, bus-depot. | `district/MixCatalogue.js` |
+| **Families** `roadside` and `urban`; per-theme mix **bias**; partition favours building mixes; a 4-building floor after the solve. | `MixCatalogue.js`, `MixSolver.js`, `DistrictRemix.js`, Remix lab |
+| **Species trees**: oak, maple, birch, ornamental, cypress, conifer, with procedural kit pieces. | `district/Props.js` `plantTree`, `client/src/render/kit/ModernPieces.js`, `KitView.js` |
+| **Four new maps**: Maple Heights (suburb), Downtown Core (downtown), Dockside Yards (docks, quay and deep water), Interstate Strip (highway, jersey median, no kerb parking on the interstate). | `DISTRICT_THEMES` and `districtRoads` in `shared/mission/LargeDistricts.js`; `Maps.js` |
+| **Merge exits.** A merged shell's side door that would open onto the neighbour's stair or closed room is walled up and dropped. | `MixSolver.js` `mergeShells` |
+| **Parking-deck ramp** goes on whichever side is clear of a neighbour's door approach, or the parcel becomes a surface lot. | `MixCatalogue.js` |
+
+**Evidence.**
+- All mission and district gates pass on Park, Market, Drainage, Maple Heights, Downtown Core, Dockside Yards and
+  Interstate Strip, seeds 1–8 (56 builds), on Hillside Terraces seeds 1–6, and on hold missions (5 themes × 4
+  seeds).
+- Every gameplay room and exit is reachable, and every vehicle hint is intact, on 11 maps.
+- `npm run test:fast`: 240 / 241 pass (the same missing concept PNG as before). New tests: themed districts, the
+  catwalk (stairs reachable, the catwalk overlooks the floor), species trees.
+
+**Merged onto Leon's "merged both designs" commit (2026-10-14).** The second pass was replayed on top of the
+unified Play menu, and Leon's decisions win where they overlap: the raised park, the raised-market deck parcel and
+the playground mix stay retired; the park theme is **Civic District**; his warehouse rack and pegboard pieces stay.
+Two fixes came out of the re-run: the auto-repair salvage pen now sits flush with the parcel edge (it left a blind
+1-cell slot beside a neighbour's fence), and Downtown Core is capped at 13 buildings (denser seeds failed the
+sightline-median gate). The new maps appear in Play under Large districts.

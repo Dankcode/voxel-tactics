@@ -71,7 +71,11 @@ export function evaluateDistrictGates(mission, m, { search = null } = {}) {
     // Skybridges and connector sockets.
     const reach = p => [0, 1, -1].some(dz => search.costs.has(nodeKey({ x: p.x, y: p.y, z: p.z + dz })));
     const bridges = d.bridges.map(b => ({ id: b.id, pass: b.sockets.every(reach) }));
-    const warehouses = d.warehouses.map(w => ({ building: w.building, variant: w.variant, pass: w.pass, gates: w.gates, longestRun: w.longestRun, coverReach: w.coverReach }));
+    // Catwalks: reachable from the floor (both stair tops) and from the building.
+    const warehouses = d.warehouses.map(w => {
+        const cw = w.catwalk, catwalk = !cw || (cw.top.length >= 1 && cw.top.every(reach));
+        return { building: w.building, variant: w.variant, pass: w.pass && catwalk, gates: { ...w.gates, catwalk }, longestRun: w.longestRun, coverReach: w.coverReach, catwalk: cw ? { cells: cw.cells, stairs: cw.stairs } : null };
+    });
     const levels = d.levels.length ? evaluateLevels(m, search) : null;
     const zone = mission.objective?.kind === 'hold' ? d.zones.find(z => z.objective) || d.zones[0] : null;
     const hold = zone ? evaluateHoldZone(mission, zone, { origins: d.origins }) : null;

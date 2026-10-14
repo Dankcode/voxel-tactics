@@ -9,8 +9,9 @@
 //   dress(ctx, state) ground, boundary treatments, lots, yards, aprons and their purposeful props
 // Every prop carries the origin `mix:<id>/<part>`; vehicles only use the stalls a mix registers.
 import { paint, run, fenceEdge, fenceRect, parkingLot, driveway, plantTree, block, booth, canopy, dumpsterEnclosure, playFrame, addStall, canStand } from './Props.js';
-import { tag, tagRect, put, registerSolids, groundAt, edgeCells } from './Core.js';
-import { layoutWarehouse } from './Warehouse.js';
+import { tag, tagAt, tagRect, put, registerSolids, groundAt, edgeCells } from './Core.js';
+import { MAT } from '../../voxel/Materials.js';
+import { layoutWarehouse, addCatwalk } from './Warehouse.js';
 
 const W = (o, fam) => o[fam] ?? o.mixed ?? 0;
 
@@ -53,16 +54,16 @@ function boundary(ctx, kind, { front = false, gates = {} } = {}) {
     fenceRect(ctx.m, ctx.R, kind, `${ctx.origin}/boundary`, { open, gates });
 }
 /** A vehicle slot in local coordinates: 2 wide, `len` long, its long side along v (default) or u. */
-function slot(ctx, u, v, { len = 4, along = 'v', kind = 'stall', types = ['car'], priority = 0.5, part = 'stall' } = {}) {
+function slot(ctx, u, v, { len = 4, along = 'v', kind = 'stall', types = ['car'], priority = 0.5, part = 'stall', z = null } = {}) {
     const r = along === 'v' ? ctx.F.rect(u, v, 2, len) : ctx.F.rect(u, v, len, 2);
-    return addStall(ctx.m, { x: r.x0, y: r.y0, axis: along === 'v' ? ctx.F.vAxis : ctx.F.uAxis, length: len, kind, types, priority, origin: `${ctx.origin}/${part}`, z: ctx.z });
+    return addStall(ctx.m, { x: r.x0, y: r.y0, axis: along === 'v' ? ctx.F.vAxis : ctx.F.uAxis, length: len, kind, types, priority, origin: `${ctx.origin}/${part}`, z: z ?? ctx.z });
 }
 const rowOf = (ctx, u0, u1, v, key, h, part) => run(ctx.m, cellsU(ctx, v, u0, u1), key, h, `${ctx.origin}/${part}`);
 
 export const MIXES = Object.freeze({
     'strip-mall': {
         name: 'Strip mall with its lot', U: [26, 52], V: [30, 38], frontage: true, holdHost: true, buildings: 3,
-        weights: { retail: 3, mixed: 2, suburban: 1, industrial: 0.3 }, fill: ['plaza', 'paving'],
+        weights: { retail: 3, mixed: 2, suburban: 1, industrial: 0.3, roadside: 1.5, urban: 0.8 }, fill: ['plaza', 'paving'],
         plan(ctx) {
             const { F } = ctx, shopsV = 16, depth = F.V - 19, n = Math.max(2, Math.min(4, Math.floor((F.U - 4) / 11)));
             const unit = Math.floor((F.U - 4) / n), shells = [], gap = ctx.remix.merges ? 0 : 2;
@@ -97,7 +98,7 @@ export const MIXES = Object.freeze({
     },
     supermarket: {
         name: 'Supermarket, lot and garden centre', U: [36, 52], V: [34, 42], frontage: true, landmark: true, holdHost: true, buildings: 1,
-        weights: { retail: 2, mixed: 1.2, suburban: 0.8, industrial: 0.2 }, fill: ['plaza', 'paving'],
+        weights: { retail: 2, mixed: 1.2, suburban: 0.8, industrial: 0.2, roadside: 1, urban: 1 }, fill: ['plaza', 'paving'],
         plan(ctx) {
             const { F } = ctx, depth = F.V - 19;
             const store = building(ctx, { u0: 2, v0: 16, uw: F.U - 14, vd: depth }, { program: 'shop', storeys: 1, part: 'store', rounded: false });
@@ -123,7 +124,7 @@ export const MIXES = Object.freeze({
     },
     'diner-drive': {
         name: 'Diner with drive-thru lane', U: [22, 30], V: [22, 28], frontage: true, buildings: 1,
-        weights: { retail: 1.4, mixed: 1, suburban: 0.8, industrial: 0.3 }, fill: ['plaza', 'paving'],
+        weights: { retail: 1.4, mixed: 1, suburban: 0.8, industrial: 0.3, roadside: 3, urban: 0.6 }, fill: ['plaza', 'paving'],
         plan(ctx) {
             const { F } = ctx, w = Math.min(14, F.U - 8);
             return { diner: building(ctx, { u0: Math.floor((F.U - w) / 2), v0: F.V - 14, uw: w, vd: 10 }, { program: 'diner', storeys: 1, part: 'diner' }), w };
@@ -145,7 +146,7 @@ export const MIXES = Object.freeze({
     },
     'gas-station': {
         name: 'Gas station forecourt', U: [24, 32], V: [18, 28], frontage: true, holdHost: false, buildings: 1,
-        weights: { retail: 1, mixed: 1, suburban: 0.8, industrial: 0.8 }, fill: ['forecourt', 'concrete'],
+        weights: { retail: 1, mixed: 1, suburban: 0.8, industrial: 0.8, roadside: 3, urban: 0.4 }, fill: ['forecourt', 'concrete'],
         plan(ctx) { const { F } = ctx; return { kiosk: building(ctx, { u0: F.U - 13, v0: F.V - 10, uw: 11, vd: 8 }, { program: 'station', storeys: 1, part: 'kiosk' }) }; },
         dress(ctx) {
             const { F, m } = ctx;
@@ -169,7 +170,7 @@ export const MIXES = Object.freeze({
     },
     'office-plaza': {
         name: 'Office block and plaza', U: [20, 40], V: [24, 34], frontage: true, holdHost: true, buildings: 1,
-        weights: { retail: 1.2, mixed: 2, suburban: 0.4, industrial: 0.6 }, fill: ['plaza', 'paving'],
+        weights: { retail: 1.2, mixed: 2, suburban: 0.4, industrial: 0.6, roadside: 0.6, urban: 3 }, fill: ['plaza', 'paving'],
         plan(ctx) {
             const { F } = ctx, w = Math.min(F.U - 6, 20), u0 = F.U >= 32 ? 3 : Math.floor((F.U - w) / 2);
             return { office: building(ctx, { u0, v0: F.V - 15, uw: w, vd: 12 }, { program: 'office', storeys: [2, 3], part: 'office', rounded: false }), u0, w };
@@ -199,7 +200,7 @@ export const MIXES = Object.freeze({
     },
     'mainstreet-row': {
         name: 'Main-street shop row with offices over', U: [20, 40], V: [16, 24], frontage: true, buildings: 2,
-        weights: { retail: 2.4, mixed: 2.2, suburban: 0.5, industrial: 0.4 }, fill: ['yard', 'concrete'],
+        weights: { retail: 2.4, mixed: 2.2, suburban: 0.5, industrial: 0.4, roadside: 0.3, urban: 3.2 }, fill: ['yard', 'concrete'],
         plan(ctx) {
             const { F } = ctx, n = F.U >= 24 ? 2 : 1, unit = Math.floor((F.U - 2) / n), out = [];
             const gap = ctx.remix.merges ? 0 : 2;
@@ -219,9 +220,48 @@ export const MIXES = Object.freeze({
             for (const side of [F.left, F.right]) fenceEdge(m, R(ctx, 0, 12, F.U, F.V - 12), side, 'chain', `${ctx.origin}/yard-fence`, { gates: [0.5] });
         }
     },
+    'city-block': {
+        name: 'City block: street-wall frontage, rear service alley, back-row walk-ups', U: [24, 48], V: [22, 34], frontage: true, holdHost: false, buildings: 5,
+        weights: { urban: 4.5, mixed: 0.8, retail: 0.8, suburban: 0, industrial: 0, roadside: 0 }, fill: ['alley', 'asphalt'],
+        plan(ctx) {
+            const { F } = ctx, merges = ctx.remix.merges, gap = merges ? 0 : 2;
+            // Street wall: two or three units shoulder to shoulder, 2-cell passages through to the alley unless merged.
+            const n = Math.max(1, Math.min(3, Math.floor((F.U - 2 + gap) / (12 + gap)))), unit = Math.floor((F.U - 2 - gap * (n - 1)) / n);
+            const front = [], back = [];
+            for (let i = 0; i < n; i++) {
+                const w = i === n - 1 ? F.U - 2 - (unit + gap) * (n - 1) : unit;
+                const b = building(ctx, { u0: 1 + i * (unit + gap), v0: 1, uw: w, vd: 11 }, { program: i % 2 && w >= 14 ? 'office' : 'shop', storeys: [2, 3], part: `front-${i}`, rounded: false, joinSiblings: merges });
+                if (b) front.push(b);
+            }
+            if (merges) for (let i = 1; i < front.length; i++) ctx.merge(front[i - 1], front[i]);
+            // Deep blocks get a back row facing the alley, so the alley is a real street-within-the-block.
+            const backD = Math.min(12, F.V - 18);
+            if (backD >= 10) {
+                const k = F.U >= 30 ? 2 : 1, bw = Math.floor((F.U - 2 - 3 * (k - 1)) / k);
+                for (let i = 0; i < k; i++) { const b = building(ctx, { u0: 1 + i * (bw + 3), v0: F.V - 1 - backD, uw: i === k - 1 ? F.U - 2 - (bw + 3) * (k - 1) : bw, vd: backD }, { program: bw >= 14 ? 'office' : 'shop', storeys: [2, 3], part: `back-${i}`, rounded: false }); if (b) back.push(b); }
+            }
+            return { front, back, backD: back.length ? backD : 0 };
+        },
+        dress(ctx, st) {
+            const { F, m } = ctx;
+            paint(m, R(ctx, 0, 0, F.U, 1), 'paving', 'plaza', { z: ctx.z });
+            const a0 = 12, a1 = st.backD ? F.V - 2 - st.backD : F.V - 1;
+            paint(m, R(ctx, 0, a0, F.U, a1 - a0 + 1), 'asphalt', 'alley', { z: ctx.z });
+            // Dumpsters against the street wall's back and bins at the passages: the alley's cover, all of it hard.
+            for (let u = 3; u + 2 < F.U - 1; u += 9) { const [x, y] = F.at(u, a0), [x2, y2] = F.at(u + 1, a0); if (canStand(m, x, y) && canStand(m, x2, y2)) { m.dumpster(Math.min(x, x2), Math.min(y, y2), F.uAxis, groundAt(m, x, y)); registerSolids(m, { x0: Math.min(x, x2), y0: Math.min(y, y2), w: F.uAxis === 'x' ? 2 : 1, d: F.uAxis === 'x' ? 1 : 2 }, `${ctx.origin}/dumpster`); tag(m, x, y, 'utility'); tag(m, x2, y2, 'utility'); } }
+            if (a1 - a0 >= 4) slot(ctx, Math.max(2, Math.floor(F.U / 2) - 3), a1 - 1, { len: 6, along: 'u', kind: 'service', types: ['truck', 'car'], priority: 0.6, part: 'loading-bay' });
+            for (let i = 1; i < st.front.length; i++) { const u = 1 + Math.round((F.U - 2) * i / st.front.length); run(m, [F.at(u, a0 + 1)], 'bin', 1, `${ctx.origin}/bins`); }
+            if (!st.backD) {
+                if (F.V - 12 >= 8) for (let u = 2; u + 2 < F.U - 2; u += 5) slot(ctx, u, F.V - 5, { priority: 0.3, part: 'staff-stall' });
+                fenceEdge(m, ctx.R, F.back, 'privacy', `${ctx.origin}/rear-fence`, { gates: [0.5], gateWidth: 3 });
+            }
+            // Street trees in pits on the frontage paving, between the shop doors.
+            for (let i = 1; i < st.front.length; i++) { const u = 1 + Math.round((F.U - 2) * i / st.front.length); plantTree(m, ...F.at(u, 0), `${ctx.origin}/street-tree`, 'ornamental'); }
+        }
+    },
     'house-plot': {
         name: 'House, driveway and fenced back yard', U: [13, 18], V: [18, 30], frontage: true, repeat: true, buildings: 1,
-        weights: { suburban: 4, mixed: 1, retail: 0.3, industrial: 0 }, fill: ['yard', 'lawn'],
+        weights: { suburban: 4, mixed: 1, retail: 0.3, industrial: 0, roadside: 0.2, urban: 0 }, fill: ['yard', 'lawn'],
         plan(ctx) {
             const { F } = ctx, hw = Math.min(F.U - 5, 11), hd = Math.min(10, F.V - 8);
             const two = ctx.rng.next() < 0.45 && hd >= 10 && hw >= 8;
@@ -249,7 +289,7 @@ export const MIXES = Object.freeze({
     },
     'townhouse-row': {
         name: 'Semi-detached row with side passages', U: [22, 42], V: [18, 28], frontage: true, repeat: true, buildings: 3,
-        weights: { suburban: 3, mixed: 1, retail: 0.3, industrial: 0 }, fill: ['yard', 'lawn'],
+        weights: { suburban: 3, mixed: 1, retail: 0.3, industrial: 0, roadside: 0.1, urban: 0.8 }, fill: ['yard', 'lawn'],
         plan(ctx) {
             const { F } = ctx, n = Math.max(2, Math.floor(F.U / 10)), pitch = Math.floor(F.U / n), out = [];
             for (let i = 0; i < n; i++) { const b = building(ctx, { u0: i * pitch + 1, v0: 4, uw: pitch - 2, vd: 10 }, { program: 'townhouse', storeys: 2, part: `unit-${i}` }); if (b) out.push({ b, u0: i * pitch, pitch }); }
@@ -273,10 +313,11 @@ export const MIXES = Object.freeze({
     },
     'warehouse-yard': {
         name: 'Warehouse, loading apron and yard', U: [34, 56], V: [30, 46], frontage: true, holdHost: true, buildings: 1,
-        weights: { industrial: 4, mixed: 1, retail: 0.4, suburban: 0.1 }, fill: ['apron', 'concrete'],
+        weights: { industrial: 4, mixed: 1, retail: 0.4, suburban: 0.1, roadside: 1, urban: 0 }, fill: ['apron', 'concrete'],
         plan(ctx) {
             const { F } = ctx, w = Math.max(24, Math.min(F.U - 8, 32)), d = Math.max(16, Math.min(F.V - 14, 22));
-            const b = building(ctx, { u0: Math.floor((F.U - w) / 2), v0: F.V - d - 3, uw: w, vd: d }, { program: 'warehouse', storeys: 1, part: 'warehouse', rounded: false, furnish: false });
+            const b = building(ctx, { u0: Math.floor((F.U - w) / 2), v0: F.V - d - 3, uw: w, vd: d }, { program: 'warehouse', storeys: 2, part: 'warehouse', rounded: false, furnish: false });
+            if (b) addCatwalk(ctx.m, b, { origin: `${ctx.origin}/catwalk` });
             return { b, w, d };
         },
         dress(ctx, st) {
@@ -313,7 +354,7 @@ export const MIXES = Object.freeze({
     },
     'auto-repair': {
         name: 'Auto repair with salvage yard', U: [22, 26], V: [18, 30], frontage: true, buildings: 1,
-        weights: { industrial: 2, mixed: 1, retail: 0.5, suburban: 0.5 }, fill: ['forecourt', 'concrete'],
+        weights: { industrial: 2, mixed: 1, retail: 0.5, suburban: 0.5, roadside: 2, urban: 0.3 }, fill: ['forecourt', 'concrete'],
         plan(ctx) { return { b: building(ctx, { u0: 1, v0: ctx.F.V - 12, uw: 12, vd: 10 }, { program: 'garage', storeys: 1, part: 'garage', rounded: false }) }; },
         dress(ctx) {
             const { F, m } = ctx;
@@ -325,7 +366,8 @@ export const MIXES = Object.freeze({
             for (let v = 9; v + 1 < F.V - 13; v += 4) rowOf(ctx, 2, 4, v, 'shelving', 1, 'tyre-rack');
             block(m, R(ctx, 8, 9, 2, 4), 'siding', 2, `${ctx.origin}/parts-shed`, { roofKey: 'roof_metal', landUse: 'forecourt' });
             // Salvage yard (nested): chain-link pen with wrecks.
-            const sy = R(ctx, F.U - 9, 2, 8, F.V - 3);
+            // Flush with the side and back edges, so no blind 1-cell slot is left between its fence and the neighbour's.
+            const sy = R(ctx, F.U - 9, 2, 9, F.V - 2);
             paint(m, sy, 'gravel', 'yard', { z: ctx.z });
             fenceRect(m, sy, 'chain', `${ctx.origin}/salvage-yard`, { gates: { [F.left]: [0.3] } });
             for (let v = 4; v + 4 < F.V - 2; v += 6) slot(ctx, F.U - 6, v, { kind: 'salvage', types: ['abandoned_car'], part: 'wreck' });
@@ -334,7 +376,7 @@ export const MIXES = Object.freeze({
     },
     'self-storage': {
         name: 'Self-storage lanes', U: [30, 48], V: [20, 40], frontage: true, buildings: 1,
-        weights: { industrial: 2, mixed: 1, suburban: 1, retail: 0.4 }, fill: ['storage', 'asphalt'],
+        weights: { industrial: 2, mixed: 1, suburban: 1, retail: 0.4, roadside: 1.5, urban: 0 }, fill: ['storage', 'asphalt'],
         plan(ctx) { return { office: building(ctx, { u0: 1, v0: 1, uw: 10, vd: 8 }, { program: 'office', storeys: 1, part: 'office', rounded: false }) }; },
         dress(ctx) {
             const { F, m } = ctx;
@@ -351,7 +393,7 @@ export const MIXES = Object.freeze({
     },
     'surface-lot': {
         name: 'Surface car park', U: [12, 44], V: [9, 30], frontage: true, holdHost: false, buildings: 0,
-        weights: { retail: 0.5, mixed: 0.45, industrial: 0.4, suburban: 0.25 }, narrowBonus: 4, fill: ['aisle', 'asphalt'],
+        weights: { retail: 0.5, mixed: 0.45, industrial: 0.4, suburban: 0.25, roadside: 0.5, urban: 0.35 }, narrowBonus: 4, fill: ['aisle', 'asphalt'],
         dress(ctx) {
             const { F, m } = ctx;
             // One or two bays of stalls with their own aisle each; a pay booth by the entrance on wide lots.
@@ -368,9 +410,194 @@ export const MIXES = Object.freeze({
             boundary(ctx, 'low-wall', { gates: { [F.left]: [0.5], [F.right]: [0.5], [F.back]: [0.3, 0.7] } });
         }
     },
+    'car-dealership': {
+        name: 'Car dealership: showroom and display lot', U: [24, 40], V: [22, 32], frontage: true, buildings: 1,
+        weights: { roadside: 3, retail: 1.2, mixed: 0.9, suburban: 0.4, industrial: 0.5, urban: 0.3 }, fill: ['aisle', 'asphalt'],
+        plan(ctx) { const { F } = ctx, w = Math.min(F.U - 6, 18); return { b: building(ctx, { u0: F.U - w - 2, v0: F.V - 12, uw: w, vd: 10 }, { program: 'shop', storeys: 1, part: 'showroom', rounded: true }), w }; },
+        dress(ctx, st) {
+            const { F, m } = ctx;
+            paint(m, R(ctx, 0, 0, F.U, F.V - 1), 'asphalt', 'aisle', { z: ctx.z });
+            // Display rows facing the road: nose-out, tightly packed, nearly always full.
+            for (const v of [1, 7]) for (let u = 1; u + 2 < F.U - 1; u += 3) { if (v === 7 && u + 3 > F.U - st.w - 3 && F.V - 12 < 12) continue; slot(ctx, u, v, { kind: 'display', priority: 0.9, part: `display-row-${v}` }); }
+            for (let u = 0; u < F.U; u++) { const [x, y] = F.at(u, 6); if (tagAt(m, x, y) === 'aisle' && (u % 3 === 0)) m.store.set(x, y, ctx.z, MAT.road_mark); }
+            drive(ctx, Math.floor(F.U / 2) - 2); frontage(ctx, 'low-wall', [[Math.floor(F.U / 2) - 3, Math.floor(F.U / 2) + 2]]);
+            run(m, [F.at(1, 0), F.at(F.U - 2, 0)], 'concrete_wall', 2, `${ctx.origin}/price-pylon`);
+            boundary(ctx, 'low-wall', { gates: { [F.back]: [0.5], [F.left]: [0.5], [F.right]: [0.5] } });
+        }
+    },
+    'fire-station': {
+        name: 'Fire station: apparatus bays, office and apron', U: [26, 36], V: [22, 30], frontage: true, buildings: 2,
+        weights: { suburban: 1.2, mixed: 1, retail: 0.6, industrial: 0.8, roadside: 0.6, urban: 1 }, fill: ['apron', 'concrete'],
+        plan(ctx) {
+            const { F } = ctx, bays = building(ctx, { u0: 1, v0: F.V - 13, uw: 14, vd: 11 }, { program: 'garage', storeys: 1, part: 'bays', rounded: false, joinSiblings: true, wall: 'brick' });
+            const office = building(ctx, { u0: 15, v0: F.V - 13, uw: Math.min(F.U - 16, 15), vd: 11 }, { program: F.U - 16 >= 14 ? 'office' : 'shop', storeys: [1, 2], part: 'office', rounded: false, joinSiblings: true, wall: 'brick' });
+            if (bays && office) ctx.merge(bays, office);
+            return { bays, office };
+        },
+        dress(ctx, st) {
+            const { F, m } = ctx, apronD = F.V - 13;
+            paint(m, R(ctx, 0, 0, F.U, apronD), 'concrete', 'apron', { z: ctx.z });
+            drive(ctx, 2, 4); drive(ctx, 8, 4);
+            // Engines parked nose-out on the apron in front of the bays (trucks), a hose-drying rack and bollards.
+            for (const u of [2, 8]) slot(ctx, u, Math.max(1, apronD - 8), { len: 6, kind: 'dock', types: ['truck'], priority: 1, part: 'engine-bay' });
+            rowOf(ctx, 16, 18, 1, 'steel_post', 1, 'hose-rack');
+            bollards(ctx, 4, [[1, 13]]);
+            fenceEdge(m, ctx.R, F.back, 'chain', `${ctx.origin}/rear-fence`, { gates: [0.5] });
+        }
+    },
+    'police-compound': {
+        name: 'Police station with a fenced vehicle pound', U: [26, 38], V: [24, 34], frontage: true, holdHost: false, buildings: 1,
+        weights: { mixed: 1, retail: 0.6, suburban: 0.6, industrial: 0.7, roadside: 0.8, urban: 1.2 }, fill: ['apron', 'concrete'],
+        plan(ctx) { const { F } = ctx; return { b: building(ctx, { u0: 1, v0: 2, uw: 14, vd: 11 }, { program: 'office', storeys: [1, 2], part: 'station', rounded: false, wall: 'concrete_wall' }) }; },
+        dress(ctx) {
+            const { F, m } = ctx;
+            paint(m, R(ctx, 0, 0, 16, F.V), 'paving', 'plaza', { z: ctx.z });
+            bollards(ctx, 3, [[16, F.U]]);
+            const pound = R(ctx, 17, 1, F.U - 18, F.V - 2);
+            paint(m, pound, 'asphalt', 'apron', { z: ctx.z });
+            fenceRect(m, pound, 'chain', `${ctx.origin}/vehicle-pound`, { gates: { [F.front]: [0.4] } });
+            drive(ctx, 19, 4);
+            // Cruisers in the pound, jersey barriers staggered inside the gate (a defended entrance).
+            for (let u = 19; u + 2 < F.U - 2; u += 3) slot(ctx, u, F.V - 7, { kind: 'stall', priority: 0.9, part: 'cruiser' });
+            rowOf(ctx, 21, 22, 4, 'jersey', 1, 'gate-barrier'); rowOf(ctx, 26, 27, 6, 'jersey', 1, 'gate-barrier');
+            boundary(ctx, 'low-wall', { gates: { [F.back]: [0.2] } });
+        }
+    },
+    motel: {
+        name: 'Motel facing its lot, with a fenced pool', U: [28, 44], V: [24, 34], frontage: true, buildings: 1,
+        weights: { roadside: 3, suburban: 0.6, mixed: 0.6, retail: 0.4, industrial: 0.2, urban: 0.3 }, fill: ['aisle', 'asphalt'],
+        plan(ctx) { const { F } = ctx; return { b: building(ctx, { u0: 2, v0: F.V - 11, uw: F.U - 12, vd: 9 }, { program: 'motel', storeys: 1, part: 'motel', rounded: false }) }; },
+        dress(ctx) {
+            const { F, m } = ctx;
+            const lot = parkingLot(m, F, { u0: 0, v0: 0, uw: F.U - 9, vd: Math.min(14, F.V - 12) }, { origin: `${ctx.origin}/lot`, frontage: ctx.frontage, z: ctx.z, islands: false });
+            drive(ctx, lot.entry); frontage(ctx, 'low-wall', [[lot.entry - 1, lot.entry + 4]]);
+            // Pool: water in a paved surround, chain-link around it, a gate on the lot side.
+            const pool = R(ctx, F.U - 8, 2, 7, F.V - 5);
+            paint(m, pool, 'paving', 'yard', { z: ctx.z });
+            const water = R(ctx, F.U - 6, 4, 3, F.V - 9);
+            for (let y = water.y0; y < water.y0 + water.d; y++) for (let x = water.x0; x < water.x0 + water.w; x++) if (canStand(m, x, y)) { m.store.set(x, y, ctx.z, MAT.water); tag(m, x, y, 'yard'); }
+            fenceRect(m, pool, 'chain', `${ctx.origin}/pool-fence`, { gates: { [F.left]: [0.5] } });
+            run(m, [F.at(F.U - 4, 1)], 'concrete_wall', 2, `${ctx.origin}/motel-sign`);
+            fenceEdge(m, ctx.R, F.back, 'privacy', `${ctx.origin}/rear-fence`, { gates: [] });
+        }
+    },
+    'sports-court': {
+        name: 'Fenced sports court with bleachers', U: [16, 28], V: [14, 24], frontage: false, buildings: 0,
+        weights: { suburban: 1.4, mixed: 1, retail: 0.5, industrial: 0.2, roadside: 0.2, urban: 0.5 }, fill: ['green', 'lawn'],
+        dress(ctx) {
+            const { F, m } = ctx;
+            paint(m, ctx.R, 'lawn', 'green', { z: ctx.z });
+            const court = R(ctx, 1, 1, F.U - 2, F.V - 5);
+            paint(m, court, 'asphalt', 'plaza', { z: ctx.z });
+            for (let u = 2; u < F.U - 2; u++) for (const v of [2, F.V - 6]) { const [x, y] = F.at(u, v); m.store.set(x, y, ctx.z, MAT.road_mark); }
+            for (let v = 2; v < F.V - 5; v++) { const [x, y] = F.at(Math.floor(F.U / 2), v); m.store.set(x, y, ctx.z, MAT.road_mark); }
+            fenceRect(m, court, 'chain', `${ctx.origin}/court-fence`, { gates: { [F.back]: [0.3, 0.7], [F.front]: [0.5] } });
+            for (const u of [3, F.U - 4]) run(m, [F.at(u, Math.floor((F.V - 4) / 2))], 'steel_post', 2, `${ctx.origin}/hoop`);
+            // Concrete bleachers: two stepped rows along the back (half and full cover).
+            rowOf(ctx, 3, F.U - 4, F.V - 3, 'concrete_wall', 1, 'bleacher-low'); rowOf(ctx, 3, F.U - 4, F.V - 2, 'concrete_wall', 2, 'bleacher-high');
+        }
+    },
+    'car-wash': {
+        name: 'Car wash with canopy bays', U: [18, 28], V: [16, 24], frontage: true, buildings: 0,
+        weights: { roadside: 2, retail: 0.8, mixed: 0.7, suburban: 0.5, industrial: 0.5, urban: 0.15 }, fill: ['forecourt', 'concrete'],
+        dress(ctx) {
+            const { F, m } = ctx;
+            paint(m, ctx.R, 'concrete', 'forecourt', { z: ctx.z });
+            drive(ctx, 1, 4); drive(ctx, F.U - 5, 4);
+            const bays = Math.min(3, Math.floor((F.U - 6) / 5));
+            for (let i = 0; i < bays; i++) {
+                const u = 3 + i * 5;
+                canopy(m, R(ctx, u, 4, 4, 7), `${ctx.origin}/wash-canopy`, { z: ctx.z });
+                run(m, [F.at(u, 5), F.at(u, 9)], 'concrete_wall', 1, `${ctx.origin}/bay-divider`);
+                slot(ctx, u + 1, 5, { kind: 'queue', priority: 0.6, part: `wash-bay-${i}` });
+            }
+            booth(m, R(ctx, F.U - 5, F.V - 4, 3, 3), F.front, `${ctx.origin}/pay-booth`);
+            run(m, [F.at(1, F.V - 3), F.at(2, F.V - 3)], 'appliance', 1, `${ctx.origin}/vacuum-station`);
+        }
+    },
+    'parking-deck': {
+        name: 'Two-level parking deck with a ramp', U: [22, 34], V: [20, 30], frontage: true, holdHost: false, buildings: 0,
+        weights: { retail: 1, mixed: 1, roadside: 0.8, industrial: 0.4, suburban: 0.2, urban: 2.2 }, fill: ['aisle', 'asphalt'],
+        dress(ctx) {
+            const { F, m } = ctx, z = ctx.z, dz = z + 3;
+            // The ramp runs up one side; it goes on whichever side is clear of a neighbour's door approach.
+            const clear = mir => { for (let v = 5; v <= 11; v++) for (let u = 0; u <= 4; u++) { const [x, y] = F.at(mir ? F.U - 1 - u : u, v); if (!canStand(m, x, y)) return false; } return true; };
+            const mir = !clear(false) && clear(true);
+            if (!mir && !clear(false)) {
+                // No side is clear: a plain surface lot instead of a deck.
+                paint(m, ctx.R, 'asphalt', 'aisle', { z });
+                const lot = parkingLot(m, F, { u0: 0, v0: 1, uw: F.U, vd: F.V - 2 }, { origin: `${ctx.origin}/lot`, frontage: ctx.frontage, z, islands: true });
+                drive(ctx, lot.entry); frontage(ctx, 'low-wall', [[lot.entry - 1, lot.entry + 4]]);
+                return;
+            }
+            const U = u => mir ? F.U - 1 - u : u, at = (u, v) => F.at(U(u), v);
+            paint(m, ctx.R, 'asphalt', 'aisle', { z });
+            drive(ctx, mir ? F.U - 5 : 1, 4); frontage(ctx, 'low-wall', [mir ? [F.U - 6, F.U - 1] : [0, 5]]);
+            // Deck over the back of the parcel on concrete columns (hard cover below), ramp up along the clear side.
+            const deck = R(ctx, mir ? 1 : 5, 6, F.U - 6, F.V - 7);
+            for (let y = deck.y0; y < deck.y0 + deck.d; y++) for (let x = deck.x0; x < deck.x0 + deck.w; x++) put(m, x, y, dz, 'concrete', `${ctx.origin}/deck`);
+            for (let v = 6; v < F.V - 1; v += 5) for (let u = 5; u < F.U - 1; u += 5) { const [x, y] = at(u, v); for (let h = z + 1; h < dz; h++) put(m, x, y, h, 'concrete_wall', `${ctx.origin}/column`); }
+            const ramp = [];
+            for (let i = 0; i < 3; i++) for (let w = 1; w <= 3; w++) { const [x, y] = at(w, 7 + i), h = z + 1 + i; for (let zz = z + 1; zz < h; zz++) put(m, x, y, zz, 'concrete', `${ctx.origin}/ramp`); put(m, x, y, h, 'asphalt', `${ctx.origin}/ramp`); m.reserve(x - 1, y - 1, x + 1, y + 1); tag(m, x, y, 'level'); if (w === 2) ramp.push({ x, y, z: h }); }
+            // The ramp lands at v 10, which must be deck: extend the deck across the ramp head.
+            for (let w = 1; w <= 4; w++) { const [x, y] = at(w, 10); put(m, x, y, dz, 'concrete', `${ctx.origin}/deck`); for (let zz = z + 1; zz < dz; zz++) if (w <= 3) put(m, x, y, zz, 'concrete', `${ctx.origin}/ramp`); }
+            // Parapet on the deck edge (half cover for shooters up top), open at the ramp head.
+            for (let y = deck.y0; y < deck.y0 + deck.d; y++) for (let x = deck.x0; x < deck.x0 + deck.w; x++) {
+                const edge = x === deck.x0 || y === deck.y0 || x === deck.x0 + deck.w - 1 || y === deck.y0 + deck.d - 1;
+                const nearRamp = ramp.some(r => Math.abs(r.x - x) + Math.abs(r.y - y) <= 3);
+                if (edge && !nearRamp && !m.store.isSolid(x, y, dz + 1)) put(m, x, y, dz + 1, 'concrete_wall', `${ctx.origin}/parapet`);
+            }
+            // Deck cover that does not depend on parked cars: a stair/lift core in the far corner (full cover) and
+            // jersey dividers between the stall rows (half cover), so the roof is a fight, not a shooting gallery.
+            for (let du = 0; du < 2; du++) for (let dv = 0; dv < 2; dv++) { const [x, y] = at(F.U - 5 + du, F.V - 5 + dv); for (let h = 1; h <= 2; h++) put(m, x, y, dz + h, 'concrete_wall', `${ctx.origin}/lift-core`); }
+            for (let v = 13; v <= F.V - 4; v += 4) for (let u = 6; u + 1 < F.U - 6; u += 5) for (let k = 0; k < 2; k++) {
+                const [x, y] = at(u + k, v);
+                if (!m.store.isSolid(x, y, dz + 1) && !m.district.stallCells.has(`${x},${y}`)) put(m, x, y, dz + 1, 'jersey', `${ctx.origin}/deck-divider`);
+            }
+            // Cars on the roof deck (slots at deck level) and along the front at ground level.
+            for (let u = 7; u + 2 < F.U - 2; u += 3) slot(ctx, mir ? F.U - 2 - u : u, 8, { kind: 'stall', priority: 0.6, part: 'roof-stall', z: dz });
+            for (let u = 7; u + 2 < F.U - 1; u += 3) slot(ctx, mir ? F.U - 2 - u : u, 1, { kind: 'stall', priority: 0.7, part: 'front-stall' });
+            const [gx, gy] = at(2, 6), [tx, ty] = at(2, 10);
+            ctx.connector({ id: `${ctx.origin}-ramp`, template: 'parking-ramp', sockets: [{ x: gx, y: gy, z }, { x: tx, y: ty, z: dz }] });
+        }
+    },
+    scrapyard: {
+        name: 'Scrapyard with crushed-car bales', U: [24, 40], V: [22, 34], frontage: true, buildings: 0,
+        weights: { industrial: 1.2, roadside: 1, mixed: 0.5, retail: 0.2, suburban: 0.1, urban: 0 }, fill: ['construction', 'gravel'],
+        dress(ctx) {
+            const { F, m } = ctx;
+            paint(m, ctx.R, 'gravel', 'construction', { z: ctx.z });
+            frontage(ctx, 'chain', [[3, 8]]); drive(ctx, 4, 4);
+            boundary(ctx, 'privacy', { gates: { [F.back]: [0.5], [F.left]: [0.7] } });
+            // Bale stacks (steel, very tough, 1–2 high) in rows with 3-wide lanes; wrecks waiting to be crushed.
+            for (let v = 5; v + 1 < F.V - 2; v += 5) for (let u = 2; u + 1 < F.U - 2; u += 5) {
+                if (u <= 9 && v <= 6) continue;
+                const h = ((u + v) % 3) ? 2 : 1;
+                block(m, R(ctx, u, v, 2, 2), 'metal', h, `${ctx.origin}/bale-stack`, { landUse: 'construction' });
+            }
+            for (let u = 12; u + 2 < F.U - 2; u += 7) slot(ctx, u, 1, { kind: 'salvage', types: ['abandoned_car'], part: 'wreck' });
+            const pc = R(ctx, F.U - 7, F.V - 4, 5, 2);
+            if (block(m, pc, 'container', 2, `${ctx.origin}/site-office`, { landUse: 'construction' })) m.object('container', [...Array(pc.w * pc.d)].flatMap((_, i) => [[pc.x0 + (i % pc.w), pc.y0 + Math.floor(i / pc.w), ctx.z + 1], [pc.x0 + (i % pc.w), pc.y0 + Math.floor(i / pc.w), ctx.z + 2]]), { axis: pc.w >= pc.d ? 'x' : 'y', dir: 1, size: [5, 2], tint: [0.55, 0.5, 0.42] });
+        }
+    },
+    'bus-depot': {
+        name: 'Bus depot: garage, bus bays and a fuel island', U: [32, 46], V: [26, 36], frontage: true, buildings: 1,
+        weights: { industrial: 1.2, roadside: 1.4, mixed: 0.7, retail: 0.3, suburban: 0.2, urban: 0.4 }, fill: ['apron', 'concrete'],
+        plan(ctx) { const { F } = ctx; return { b: building(ctx, { u0: F.U - 18, v0: F.V - 13, uw: 16, vd: 11 }, { program: 'garage', storeys: 1, part: 'depot', rounded: false }) }; },
+        dress(ctx) {
+            const { F, m } = ctx;
+            paint(m, ctx.R, 'concrete', 'apron', { z: ctx.z });
+            frontage(ctx, 'chain', [[2, 9]]); drive(ctx, 3, 6);
+            boundary(ctx, 'chain', { gates: { [F.back]: [0.2] } });
+            for (let u = 2; u + 2 < F.U - 19; u += 4) slot(ctx, u, 10, { len: 8, kind: 'dock', types: ['bus'], priority: 0.9, part: 'bus-bay' });
+            const isl = R(ctx, F.U - 14, 3, 6, 2); paint(m, isl, 'concrete', 'forecourt', { z: ctx.z });
+            run(m, [F.at(F.U - 13, 3), F.at(F.U - 10, 3)], 'pump', 1, `${ctx.origin}/fuel-pump`);
+            canopy(m, R(ctx, F.U - 15, 2, 8, 4), `${ctx.origin}/fuel-canopy`, { z: ctx.z });
+        }
+    },
     utility: {
         name: 'Fenced substation', U: [10, 18], V: [10, 18], frontage: false, buildings: 0, cap: 2,
-        weights: { industrial: 1.2, mixed: 0.8, retail: 0.5, suburban: 0.6 }, fill: ['utility', 'gravel'],
+        weights: { industrial: 1.2, mixed: 0.8, retail: 0.5, suburban: 0.6, roadside: 0.6, urban: 0.3 }, fill: ['utility', 'gravel'],
         dress(ctx) {
             const { F, m } = ctx;
             paint(m, ctx.R, 'gravel', 'utility', { z: ctx.z });
@@ -382,7 +609,7 @@ export const MIXES = Object.freeze({
     },
     construction: {
         name: 'Construction site', U: [14, 40], V: [14, 34], frontage: false, buildings: 0,
-        weights: { mixed: 1, industrial: 1.5, retail: 0.7, suburban: 0.5 }, fill: ['construction', 'gravel'],
+        weights: { mixed: 1, industrial: 1.5, retail: 0.7, suburban: 0.5, roadside: 0.6, urban: 0.8 }, fill: ['construction', 'gravel'],
         dress(ctx) {
             const { F, m } = ctx;
             paint(m, ctx.R, 'gravel', 'construction', { z: ctx.z });
@@ -409,7 +636,7 @@ export const MIXES = Object.freeze({
     },
     'vacant-lot': {
         name: 'Vacant lot', U: [10, 30], V: [10, 30], frontage: false, buildings: 0, cap: 1,
-        weights: { mixed: 0.3, industrial: 0.4, retail: 0.2, suburban: 0.2 }, fill: ['green', 'soil'],
+        weights: { mixed: 0.3, industrial: 0.4, retail: 0.2, suburban: 0.2, roadside: 0.4, urban: 0.15 }, fill: ['green', 'soil'],
         dress(ctx) {
             const { F, m } = ctx;
             paint(m, ctx.R, 'gravel', 'green', { z: ctx.z });
@@ -421,7 +648,7 @@ export const MIXES = Object.freeze({
     },
     'community-garden': {
         name: 'Community garden', U: [12, 26], V: [12, 26], frontage: false, buildings: 0,
-        weights: { suburban: 2, mixed: 1, retail: 0.3, industrial: 0.2 }, fill: ['green', 'lawn'],
+        weights: { suburban: 2, mixed: 1, retail: 0.3, industrial: 0.2, roadside: 0.1, urban: 0.3 }, fill: ['green', 'lawn'],
         dress(ctx) {
             const { F, m } = ctx;
             paint(m, ctx.R, 'lawn', 'green', { z: ctx.z });

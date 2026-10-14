@@ -1,7 +1,7 @@
 // PLAN-06: parcel mixes, land use, vehicle slots, skybridges, warehouses, terraces, hold zones and the district gates.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildParkDistrict, buildMallDistrict, buildDrainageDistrict, buildTerraceHeights } from '../mission/LargeDistricts.js';
+import { buildParkDistrict, buildMallDistrict, buildDrainageDistrict, buildTerraceHeights, buildSuburbDistrict, buildDowntownDistrict, buildDocksideDistrict, buildHighwayDistrict } from '../mission/LargeDistricts.js';
 import { createMap } from '../mission/modern/MapKit.js';
 import { MAT, materialById } from '../voxel/Materials.js';
 import { reachable, nodeKey } from '../world/PathSearch.js';
@@ -10,7 +10,9 @@ import { MIXES, MIX_IDS, mixFits } from './district/MixCatalogue.js';
 import { partitionBlock, assignMixes } from './district/MixSolver.js';
 import { registerRoads } from './StreetDressing.js';
 import { buildSkybridges } from './district/Skybridge.js';
-import { layoutWarehouse, WAREHOUSE_VARIANTS, MAX_RUN } from './district/Warehouse.js';
+import { layoutWarehouse, addCatwalk, WAREHOUSE_VARIANTS, MAX_RUN } from './district/Warehouse.js';
+import { plantTree, TREE_SPECIES } from './district/Props.js';
+import { lineOfSight } from '../voxel/Raycast.js';
 import { evaluateDistrictGates } from './DistrictGates.js';
 import { createRng } from '../util/Rng.js';
 
@@ -147,4 +149,54 @@ test('district gates catch an unregistered box, a structure over the road and a 
     const g = evaluateDistrictGates(mission, map);
     assert.equal(g.gates.propOrigin, false); assert.equal(g.gates.roadAir, false); assert.equal(g.gates.vehicles, false);
     assert.ok(d === null || d);
+});
+
+test('themed districts: suburb, downtown, docks and highway pass every gate and look like what they are', () => {
+    const mixesOf = m => m.meta.district.leaves.map(l => l.mix);
+    const sub = buildSuburbDistrict({ seed: 1 }), down = buildDowntownDistrict({ seed: 2 }), dock = buildDocksideDistrict({ seed: 3 }), hw = buildHighwayDistrict({ seed: 2 });
+    for (const m of [sub, down, dock, hw]) {
+        const g = m.meta.districtGates;
+        assert.equal(g.pass, true, `${m.id}: ${JSON.stringify(g.gates)} ${JSON.stringify(g.samples)}`);
+        assert.ok(m.metrics.pass, `${m.id}: ${JSON.stringify(m.metrics.gates)}`);
+        assert.ok(m.buildings.length >= 3, `${m.id}: ${m.buildings.length} buildings`);
+        assert.equal(m.meta.connectorValidation.pass, true);
+    }
+    assert.ok(mixesOf(sub).filter(x => x === 'house-plot' || x === 'townhouse-row').length >= 2, 'suburb: homes');
+    assert.ok(mixesOf(down).some(x => x === 'city-block' || x === 'mainstreet-row'), 'downtown: street-wall blocks');
+    assert.ok(!mixesOf(down).some(x => ['house-plot', 'warehouse-yard', 'scrapyard', 'self-storage'].includes(x)), 'downtown: no suburban or heavy-industrial parcels');
+    assert.ok(mixesOf(dock).includes('warehouse-yard'), 'docks: warehouses');
+    const water = [...Array(dock.store.width).keys()].filter(x => materialById(dock.store.get(x, 2, 1)).key === 'deep_water').length;
+    assert.equal(water, dock.store.width, 'docks: deep water along the quay');
+    assert.ok(hw.meta.district.roadSets.filter(r => r.type === 'median').length >= 3, 'highway: jersey median');
+    assert.ok(!hw.meta.streetObjects.some(v => v.kind === 'kerb' && v.y >= 34 && v.y <= 43), 'highway: no kerb parking on the interstate');
+});
+
+test('warehouse catwalk: a grated ring at storey height, stairs up from the floor, and sight down onto the floor', () => {
+    const m = createMap({ id: 'wh-catwalk', width: 48, depth: 40, height: 14, seed: 3 });
+    initDistrict(m, {});
+    const b = m.building({ id: 'wh', program: 'warehouse', x0: 6, y0: 6, w: 32, d: 24, storeys: 2, front: 's', furnish: false });
+    layoutWarehouse(m, b, { variant: 'distribution', seed: 3 });
+    const cw = addCatwalk(m, b);
+    assert.ok(cw && cw.cells >= 40, `catwalk ${JSON.stringify(cw)}`);
+    assert.ok(cw.stairs.length >= 2);
+    const hall = b.rooms.filter(r => r.storey === 0 && (r.kind === 'warehouse' || r.kind === 'loading')).sort((a, c) => c.cells.length - a.cells.length)[0];
+    const reach = reachable(m.store, { x: b.exits[0].x, y: b.exits[0].y + 2, z: 1 });
+    for (const st of cw.stairs) assert.ok(reach.costs.has(nodeKey(st.top)), `stair top ${JSON.stringify(st.top)} reachable from the floor`);
+    // A shooter on the catwalk sees open floor below it.
+    const top = cw.stairs[0].top, eye = { x: top.x + 0.5, y: top.y + 0.5, h: top.z + 1.6 };
+    const floor = hall.cells.filter(([x, y]) => !m.store.isSolid(x, y, hall.floorZ + 1) && !m.store.isSolid(x, y, hall.floorZ + 3));
+    const seen = floor.filter(([x, y]) => lineOfSight(m.store, eye, { x: x + 0.5, y: y + 0.5, h: hall.floorZ + 1.5 })).length;
+    assert.ok(seen >= 20, `catwalk overlooks ${seen} floor cells`);
+});
+
+test('trees are species, not blocks: hints carry the species piece and a park mixes several kinds', () => {
+    const m = createMap({ id: 'trees', width: 40, depth: 20, height: 14, seed: 1 });
+    initDistrict(m, {});
+    for (const [i, kind] of Object.keys(TREE_SPECIES).entries()) assert.ok(plantTree(m, 4 + i * 6, 8, `test/${kind}`, kind), kind);
+    const pieces = Object.values(m.visual?.hints || m.hints).filter(h => h.tree && h.piece).map(h => h.piece);
+    assert.equal(pieces.length, Object.keys(TREE_SPECIES).length);
+    assert.ok(new Set(pieces).size >= 5, `pieces ${pieces}`);
+    const park = buildParkDistrict({ seed: 2 });
+    const kinds = new Set(Object.values(park.visual.hints).filter(h => h.tree && h.piece).map(h => h.piece));
+    assert.ok(kinds.size >= 3, `park species ${[...kinds]}`);
 });

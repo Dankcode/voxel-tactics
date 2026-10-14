@@ -398,13 +398,46 @@ function treeConifer(seed) {
     ];
 }
 
+// Tree species (PLAN-06 follow-up): organic crowns built from overlapping noisy blobs, each species with its own
+// silhouette so streets, yards and parks do not repeat one shape. Gameplay canopies match these footprints.
+function treeOak(seed) {
+    const r = rng(seed), blobs = [];
+    for (let i = 0; i < 11; i++) {
+        const a = r() * 6.28, d = 0.45 + r() * 0.95;
+        blobs.push(blob(0.6 + r() * 0.35, 1, seed + i * 11, [1, 0.72, 1], 0.36).translate(Math.cos(a) * d, 2.7 + r() * 0.9, Math.sin(a) * d));
+    }
+    blobs.push(blob(1.0, 1, seed + 77, [1.1, 0.7, 1.1], 0.3).translate(0, 3.5, 0));
+    const bark = [cyl(0.15, 0.27, 2.4, 10)];
+    for (let i = 0; i < 4; i++) { const a = i * 1.57 + r(); bark.push(cyl(0.05, 0.1, 1.2, 6).rotateZ(0.9).rotateY(a).translate(Math.cos(a) * 0.2, 1.9, Math.sin(a) * 0.2)); }
+    return [{ slot: 'bark', geometry: merge(bark) }, { slot: 'leaves', geometry: merge(blobs) }];
+}
+function treeBirch(seed) {
+    const r = rng(seed), blobs = [];
+    for (let i = 0; i < 7; i++) blobs.push(blob(0.36 + r() * 0.2, 1, seed + i * 5, [1, 1.25, 1], 0.4).translate((r() - 0.5) * 0.6, 3.1 + i * 0.36, (r() - 0.5) * 0.6));
+    return [{ slot: 'bark', geometry: merge([cyl(0.05, 0.09, 4.4, 8), cyl(0.03, 0.05, 1.1, 5).rotateZ(-0.5).translate(0.2, 2.6, 0)]) }, { slot: 'leaves', geometry: merge(blobs) }];
+}
+function treeOrnamental(seed) {
+    const r = rng(seed), blobs = [blob(0.78, 1, seed, [1, 0.9, 1], 0.24).translate(0, 2.55, 0)];
+    for (let i = 0; i < 4; i++) { const a = i * 1.57 + r() * 0.6; blobs.push(blob(0.4 + r() * 0.15, 1, seed + i * 3, [1, 0.9, 1], 0.3).translate(Math.cos(a) * 0.45, 2.35 + r() * 0.5, Math.sin(a) * 0.45)); }
+    return [{ slot: 'bark', geometry: cyl(0.06, 0.1, 2.1, 8) }, { slot: 'leaves', geometry: merge(blobs) }];
+}
+function treeCypress(seed) {
+    const r = rng(seed), blobs = [];
+    for (let i = 0; i < 8; i++) blobs.push(blob(0.62 - i * 0.055, 1, seed + i * 9, [1, 1.35, 1], 0.22).translate((r() - 0.5) * 0.12, 1.3 + i * 0.6, (r() - 0.5) * 0.12));
+    return [{ slot: 'bark', geometry: cyl(0.07, 0.12, 1.4, 7) }, { slot: 'needles', geometry: merge(blobs) }];
+}
+
 const objects = {
     car: P({ group: 'vehicle', text: 'Parked car, whole object (4 × 2 cells, front +X)', footprint: [4, 2], overhang: true }, () => carBody()),
     container: P({ group: 'vehicle', text: 'Shipping container (5 × 2 × 2 cells)', footprint: [5, 2], overhang: true }, () => container()),
     dumpster: P({ group: 'cover', text: 'Dumpster (2 × 1 cells)', footprint: [2, 1], overhang: true }, () => dumpster()),
     wreck: P({ group: 'vehicle', text: 'Burnt-out wreck fragment (a damaged vehicle cell)' }, () => [{ slot: 'wreck', geometry: merge([sb(0.94, 0.6, 0.9, 0.08, 0, 0.12), blob(0.2, 0, 3).translate(0.2, 0.75, 0.1)]) }]),
     tree_round: P({ group: 'foliage', text: 'Deciduous street tree (whole object)', overhang: true }, () => treeRound(17)),
-    tree_conifer: P({ group: 'foliage', text: 'Conifer (whole object)', overhang: true }, () => treeConifer(29))
+    tree_conifer: P({ group: 'foliage', text: 'Conifer (whole object)', overhang: true }, () => treeConifer(29)),
+    tree_oak: P({ group: 'foliage', text: 'Broad oak, wide low crown (whole object)', overhang: true }, () => treeOak(41)),
+    tree_birch: P({ group: 'foliage', text: 'Birch, slender trunk and tall oval crown (whole object)', overhang: true }, () => treeBirch(53)),
+    tree_ornamental: P({ group: 'foliage', text: 'Ornamental street tree, compact round head (whole object)', overhang: true }, () => treeOrnamental(61)),
+    tree_cypress: P({ group: 'foliage', text: 'Columnar cypress (whole object)', overhang: true }, () => treeCypress(67))
 };
 
 // ----------------------------------------------------------------------------------------- decor (visual only)
