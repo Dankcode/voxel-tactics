@@ -25,9 +25,10 @@ Per character `client/public/assets/characters/<art>/`:
 - `cutin.json` + `cutin/*.png` — the back shot. `muzzle: [u, v]` is the barrel tip as fractions of the art's width and
   height: the director places the figure so that point is on the crosshair (set it when replacing art). Ordered layers (`back`, `body`, `arm`, `fx`), each with a
   `parallax` factor and optional CSS `blend`. `screenHeight` is the fraction of viewport height.
-  Optional `variants.left` — the back shot for a shot over the **left** shoulder (the soldier leans or steps out to
-  the left): an object with its own `layers` (images in the same folder), `width`, `height`, `muzzle` (barrel tip,
-  usually near the left edge) and `screenHeight`, drawn as is. Without it the right-hand art is mirrored.
+  Optional `variants.left` — the aiming sprite for a shot from the **left** side (the soldier leans or steps out to
+  the left): an object with its own `layers` (images in the same folder), `width`, `height`, `muzzle` (barrel tip) and
+  `screenHeight`, shown in the same bottom-left place as the usual back shot. Without it the usual sprite is used;
+  the back shot is never mirrored.
 - `portrait.png` — 128 × 128 HUD portrait.
 
 Replace PNGs and edit the JSON; no code changes are needed while clip ids stay the same.

@@ -760,7 +760,7 @@ export class Game {
         if(!st||st.unitId!==u.id||Math.hypot(p.x-st.at.x,p.y-st.at.y,p.h-st.at.h)>0.25){
             const m=this.aimMuzzle(u,p);
             if(!st||st.unitId!==u.id||aimStanceKey(m)!==st.key)this.frameAim(u,p,m);
-            else Object.assign(st,{at:{...p},muzzle:m,blocked:shotBlocked(this.battle.store,m,p)});
+            else {Object.assign(st,{at:{...p},muzzle:m,side:m.side||'right',blocked:shotBlocked(this.battle.store,m,p)});this.cutins.beginAim(u,{shoulder:st.side});}
         }
         this.views.get(u.id)?.face(p.x-origin.x,p.y-origin.y);
         if(this.cameraDirector.phase==='prepare')this.cameraDirector.track(new THREE.Vector3(p.x,p.h,p.y),dt);
@@ -768,14 +768,16 @@ export class Game {
     /** Where a shot at `p` would leave from (lean or step-out), as the battle will resolve it. */
     aimMuzzle(u,p){return chooseMuzzle(this.battle.store,u,p,{occupied:occupiedBy(this.battle,u)});}
     /**
-     * Frame the aiming shoulder camera and the aiming back shot for a shot at `p`: from the step-out tile when the
-     * angle is blocked, over the shoulder on the side the soldier leans or steps to.
+     * Frame the aiming shoulder camera for a shot at `p`: from the step-out tile when the angle is blocked, so the view
+     * (and the reticle) look past the wall at the target, as in XCOM 2. The camera keeps the same shoulder and the
+     * back shot stays where it is; only the aim direction changes. The side is passed to the back shot so a future
+     * left-side aiming sprite can be shown.
      */
     frameAim(u,p,m=this.aimMuzzle(u,p)){
         const side=m.side||'right',o=m.step?new THREE.Vector3(m.step.x+.5,u.z+1,m.step.y+.5):new THREE.Vector3(u.x+.5,u.z+1,u.y+.5);
         this.aimStance={unitId:u.id,key:aimStanceKey(m),side,muzzle:m,at:{...p},blocked:shotBlocked(this.battle.store,m,p)};
         this.cutins.beginAim(u,{shoulder:side});
-        this.cameraDirector.prepareAim(o,new THREE.Vector3(p.x,p.h,p.y),{side});
+        this.cameraDirector.prepareAim(o,new THREE.Vector3(p.x,p.h,p.y));
     }
     updateFreeAim(x,y,pick=null){
         const u=this.selectedUnit();if(!u)return;const ray=this.scene.rayAt(x,y).ray;
@@ -815,8 +817,8 @@ export class Game {
     }
 }
 
-/** Camera framing changes only when the step-out tile or the shoulder side changes (not on every small lean). */
-export function aimStanceKey(m){return `${m.step?`${m.step.x},${m.step.y}`:'tile'}:${m.side||'right'}`;}
+/** The aiming camera re-frames only when the tile the shot leaves from changes (a step out or back), not on leans. */
+export function aimStanceKey(m){return m.step?`${m.step.x},${m.step.y}`:'tile';}
 /** True when the straight line from the muzzle to the aim point meets a bullet-stopping voxel before it. */
 export function shotBlocked(store,m,p){const r=castRay(store,m,p);return !!r.hit&&r.t<r.length-0.3;}
 

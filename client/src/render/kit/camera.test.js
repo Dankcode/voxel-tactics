@@ -53,13 +53,20 @@ test('CAD presets select plan and compass views while pan stays screen-relative'
  r.setPreset('iso');r.update(0);assert.equal(r.yaw,Math.PI/4);
 });
 
-test('aiming over the left shoulder puts the camera on the left of the line of fire', () => {
-    const shooter = new THREE.Vector3(8.5, 2, 8.5), target = new THREE.Vector3(8.5, 2, 18.5);
-    const right = new CameraDirector({ aspect: 1.6 }), left = new CameraDirector({ aspect: 1.6 });
-    right.prepareAim(shooter, target); left.prepareAim(shooter, target, { side: 'left' });
-    // Looking down +z (voxel +y), the right-hand vector is (-1, 0, 0) in three space.
-    const rx = c => -(c.from.x - shooter.x);
-    assert.ok(rx(right) > 0.5, `right shoulder ${rx(right)}`);
-    assert.ok(rx(left) < -0.5, `left shoulder ${rx(left)}`);
-    assert.equal(left.side, 'left');
+test('aiming round a corner: the camera keeps the right shoulder but moves in until it sees past the wall', () => {
+    // Step-out tile (9,12); a tall wall along row 11 from x=10 eastward; the target is north-west past its end.
+    const store = new VoxelStore(30, 30, 12); store.fill(0, 0, 0, 29, 29, 1, 'concrete'); store.fill(10, 11, 2, 20, 11, 6, 'concrete');
+    const cam = new CameraDirector({ aspect: 1.6 }); cam.store = store;
+    const shooter = new THREE.Vector3(9.5, 2, 12.5), target = new THREE.Vector3(6.5, 3.2, 2.5);
+    cam.prepareAim(shooter, target);
+    assert.equal(cam.phase, 'prepare');
+    assert.ok(cam.sees(cam.from, cam.look) && cam.sees(cam.to, cam.look), 'the target is in view, not the wall');
+    // Still over the right shoulder (or straight behind), never flipped to the left.
+    const dir = target.clone().sub(shooter).setY(0).normalize(), right = new THREE.Vector3(-dir.z, 0, dir.x);
+    assert.ok(cam.from.clone().sub(shooter).dot(right) >= -1e-6, 'right shoulder');
+    // In the open the full shoulder offset is kept.
+    const open = new CameraDirector({ aspect: 1.6 }), o = new VoxelStore(30, 30, 12); o.fill(0, 0, 0, 29, 29, 1, 'concrete'); open.store = o;
+    open.prepareAim(shooter, target);
+    assert.ok(Math.abs(open.from.clone().sub(shooter).dot(right) - 1.3) < 1e-6);
+    assert.ok(cam.from.clone().sub(shooter).dot(right) < 1.3, 'less offset round the corner');
 });

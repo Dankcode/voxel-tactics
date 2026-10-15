@@ -35,17 +35,14 @@ export function backshotPlacement(cutin, aim, view, { bars = BAR_SHARE, scale = 
     return { left: aim.x - u * width, top: aim.y - v * height, width, height, origin: `${(u * 100).toFixed(1)}% ${(v * 100).toFixed(1)}%` };
 }
 /**
- * The back shot for a shoulder side. Right (default) is the art as drawn: the figure on the left of the screen, barrel
- * pointing right. Left (the soldier leans or steps out to the left, the camera looks over the left shoulder) uses the
- * art's `variants.left` from cutin.json when it has one (its own layers/size/muzzle, no mirroring); until that art
- * exists, the right-hand art is mirrored (muzzle u → 1 − u). Returns { cutin, mirror, shoulder }.
+ * The back shot art for a shot taken from the left side (lean or step-out to the left). The figure never flips and
+ * never moves: it is always the same bottom-left back shot. Only when the art has its own left-side aiming sprite
+ * (cutin.json `variants.left`: `layers`, `width`, `height`, `muzzle`, `screenHeight`) is that sprite shown instead, in
+ * the same place. Returns the cutin to draw.
  */
 export function sideCutin(cutin, shoulder = 'right') {
-    if (shoulder !== 'left') return { cutin, mirror: false, shoulder: 'right' };
-    const v = cutin.variants?.left;
-    if (v) return { cutin: { ...cutin, ...v, variants: undefined }, mirror: false, shoulder: 'left' };
-    const [u, y] = cutin.muzzle || DEFAULT_MUZZLE;
-    return { cutin: { ...cutin, muzzle: [1 - u, y] }, mirror: true, shoulder: 'left' };
+    const v = shoulder === 'left' ? cutin.variants?.left : null;
+    return v ? { ...cutin, ...v, variants: undefined } : cutin;
 }
 /** Project a three.js world point to CSS pixels of the viewport. */
 export function projectToScreen(camera, point, view) {
@@ -54,12 +51,11 @@ export function projectToScreen(camera, point, view) {
 }
 /** Aiming back shot layout: static in the bottom-left corner just past the squad rail, whole figure visible. */
 export const AIM_SHOT = Object.freeze({ heightShare: 0.46, maxWidthShare: 0.42, gap: 12, followTau: 0.2, maxLean: 9, maxBend: 7, bendPerPx: 0.012 });
-export function aimBackshotLayout(cutin, view, railRight = 0, shoulder = 'right') {
+export function aimBackshotLayout(cutin, view, railRight = 0) {
     const aspect = (cutin.width || 512) / (cutin.height || 768);
     let height = view.height * AIM_SHOT.heightShare, width = height * aspect;
     if (width > view.width * AIM_SHOT.maxWidthShare) { width = view.width * AIM_SHOT.maxWidthShare; height = width / aspect; }
-    // Left shoulder: the mirror image, static in the bottom-right corner.
-    const left = shoulder === 'left' ? Math.max(0, view.width - width - AIM_SHOT.gap) : Math.max(0, railRight + AIM_SHOT.gap);
+    const left = Math.max(0, railRight + AIM_SHOT.gap);
     return { left, top: view.height - height, width, height };
 }
 /**
@@ -107,14 +103,19 @@ export class CutInDirector {
      * makes it lean toward the crosshair with a slight delay and bend with the crosshair's motion.
      */
     async beginAim(unit, { shoulder = 'right' } = {}) {
-        if (this.aiming?.unitId === unit.id && this.aiming.shoulder === shoulder) return;
+        const cur = this.aiming;
+        if (cur?.unitId === unit.id) {
+            if (cur.shoulder === shoulder) return;
+            // Same sprite on both sides unless the art has a left-side aiming sprite: nothing to rebuild.
+            if (!cur.art || !cur.hasLeft) { cur.shoulder = shoulder; return; }
+        }
         const last = this.aiming?.unitId === unit.id ? this.aiming.last : null;
         this.endAim();
         const token = this.aiming = { unitId: unit.id, shoulder, el: null, art: null, last };
         const loaded = await loadCharacterArt(unit.art);
         if (this.aiming !== token) return;
-        const side = sideCutin(loaded.cutin, shoulder), art = { ...loaded, cutin: side.cutin };
-        token.mirror = side.mirror;
+        token.hasLeft = !!loaded.cutin.variants?.left;
+        const art = { ...loaded, cutin: sideCutin(loaded.cutin, token.shoulder) };
         const el = document.createElement('div');
         el.className = 'cutin cutin-aim'; el.style.pointerEvents = 'none';
         el.innerHTML = '<div class="figures aligned"><div class="figure" data-aligned="1"></div></div>';
@@ -123,7 +124,6 @@ export class CutInDirector {
         for (const layer of art.cutin.layers) {
             if (layer.blend) continue;                     // muzzle-flash layers only belong to the shot
             const img = document.createElement('img'); img.src = art.base + layer.image; img.draggable = false;
-            if (side.mirror) img.style.transform = 'scaleX(-1)';
             fig.appendChild(img);
         }
         // Under the HUD (buttons and portraits stay on top), above the 3D view.
@@ -148,7 +148,7 @@ export class CutInDirector {
         // Static in the bottom-left corner past the squad rail; it only leans and bends to follow the crosshair.
         const now = performance.now(), dt = a.t ? Math.min(0.05, (now - a.t) / 1000) : 0; a.t = now;
         const view = viewport(), rail = Math.max(0, ...[...document.querySelectorAll('#hud .squad-head')].map(e => e.getBoundingClientRect().right));
-        const layout = aimBackshotLayout(a.art.cutin, view, rail, a.shoulder);
+        const layout = aimBackshotLayout(a.art.cutin, view, rail);
         followStep(a.follow ||= {}, screenAim, dt);
         const pose = aimBackshotPose(a.art.cutin, layout, a.follow.pos, a.follow.vel, { x: view.width / 2, y: view.height / 2 });
         Object.assign(a.el.querySelector('.figure').style, { left: `${layout.left}px`, top: `${layout.top}px`, width: `${layout.width}px`, height: `${layout.height}px`,
@@ -168,17 +168,17 @@ export class CutInDirector {
     async play(o) {
         this.endAim();
         const shoulder = o.shoulder === 'left' ? 'left' : 'right';
-        if (o.shooterPos && o.targetPos) this.cameraDirector.begin(o.shooterPos, o.targetPos, 'action', { side: shoulder });
+        // Same shoulder camera whatever side the shot leaves from; the side only picks a left-side sprite if one exists.
+        if (o.shooterPos && o.targetPos) this.cameraDirector.begin(o.shooterPos, o.targetPos);
         // Every camera switch uses the back shot (no first-only / off modes any more).
         const key = o.units.map(u => u.id).join(',');
         this.shownThisTurn.add(key);
         // The look point of the action camera is the aim point (targetPos + 1.1 up); the barrel goes there.
         const aimWorld = o.targetPos ? o.targetPos.clone().add(new THREE.Vector3(0, 1.1, 0)) : null;
         const timeline = (PRESETS[o.kind] || PRESETS.shot)(o.side === 'enemy' ? 0.95 : undefined);
-        const sides = (await Promise.all(o.units.map(u => loadCharacterArt(u.art)))).map(a => ({ art: a, ...sideCutin(a.cutin, shoulder) }));
-        const arts = sides.map(x => ({ ...x.art, cutin: x.cutin }));
+        const arts = (await Promise.all(o.units.map(u => loadCharacterArt(u.art)))).map(a => ({ ...a, cutin: sideCutin(a.cutin, shoulder) }));
         const el = document.createElement('div');
-        el.className = `cutin cutin-${o.kind} side-${o.side} shoulder-${shoulder}`;
+        el.className = `cutin cutin-${o.kind} side-${o.side}`;
         el.innerHTML = `<div class="bar top"></div><div class="bar bottom"></div><div class="flash"></div>
             <div class="figures"></div><i class="cutin-crosshair"></i><div class="caption"><div class="title"></div><div class="sub"></div></div>`;
         el.querySelector('.title').textContent = o.title || '';
@@ -194,12 +194,10 @@ export class CutInDirector {
             fig.style.setProperty('--i', i);
             fig.style.height = `${Math.round((art.cutin.screenHeight || 0.6) * 100 * (o.units.length > 1 ? 0.8 : 1))}vh`;
             fig.style.aspectRatio = `${art.cutin.width} / ${art.cutin.height}`;
-            if (sides[i].mirror) fig.style.transform = 'scaleX(-1)';
             for (const layer of art.cutin.layers) {
                 const img = document.createElement('img');
                 img.src = art.base + layer.image; img.draggable = false;
-                // A mirrored figure flips the whole box, so the zoom origin is the barrel tip in the unflipped art.
-                if (aligned) img.style.transformOrigin = backshotPlacement(sides[i].mirror ? sides[i].art.cutin : art.cutin, { x: 0, y: 0 }, viewport()).origin;
+                if (aligned) img.style.transformOrigin = backshotPlacement(art.cutin, { x: 0, y: 0 }, viewport()).origin;
                 if (layer.blend) img.style.mixBlendMode = layer.blend;
                 fig.appendChild(img);
                 layerEls.push({ img, parallax: layer.parallax ?? 1, i });
@@ -228,9 +226,7 @@ export class CutInDirector {
                 el.querySelector('.flash').style.opacity = s.flash ?? 0;
                 el.querySelector('.caption').style.opacity = s.text ?? 1;
                 for (const l of layerEls) {
-                    // Left shoulder: slides in from the right.
-                    // (A mirrored figure flips the slide with it.)
-                    const x = (1 - (s.slide ?? 1)) * (shoulder === 'left' && !sides[l.i].mirror ? 110 : -110) * l.parallax;
+                    const x = (1 - (s.slide ?? 1)) * -110 * l.parallax;
                     const scale = 1 + ((s.push ?? 1) - 1) * l.parallax;
                     l.img.style.transform = `translateX(${x}%) scale(${scale})`;
                 }

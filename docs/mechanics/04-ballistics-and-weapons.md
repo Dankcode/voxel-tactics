@@ -40,15 +40,17 @@ targets' body-part cylinders. Code: `shared/battle/Ballistics.js`, `Battle.fireW
   soldier's tile does not change: the step is only where the shot leaves from. The shot estimate, the fired shot,
   reaction fire and the overwatch preview all use the same choice (with the same occupancy), so the HUD hit chance
   is what fires. The `cutin` and `shot` events carry the muzzle.
-- **Aiming from a blocked angle**: the shoulder camera and the reticle are framed from the step-out tile, over the
-  shoulder on the side the soldier leans or steps to (`Game.frameAim`; re-framed only when the step tile or side
-  changes). The reticle turns red with BLOCKED when even a step-out cannot see the aim point, and shows STEP OUT
-  when the shot will leave from a side tile. In playback the soldier slides out to the side tile, fires and slides
-  back.
-- **Left-shoulder back shot**: when the soldier leans or steps out to the left, the camera looks over the left
-  shoulder and the back shot uses the art's `variants.left` from cutin.json (its own `layers`, `width`, `height`,
-  `muzzle`, `screenHeight`, used as drawn) when it exists. Until that sprite is made the right-hand art is mirrored
-  (muzzle u → 1 − u): bottom-right while aiming, entering from the right in the cut-in (`sideCutin`).
+- **Aiming from a blocked angle** (as in XCOM 2): the shoulder camera and the reticle are framed from the step-out
+  tile, so the view looks past the wall at the target instead of into it (`Game.frameAim`; re-framed only when the
+  tile the shot leaves from changes). The camera always stays over the right shoulder: from the full distance inward
+  it tries the full shoulder offset, then less, then straight behind the step-out tile, and takes the first spot
+  with a clear view of the aim point (`CameraDirector.sees`); only if none sees it does it try the other shoulder.
+  The reticle turns red with BLOCKED when even a step-out cannot reach the aim point, and shows STEP OUT when the
+  shot will leave from a side tile. In playback the soldier slides out to the side tile, fires and slides back.
+- **Back shot on either side**: the back-shot sprite never flips or moves; only the aim direction changes. A shot
+  from the left side (lean or step-out to the left) shows the art's `variants.left` from cutin.json (its own
+  `layers`, `width`, `height`, `muzzle`, `screenHeight`) in the same bottom-left place once that sprite exists;
+  until then it is the usual sprite (`sideCutin`).
 
 ## The accuracy cone (`Battle.spreadFor`)
 

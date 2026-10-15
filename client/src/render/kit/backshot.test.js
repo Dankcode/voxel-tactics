@@ -58,20 +58,14 @@ test('there is no cut-in mode that skips the back shot', () => {
     assert.deepEqual(CUTIN_MODES, ['always']);
 });
 
-test('left shoulder: a variants.left sprite is used as drawn; without one the art is mirrored and sits bottom-right', () => {
+test('left side: the back shot never flips or moves; only a future variants.left sprite replaces it, in the same place', () => {
     const c = art('test-soldier');
-    assert.deepEqual(sideCutin(c, 'right'), { cutin: c, mirror: false, shoulder: 'right' });
-    const m = sideCutin(c, 'left');
-    assert.equal(m.mirror, true); assert.equal(m.cutin.muzzle[0], 1 - c.muzzle[0]); assert.equal(m.cutin.muzzle[1], c.muzzle[1]);
-    // The committed cut-in puts the mirrored barrel tip on the crosshair with the figure to the right of it.
-    const aim = { x: 640, y: 380 }, p = backshotPlacement(m.cutin, aim, view);
-    assert.ok(Math.abs(p.left + m.cutin.muzzle[0] * p.width - aim.x) < 1e-6);
-    assert.ok(p.left >= aim.x - 0.02 * p.width, 'figure to the right of the crosshair');
-    // Aiming: static in the bottom-right corner, whole figure on screen.
-    const l = aimBackshotLayout(m.cutin, view, 120, 'left');
-    assert.ok(Math.abs(l.left + l.width - (view.width - AIM_SHOT.gap)) < 1e-6 && l.top + l.height === view.height);
-    // Art with its own left-hand sprite.
-    const own = { ...c, variants: { left: { layers: [{ id: 'body', image: 'backshot-left.png' }], muzzle: [0.01, 0.4], width: 600, height: 440 } } };
+    assert.equal(sideCutin(c, 'right'), c);
+    assert.equal(sideCutin(c, 'left'), c, 'no left sprite yet: the same art, not mirrored');
+    assert.deepEqual(aimBackshotLayout(sideCutin(c, 'left'), view, 120), aimBackshotLayout(c, view, 120), 'same bottom-left spot');
+    const own = { ...c, variants: { left: { layers: [{ id: 'body', image: 'backshot-left.png' }], muzzle: [0.9, 0.4], width: 600, height: 440 } } };
     const v = sideCutin(own, 'left');
-    assert.equal(v.mirror, false); assert.deepEqual(v.cutin.muzzle, [0.01, 0.4]); assert.equal(v.cutin.layers[0].image, 'backshot-left.png'); assert.equal(v.cutin.width, 600);
+    assert.deepEqual(v.muzzle, [0.9, 0.4]); assert.equal(v.layers[0].image, 'backshot-left.png'); assert.equal(v.width, 600);
+    assert.equal(sideCutin(own, 'right'), own);
+    assert.equal(aimBackshotLayout(v, view, 120).left, aimBackshotLayout(c, view, 120).left, 'left sprite stands in the same corner');
 });

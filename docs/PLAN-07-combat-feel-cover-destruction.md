@@ -331,7 +331,10 @@ Differences from the plan:
   (sideways, then forward diagonals) after the two leans. Shot estimate, fired shot, reaction fire and the overwatch
   preview share it. The shoulder camera and reticle are framed from that tile (`Game.frameAim`), the reticle shows
   STEP OUT / BLOCKED, and playback slides the soldier out and back.
-- **Left shoulder**: leaning or stepping out to the left looks over the left shoulder; the back shot uses cutin.json
-  `variants.left` (Leon is drawing it) and mirrors the right-hand art until it exists (`sideCutin`).
+- **One back shot, one shoulder** (Leon: "Do not flip the sprites… only the direction of aiming the reticle should
+  change, like XCOM 2"): the sprite never mirrors or moves, and the camera keeps the right shoulder. Round a corner
+  it moves its shoulder offset in (down to straight behind the step-out tile) until it sees the target
+  (`CameraDirector.sees`). A future left-side aiming sprite goes in cutin.json `variants.left` and shows in the same
+  place.
 - **Moving without the elevation cut**: a move click that does not land on a destination walks the pick ray through
   roofs and walls to the highest reachable floor (`pickReachableAlongRay`). The cut only helps browse buildings.
