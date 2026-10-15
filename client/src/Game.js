@@ -660,13 +660,17 @@ export class Game {
                 if (c && this.zones?.has(k) && !(unit && unit.id !== u.id)) {
                     const zone = this.zones.get(k);
                     const pv = this.battle.preview({ type: 'move', unitId: u.id, to: c, by: '*' });
-                    this.overlays.showPath(pathTo(this.search, k), zone === 'yellow');
+                    const path = pathTo(this.search, k);
+                    this.overlays.showPath(path, zone === 'yellow');
+                    // PLAN-07: red "!" on the steps a known enemy overwatch covers.
+                    const threats = this.battle.overwatchThreats(u, path);
+                    this.overlays.showAlerts(threats);
                     const flanked = pv.ok && pv.cover === COVER.NONE && this.battle.enemiesOf(u).some(t => this.battle.visible?.has(t.id));
                     this.overlays.showCover(this.battle.store, c, { flanked, dark:this.battle.mission.meta.imageGenerated&&this.battle.light.dark(c.x,c.y,c.z) });
                     const coverText = pv.ok ? ['No cover', 'Half cover', 'Full cover'][Math.max(0, Math.min(2, pv.cover))] : '';
                     const dz = c.z - u.z;
                     const height = dz > 0 ? ` · <b class="up">▲ ${dz} up</b>` : dz < 0 ? ` · <b class="down">▼ ${-dz} down</b>` : '';
-                    this.hud.cursorTip(e.clientX, e.clientY, `<b class="${zone}">${pv.ap ?? '?'} AP</b>${zone === 'yellow' ? ' · DASH' : ''}${height}${this.battle.mission.meta.imageGenerated&&this.battle.light.dark(c.x,c.y,c.z)?' · ☾ DARK':''}<br><span>${flanked ? '<i class="flank">FLANKED</i>' : coverText}</span>`);
+                    this.hud.cursorTip(e.clientX, e.clientY, `<b class="${zone}">${pv.ap ?? '?'} AP</b>${zone === 'yellow' ? ' · DASH' : ''}${threats.length ? ' · <b class="flank">! OVERWATCH</b>' : ''}${height}${this.battle.mission.meta.imageGenerated&&this.battle.light.dark(c.x,c.y,c.z)?' · ☾ DARK':''}<br><span>${flanked ? '<i class="flank">FLANKED</i>' : coverText}</span>`);
                 } else {
                     this.overlays.clearPath(); this.overlays.showCover(this.battle.store, c);
                     this.hud.cursorTip(unit && unit.side !== u.side && this.isVisible(unit) ? e.clientX : null, e.clientY, unit ? `${unit.name} · ${unit.hp}/${unit.maxHp}<br><span>click a weapon to target</span>` : '');

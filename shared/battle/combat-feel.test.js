@@ -133,3 +133,21 @@ test('fire leaves burn marks on the floor when a voxel burns out', () => {
     assert.equal(s.get(20, 20, 2), 0);
     assert.ok((s.scorch.get('20,20,1') || 0) >= 2, 'floor under the burnt crate is scorched');
 });
+
+test('! alerts: path steps a visible enemy overwatch covers, and soldiers flanked by visible enemies', () => {
+    const b = arena(['grenadier'], { enemy: [{ x: 12, y: 12 }] }), u = b.unit('p0'), e = b.unit('e0');
+    e.overwatch = { weaponId: e.weapon, dx: 0, dy: 1, halfAngle: Math.PI / 4, range: 20 };
+    b.updateVisibility();
+    assert.ok(b.visible.has(e.id), 'the watcher is known');
+    const path = [{ x: 12, y: 23, z: 1 }, { x: 12, y: 22, z: 1 }, { x: 13, y: 22, z: 1 }];
+    const t = b.overwatchThreats(u, path);
+    assert.ok(t.length >= 1 && t.every(s => s.index > 0 && s.watcherId === e.id));
+    // A watcher the squad has not seen gives no warning.
+    b.visible.delete(e.id);
+    assert.equal(b.overwatchThreats(u, path).length, 0);
+    b.updateVisibility();
+    // In the open, the soldier is flanked by the visible enemy; behind a wall facing it, it is not.
+    assert.deepEqual(b.flankedBy(u).map(x => x.id), [e.id]);
+    for (const x of [11, 12, 13]) for (let h = 2; h <= 3; h++) b.store.set(x, 22, h, MAT.brick);
+    assert.equal(b.flankedBy(u).length, 0);
+});

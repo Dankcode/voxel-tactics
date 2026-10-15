@@ -16,6 +16,15 @@ function glowMaterial(color, opacity = 0.95, clipping = null) {
 }
 
 /** Canvas-drawn XCOM-style shield icon: full (solid) or half (lower half filled). */
+/** XCOM 2-style alert diamond with a "!" (PLAN-07): red for overwatch fire, white for objectives. */
+export function alertTexture(color = '#ff4a3d') {
+    const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+    const g = c.getContext('2d');
+    g.beginPath(); g.moveTo(32, 3); g.lineTo(61, 32); g.lineTo(32, 61); g.lineTo(3, 32); g.closePath();
+    g.lineWidth = 6; g.strokeStyle = '#0b1622'; g.stroke(); g.fillStyle = color; g.fill();
+    g.fillStyle = '#0b1622'; g.font = 'bold 38px sans-serif'; g.textAlign = 'center'; g.fillText('!', 32, 46);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
 function shieldTexture(kind, soft = false) {
     const c = document.createElement('canvas'); c.width = 64; c.height = 72;
     const g = c.getContext('2d');
@@ -44,6 +53,7 @@ export class Overlays {
         this.rangeGroup = new THREE.Group(); this.group.add(this.rangeGroup);
         this.pathGroup = new THREE.Group(); this.group.add(this.pathGroup);
         this.shields = new THREE.Group(); this.group.add(this.shields);
+        this.alerts = new THREE.Group(); this.group.add(this.alerts);
         this.aim = new THREE.Group(); this.group.add(this.aim);
         this.debug = new THREE.Group(); this.group.add(this.debug);
         this.debugLayer = new THREE.Group(); this.group.add(this.debugLayer);
@@ -74,6 +84,17 @@ export class Overlays {
         g.userData = { ring, inner, beam };
         return g;
     }
+    /** Red "!" diamonds over path steps an enemy overwatch would fire on (PLAN-07). cells = [{x, y, z}]. */
+    showAlerts(cells = []) {
+        for (const c of [...this.alerts.children]) { this.alerts.remove(c); c.material.dispose(); }
+        if (!cells.length) return;
+        this.alertTex ||= alertTexture('#ff4a3d');
+        for (const c of cells) {
+            const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.alertTex, depthTest: false, transparent: true, toneMapped: false }));
+            s.scale.set(0.42, 0.42, 1); s.position.set(c.x + 0.5, c.z + 2.45, c.y + 0.5); s.renderOrder = 32;
+            this.alerts.add(s);
+        }
+    }
     clearRange() { for (const c of [...this.rangeGroup.children]) { this.rangeGroup.remove(c); c.geometry.dispose(); c.material.dispose(); } }
     /** Mark every overlay mesh so the AO pass skips it (they are added and removed all the time). */
     static flag(o) { o.traverse?.(c => { c.userData.noAO = true; }); return o; }
@@ -101,7 +122,7 @@ export class Overlays {
             if (lines[zone].length) this.rangeGroup.add(edgeMesh(lines[zone], zone === 'blue' ? this.mats.blueLine : this.mats.yellowLine));
         }
     }
-    clearPath() { for (const c of [...this.pathGroup.children]) { this.pathGroup.remove(c); c.geometry?.dispose(); } this.marker.visible = false; }
+    clearPath() { this.showAlerts([]); for (const c of [...this.pathGroup.children]) { this.pathGroup.remove(c); c.geometry?.dispose(); } this.marker.visible = false; }
     /** Path ribbon + destination marker; dash = destination is in the yellow zone. */
     showPath(path, dash = false) {
         this.clearPath();
@@ -236,6 +257,12 @@ export class Overlays {
     }
     // ------------------------------------------------------------------ debug layers
     /** The mission objective: its zone (teal tiles, outlined) and the item to recover (a case with a beacon). */
+    objectiveAlert(x, y, h) {
+        this.objAlertTex ||= alertTexture('#f2f6f8');
+        const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.objAlertTex, depthTest: false, transparent: true, toneMapped: false }));
+        s.scale.set(0.5, 0.5, 1); s.position.set(x + 0.5, h, y + 0.5); s.renderOrder = 31; s.userData.objectiveAlert = true;
+        return s;
+    }
     showObjective(battle) {
         for (const c of [...this.objectiveGroup.children]) { this.objectiveGroup.remove(c); c.geometry?.dispose(); }
         const o = battle?.objective; if (!o) return;
@@ -258,7 +285,12 @@ export class Overlays {
             beam.position.set(it.x + 0.5, y, it.y + 0.5);
             const ring = new THREE.Mesh(new THREE.RingGeometry(0.34, 0.44, 32).rotateX(-Math.PI / 2), this.mats.objLine);
             ring.position.set(it.x + 0.5, y + 0.03, it.y + 0.5);
-            this.objectiveGroup.add(box, beam, ring);
+            this.objectiveGroup.add(box, beam, ring, this.objectiveAlert(it.x, it.y, y + 2.65));
+        }
+        // PLAN-07: a white "!" over a hold or extract zone (where the squad must go to act).
+        if (o.zone && ['hold', 'extract', 'recover'].includes(o.kind) && !o.item) {
+            const cx = Math.floor((o.zone.x0 + o.zone.x1) / 2), cy = Math.floor((o.zone.y0 + o.zone.y1) / 2), s = battle.store.surfaceNear(cx, cy, o.zone.z ?? Infinity);
+            if (s && (!this.visibleCell || this.visibleCell(s))) this.objectiveGroup.add(this.objectiveAlert(cx, cy, s.z + 3));
         }
         Overlays.flag(this.objectiveGroup);
     }

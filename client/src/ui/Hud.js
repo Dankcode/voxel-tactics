@@ -231,7 +231,7 @@ export class Hud {
         phase.className = `phase ${b.activeSide}`;
         this.el('.enemyturn').classList.toggle('hidden', !(b.activeSide !== 'player' && !b.outcome && !g.debug.manualEnemy));
         // Squad column.
-        this.el('.squad').innerHTML = b.units.filter(u=>u.side==='player').map((u,i)=>`<button class="squad-head ${u.id===g.selected?'sel':''} ${u.dead?'dead':''}" data-act="select" data-arg="${u.id}" aria-label="Select ${esc(u.name)}" title="${esc(u.name)} · ${u.hp}/${u.maxHp} HP · ${u.ap} AP"><img src="/assets/characters/${esc(u.art)}/portrait.png" alt="${esc(u.name)}"><b>${u.hp}<small>/${u.maxHp}</small></b><span>${u.dead?'KIA':`${u.ap} AP`}</span>${u.overwatch?'<em>WATCH</em>':''}</button>`).join('')+`<button class="inventory-toggle" data-act="inventory" aria-label="Open inventory">${ICONS.backpack}<kbd>I</kbd></button>`;
+        this.el('.squad').innerHTML = b.units.filter(u=>u.side==='player').map((u,i)=>`<button class="squad-head ${u.id===g.selected?'sel':''} ${u.dead?'dead':''}" data-act="select" data-arg="${u.id}" aria-label="Select ${esc(u.name)}" title="${esc(u.name)} · ${u.hp}/${u.maxHp} HP · ${u.ap} AP"><img src="/assets/characters/${esc(u.art)}/portrait.png" alt="${esc(u.name)}"><b>${u.hp}<small>/${u.maxHp}</small></b><span>${u.dead?'KIA':`${u.ap} AP`}</span>${u.overwatch?'<em>WATCH</em>':''}${!u.dead&&b.flankedBy(u).length?'<i class="flank-alert" title="Flanked by a visible enemy">!</i>':''}</button>`).join('')+`<button class="inventory-toggle" data-act="inventory" aria-label="Open inventory">${ICONS.backpack}<kbd>I</kbd></button>`;
         const u=g.selectedUnit();this.equipment.render(u);
         // Ability bar.
         const canAct = u && g.controllable(u) && !b.outcome && !g.aiRunning;

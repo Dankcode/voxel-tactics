@@ -188,6 +188,30 @@ export class Battle {
     }
     shotAp(u, w) { return Math.max(1, w.ap - (u.buffs.quickAim ? 1 : 0)); }
     /**
+     * PLAN-07 ! alerts. Steps of a planned path that a *known* enemy overwatch would fire on: the watcher is visible to
+     * the mover's side, the cell is inside its sector and in its sight. Returns [{ index, x, y, z, watcherId }].
+     */
+    overwatchThreats(u, path) {
+        const out = [];
+        const watchers = this.enemiesOf(u).filter(w => alive(w) && w.overwatch && !hasStatus(w, 'surprised') && (u.side !== 'player' || this.visible?.has(w.id)));
+        if (!watchers.length) return out;
+        (path || []).forEach((c, index) => {
+            if (index === 0) return;
+            for (const w of watchers) {
+                if (!inWatchSector(w, w.overwatch, c)) continue;
+                if (!this.sightLine(this.eye(w), { x: c.x + 0.5, y: c.y + 0.5, h: c.z + 1 + 1.05 })) continue;
+                out.push({ index, x: c.x, y: c.y, z: c.z, watcherId: w.id }); break;
+            }
+        });
+        return out;
+    }
+    /** Visible enemies that have this unit flanked (no cover on any face toward them) and within their sight range. */
+    flankedBy(u) {
+        if (!alive(u)) return [];
+        return this.enemiesOf(u).filter(e => alive(e) && (u.side !== 'player' || this.visible?.has(e.id)) && this.distance(e, u) <= B.sightRange
+            && coverAgainst(this.store, u.x, u.y, u.z, e.x, e.y, e.z) === COVER.NONE && this.sees(e, u));
+    }
+    /**
      * AP a soldier must still have after a move for the tile to be blue: enough to fire the equipped gun or to put it
      * on overwatch (PLAN-07 §4.5). A melee weapon in hand counts as itself; with no loaded gun, the cheapest action.
      */

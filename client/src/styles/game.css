@@ -405,3 +405,7 @@ button{background:rgba(15,15,18,.68);border-color:var(--line);border-radius:4px}
 .cargo-item,.pack-item,.pack-catalog [data-item]{touch-action:none;user-select:none}
 .cargo-placement{position:absolute;z-index:5;pointer-events:none;display:grid;place-items:center;font-size:10px;color:#fff;border:2px solid #a8d0c1;background:#86c9a840;box-shadow:0 0 15px #0006}
 .cargo-placement.invalid{border-color:#ef8787;background:#de515145}
+
+/* PLAN-07: XCOM 2-style flanked alert on the squad portrait */
+.squad-head{position:relative}.squad-head .flank-alert{position:absolute;top:-6px;right:-6px;width:20px;height:20px;transform:rotate(45deg);background:#ff4a3d;border:2px solid #0b1622;display:flex;align-items:center;justify-content:center;font:900 13px/1 sans-serif;color:#0b1622;font-style:normal;animation:flankPulse 1.1s ease-in-out infinite}.squad-head .flank-alert::before{content:'!';transform:rotate(-45deg)}.squad-head .flank-alert{font-size:0}
+@keyframes flankPulse{50%{box-shadow:0 0 10px #ff4a3d}}
