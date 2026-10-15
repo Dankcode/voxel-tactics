@@ -415,5 +415,5 @@ button{background:rgba(15,15,18,.68);border-color:var(--line);border-radius:4px}
 .cutin .figures.aligned .figure { position: absolute; margin: 0; }
 .cutin .cutin-crosshair { display: none; position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border: 1.5px solid #f4f4f4d9; border-radius: 50%; box-shadow: 0 0 8px #0008; pointer-events: none; }
 .cutin .cutin-crosshair::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: #fff; }
-#cutin-layer .cutin.cutin-aim { pointer-events: none; z-index: -1; }
-.cutin.cutin-aim .figure { -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent 97%); mask-image: linear-gradient(to bottom, #000 62%, transparent 97%); }
+#aimshot-layer { position: fixed; inset: 0; pointer-events: none; overflow: hidden; } #aimshot-layer .cutin-aim { position: absolute; inset: 0; pointer-events: none; }
+.cutin.cutin-aim .figure { will-change: transform; }

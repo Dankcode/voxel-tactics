@@ -9,7 +9,7 @@ contract came from there; see `PROVENANCE.md`). Current focus: **mechanics**. Fi
 
 A present-day, turn-based co-op tactics game in three.js: **XCOM 2** side phases, cover, overwatch, breaching and
 an XCOM-style camera, and **Phoenix Point** free-aim ballistics with body parts, on fully destructible maps.
-Characters are 2D. Every switch to the shoulder camera uses a **Chaos Zero Nightmare-style back shot**: while aiming, and on every committed action. The art sits in the lower left with its barrel tip on the crosshair.
+Characters are 2D. Every switch to the shoulder camera uses a **Chaos Zero Nightmare-style back shot**: while aiming it stands in the bottom-left corner and leans after the crosshair; on a committed action the cut-in puts its barrel tip on the aim point.
 
 The battlefield is a voxel grid underneath — movement, cover, line of sight, ballistics, fire and destruction run
 on it — but nothing is drawn as blocks: terrain is meshed with rounded edges, kerbs and recessed roads, buildings

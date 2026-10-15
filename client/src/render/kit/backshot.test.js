@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { backshotPlacement, CUTIN_MODES, BAR_SHARE } from '../../anim/CutInDirector.js';
+import { backshotPlacement, CUTIN_MODES, BAR_SHARE, aimBackshotLayout, aimBackshotPose, followStep, AIM_SHOT } from '../../anim/CutInDirector.js';
 
 const art = name => JSON.parse(readFileSync(new URL(`../../../public/assets/characters/${name}/cutin.json`, import.meta.url)));
 const view = { width: 1280, height: 760 };
@@ -20,14 +20,38 @@ test('the barrel tip of every back shot lands exactly on the crosshair', () => {
     }
 });
 
-test('the committed back shot reaches the letterbox; the aiming one stays small and leaves the view clear', () => {
+test('the committed back shot reaches the letterbox and stays left of the crosshair', () => {
     const c = art('test-soldier'), aim = { x: 640, y: 300 };
     const cut = backshotPlacement(c, aim, view);
     assert.ok(cut.top + cut.height >= view.height * (1 - BAR_SHARE) - 1e-6, 'no floating lower edge above the bars');
     assert.ok(cut.height <= view.height * 0.9);
-    const aiming = backshotPlacement(c, aim, view, { bars: 0, scale: 0.75, fit: false });
-    assert.ok(aiming.height < cut.height && aiming.width * aiming.height < 0.45 * view.width * view.height, 'covers under 45 % of the screen');
-    assert.ok(aiming.left + aiming.width <= aim.x + 0.02 * aiming.width, 'kept to the left');
+});
+
+test('the aiming back shot is static in the bottom-left corner past the squad rail, whole and unclipped', () => {
+    for (const name of ['test-soldier', 'grenadier']) {
+        const c = art(name), a = aimBackshotLayout(c, view, 100), b = aimBackshotLayout(c, view, 100);
+        assert.deepEqual(a, b, 'it does not depend on the crosshair');
+        assert.equal(a.left, 100 + AIM_SHOT.gap);
+        assert.ok(Math.abs(a.top + a.height - view.height) < 1e-9, 'sits on the bottom edge');
+        assert.ok(a.width <= view.width * AIM_SHOT.maxWidthShare + 1e-9 && a.height <= view.height * AIM_SHOT.heightShare + 1e-9);
+        assert.ok(Math.abs(a.width / a.height - c.width / c.height) < 1e-9, 'unstretched');
+    }
+});
+
+test('the figure leans toward the crosshair after a slight delay and its upper body trails fast moves', () => {
+    const c = art('test-soldier'), layout = aimBackshotLayout(c, view, 100);
+    const muzzle = { x: layout.left + c.muzzle[0] * layout.width, y: layout.top + c.muzzle[1] * layout.height };
+    assert.ok(Math.abs(aimBackshotPose(c, layout, muzzle).lean) < 1e-6, 'at rest when the crosshair is on the barrel line');
+    const right = aimBackshotPose(c, layout, { x: 1200, y: muzzle.y }), left = aimBackshotPose(c, layout, { x: muzzle.x - 200, y: 120 });
+    assert.ok(right.lean > 0 && left.lean < 0, 'leans toward the side the crosshair is on');
+    assert.ok(Math.abs(right.lean) <= AIM_SHOT.maxLean && Math.abs(left.lean) <= AIM_SHOT.maxLean, 'never more than the limit');
+    assert.ok(aimBackshotPose(c, layout, muzzle, { x: 900, y: 0 }).bend > 0, 'moving right, the top trails left (CSS skewX +)');
+    assert.ok(Math.abs(aimBackshotPose(c, layout, muzzle, { x: 1e6, y: 0 }).bend) <= AIM_SHOT.maxBend);
+    // The follow spring lags, then settles.
+    const st = {}; followStep(st, { x: 0, y: 0 }, 0); followStep(st, { x: 300, y: 0 }, 1 / 60);
+    assert.ok(st.pos.x > 0 && st.pos.x < 60, 'a slight delay behind the crosshair');
+    for (let i = 0; i < 90; i++) followStep(st, { x: 300, y: 0 }, 1 / 60);
+    assert.ok(Math.abs(st.pos.x - 300) < 1 && Math.abs(st.vel.x) < 5, 'settles');
 });
 
 test('there is no cut-in mode that skips the back shot', () => {

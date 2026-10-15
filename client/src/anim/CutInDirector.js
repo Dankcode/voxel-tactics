@@ -39,6 +39,42 @@ export function projectToScreen(camera, point, view) {
     const p = point.clone().project(camera);
     return { x: (p.x + 1) * view.width / 2, y: (1 - p.y) * view.height / 2, behind: p.z > 1 };
 }
+/** Aiming back shot layout: static in the bottom-left corner just past the squad rail, whole figure visible. */
+export const AIM_SHOT = Object.freeze({ heightShare: 0.46, maxWidthShare: 0.42, gap: 12, followTau: 0.2, maxLean: 9, maxBend: 7, bendPerPx: 0.012 });
+export function aimBackshotLayout(cutin, view, railRight = 0) {
+    const aspect = (cutin.width || 512) / (cutin.height || 768);
+    let height = view.height * AIM_SHOT.heightShare, width = height * aspect;
+    if (width > view.width * AIM_SHOT.maxWidthShare) { width = view.width * AIM_SHOT.maxWidthShare; height = width / aspect; }
+    const left = Math.max(0, railRight + AIM_SHOT.gap);
+    return { left, top: view.height - height, width, height };
+}
+/**
+ * How the static figure leans toward the (lagged) crosshair: it pivots at its feet so the barrel swings toward the
+ * crosshair (lean, clamped), and its upper body trails the crosshair's motion while it moves (inertia, bend).
+ * lag/vel are the crosshair position and velocity after the follow spring (CSS px, px/s). Degrees out.
+ */
+export function aimBackshotPose(cutin, layout, lag, vel = { x: 0, y: 0 }, neutral = null) {
+    const [u, v] = cutin.muzzle || DEFAULT_MUZZLE;
+    const pivot = { x: layout.left + layout.width / 2, y: layout.top + layout.height };
+    const muzzle = { x: layout.left + u * layout.width, y: layout.top + v * layout.height };
+    // Upright when the crosshair is at `neutral` (the screen centre in play; the barrel line by default).
+    const n = neutral || muzzle;
+    const rest = Math.atan2(n.y - pivot.y, n.x - pivot.x), want = Math.atan2(lag.y - pivot.y, lag.x - pivot.x);
+    let d = (want - rest) * 180 / Math.PI; d = ((d + 540) % 360) - 180;
+    const clamp = (x, m) => Math.max(-m, Math.min(m, x));
+    // CSS skewX(+) with a bottom origin moves the top left: a crosshair moving right leaves the upper body trailing.
+    return { lean: clamp(d * 0.5, AIM_SHOT.maxLean), bend: clamp(vel.x * AIM_SHOT.bendPerPx, AIM_SHOT.maxBend) };
+}
+/** One step of the critically damped follow spring (the slight delay behind the crosshair). */
+export function followStep(state, target, dt, tau = AIM_SHOT.followTau) {
+    if (!state.pos) { state.pos = { ...target }; state.vel = { x: 0, y: 0 }; return state; }
+    const w = 2 / tau, n = Math.max(1, Math.ceil(dt / 0.008)), h = dt / n;
+    for (let i = 0; i < n; i++) for (const c of ['x', 'y']) {
+        const a = w * w * (target[c] - state.pos[c]) - 2 * w * state.vel[c];
+        state.vel[c] += a * h; state.pos[c] += state.vel[c] * h;
+    }
+    return state;
+}
 const viewport = () => ({ width: globalThis.innerWidth || 1280, height: globalThis.innerHeight || 720 });
 
 export class CutInDirector {
@@ -53,7 +89,8 @@ export class CutInDirector {
     newTurn() { this.shownThisTurn.clear(); }
     /**
      * Aiming back shot: shown whenever the shoulder camera is up for aiming. No bars, caption or flash; it never takes
-     * the mouse. `place(screenAim)` is called every frame with the crosshair's CSS position.
+     * the mouse. It stands still in the bottom-left corner; `placeAim(screenAim)` (every frame, crosshair CSS position)
+     * makes it lean toward the crosshair with a slight delay and bend with the crosshair's motion.
      */
     async beginAim(unit) {
         if (this.aiming?.unitId === unit.id) return;
@@ -66,24 +103,38 @@ export class CutInDirector {
         el.innerHTML = '<div class="figures aligned"><div class="figure" data-aligned="1"></div></div>';
         const fig = el.querySelector('.figure');
         fig.style.aspectRatio = `${art.cutin.width} / ${art.cutin.height}`;
-        const origin = backshotPlacement(art.cutin, { x: 0, y: 0 }, viewport()).origin;
         for (const layer of art.cutin.layers) {
             if (layer.blend) continue;                     // muzzle-flash layers only belong to the shot
             const img = document.createElement('img'); img.src = art.base + layer.image; img.draggable = false;
-            img.style.transformOrigin = origin; fig.appendChild(img);
+            fig.appendChild(img);
         }
-        this.root.appendChild(el);
+        // Under the HUD (buttons and portraits stay on top), above the 3D view.
+        this.aimLayer().appendChild(el);
         token.el = el; token.art = art;
         this.cameraDirector.hidden = new Set([unit.id]);
         if (token.last) this.placeAim(token.last);
+    }
+    aimLayer() {
+        let layer = document.getElementById('aimshot-layer');
+        if (!layer) {
+            layer = document.createElement('div'); layer.id = 'aimshot-layer';
+            const hud = document.getElementById('hud');
+            (hud?.parentNode || this.root.parentNode || document.body).insertBefore(layer, hud || this.root);
+        }
+        return layer;
     }
     placeAim(screenAim) {
         const a = this.aiming; if (!a) return;
         a.last = screenAim;
         if (!a.el || !screenAim) return;
-        // Aiming: smaller, no growth to the screen edge (its lower edge fades out instead), so the view stays clear.
-        const pl = backshotPlacement(a.art.cutin, screenAim, viewport(), { bars: 0, scale: 0.75, fit: false });
-        Object.assign(a.el.querySelector('.figure').style, { left: `${pl.left}px`, top: `${pl.top}px`, width: `${pl.width}px`, height: `${pl.height}px` });
+        // Static in the bottom-left corner past the squad rail; it only leans and bends to follow the crosshair.
+        const now = performance.now(), dt = a.t ? Math.min(0.05, (now - a.t) / 1000) : 0; a.t = now;
+        const view = viewport(), rail = Math.max(0, ...[...document.querySelectorAll('#hud .squad-head')].map(e => e.getBoundingClientRect().right));
+        const layout = aimBackshotLayout(a.art.cutin, view, rail);
+        followStep(a.follow ||= {}, screenAim, dt);
+        const pose = aimBackshotPose(a.art.cutin, layout, a.follow.pos, a.follow.vel, { x: view.width / 2, y: view.height / 2 });
+        Object.assign(a.el.querySelector('.figure').style, { left: `${layout.left}px`, top: `${layout.top}px`, width: `${layout.width}px`, height: `${layout.height}px`,
+            transformOrigin: '50% 100%', transform: `rotate(${pose.lean.toFixed(2)}deg) skewX(${pose.bend.toFixed(2)}deg)` });
     }
     endAim() {
         if (!this.aiming) return;
