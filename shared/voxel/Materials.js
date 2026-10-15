@@ -13,6 +13,21 @@
 import { ELEMENTS } from '../elements/ElementIds.js';
 
 const M = [];
+/**
+ * PLAN-07: penetration resistance (energy a round spends to pass through one voxel of it). Missing = Infinity: ground,
+ * floors, slabs, steel and stone masses always stop a bullet. Rounds carry their energy in content/calibers.js.
+ */
+export const RESISTANCE = Object.freeze({
+    fence: 1, crate: 1, pallet: 1, shelving: 1, furniture: 1, sofa: 1, bed: 1, desk: 1, bin: 1, stall: 1, hay: 1, ash: 1,
+    lantern: 1, emergency_light: 1, barrel_powder: 1,
+    door: 2, timber: 2, roof: 2, privacy_fence: 2, car_cabin: 2, appliance: 2, siding: 2, roof_metal: 2, shelf: 2,
+    cabinet: 2, bench: 2, cart: 2, barrel_water: 2, ice: 2, deep_ice: 2,
+    stucco: 3, plaster: 3, crystal: 3, pump: 3,
+    car_body: 4, dumpster: 4, container: 4, trunk: 4, rubble: 4,
+    brick: 6, sandbag: 6, stone: 7, drystone: 7,
+    concrete_wall: 9, planter: 9,
+    jersey: 14, city_wall: 14
+});
 function def(key, o) {
     const id = M.length;
     const m = Object.freeze({
@@ -22,7 +37,8 @@ function def(key, o) {
         render: o.render ?? ((o.solid ?? true) ? 'solid' : 'none'), moveCost: o.moveCost ?? 1, traversal: o.traversal ?? null,
         liquid: !!o.liquid, part: o.part ?? 0, debris: o.debris ?? null, explosive: o.explosive ?? null,
         burnTo: o.burnTo ?? null, meltTo: o.meltTo ?? null, freezeTo: o.freezeTo ?? null, structural: o.structural ?? (o.solid ?? true),
-        shatters: !!o.shatters, light: o.light ?? 0, concealment: o.concealment ?? 0, family: o.family ?? 'earth', walkable: o.walkable ?? (o.solid ?? true)
+        shatters: !!o.shatters, light: o.light ?? 0, concealment: o.concealment ?? 0, family: o.family ?? 'earth', walkable: o.walkable ?? (o.solid ?? true),
+        resistance: o.resistance ?? RESISTANCE[key] ?? Infinity
     });
     M.push(m);
     return m;
@@ -95,7 +111,7 @@ def('bed', { label: 'Bed', color: 0xa8b9ad, hp: 3, family: 'wood', flammable: tr
 def('desk', { label: 'Desk', color: 0xb99870, hp: 3, family: 'wood', flammable: true, structural: false, walkable: false });
 def('planter', { label: 'Concrete planter', color: 0xafb7b1, hp: 8, family: 'stone', debris: 'rubble', structural: false, walkable: false });
 def('privacy_fence', { label: 'Privacy fence', color: 0x9a795b, hp: 4, family: 'wood', flammable: true, structural: false, walkable: false });
-def('car_body', { label: 'Parked car', color: 0xaabcc1, hp: 10, family: 'metal', structural: false, walkable: false });
+def('car_body', { label: 'Parked car', color: 0xaabcc1, hp: 7, family: 'metal', structural: false, walkable: false });
 def('appliance', { label: 'Appliance', color: 0xd5dad7, hp: 7, family: 'metal', structural: false, walkable: false });
 def('road_mark', { label: 'Road marking', color: 0xe1dfcb, hp: 8, family: 'stone' });
 // Modern set, pass 2: themed ground, walls and real-object cover (shared/mission/themes/*).
@@ -106,9 +122,9 @@ def('brick', { label: 'Brick wall', element: ELEMENTS.STRUCTURE, color: 0x9b5a45
 def('concrete_wall', { label: 'Concrete wall', color: 0xb4b5b0, hp: 12, family: 'stone', debris: 'rubble' , walkable: false});
 def('siding', { label: 'Metal siding', color: 0x8d969a, hp: 5, family: 'metal' , walkable: false});
 def('roof_metal', { label: 'Metal roof', color: 0x7c868b, hp: 4, family: 'metal', walkable: false });
-def('car_cabin', { label: 'Car cabin', color: 0x7c8a90, hp: 8, family: 'metal', structural: false, walkable: false });
+def('car_cabin', { label: 'Car cabin', color: 0x7c8a90, hp: 5, family: 'metal', structural: false, walkable: false });
 def('container', { label: 'Shipping container', color: 0x9c4b3a, hp: 20, family: 'metal', structural: false });
-def('dumpster', { label: 'Dumpster', color: 0x3f6a4e, hp: 12, family: 'metal', structural: false, walkable: false });
+def('dumpster', { label: 'Dumpster', color: 0x3f6a4e, hp: 9, family: 'metal', structural: false, walkable: false });
 def('jersey', { label: 'Concrete barrier', color: 0xbcbcb4, hp: 14, family: 'stone', debris: 'rubble', structural: false, walkable: false });
 def('bench', { label: 'Bench', element: ELEMENTS.STRUCTURE, color: 0x8a6a48, hp: 3, flammable: true, burnTo: 'ash', family: 'wood', structural: false, walkable: false });
 def('bin', { label: 'Wheelie bin', color: 0x3d4a52, hp: 2, family: 'wood', flammable: true, structural: false, walkable: false });

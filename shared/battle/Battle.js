@@ -20,7 +20,7 @@ import { reachable, pathTo, nodeKey, stepKind, isWindowVault } from '../world/Pa
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
 import { MAT, AIR, materialById } from '../voxel/Materials.js';
 import { castRay, fitArc, blocksSight } from '../voxel/Raycast.js';
-import { damageVoxel, explodeVoxels, settleUnsupported, groundFloorLevels } from '../voxel/Destruction.js';
+import { damageVoxel, explodeVoxels, settleUnsupported, groundFloorLevels, scorchBlast } from '../voxel/Destruction.js';
 import { coverAgainst, COVER } from '../voxel/Cover.js';
 import { ElementField, elementStatusesFor, STATUS_DEFS } from '../elements/Elements.js';
 import { WEAPONS, THROWABLES } from '../content/weapons.js';
@@ -696,13 +696,26 @@ export class Battle {
         const changes = this.store.record(() => {
             for (let i = 0; i < count; i++) {
                 const d = sampleCone(dir, spread, this.rng);
-                const res = traceProjectile(this, muzzle, d, maxDist, { ignore: u.id });
+                const res = traceProjectile(this, muzzle, d, maxDist, { ignore: u.id, energy: w.energy || 0 });
                 for (const [gx, gy, gz] of res.glass) if (this.store.get(gx, gy, gz) === MAT.glass) { this.store.set(gx, gy, gz, AIR); this.stats.voxelsDestroyed++; }
                 const p = { to: res.point, kind: res.kind };
+                const mult = u.buffs.demolish ? 2 : 1;
+                // PLAN-07: every voxel the round went through takes its voxel damage too (and may give way).
+                if (res.pierced.length) {
+                    p.pierced = res.pierced.map(q => ({ x: q.x, y: q.y, z: q.z, t: q.t }));
+                    ws.pierced = (ws.pierced || 0) + 1;
+                    for (const q of res.pierced) {
+                        if (this.store.get(q.x, q.y, q.z) === AIR) continue;
+                        const r = damageVoxel(this.store, q.x, q.y, q.z, (w.voxel || 0) * mult, { element: w.element });
+                        if (r.destroyed) { this.stats.voxelsDestroyed++; ws.voxels = (ws.voxels || 0) + 1; }
+                        if (r.explosion) this.explode({ ...r.explosion, by: u.id });
+                    }
+                }
                 if (res.kind === 'unit') {
                     if(!reaction&&res.unit.side!==u.side&&!threatened.has(res.unit.id))threatened.set(res.unit.id,{unit:res.unit,visible:this.sees(res.unit,u)});
                     p.unitId = res.unit.id; p.part = res.part;
-                    const dealt = this.dealDamage(res.unit, res.part, projectileDamage(w,res.t,i), { pierce: w.pierce, shred: w.shred, element: w.element, source: u.id });
+                    const dealt = this.dealDamage(res.unit, res.part, Math.round(projectileDamage(w,res.t,i) * (res.scale ?? 1)), { pierce: w.pierce, shred: w.shred, element: w.element, source: u.id });
+                    if (res.pierced.length) p.through = true;
                     p.damage = dealt;
                     ws.hits++; ws.damage += dealt; u.stats.hits++; u.stats.damage += dealt;
                     if (target && res.unit.id === target.id) targetHit = true;
@@ -710,7 +723,6 @@ export class Battle {
                 } else if (res.kind === 'voxel') {
                     const v = res.voxel;
                     p.voxel = v;
-                    const mult = u.buffs.demolish ? 2 : 1;
                     const r = damageVoxel(this.store, v.x, v.y, v.z, (w.voxel || 0) * mult, { element: w.element });
                     if (r.destroyed) { this.stats.voxelsDestroyed++; ws.voxels = (ws.voxels || 0) + 1; p.destroyed = true; }
                     if (r.explosion) this.explode({ ...r.explosion, by: u.id });
@@ -851,6 +863,7 @@ export class Battle {
             this.stats.voxelsDestroyed += destroyed.length;
             if (b.item && this.stats.throwables[b.item]) this.stats.throwables[b.item].voxels += destroyed.length;
             for (const e of explosions) {
+                if ((e.power > 0 || e.element === 'pyro') && e.element !== 'hydro') scorchBlast(this.store, e);
                 this.emit({ t: 'explosion', x: e.x, y: e.y, h: e.h, radius: e.radius, element: e.element || null, source: e.source || b.item || null });
                 this.blastUnits(e, b.by, b.item);
                 if (e.element) this.elementImpact(e.element, e, e.radius);
@@ -1185,7 +1198,7 @@ export class Battle {
     hash() {
         let voxelHp = 0x811c9dc5;
         for (const hp of this.store.hp) { voxelHp ^= hp; voxelHp = Math.imul(voxelHp, 0x01000193); }
-        const state = { supportUsed:this.supportUsed,strikeReadyAt:this.strikeReadyAt,markers:this.markers,squareCorners:[...this.store.squareCorners].sort(),windowOpenings:[...this.store.windowOpenings].sort(([a],[b])=>a<b?-1:a>b?1:0), intelMode:this.intelMode, asyncCoop:this.asyncCoop, personalTurns:this.personalTurns,supportReady:this.supportReady,supportChoices:this.supportChoices,contacts:this.contacts,drones:this.drones,detected:this.detected,refreshOwner:this.refreshOwner, units: this.units, round: this.round, activeSide: this.activeSide, outcome: this.outcome,
+        const state = { supportUsed:this.supportUsed,strikeReadyAt:this.strikeReadyAt,marks:this.store.marksSnapshot?.(),markers:this.markers,squareCorners:[...this.store.squareCorners].sort(),windowOpenings:[...this.store.windowOpenings].sort(([a],[b])=>a<b?-1:a>b?1:0), intelMode:this.intelMode, asyncCoop:this.asyncCoop, personalTurns:this.personalTurns,supportReady:this.supportReady,supportChoices:this.supportChoices,contacts:this.contacts,drones:this.drones,detected:this.detected,refreshOwner:this.refreshOwner, units: this.units, round: this.round, activeSide: this.activeSide, outcome: this.outcome,
             revealedRooms: [...this.revealedRooms].sort((a, b) => a - b), field: this.field.snapshot(),
             formations: this.formations.snapshot(), nextFormationId: this.formations.nextId,
             objective: this.objective, rng: this.rng.state, debugEnabled: this.debugEnabled, controllers: this.controllers, seq: this.seq };

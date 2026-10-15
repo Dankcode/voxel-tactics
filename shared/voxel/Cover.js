@@ -46,6 +46,43 @@ export function coverAgainst(store, x, y, z, sx, sy, sz = z) {
     return best;
 }
 
+/** Energy of a standard rifle round (5.56): the HUD rates cover as soft when such a round would pass through it. */
+export const STANDARD_ROUND_ENERGY = 6;
+/**
+ * PLAN-07: is the cover on face d soft, i.e. would a round with `energy` pass through every voxel that gives it?
+ * A face without cover is not soft (there is nothing to be soft).
+ */
+export function softToward(store, x, y, z, d, energy = STANDARD_ROUND_ENERGY) {
+    let any = false;
+    for (const h of [1, 2]) {
+        const m = materialById(store.get(x + d.dx, y + d.dy, z + h));
+        if (coverWeight(m) < 1) continue;
+        any = true;
+        if (!(m.resistance < energy)) return false;
+    }
+    return any;
+}
+/** { n, e, s, w } → true where that face's cover is soft against `energy`. */
+export function softAt(store, x, y, z, energy = STANDARD_ROUND_ENERGY) {
+    const out = {};
+    for (const d of DIRS4) out[d.id] = softToward(store, x, y, z, d, energy);
+    return out;
+}
+/** Cover against a shooter, discounting soft faces: { level, soft } where soft = the best face's cover is soft. */
+export function hardCoverAgainst(store, x, y, z, sx, sy, sz = z, energy = STANDARD_ROUND_ENERGY) {
+    const dx = sx - x, dy = sy - y, len = Math.hypot(dx, dy) || 1;
+    let best = COVER.NONE, soft = false;
+    for (const d of DIRS4) {
+        const dot = d.dx * dx + d.dy * dy;
+        if (dot <= 0 || dot / len < 0.5) continue;
+        const c = coverToward(store, x, y, z, d, [-dx / len, -dy / len, -(sz - z) / len], sz - z >= 2);
+        if (!c) continue;
+        const s = softToward(store, x, y, z, d, energy);
+        if (c > best || (c === best && soft && !s)) { best = c; soft = s; }
+    }
+    return { level: best, soft };
+}
+
 /** True when no face toward the attacker has cover (XCOM "flanked"). */
 export function isFlanked(store, x, y, z, sx, sy, sz = z) {
     return coverAgainst(store, x, y, z, sx, sy, sz) === COVER.NONE;

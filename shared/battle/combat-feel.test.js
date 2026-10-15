@@ -42,3 +42,94 @@ test('moving cancels your own overwatch; knockback does not', () => {
     assert.notEqual(w.x, x0, 'knocked back');
     assert.ok(w.overwatch, 'knockback keeps overwatch');
 });
+
+import { traceProjectile } from './Ballistics.js';
+import { CALIBERS } from '../content/calibers.js';
+const shootThrough = (keys, energy) => {
+    const b = arena(['grenadier'], { enemy: [{ x: 2, y: 2 }, { x: 3, y: 2 }] });
+    keys.forEach((k, i) => { for (let h = 2; h <= 3; h++) b.store.set(12, 18 - i * 2, h, MAT[k]); });
+    return traceProjectile(b, { x: 12.5, y: 21.5, h: 2.5 }, [0, -1, 0], 15, { energy });
+};
+
+test('penetration: 5.56 goes through a crate but stops in brick; 7.62×39 gets through one brick; .338 through concrete', () => {
+    const ar = shootThrough(['crate', 'brick'], CALIBERS['5.56'].energy);
+    assert.equal(ar.kind, 'voxel'); assert.equal(ar.pierced.length, 1); assert.equal(ar.voxel.y, 16, 'stopped in the brick');
+    const ak = shootThrough(['brick', 'brick'], CALIBERS['7.62x39'].energy);
+    assert.equal(ak.pierced.length, 1); assert.equal(ak.voxel.y, 16);
+    const sniper = shootThrough(['concrete_wall'], CALIBERS['338'].energy);
+    assert.equal(sniper.pierced.length, 1); assert.notEqual(sniper.kind, 'voxel');
+    const pistol = shootThrough(['stucco'], CALIBERS['9mm'].energy);
+    assert.equal(pistol.pierced.length, 0, 'a pistol round stops in a stucco wall');
+    // Ground and steel always stop a round.
+    const steel = shootThrough(['metal'], 99); assert.equal(steel.pierced.length, 0);
+    // No energy = the old behaviour (stops at the first block).
+    assert.equal(shootThrough(['crate'], 0).pierced.length, 0);
+});
+
+test('a unit behind thin cover is hit with reduced damage; behind brick an AR round never reaches it', () => {
+    const b = arena(['grenadier'], { enemy: [{ x: 12, y: 15 }] }), e = b.unit('e0');
+    for (let h = 2; h <= 3; h++) b.store.set(12, 17, h, MAT.crate);
+    const r = traceProjectile(b, { x: 12.5, y: 21.5, h: 2.5 }, [0, -1, 0], 15, { energy: CALIBERS['5.56'].energy });
+    assert.equal(r.kind, 'unit'); assert.equal(r.unit.id, e.id); assert.equal(r.pierced.length, 1);
+    assert.ok(r.scale < 1 && r.scale >= 0.25, `scale ${r.scale}`);
+    for (let h = 2; h <= 3; h++) b.store.set(12, 17, h, MAT.brick);
+    const s = traceProjectile(b, { x: 12.5, y: 21.5, h: 2.5 }, [0, -1, 0], 15, { energy: CALIBERS['5.56'].energy });
+    assert.equal(s.kind, 'voxel');
+});
+
+test('cover breaks: one AR burst opens a car-cabin cell, and pierced voxels take damage too', () => {
+    const b = arena(['grenadier'], { enemy: [{ x: 2, y: 2 }] }), u = b.unit('p0');
+    for (let x = 11; x <= 13; x++) for (let h = 2; h <= 3; h++) b.store.set(x, 20, h, MAT.car_cabin);
+    b.startSide('player');
+    const r = b.apply({ type: 'shoot', unitId: u.id, fireMode: 'burst', aim: { point: { x: 12.5, y: 20.5, h: 2.5 } } });
+    assert.ok(r.ok, JSON.stringify(r));
+    const changes = r.events.filter(e => e.t === 'voxels').flatMap(e => e.changes);
+    assert.ok(changes.some(([x, y, z, before, after]) => before === MAT.car_cabin && after === 0), 'a cabin cell is destroyed');
+});
+
+test('penetrating fire is deterministic across lockstep peers', () => {
+    const run = () => { const b = arena(['grenadier'], { enemy: [{ x: 12, y: 14 }] }); for (let h = 2; h <= 3; h++) b.store.set(12, 18, h, MAT.crate); b.startSide('player');
+        b.apply({ type: 'shoot', unitId: 'p0', fireMode: 'auto', aim: { unitId: 'e0', part: 'torso' } }); return b.hash(); };
+    assert.equal(run(), run());
+});
+
+import { softAt, hardCoverAgainst, coverAt, COVER } from '../voxel/Cover.js';
+test('soft cover: crates and car cabins read as soft against a rifle round; brick does not', () => {
+    const b = arena(['grenadier']), s = b.store;
+    for (let h = 2; h <= 3; h++) { s.set(5, 4, h, MAT.crate); s.set(7, 5, h, MAT.brick); }
+    assert.equal(coverAt(s, 5, 5, 1).n, COVER.FULL);
+    assert.equal(softAt(s, 5, 5, 1).n, true);
+    assert.equal(softAt(s, 6, 5, 1).e, false, 'brick is hard');
+    const r = hardCoverAgainst(s, 5, 5, 1, 5, 0, 1);
+    assert.deepEqual(r, { level: COVER.FULL, soft: true });
+    assert.equal(hardCoverAgainst(s, 5, 5, 1, 5, 0, 1, 1).soft, false, 'a shotgun pellet does not get through a crate');
+});
+
+test('scars and scorch: a shot-out voxel leaves a scar, a grenade blackens its radius, both are deterministic', () => {
+    const run = () => {
+        const b = arena(['grenadier'], { enemy: [{ x: 2, y: 2 }] }), s = b.store;
+        for (let h = 2; h <= 3; h++) s.set(12, 20, h, MAT.crate);
+        b.startSide('player');
+        b.apply({ type: 'shoot', unitId: 'p0', fireMode: 'auto', aim: { point: { x: 12.5, y: 20.5, h: 2.5 } } });
+        b.explode({ x: 20.5, y: 10.5, h: 2.2, radius: 2.6, power: 4, damage: 0, element: null });
+        return b;
+    };
+    const b = run();
+    assert.ok([...b.store.scars].some(k => k.startsWith('12,20,')), 'the destroyed crate cell is a scar');
+    assert.equal(b.store.scorch.get('20,10,1'), 3, 'the floor under the blast centre is black');
+    assert.ok([...b.store.scorch.values()].includes(1), 'lighter marks toward the edge');
+    assert.equal(b.hash(), run().hash());
+    // Rebuilding a scarred cell clears the scar; clones carry the marks.
+    const k = [...b.store.scars][0], [x, y, z] = k.split(',').map(Number);
+    const c = b.store.clone(); assert.ok(c.scars.has(k) && c.scorch.size === b.store.scorch.size);
+    b.store.set(x, y, z, MAT.crate); assert.equal(b.store.scars.has(k), false);
+});
+
+test('fire leaves burn marks on the floor when a voxel burns out', () => {
+    const b = arena(['grenadier'], { enemy: [{ x: 2, y: 2 }] }), s = b.store;
+    s.set(20, 20, 2, MAT.crate);
+    assert.ok(b.field.ignite(20, 20, 2));
+    for (let i = 0; i < 8; i++) b.field.tick(b.rng, { spreadChance: 0 });
+    assert.equal(s.get(20, 20, 2), 0);
+    assert.ok((s.scorch.get('20,20,1') || 0) >= 2, 'floor under the burnt crate is scorched');
+});

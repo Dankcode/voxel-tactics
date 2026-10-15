@@ -120,31 +120,67 @@ export function sampleCone(dir, spreadDeg, rng, frame = basis(dir)) {
  * Trace one projectile. Does not mutate anything.
  * @returns { kind: 'unit'|'voxel'|'none', unit?, part?, voxel?, t, point, glass: [x,y,z][] }
  */
-export function traceProjectile(battle, o, d, maxDist, { ignore = null } = {}) {
+/**
+ * PLAN-07 penetration. A projectile carries `energy` from its round; every blocking voxel it meets costs that
+ * material's `resistance`. While energy > resistance the ray goes through (the voxel is listed in `pierced`, and the
+ * damage of whatever it hits next is scaled by the energy left); otherwise it stops there, as before. Glancing hits
+ * cost more (cost ÷ max(0.5, |d · normal|)). Materials without a resistance (ground, floors, steel) always stop it.
+ */
+export function crossingCost(store, x, y, z, normal, d) {
+    const m = materialById(store.get(x, y, z));
+    const r = m.resistance ?? Infinity;
+    if (!Number.isFinite(r)) return Infinity;
+    const cos = normal ? Math.abs(d[0] * normal[0] + d[1] * normal[1] + d[2] * normal[2]) : 1;
+    return r / Math.max(0.5, cos);
+}
+const MAX_PIERCE = 6;
+export function traceProjectile(battle, o, d, maxDist, { ignore = null, energy = 0 } = {}) {
     const store = battle.store;
-    const glass = [];
-    const end = { x: o.x + d[0] * maxDist, y: o.y + d[1] * maxDist, h: o.h + d[2] * maxDist };
-    const r = castRay(store, o, end, {
-        blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile === 'block',
-        visit: (x, y, z, t) => { if (materialById(store.get(x, y, z)).shatters) {
-            const origin=[o.x,o.y,o.h];
-            let exit=maxDist;
-            [x,y,z].forEach((c,i)=>{if(d[i]) exit=Math.min(exit,((d[i]>0?c+1:c)-origin[i])/d[i]);});
-            const hit=intersectCellShape(store,x,y,z,origin,d,t,exit);
-            if(hit) glass.push([x,y,z,hit.t]);
-        } }
-    });
-    const voxT = r.hit ? r.t : maxDist;
+    const glass = [], pierced = [];
+    const origin = [o.x, o.y, o.h];
+    const at = t => ({ x: o.x + d[0] * t, y: o.y + d[1] * t, h: o.h + d[2] * t });
+    const end = at(maxDist);
+    let start = 0, e = energy, stop = null;
+    for (let seg = 0; seg <= MAX_PIERCE; seg++) {
+        const from = at(start);
+        const r = castRay(store, from, end, {
+            skipStart: seg === 0,
+            blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile === 'block',
+            visit: (x, y, z, t) => { if (materialById(store.get(x, y, z)).shatters) {
+                let exit = maxDist;
+                [x, y, z].forEach((c, i) => { if (d[i]) exit = Math.min(exit, ((d[i] > 0 ? c + 1 : c) - origin[i]) / d[i]); });
+                const hit = intersectCellShape(store, x, y, z, origin, d, start + t, exit);
+                if (hit) glass.push([x, y, z, hit.t]);
+            } }
+        });
+        if (!r.hit) break;
+        const tHit = start + r.t, v = r.hit;
+        const cost = crossingCost(store, v.x, v.y, v.z, r.normal, d);
+        if (seg < MAX_PIERCE && e > cost) {
+            // Leave through the far side of this cell and keep going with what is left.
+            let exit = maxDist;
+            [v.x, v.y, v.z].forEach((c, i) => { if (d[i]) exit = Math.min(exit, ((d[i] > 0 ? c + 1 : c) - origin[i]) / d[i]); });
+            pierced.push({ x: v.x, y: v.y, z: v.z, t: tHit, cost, before: e });
+            e -= cost;
+            start = Math.max(exit, tHit) + 1e-4;
+            if (start >= maxDist) break;
+            continue;
+        }
+        stop = { voxel: v, t: tHit, point: at(tHit) };
+        break;
+    }
+    const voxT = stop ? stop.t : maxDist;
     let best = null;
     for (const u of battle.units) {
         if (!alive(u) || u.id === ignore) continue;
-        const h = rayUnit(o, d, u, voxT,store);
+        const h = rayUnit(o, d, u, voxT, store);
         if (h && h.t < (best?.t ?? Infinity)) best = { unit: u, part: h.part, t: h.t };
     }
-    const at = t => ({ x: o.x + d[0] * t, y: o.y + d[1] * t, h: o.h + d[2] * t });
-    if (best) return { kind: 'unit', unit: best.unit, part: best.part, t: best.t, point: at(best.t), glass: glass.filter(g => g[3] < best.t) };
-    if (r.hit) return { kind: 'voxel', voxel: r.hit, t: r.t, point: r.point, glass: glass.filter(g => g[3] < r.t) };
-    return { kind: 'none', t: maxDist, point: end, glass };
+    const scaleAt = t => { if (!energy) return 1; let left = energy; for (const p of pierced) if (p.t < t) left -= p.cost; return Math.max(0.25, left / energy); };
+    const upTo = t => ({ glass: glass.filter(g => g[3] < t), pierced: pierced.filter(p => p.t < t) });
+    if (best) return { kind: 'unit', unit: best.unit, part: best.part, t: best.t, point: at(best.t), scale: scaleAt(best.t), ...upTo(best.t) };
+    if (stop) return { kind: 'voxel', voxel: stop.voxel, t: stop.t, point: stop.point, scale: scaleAt(stop.t), ...upTo(stop.t) };
+    return { kind: 'none', t: maxDist, point: end, scale: scaleAt(maxDist), glass, pierced };
 }
 
 /** Where to aim: a body part of a unit, or a free-aim point (e.g. a wall voxel to destroy). */
@@ -166,13 +202,13 @@ export function estimateShot(battle, shooter, aim, { weapon, spread, samples = 9
     const rng = createRng(hashString(`${shooter.id}:${shooter.x},${shooter.y},${shooter.z}:${target.x.toFixed(2)},${target.y.toFixed(2)},${target.h.toFixed(2)}:${spread.toFixed(3)}`));
     const frame = basis(dir);
     const parts = { head: 0, torso: 0, armL: 0, armR: 0, legs: 0 };
-    let hit = 0, cover = 0, friendly = 0, other = 0, miss = 0;
+    let hit = 0, cover = 0, friendly = 0, other = 0, miss = 0, through = 0;
     const maxDist = Math.min(weapon.maxRange ?? 40, Math.max(dist + 8, dist * 1.5));
     for (let i = 0; i < samples; i++) {
         const d = sampleCone(dir, spread, rng, frame);
-        const res = traceProjectile(battle, o, d, maxDist, { ignore: shooter.id });
+        const res = traceProjectile(battle, o, d, maxDist, { ignore: shooter.id, energy: weapon.energy || 0 });
         if (res.kind === 'unit') {
-            if (aim.unitId && res.unit.id === aim.unitId) { hit++; parts[res.part]++; }
+            if (aim.unitId && res.unit.id === aim.unitId) { hit++; parts[res.part]++; if (res.pierced.length) through++; }
             else if (res.unit.side === shooter.side) friendly++;
             else other++;
         } else if (res.kind === 'voxel' && res.t < dist - 0.3) cover++;
@@ -180,7 +216,7 @@ export function estimateShot(battle, shooter, aim, { weapon, spread, samples = 9
     }
     const f = n => n / samples;
     return {
-        hit: f(hit), cover: f(cover), friendly: f(friendly), other: f(other), miss: f(miss),
+        hit: f(hit), cover: f(cover), throughCover: hit ? through / hit : 0, friendly: f(friendly), other: f(other), miss: f(miss),
         parts: Object.fromEntries(Object.entries(parts).map(([k, v]) => [k, f(v)])),
         partHit: aim.part ? f(parts[aim.part]) : f(hit),
         expectedHits: f(hit) * (weapon.projectiles || 1), distance: dist, spread, muzzle: o, lean: o.lean || null

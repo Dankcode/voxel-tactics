@@ -23,6 +23,12 @@ export class VoxelStore {
         this.version = 0;
         this.squareCorners = new Set();
         this.windowOpenings = new Map(); // half-window sill cells → crossing axis; survives shattered glazing
+        // PLAN-07 visible damage (gameplay-neutral, shared so every peer and snapshot shows the same marks):
+        //   scars   cells whose voxel was shot or blown out; surviving neighbours show a broken edge toward them
+        //   scorch  solid cells blackened by blasts and fire, "x,y,z" → 1..3
+        this.scars = new Set();
+        this.scorch = new Map();
+        this.marksVersion = 0;
         this.listeners = new Set();
         this.recording = null;
         this.rooms = new Int16Array(n).fill(-1);   // interior room id per air voxel (-1 = outside)
@@ -42,6 +48,7 @@ export class VoxelStore {
         this.hp[i] = hp != null ? Math.min(HP_INF, hp) : (m.hp === Infinity ? HP_INF : m.hp);
         if (before !== id) {
             this.version++;
+            if (id !== AIR && this.scars.size && this.scars.delete(`${x},${y},${z}`)) this.marksVersion++;
             this.markDirty(x, y, z);
             this.surfaceCache.delete(x + y * this.width);
             for (const m of this.profileSurfaceCache.values()) m.delete(x + y * this.width);
@@ -50,6 +57,18 @@ export class VoxelStore {
         }
         return true;
     }
+    /** Mark a destroyed cell (Destruction.destroyVoxel). */
+    markScar(x, y, z) { const k = `${x},${y},${z}`; if (!this.scars.has(k)) { this.scars.add(k); this.marksVersion++; this.markDirty(x, y, z); } }
+    /** Blacken a solid cell; keeps the strongest level. */
+    addScorch(x, y, z, level) {
+        if (!this.inBounds(x, y, z) || level <= 0) return;
+        const m = materialById(this.get(x, y, z));
+        if (!m.solid || m.liquid) return;
+        const k = `${x},${y},${z}`, cur = this.scorch.get(k) || 0, next = Math.min(3, Math.max(cur, level));
+        if (next !== cur) { this.scorch.set(k, next); this.marksVersion++; this.markDirty(x, y, z); }
+    }
+    /** Sorted plain copy for hashes and snapshots. */
+    marksSnapshot() { return { scars: [...this.scars].sort(), scorch: [...this.scorch].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)) }; }
     setKey(x, y, z, key) { return this.set(x, y, z, MAT[key] ?? AIR); }
     fill(x0, y0, z0, x1, y1, z1, key) {
         const id = MAT[key] ?? AIR;
@@ -120,6 +139,7 @@ export class VoxelStore {
         const c = new VoxelStore(this.width, this.depth, this.height);
         c.squareCorners=new Set(this.squareCorners);
         c.windowOpenings=new Map(this.windowOpenings);
+        c.scars=new Set(this.scars);c.scorch=new Map(this.scorch);
         c.datum=this.datum;c.supportGroups=structuredClone(this.supportGroups||[]);
         c.mat.set(this.mat); c.hp.set(this.hp); c.rooms.set(this.rooms);
         return c;

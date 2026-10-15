@@ -33,7 +33,7 @@ test('moving spends AP by path cost / mobility and is rejected beyond the budget
 test('a wall between shooter and target turns hits into cover hits (physical cover)', () => {
     const open = arena();
     const shooter = open.unit('p0'), target = open.units.find(u => u.side === 'enemy');
-    const w = WEAPONS.longrifle;
+    const w = { ...WEAPONS.longrifle, energy: 0 };   // physical cover without penetration (PLAN-07 penetration: combat-feel.test.js)
     const est = estimateShot(open, shooter, { unitId: target.id, part: 'torso' }, { weapon: w, spread: 2, samples: 128 });
     const walled = arena({ walls: [[10, 6, 2, 'stone'], [10, 6, 3, 'stone'], [9, 6, 2, 'stone'], [9, 6, 3, 'stone'], [11, 6, 2, 'stone'], [11, 6, 3, 'stone']] });
     const est2 = estimateShot(walled, walled.unit('p0'), { unitId: walled.units.find(u => u.side === 'enemy').id, part: 'torso' }, { weapon: w, spread: 2, samples: 128 });
@@ -45,8 +45,9 @@ test('a wall between shooter and target turns hits into cover hits (physical cov
 test('half cover protects the legs but not the head', () => {
     const b = arena({ walls: [[10, 5, 2, 'sandbag'], [9, 5, 2, 'sandbag'], [11, 5, 2, 'sandbag']] });
     const t = b.units.find(u => u.side === 'enemy');
-    const legs = estimateShot(b, b.unit('p0'), { unitId: t.id, part: 'legs' }, { weapon: WEAPONS.longrifle, spread: 0.5, samples: 96 });
-    const head = estimateShot(b, b.unit('p0'), { unitId: t.id, part: 'head' }, { weapon: WEAPONS.longrifle, spread: 0.5, samples: 96 });
+    const w = WEAPONS.repeater;   // a 5.56 round does not go through sandbags (a .338 does since PLAN-07)
+    const legs = estimateShot(b, b.unit('p0'), { unitId: t.id, part: 'legs' }, { weapon: w, spread: 0.5, samples: 96 });
+    const head = estimateShot(b, b.unit('p0'), { unitId: t.id, part: 'head' }, { weapon: w, spread: 0.5, samples: 96 });
     assert.ok(head.parts.head > 0.5, `head ${head.parts.head}`);
     assert.ok(legs.parts.legs < 0.2, `legs ${legs.parts.legs}`);
 });

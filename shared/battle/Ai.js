@@ -3,7 +3,7 @@ import { WALKERS } from './Walker.js';
 // It scores reachable tiles by cover against known threats, flanking chances, range and hazards, then
 // shoots (expected damage from the same ballistic estimate the HUD uses), throws, overwatches or reloads.
 import { WEAPONS, THROWABLES } from '../content/weapons.js';
-import { coverAgainst, COVER } from '../voxel/Cover.js';
+import { coverAgainst, hardCoverAgainst, COVER } from '../voxel/Cover.js';
 import { estimateShot } from './Ballistics.js';
 import { alive, partArmor } from './Units.js';
 import { nodeKey, pathTo, reachable } from '../world/PathSearch.js';
@@ -182,8 +182,9 @@ function bestTile(battle, u, w, threats, budgetAp, goal = null) {
         for (const e of threats) {
             const d = Math.hypot(e.x - n.x, e.y - n.y);
             if (d > 30) continue;
-            const c = coverAgainst(battle.store, n.x, n.y, n.z, e.x, e.y, e.z);
-            s += c === COVER.FULL ? 14 : c === COVER.HALF ? 8 : -9;
+            // PLAN-07: cover the threat's round would go straight through is worth half.
+            const ew = WEAPONS[e.weapon], hc = hardCoverAgainst(battle.store, n.x, n.y, n.z, e.x, e.y, e.z, ew?.energy || 6), c = hc.level;
+            s += (c === COVER.FULL ? 14 : c === COVER.HALF ? 8 : -9) * (c && hc.soft ? 0.5 : 1);
             if (d <= w.range && coverAgainst(battle.store, e.x, e.y, e.z, n.x, n.y, n.z) === COVER.NONE) s += 10;  // flanks it
         }
         const nearestD = Math.min(...threats.map(e => Math.hypot(e.x - n.x, e.y - n.y)), 99);

@@ -26,17 +26,41 @@ export function damageVoxel(store, x, y, z, amount, { element = null } = {}) {
     if (id === AIR || m.liquid || m.hp === Infinity || amount <= 0) return { destroyed: false, material: m };
     const dmg = Math.round(amount * voxelDamageMultiplier(m, element));
     if (dmg <= 0) return { destroyed: false, material: m };
-    const hp = store.hpAt(x, y, z) - dmg;
-    if (hp > 0) { store.hp[store.index(x, y, z)] = hp; return { destroyed: false, material: m, hp }; }
+    const before = store.hpAt(x, y, z), hp = before - dmg;
+    if (hp > 0) {
+        store.hp[store.index(x, y, z)] = hp;
+        // Damage stays visible (PLAN-07): crossing 66 % or 33 % HP redraws the chunk with cracks.
+        if (damageBand(m, before) !== damageBand(m, hp)) store.markDirty(x, y, z);
+        return { destroyed: false, material: m, hp };
+    }
     destroyVoxel(store, x, y, z);
     const result = { destroyed: true, material: m };
     if (m.explosive) result.explosion = { x: x + 0.5, y: y + 0.5, h: z + 0.5, ...m.explosive, source: m.key };
     return result;
 }
 
+/** Visible damage band of a voxel at `hp`: 0 intact, 1 cracked (≤ 66 %), 2 heavy (≤ 33 %). */
+export function damageBand(m, hp) { if (!Number.isFinite(m.hp) || m.hp <= 1) return 0; const r = hp / m.hp; return r <= 0.33 ? 2 : r <= 0.66 ? 1 : 0; }
+
 /** Remove a voxel cleanly; destruction never creates replacement debris. */
 export function destroyVoxel(store, x, y, z) {
     store.set(x, y, z, AIR);
+    store.markScar?.(x, y, z);
+}
+
+/**
+ * PLAN-07 burn marks: every solid cell within the blast radius is blackened, darkest at the centre
+ * (3 inside 40 % of the radius, 2 inside 75 %, 1 to the edge). Pure; no RNG.
+ */
+export function scorchBlast(store, b) {
+    if (!store.addScorch || !(b.radius > 0)) return;
+    const r = b.radius + 0.5, r2 = r * r;
+    for (let z = Math.floor(b.h - r); z <= Math.floor(b.h + r); z++) for (let y = Math.floor(b.y - r); y <= Math.floor(b.y + r); y++) for (let x = Math.floor(b.x - r); x <= Math.floor(b.x + r); x++) {
+        const d2 = (x + 0.5 - b.x) ** 2 + (y + 0.5 - b.y) ** 2 + (z + 0.5 - b.h) ** 2;
+        if (d2 > r2) continue;
+        const k = Math.sqrt(d2) / r;
+        store.addScorch(x, y, z, k < 0.4 ? 3 : k < 0.75 ? 2 : 1);
+    }
 }
 
 /** Capture the initial ground/foundation boundary, excluding furniture, walls and upper storeys. */

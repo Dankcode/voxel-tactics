@@ -7,7 +7,7 @@
 //
 // State lives in an ElementField next to the VoxelStore. All randomness comes from the battle RNG.
 import { MAT, AIR, materialById } from '../voxel/Materials.js';
-import { destroyVoxel } from '../voxel/Destruction.js';
+import { destroyVoxel, damageBand } from '../voxel/Destruction.js';
 
 export const ELEMENT_IDS = Object.freeze(['pyro', 'hydro', 'cryo', 'anemo', 'geo']);
 export const ELEMENT_COLORS = Object.freeze({ pyro: '#ff7a3d', hydro: '#4fc3f7', cryo: '#bfefff', anemo: '#b7f5c9', geo: '#e0c28a', physical: '#ffffff' });
@@ -145,11 +145,15 @@ export class ElementField {
             if (hp <= 0) {
                 this.fires.delete(k);
                 if (m.burnTo && m.burnTo !== 'ash') store.set(x, y, z, MAT[m.burnTo]); else destroyVoxel(store, x, y, z);
+                // Burn marks: the floor under it and the cells around it are blackened (PLAN-07).
+                store.addScorch?.(x, y, z - 1, 2);
+                for (const [dx, dy, dz] of [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1]]) store.addScorch?.(x + dx, y + dy, z + dz, 1);
                 burnedOut.push([x, y, z, m.key]);
                 if (m.explosive) explosions.push({ x: x + 0.5, y: y + 0.5, h: z + 0.5, ...m.explosive, source: m.key });
                 changes.push({ t: 'burned', x, y, z });
             } else {
                 store.hp[store.index(x, y, z)] = hp;
+                if (damageBand(m, hp + 1) !== damageBand(m, hp)) store.markDirty(x, y, z);
                 const left = this.fires.get(k) - 1;
                 if (left <= 0) { this.fires.delete(k); changes.push({ t: 'burnout', x, y, z }); }
                 else this.fires.set(k, left);
@@ -159,7 +163,7 @@ export class ElementField {
                 if (this.ignite(x + dx, y + dy, z + dz)) changes.push({ t: 'ignite', x: x + dx, y: y + dy, z: z + dz });
             }
         }
-        for (const [k, s] of [...this.surfaces]) { if (--s.rounds <= 0) { this.surfaces.delete(k); const [x, y, z] = parse(k); changes.push({ t: 'surface', x, y, z, effect: null }); } }
+        for (const [k, s] of [...this.surfaces]) { if (--s.rounds <= 0) { this.surfaces.delete(k); const [x, y, z] = parse(k); if (s.effect === 'burning') store.addScorch?.(x, y, z, 2); changes.push({ t: 'surface', x, y, z, effect: null }); } }
         for (const [k, r] of [...this.smoke]) { if (r - 1 <= 0) this.smoke.delete(k); else this.smoke.set(k, r - 1); }
         return { changes, burnedOut, explosions };
     }

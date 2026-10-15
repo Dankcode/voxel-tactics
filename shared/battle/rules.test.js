@@ -50,7 +50,7 @@ test('elevated shot preview shares the height-aware cover readout and still trac
     const pv=low.preview(shot);assert.ok(pv.ok,pv.reason);assert.equal(pv.cover,COVER.NONE);assert.ok(pv.flanked);assert.equal(pv.estimate.cover,0);
     assert.ok(pv.mods.some(([kind])=>kind==='height'));
     for(const x of [9,10,11])low.store.set(x,7,3,MAT.stucco);
-    const est=estimateShot(low,low.unit('p0'),shot.aim,{weapon:WEAPONS.longrifle,spread:0,samples:16});
+    const est=estimateShot(low,low.unit('p0'),shot.aim,{weapon:{...WEAPONS.longrifle,energy:0},spread:0,samples:16});
     assert.equal(coverAgainst(low.store,10,6,1,10,16,4),COVER.FULL);assert.equal(est.cover,1,'the solid upper wall still stops the downward shot');
 });
 
