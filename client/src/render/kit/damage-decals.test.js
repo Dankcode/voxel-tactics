@@ -1,0 +1,58 @@
+// PLAN-07: cracks on damaged voxels, broken edges next to shot-out cells, soot from blasts and fire.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { VoxelStore } from '../../../../shared/voxel/VoxelStore.js';
+import { MAT } from '../../../../shared/voxel/Materials.js';
+import { damageVoxel, destroyVoxel, scorchBlast } from '../../../../shared/voxel/Destruction.js';
+import { DamageDecals, damageLevel, faceMatrix } from '../DamageDecals.js';
+
+const room = () => { const s = new VoxelStore(16, 16, 8); s.fill(0, 0, 0, 15, 15, 0, 'concrete'); return s; };
+
+test('no decals on an intact world; cracks appear at 66 % and heavy cracks at 33 % HP', () => {
+    const s = room(), d = new DamageDecals();
+    for (let x = 4; x <= 8; x++) for (let z = 1; z <= 2; z++) s.set(x, 5, z, MAT.brick);
+    assert.equal(d.collect(s, 0, 0, 0).length, 0);
+    s.takeDirtyChunks();
+    damageVoxel(s, 6, 5, 1, 4);                         // brick 9 → 5 (56 %)
+    assert.equal(damageLevel(s, 6, 5, 1), 1);
+    assert.ok(s.dirtyChunks.size > 0, 'crossing a damage band marks the chunk for a redraw');
+    const cracks = d.collect(s, 0, 0, 0).filter(x => x.kind === 'crack');
+    assert.ok(cracks.length >= 2, 'both broad faces of the wall show cracks');
+    damageVoxel(s, 6, 5, 1, 3);                         // 2 / 9
+    assert.equal(damageLevel(s, 6, 5, 1), 2);
+    assert.ok(d.collect(s, 0, 0, 0).some(x => x.kind === 'heavy'));
+});
+
+test('a shot-out cell leaves broken material on the neighbours facing it and frayed edges beside it', () => {
+    const s = room(), d = new DamageDecals();
+    for (let x = 4; x <= 8; x++) for (let z = 1; z <= 2; z++) s.set(x, 5, z, MAT.concrete_wall);
+    destroyVoxel(s, 6, 5, 1);
+    assert.ok(s.scars.has('6,5,1'));
+    const out = d.collect(s, 0, 0, 0);
+    assert.ok(out.filter(x => x.kind === 'rubble').length >= 3, 'left, right and above see into the hole');
+    assert.ok(out.some(x => x.kind === 'fray'), 'broad faces fray toward the hole');
+    // Rebuilding the cell removes the scar decals.
+    s.set(6, 5, 1, MAT.concrete_wall);
+    assert.equal(d.collect(s, 0, 0, 0).filter(x => x.kind === 'rubble').length, 0);
+});
+
+test('blasts and fire leave soot: burn marks on floors and soot on walls; meshes batch per kind', () => {
+    const s = room(), d = new DamageDecals();
+    s.set(9, 9, 1, MAT.brick); s.set(9, 9, 2, MAT.brick);
+    scorchBlast(s, { x: 8.5, y: 8.5, h: 1.4, radius: 2 });
+    const out = d.collect(s, 0, 0, 0);
+    assert.ok(out.some(x => x.kind === 'scorch'), 'the floor is burnt');
+    assert.ok(out.some(x => x.kind === 'soot'), 'the wall is sooty');
+    const meshes = d.buildChunk(s, 0, 0, 0);
+    assert.equal(meshes.reduce((n, m) => n + m.count, 0), out.length);
+    assert.ok(meshes.every(m => m.isInstancedMesh && m.material.transparent && m.material.depthWrite === false));
+    // Cut-away storeys hide their decals.
+    assert.ok(!d.collect(s, 0, 0, 0, { cutZ: 1 }).some(x => x.kind === 'soot'), 'the cut-away wall shows no soot');
+});
+
+test('decals sit on the real footprint of thin walls, not on the cell face', () => {
+    const m = faceMatrix({ x0: 4, x1: 5, y0: 5.3, y1: 5.7 }, 1, [0, 1, 0]);
+    const p = { x: m.elements[12], y: m.elements[13], z: m.elements[14] };
+    assert.ok(Math.abs(p.z - 5.712) < 1e-6, `face plane at y 5.712, got ${p.z}`);
+    assert.ok(Math.abs(p.y - 1.5) < 1e-6);
+});

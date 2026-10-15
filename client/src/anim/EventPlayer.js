@@ -6,6 +6,8 @@ import { WEAPONS, THROWABLES } from '../../../shared/content/weapons.js';
 import { ELEMENT_COLORS } from '../../../shared/elements/Elements.js';
 import { ABILITIES } from '../../../shared/content/units.js';
 import { FORMATIONS } from '../../../shared/content/formations.js';
+import { materialById } from '../../../shared/voxel/Materials.js';
+import { TRACER_SPEED, BURST_GAP } from '../render/Fx.js';
 
 const wait = s => new Promise(r => setTimeout(r, s * 1000));
 const PART_LABEL = { head: 'head', torso: 'torso', armL: 'L arm', armR: 'R arm', legs: 'legs' };
@@ -93,12 +95,24 @@ export class EventPlayer {
                 if (e.aim) v?.face(e.aim.x - (v.unit.x + 0.5), e.aim.y - (v.unit.y + 0.5));
                 const w = WEAPONS[e.weaponId];
                 fx.flash(e.muzzle, 0xffe08a, 0.25);
-                for (const p of e.projectiles) {
-                    fx.tracer(e.muzzle, p.to, w?.element ? new THREE.Color(ELEMENT_COLORS[w.element]).getHex() : (e.reaction ? 0xff9f6b : 0xfff0b0));
-                    if (p.kind === 'voxel') fx.flash(p.to, 0xd8c8a8, 0.12, 0.2);
-                    if (w?.projectiles > 1) await this.d(0.04);
-                }
-                await this.d(CLIP_HOLD.fire);
+                // PLAN-07 tracers: squad warm white, enemies red-orange, overwatch amber, elemental shots in colour.
+                // Burst/auto rounds leave BURST_GAP apart; pellets of one shell fly together.
+                const shooter = this.view(e.unitId)?.unit;
+                const color = w?.element ? new THREE.Color(ELEMENT_COLORS[w.element]).getHex() : e.reaction ? 0xffb347 : shooter?.side === 'enemy' ? 0xff6a4a : 0xfff0c8;
+                const perRound = Math.max(1, Math.round(e.projectiles.length / Math.max(1, e.rounds || 1)));
+                let last = 0;
+                e.projectiles.forEach((p, i) => {
+                    const delay = Math.floor(i / perRound) * BURST_GAP / this.speed;
+                    const d = Math.hypot(p.to.x - e.muzzle.x, p.to.y - e.muzzle.y, p.to.h - e.muzzle.h);
+                    last = Math.max(last, delay + d / (TRACER_SPEED * this.speed));
+                    fx.tracer(e.muzzle, p.to, color, { delay, speed: TRACER_SPEED * this.speed, onArrive: () => {
+                        if (p.kind === 'voxel') fx.impact(p.to, materialById(g.battle?.store.get(p.voxel?.x, p.voxel?.y, p.voxel?.z) ?? 0).family || 'stone');
+                        else if (p.kind === 'unit') fx.impact(p.to, 'unit');
+                        for (const q of p.pierced || []) { const k = q.t / Math.max(d, 1e-6); fx.impact({ x: e.muzzle.x + (p.to.x - e.muzzle.x) * k, y: e.muzzle.y + (p.to.y - e.muzzle.y) * k, h: e.muzzle.h + (p.to.h - e.muzzle.h) * k }, 'stone', { exit: true }); }
+                    } });
+                });
+                await this.d(Math.max(CLIP_HOLD.fire, last * this.speed));
+                g.voxelView?.flush();
                 break;
             }
             case 'melee': {
@@ -117,7 +131,7 @@ export class EventPlayer {
                 g.scene.scene.remove(ball); ball.geometry.dispose(); ball.material.dispose();
                 break;
             }
-            case 'explosion': fx.explosion(e, e.radius, e.element); await this.d(0.15); break;
+            case 'explosion': fx.explosion(e, e.radius, e.element); g.voxelView?.flush(); await this.d(0.15); break;
             case 'smoke': fx.syncField(g.battle.field); break;
             case 'voxels': g.voxelView.flush(); break;
             case 'collapse': g.voxelView.flush(); fx.float(new THREE.Vector3(e.fallen?.[0]?.x ?? 0, e.fallen?.[0]?.to ?? 1, e.fallen?.[0]?.y ?? 0), 'COLLAPSE', '#ffcc66', 22); g.scene.shake = 0.6; await this.d(0.25); break;

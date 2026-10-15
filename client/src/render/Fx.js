@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { ELEMENT_COLORS } from '../../../shared/elements/Elements.js';
 
 const w2t = p => new THREE.Vector3(p.x, p.h, p.y);   // world {x,y,h} → three
+export const TRACER_SPEED = 90, TRACER_LENGTH = 1.2, BURST_GAP = 0.07;
 
 export class Fx {
     constructor(scene, floatRoot) {
@@ -14,14 +15,46 @@ export class Fx {
         this.fireMat = new THREE.MeshBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0.75, depthWrite: false, clippingPlanes: scene.clipping });
         this.smokeMat = new THREE.MeshBasicMaterial({ color: 0x9aa0a6, transparent: true, opacity: 0.35, depthWrite: false, clippingPlanes: scene.clipping });
         this.fireGeo = new THREE.ConeGeometry(0.3, 0.8, 6);
+        this.tracerGeo = new THREE.CylinderGeometry(1, 1, 1, 6, 1, true);
+        this.puffGeo = new THREE.SphereGeometry(1, 8, 6);
+        this.sparkGeo = new THREE.BoxGeometry(0.03, 0.03, 0.12);
         this.smokeGeo = new THREE.SphereGeometry(0.55, 8, 6);
         this.floats = [];
     }
-    tracer(from, to, color = 0xfff0b0, life = 0.18) {
-        const g = new THREE.BufferGeometry().setFromPoints([w2t(from), w2t(to)]);
-        const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 1, depthTest: true }));
-        this.group.add(line);
-        this.items.push({ obj: line, life, max: life, kind: 'fade' });
+    /**
+     * PLAN-07 tracer: a glowing streak (bright core + soft halo, additive) that travels from the muzzle at `speed`
+     * tiles/s and fades its tail out after it lands. `delay` staggers burst rounds. `onArrive` fires at the impact
+     * (sparks, puffs). Returns the item so callers/tests can follow it.
+     */
+    tracer(from, to, color = 0xfff0b0, { speed = TRACER_SPEED, length = TRACER_LENGTH, delay = 0, onArrive = null } = {}) {
+        const a = w2t(from), b = w2t(to), dist = a.distanceTo(b);
+        const obj = new THREE.Group();
+        const core = new THREE.Mesh(this.tracerGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+        const halo = new THREE.Mesh(this.tracerGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+        core.scale.set(0.022, 1, 0.022); halo.scale.set(0.07, 1, 0.07);
+        obj.add(halo, core); obj.visible = false;
+        obj.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+        this.group.add(obj);
+        const it = { obj, kind: 'tracer', a, b, dist, speed, length, wait: delay, head: 0, onArrive, arrived: false, life: 1, max: 1 };
+        this.items.push(it);
+        return it;
+    }
+    /** Impact feedback by material family: sparks off metal, dust off stone/earth, splinters off wood, blood-red off units. */
+    impact(at, family = 'stone', { exit = false } = {}) {
+        const col = { metal: 0xffd27a, stone: 0xb8ad9c, earth: 0x9c8466, wood: 0xc49a62, unit: 0xd04030, glass: 0xd8f0ff }[family] ?? 0xb8ad9c;
+        const p = w2t(at);
+        const puff = new THREE.Mesh(this.puffGeo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.8, depthWrite: false }));
+        puff.position.copy(p); puff.scale.setScalar(0.05); this.group.add(puff);
+        this.items.push({ obj: puff, life: exit ? 0.35 : 0.28, max: exit ? 0.35 : 0.28, kind: 'fade', grow: exit ? 0.45 : 0.3 });
+        if (family === 'metal' || family === 'unit') {
+            const n = family === 'metal' ? 4 : 3;
+            for (let i = 0; i < n; i++) {
+                const v = new THREE.Vector3(Math.cos(i * 2.4) * 2.2, 1.4 + (i % 2), Math.sin(i * 2.4) * 2.2);
+                const s = new THREE.Mesh(this.sparkGeo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+                s.position.copy(p); this.group.add(s);
+                this.items.push({ obj: s, life: 0.22, max: 0.22, kind: 'spark', v });
+            }
+        }
     }
     flash(at, color = 0xffe08a, size = 0.35, life = 0.12) {
         const m = new THREE.Mesh(new THREE.SphereGeometry(size, 8, 6), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false }));
@@ -62,15 +95,29 @@ export class Fx {
             const s = new THREE.Mesh(this.smokeGeo, this.smokeMat); s.position.set(x + 0.5, z + 0.5, y + 0.5); this.fireGroup.add(s);
         }
     }
+    stepTracer(it, dt) {
+        if (it.wait > 0) { it.wait -= dt; if (it.wait > 0) return true; dt = -it.wait; }
+        it.obj.visible = true;
+        it.head += it.speed * dt;
+        if (!it.arrived && it.head >= it.dist) { it.arrived = true; it.onArrive?.(); }
+        const tail = Math.max(0, it.head - it.length), head = Math.min(it.head, it.dist);
+        if (tail >= it.dist) { this.group.remove(it.obj); for (const c of it.obj.children) c.material.dispose(); return false; }
+        const len = Math.max(0.01, head - tail), mid = (head + tail) / 2;
+        it.obj.position.copy(it.a).lerp(it.b, mid / Math.max(it.dist, 1e-6));
+        for (const c of it.obj.children) c.scale.y = len;
+        return true;
+    }
     update(dt) {
         const t = performance.now() / 1000;
         for (const c of this.fireGroup.children) if (c.material === this.fireMat) c.scale.y = 0.8 + Math.sin(t * 9 + c.position.x * 3) * 0.25;
         this.items = this.items.filter(it => {
+            if (it.kind === 'tracer') return this.stepTracer(it, dt);
+            if (it.kind === 'spark') { it.v.y -= 9 * dt; it.obj.position.addScaledVector(it.v, dt); it.obj.lookAt(it.obj.position.clone().add(it.v)); }
             it.life -= dt;
             const k = Math.max(0, it.life / it.max);
             if (it.grow) it.obj.scale.setScalar(Math.max(0.2, it.grow * (1 - k)));
             if (it.obj.material) { it.obj.material.transparent = true; it.obj.material.opacity = Math.min(1, k * 1.4); }
-            if (it.life <= 0) { this.group.remove(it.obj); it.obj.geometry?.dispose(); it.obj.material?.dispose(); return false; }
+            if (it.life <= 0) { this.group.remove(it.obj); if (![this.puffGeo, this.sparkGeo].includes(it.obj.geometry)) it.obj.geometry?.dispose(); it.obj.material?.dispose(); return false; }
             return true;
         });
         this.floats = this.floats.filter(f => {

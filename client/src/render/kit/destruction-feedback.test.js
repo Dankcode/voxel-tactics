@@ -14,6 +14,7 @@ test('destruction rebuilds the world without fragment meshes and retains explosi
     await player.play({ t: 'explosion', x: 4.5, y: 4.5, h: 2.5, radius: 3, element: 'geo' });
     const feedback = [...fx.group.children], effects = [...fx.items];
     assert.ok(effects.length > 0 && scene.shake > 0, 'the explosion remains visible and shakes the camera');
+    rebuilds = 0;   // the explosion itself redraws scorch marks (PLAN-07); count the destruction rebuild alone
     await player.play({ t: 'voxels', changes: [[4, 4, 2, MAT.concrete_wall, AIR], [4, 4, 3, MAT.plank, AIR]] });
     assert.equal(rebuilds, 1);
     assert.deepEqual(fx.group.children, feedback, 'destroyed buildings add no fragment meshes');

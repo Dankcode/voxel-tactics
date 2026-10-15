@@ -1,5 +1,6 @@
 import { TacticalMarks } from './render/TacticalMarks.js';
 import { updateReticle } from './ui/AimReticle.js';
+import { AimController, aimTau, swayDegrees } from './ui/AimController.js';
 import { floorCutLevels, zoomCutLevel } from './render/FloorCutaway.js';
 import { BuildingView, BUILDING_VIEWS } from './render/BuildingView.js';
 import { pickVisibleTile } from './render/TilePicking.js';
@@ -67,7 +68,7 @@ export function wearTint(mission) {
 export class Game {
     constructor({ canvas, hudRoot, cutinRoot, floatRoot, onExit, options = {} }) {
         let savedOptions={};try{savedOptions=JSON.parse(localStorage.getItem('tactics-settings')||'{}');}catch{}
-        this.options = { turnSpeed:1,rotateSpeed:1,aimSway:true,showEnemyBars:true,confirmMoves:false,autoEndTurn: false, autoNext: true, followCamera: true, edgeScroll: true, buildingView:'auto', ...savedOptions, ...options };
+        this.options = { turnSpeed:1,rotateSpeed:1,aimSway:true,aimInertia:true,showEnemyBars:true,confirmMoves:false,autoEndTurn: false, autoNext: true, followCamera: true, edgeScroll: true, buildingView:'auto', ...savedOptions, ...options };
         this.scene = new Scene(canvas);
         this.library = new MaterialLibrary(this.scene.renderer, this.scene.clipping);
         this.kit = new KitLibrary(this.library);
@@ -77,6 +78,7 @@ export class Game {
         this.lanterns = new LanternLights(this.scene);
         this.fx = new Fx(this.scene, floatRoot);
         this.cameraDirector = new CameraDirector(this.scene);
+        this.aim = new AimController();
         this.cutins = new CutInDirector(cutinRoot, this.cameraDirector);
         this.player = new EventPlayer(this);this.player.speed=this.options.turnSpeed;
         this.hud = new Hud(hudRoot, this);
@@ -173,6 +175,7 @@ export class Game {
         this.handleKeysHeld(dt);
         this.refreshBuildingView();
         const yaw = this.scene.yaw;
+        this.stepAim(dt);
         this.cameraDirector.update(dt);
         this.scene.rig.rotationSpeed=this.options.rotateSpeed;
         this.tacticalMarks.update(this.battle,this.cutLevel,this.time);
@@ -265,7 +268,7 @@ export class Game {
     }
     setMode(m) {
         if (this.cameraDirector.phase === 'prepare') this.cameraDirector.end();
-        this.mode = m; this.targetInfo = null;this.freeAim=null;this.freeAimManual=false;this.moveConfirmation=null;
+        this.mode = m; this.targetInfo = null;this.freeAim=null;this.freeAimManual=false;this.moveConfirmation=null;this.aim.clear();
         this.overlays.clearAim();
         this.overlays.clearPath();
         this.overlays.showCover(this.battle?.store, null);
@@ -342,7 +345,7 @@ export class Game {
         this.targets = this.targetsFor(u, this.mode.weaponId);
         const keep = this.targets.find(t => t.id === this.lastTargetId) || this.targets[0];
         if (keep) this.aimAt(u, keep, 'torso', { frame: true });
-        else {this.freeAim={x:u.x+.5,y:u.y-8,h:u.z+2.1};this.freeAimManual=true;this.cameraDirector.prepareAim(new THREE.Vector3(u.x+.5,u.z+1,u.y+.5),new THREE.Vector3(this.freeAim.x,this.freeAim.h,this.freeAim.y));}
+        else {this.freeAim={x:u.x+.5,y:u.y-8,h:u.z+2.1};this.aim.snap(this.freeAim);this.freeAimManual=true;this.cameraDirector.prepareAim(new THREE.Vector3(u.x+.5,u.z+1,u.y+.5),new THREE.Vector3(this.freeAim.x,this.freeAim.h,this.freeAim.y));}
     }
     cycleTarget(d = 1) {
         const u = this.selectedUnit(); if (!u || !this.targets?.length) return;
@@ -718,22 +721,40 @@ export class Game {
             const cover = coverAgainst(this.battle.store, target.x, target.y, target.z, u.x, u.y, u.z);
             this.targetInfo = { key, target, part, byPart, anyHit: any, blocked, friendly, spread, mods, muzzle, lean, distance, cover, flanked: cover === COVER.NONE, ap: this.mode.suppress ? ABILITIES.suppress.ap : this.battle.shotAp(u, w), inRange: distance <= weaponBuild(u,w).maxRange };
         }
-        this.freeAim=partCentre(target,part);this.freeAimManual=false;
-        this.cameraDirector.prepareAim(new THREE.Vector3(u.x+.5,u.z+1,u.y+.5),new THREE.Vector3(this.freeAim.x,this.freeAim.h,this.freeAim.y));
+        // PLAN-07: the aim swings onto the new anchor through the aim spring; the camera only re-frames when it
+        // was not already in the shoulder view.
+        const anchor=partCentre(target,part);this.freeAimManual=false;
+        if(!this.aim.current||this.cameraDirector.phase!=='prepare'){this.aim.snap(anchor);this.freeAim={...anchor};this.cameraDirector.prepareAim(new THREE.Vector3(u.x+.5,u.z+1,u.y+.5),new THREE.Vector3(anchor.x,anchor.h,anchor.y));}
+        else this.aim.setTarget(anchor);
         this.targetInfo.part = part;
         this.overlays.showCone(this.targetInfo.muzzle, partCentre(target, part), this.targetInfo.spread);
         if (frame && this.options.followCamera) this.scene.glideTo(new THREE.Vector3((u.x + target.x) / 2 + 0.5, (u.z + target.z) / 2 + 1, (u.y + target.y) / 2 + 0.5), 4);
         this.hud.renderTarget();
     }
+    /**
+     * PLAN-07: advance the aim spring, then make the shoulder camera and the shooter's back-view sprite follow the
+     * current aim point (the shot fires at exactly this point).
+     */
+    stepAim(dt){
+        const u=this.selectedUnit();
+        if(!u||this.mode.kind!=='shoot'||!this.aim.current)return;
+        const w=WEAPONS[this.mode.weaponId],origin={x:u.x+.5,y:u.y+.5,h:u.z+2.35};
+        const p=this.aim.step(dt,{tau:aimTau(u,w),sway:this.options.aimSway?swayDegrees(u):0,origin,inertia:this.options.aimInertia!==false});
+        if(!p)return;
+        this.freeAim=p;
+        this.views.get(u.id)?.face(p.x-origin.x,p.y-origin.y);
+        if(this.cameraDirector.phase==='prepare')this.cameraDirector.track(new THREE.Vector3(p.x,p.h,p.y),dt);
+    }
     updateFreeAim(x,y,pick=null){
         const u=this.selectedUnit();if(!u)return;const ray=this.scene.rayAt(x,y).ray;
         if(this.cameraDirector.phase==='prepare'){
-            const focus=this.targetInfo?partCentre(this.targetInfo.target,this.targetInfo.part):this.freeAim;
+            const focus=this.aim.target||(this.targetInfo?partCentre(this.targetInfo.target,this.targetInfo.part):this.freeAim);
             const base=focus?new THREE.Vector3(focus.x,focus.h,focus.y):new THREE.Vector3(u.x+.5,u.z+2.1,u.y-8);
             const plane=new THREE.Plane().setFromNormalAndCoplanarPoint(this.scene.camera.getWorldDirection(new THREE.Vector3()),base);
-            const point=ray.intersectPlane(plane,new THREE.Vector3());if(point)this.freeAim={x:point.x,y:point.z,h:point.y};
-        }else if(pick?.point)this.freeAim={...pick.point};
-        else {const point=ray.at(15,new THREE.Vector3());this.freeAim={x:point.x,y:point.z,h:point.y};}
+            const point=ray.intersectPlane(plane,new THREE.Vector3());if(point)this.aim.setTarget({x:point.x,y:point.z,h:point.y});
+        }else if(pick?.point)this.aim.setTarget({...pick.point});
+        else {const point=ray.at(15,new THREE.Vector3());this.aim.setTarget({x:point.x,y:point.z,h:point.y});}
+        if(!this.freeAim)this.freeAim={...this.aim.current};
         this.freeAimManual=true;
     }
     onClick(e) {

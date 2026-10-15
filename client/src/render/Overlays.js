@@ -4,7 +4,7 @@ import { buildWatchPreview, WATCH_COLORS } from '../../../shared/battle/WatchPre
 // destination's faces, aim cone, blast radius, throw arc, overwatch cones, plus debug layers.
 import * as THREE from 'three';
 import { overlayDropAt as dropAt } from './Ground.js';
-import { coverAt } from '../../../shared/voxel/Cover.js';
+import { coverAt, softAt } from '../../../shared/voxel/Cover.js';
 
 export const ZONE = { blue: 0x46c8ff, yellow: 0xffc845, red: 0xff5a4a, white: 0xffffff, teal: 0x5ff2d6 };
 const DIRS = [[0, -1, 'n'], [1, 0, 'e'], [0, 1, 's'], [-1, 0, 'w']];
@@ -16,7 +16,7 @@ function glowMaterial(color, opacity = 0.95, clipping = null) {
 }
 
 /** Canvas-drawn XCOM-style shield icon: full (solid) or half (lower half filled). */
-function shieldTexture(kind) {
+function shieldTexture(kind, soft = false) {
     const c = document.createElement('canvas'); c.width = 64; c.height = 72;
     const g = c.getContext('2d');
     if(kind==='dark'){g.fillStyle='#b9ceff';g.font='56px sans-serif';g.fillText('☾',5,57);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
@@ -30,6 +30,8 @@ function shieldTexture(kind) {
     else g.fillRect(0, 38, 64, 40);
     g.restore();
     if (kind === 'flank') { g.fillStyle = '#0b1622'; g.font = 'bold 38px sans-serif'; g.textAlign = 'center'; g.fillText('!', 32, 52); }
+    // PLAN-07 soft cover: a crack through the shield (a standard rifle round goes through this cover).
+    if (soft) { g.lineWidth = 4; g.strokeStyle = '#0b1622'; g.beginPath(); g.moveTo(36, 2); g.lineTo(26, 24); g.lineTo(38, 36); g.lineTo(24, 54); g.lineTo(30, 72); g.stroke(); g.lineWidth = 2; g.strokeStyle = '#ffd36b'; g.stroke(); }
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
     return t;
 }
@@ -60,7 +62,7 @@ export class Overlays {
         };
         this.hover = new THREE.Mesh(frameGeometry(0.06), this.mats.hover);
         this.hover.visible = false; this.group.add(this.hover);
-        this.shieldTex = { half: shieldTexture('half'), full: shieldTexture('full'), flank: shieldTexture('flank'),dark:shieldTexture('dark') };
+        this.shieldTex = { half: shieldTexture('half'), full: shieldTexture('full'), flank: shieldTexture('flank'),dark:shieldTexture('dark'), softHalf: shieldTexture('half', true), softFull: shieldTexture('full', true) };
         this.marker = this.makeMarker(); this.marker.visible = false; this.group.add(this.marker);
     }
     makeMarker() {
@@ -120,10 +122,11 @@ export class Overlays {
     showCover(store, cell, { flanked = false, dark=false } = {}) {
         for (const c of [...this.shields.children]) { this.shields.remove(c); c.material.dispose(); }
         if (!cell) return;
-        const cov = coverAt(store, cell.x, cell.y, cell.z);
+        const cov = coverAt(store, cell.x, cell.y, cell.z), soft = softAt(store, cell.x, cell.y, cell.z);
         for (const [dx, dy, dir] of DIRS) {
             if (!cov[dir]) continue;
-            const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: cov[dir] === 2 ? this.shieldTex.full : this.shieldTex.half, depthTest: false, transparent: true, toneMapped: false }));
+            const map = soft[dir] ? (cov[dir] === 2 ? this.shieldTex.softFull : this.shieldTex.softHalf) : (cov[dir] === 2 ? this.shieldTex.full : this.shieldTex.half);
+            const s = new THREE.Sprite(new THREE.SpriteMaterial({ map, depthTest: false, transparent: true, toneMapped: false }));
             s.scale.set(0.42, 0.47, 1);
             s.position.set(cell.x + 0.5 + dx * 0.5, cell.z + 1.55, cell.y + 0.5 + dy * 0.5);
             s.renderOrder = 30;

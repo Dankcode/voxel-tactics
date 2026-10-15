@@ -5,6 +5,7 @@ import { KitView, kitHandler } from './kit/KitView.js';
 import { CHUNK } from '../../../shared/voxel/VoxelStore.js';
 import { MATERIALS } from '../../../shared/voxel/Materials.js';
 import { renderFor } from './RenderTable.js';
+import { DamageDecals } from './DamageDecals.js';
 
 const APRON = 0;          // cells the ground continues past the map edge (visual only), fading into the background
 
@@ -12,6 +13,7 @@ export class VoxelView {
     constructor(scene, store, library, kit = null) {
         this.scene = scene; this.store = store; this.library = library;
         this.kitView = kit ? new KitView(kit, scene.clipping) : null;
+        this.decals = new DamageDecals({ clipping: scene.clipping });
         this.group = new THREE.Group();
         scene.scene.add(this.group);
         this.chunks = new Map();
@@ -48,7 +50,7 @@ export class VoxelView {
         const [cx, cy, cz] = key.split(',').map(Number);
         if (cx < 0 || cy < 0 || cz < 0 || cx * CHUNK >= this.store.width || cy * CHUNK >= this.store.depth || cz * CHUNK >= this.store.height) return;
         const old = this.chunks.get(key);
-        if (old) { for (const m of old) { this.group.remove(m); if (m.userData.kit) m.dispose?.(); if (!m.isInstancedMesh) m.geometry.dispose(); } }
+        if (old) { for (const m of old) { this.group.remove(m); if (m.userData.kit) m.dispose?.(); if (!m.isInstancedMesh) m.geometry.dispose(); else if (m.userData.decals) m.dispose(); } }
         const hidden = (x,y,z) => this.buildingView?.hiddenAt(x,y,z)||false;
         const parts = meshChunk(this.store, cx, cy, cz, { hidden, tint: this.tint, cutZ: this.cutZ, kit: this.kitView ? kitHandler : null, apron: false });
         const meshes = [];
@@ -71,6 +73,7 @@ export class VoxelView {
             this.group.add(mesh);
             meshes.push(mesh);
         }
+        for (const m of this.decals.buildChunk(this.store, cx, cy, cz, { hidden, cutZ: this.cutZ })) { this.group.add(m); meshes.push(m); }
         if (this.kitView) for (const m of this.kitView.buildChunk(this.store, cx, cy, cz, { hidden, cutZ: this.cutZ, tint: this.tint ? (x, y, z) => this.tint(x, y, z) : null })) { this.group.add(m); meshes.push(m); }
         this.chunks.set(key, meshes);
         this.stats.chunks = this.chunks.size;
@@ -101,6 +104,7 @@ export class VoxelView {
         if(this.concealment){this.concealment.geometry.dispose();this.concealment.material.dispose();}
         for (const ms of this.chunks.values()) for (const m of ms) { if (m.isInstancedMesh) m.dispose(); else m.geometry.dispose(); }
         this.scene.scene.remove(this.group);
+        this.decals.dispose();
         if (this.apron) { for (const m of this.apron.children) m.geometry.dispose(); this.scene.scene.remove(this.apron); }
     }
 }

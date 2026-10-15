@@ -1,6 +1,7 @@
 // Preparation uses a close tactical shoulder view; committed actions use the lower, tighter back-shot camera.
 import * as THREE from 'three';
 import { castRay } from '../../../shared/voxel/Raycast.js';
+export const MAX_YAW = 35 * Math.PI / 180;
 export class CameraDirector {
     constructor(scene) {
         this.scene=scene; this.cam=new THREE.PerspectiveCamera(38,1,0.08,300);
@@ -11,7 +12,19 @@ export class CameraDirector {
         const s=this.store;
         return !s || (!s.isSolid(Math.floor(v.x),Math.floor(v.z),Math.floor(v.y)) && !castRay(s,this.head,{x:v.x,y:v.z,h:v.y},{blocks:(store,x,y,z)=>store.isSolid(x,y,z)}).hit);
     }
-    prepareAim(shooter,target){if(!this.begin(shooter,target.clone().add(new THREE.Vector3(0,-1.1,0)),'prepare'))return;this.look.copy(target);this.apply(0);}
+    prepareAim(shooter,target){if(!this.begin(shooter,target.clone().add(new THREE.Vector3(0,-1.1,0)),'prepare'))return;this.look.copy(target);this.shooter=shooter.clone();this.aimDir=this.flatDir(shooter,target);this.apply(0);}
+    flatDir(a,b){const d=b.clone().sub(a);d.y=0;return d.lengthSq()<1e-6?new THREE.Vector3(0,0,1):d.normalize();}
+    /**
+     * PLAN-07: in the prepare phase the shoulder camera looks where the aim currently is (damped), and swings round
+     * behind the shooter again once the aim leaves ±35° yaw of its framing.
+     */
+    track(point,dt){
+        if(this.phase!=='prepare'||!this.shooter)return;
+        const k=1-Math.exp(-dt/0.12);this.look.lerp(point,k);
+        const d=this.flatDir(this.shooter,point),yaw=Math.acos(THREE.MathUtils.clamp(d.dot(this.aimDir),-1,1));
+        // Pitch is followed by the look-at alone; only a yaw beyond the framing re-anchors the shoulder.
+        if(yaw>MAX_YAW){const look=this.look.clone();if(this.begin(this.shooter,point.clone().add(new THREE.Vector3(0,-1.1,0)),'prepare')){this.look.copy(look);this.aimDir=d;this.elapsed=0;}}
+    }
     prepare(shooter,target) { this.begin(shooter,target,'prepare'); }
     begin(shooter,target,phase='action') {
         this.phase=phase; this.elapsed=0;
@@ -36,5 +49,5 @@ export class CameraDirector {
         if(!this.clear(this.cam.position))this.cam.position.copy(this.from);
         this.cam.aspect=this.scene.aspect || 1;this.cam.updateProjectionMatrix();this.cam.lookAt(this.look);this.cam.updateMatrixWorld();
     }
-    end() {this.active=false;this.phase=null;this.scene.actionCamera=null;this.hidden=new Set();}
+    end() {this.shooter=null;this.active=false;this.phase=null;this.scene.actionCamera=null;this.hidden=new Set();}
 }
