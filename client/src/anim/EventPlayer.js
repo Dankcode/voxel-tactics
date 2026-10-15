@@ -150,6 +150,7 @@ export class EventPlayer {
             case 'fall': { const v = this.view(e.unitId); if (v) { v.animator.play('hit', { restart: true }); if (e.to >= 0) v.setCell(v.unit.x, v.unit.y, e.to); } await this.d(0.2); break; }
             case 'breach': fx.float(this.view(e.unitIds[0])?.worldPosition() || new THREE.Vector3(), 'BREACH!', '#ffd54f', 24); break;
             case 'overwatch': this.view(e.unitId)?.animator.play('hunker'); break;
+            case 'overwatchCancel': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition().add(new THREE.Vector3(0, 0.3, 0)), 'OVERWATCH CANCELLED', '#9fd8ff', 14); break; }
             case 'ability': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition(), ABILITIES[e.abilityId]?.name || e.abilityId, '#7fdbff', 16); break; }
             case 'formation': {
                 const f = e.formation; const tpl = FORMATIONS[f?.template || e.template];

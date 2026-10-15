@@ -4,7 +4,7 @@ import { validateMark, putMark, settleMarks } from './Markers.js';
 import { WALKERS, occupiedCells, walkerReach, walkerFits, fitWalkerSpawn } from './Walker.js';
 import { validateIntel, executeIntel, intelSpread, refreshDrones } from './IntelOps.js';
 import { normalizeInventory } from '../inventory/Inventory.js';
-import { watchSector, inWatchSector } from './WatchSector.js';
+import { watchSector, inWatchSector, watchWeapon } from './WatchSector.js';
 import { LightField } from '../lighting/LightField.js';
 // The deterministic battle engine (PLAN-01 rev 2 §9–§14).
 //
@@ -187,6 +187,24 @@ export class Battle {
         }
     }
     shotAp(u, w) { return Math.max(1, w.ap - (u.buffs.quickAim ? 1 : 0)); }
+    /**
+     * AP a soldier must still have after a move for the tile to be blue: enough to fire the equipped gun or to put it
+     * on overwatch (PLAN-07 §4.5). A melee weapon in hand counts as itself; with no loaded gun, the cheapest action.
+     */
+    blueAp(u) {
+        const w = WEAPONS[u.weapon], ow = WEAPONS[watchWeapon(u)];
+        if (w?.kind === 'melee') return w.ap;
+        if (ow && (u.ammo[ow.id] ?? 0) >= (ow.perShot || 1)) return Math.max(this.shotAp(u, ow), ow.ap);
+        let best = Infinity;
+        for (const id of u.weapons) {
+            const x = WEAPONS[id];
+            if (x.kind === 'melee') best = Math.min(best, x.ap);
+            else if ((u.ammo[id] ?? 0) >= (x.perShot || 1)) best = Math.min(best, this.shotAp(u, x));
+            else if (x.ammo && reserveAmmo(u, x) > 0) best = Math.min(best, x.reloadAp);
+        }
+        for (const [id, n] of Object.entries(u.items || {})) if (n > 0 && THROWABLES[id]) best = Math.min(best, THROWABLES[id].ap);
+        return Number.isFinite(best) ? best : 1;
+    }
 
     validate(intent) {
         if (this.outcome) return 'battle_over';
@@ -500,6 +518,8 @@ export class Battle {
         const fromMoveOnly = Math.min(u.moveOnlyAp, ap);
         u.moveOnlyAp -= fromMoveOnly; ap -= fromMoveOnly;
         u.ap -= ap;
+        // Moving off the watched spot ends your own overwatch (PLAN-07 §4.5): the cone belonged to the old position.
+        if (u.overwatch) { u.overwatch = null; this.emit({ t: 'overwatchCancel', unitId: u.id, reason: 'moved' }); }
         const walked = [path[0]], kinds = [], windowVaults=[], reacted=new Set();
         const movementEvent=this.emit({t:'move',unitId:u.id,path:walked,kinds,windowVaults,ap:ap+fromMoveOnly});
         let jumped = false;

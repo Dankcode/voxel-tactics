@@ -228,17 +228,8 @@ export class Game {
         this.hud.refresh();
         this.debug.refresh();
     }
-    /** Cheapest thing this unit could still do after moving (decides blue vs yellow). */
-    minActionAp(u) {
-        let best = Infinity;
-        for (const id of u.weapons) {
-            const w = WEAPONS[id];
-            if (w.kind === 'melee') best = Math.min(best, w.ap);
-            else if ((u.ammo[id] ?? 0) >= (w.perShot || 1)) best = Math.min(best, this.battle.shotAp(u, w));
-        }
-        for (const [id, n] of Object.entries(u.items)) if (n > 0) best = Math.min(best, THROWABLES[id].ap);
-        return Number.isFinite(best) ? best : 1;
-    }
+    /** AP a blue tile must leave: a shot or overwatch with the equipped gun (Battle.blueAp). */
+    minActionAp(u) { return this.battle.blueAp(u); }
     canStillAct(u) { return alive(u) && (u.ap + u.moveOnlyAp) > 0; }
     readyUnits() { return this.battle.unitsOf(this.battle.activeSide).filter(u => this.controllable(u) && this.canStillAct(u) && !u.overwatch); }
     targetsFor(u, weaponId) {
