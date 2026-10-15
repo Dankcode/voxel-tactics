@@ -26,5 +26,9 @@
   }
  ],
  "anchor": "lower-left",
- "screenHeight": 0.62
+ "screenHeight": 0.62,
+ "muzzle": [
+  0.995,
+  0.271
+ ]
 }

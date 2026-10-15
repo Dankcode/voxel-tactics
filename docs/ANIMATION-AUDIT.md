@@ -22,7 +22,8 @@ Per character `client/public/assets/characters/<art>/`:
   (`s` faces the camera). `clips` maps a clip id to `{ column, frames, fps, loop }`. `anchor` is the foot point
   (0..1 of the frame), `worldHeight` is the quad height in voxels, `events` keys frame events (`fire` → `muzzle`).
   `mirror` is reserved for drawing 5 facings and mirroring 3.
-- `cutin.json` + `cutin/*.png` — the back shot. Ordered layers (`back`, `body`, `arm`, `fx`), each with a
+- `cutin.json` + `cutin/*.png` — the back shot. `muzzle: [u, v]` is the barrel tip as fractions of the art's width and
+  height: the director places the figure so that point is on the crosshair (set it when replacing art). Ordered layers (`back`, `body`, `arm`, `fx`), each with a
   `parallax` factor and optional CSS `blend`. `screenHeight` is the fraction of viewport height.
 - `portrait.png` — 128 × 128 HUD portrait.
 
@@ -42,7 +43,7 @@ Body proportions, helmets / hoods / caps, shields, capes, robes and weapon silho
 | `client/src/anim/SpriteAnimator.js` | Frame playback, loop/one-shot, `next` chaining, fallbacks for missing clips, 8-facing row from camera angle | `mirror` (flip U for 3 facings), blending/crossfade, upper/lower body layering, per-frame anchors, root motion |
 | `client/src/units/UnitView.js` | Vertical quad (depth-tested), sun shadow through the alpha, contact shadow, ground ring, segmented HP pips + AP + stress, selection | Occlusion silhouette (port from PlayerAvatar), depth sprites (SpriteLayer technique), death fade, status icons, lighting the sprite (normal-mapped sprites) |
 | `client/src/anim/CutInTimeline.js` | Keyframed tracks with easing; presets per kind (shot, burst, heavy, melee, throw, breach) | Per-character authored timelines (JSON), sound cues |
-| `client/src/anim/CutInDirector.js` | DOM layered back-view with parallax, letterbox, flash, caption (name + hit %), group layout for breaches, skip, Always/First/Off modes | Per-layer animation (cape sway, recoil on the arm layer), video/Live2D layers if wanted |
+| `client/src/anim/CutInDirector.js` | DOM layered back-view with parallax, letterbox, flash, caption (name + hit %), group layout for breaches, skip; always shown (the First/Off modes were removed); single figures are placed so the art's `muzzle` lands on the crosshair, and an aiming back shot follows the crosshair while aiming | Per-layer animation (cape sway, recoil on the arm layer), video/Live2D layers if wanted |
 | `client/src/anim/CameraDirector.js` | Over-the-shoulder perspective camera with a dolly, actor hidden during the shot | Per-kind rigs (low angle, tracking throws), wall collision, depth of field |
 | `client/src/anim/EventPlayer.js` | Ordered playback of every battle event: walk, fire + tracers, throw arcs, explosions, debris, collapse, falls, floats, alerts, reveals, turn banners | Projectile art per weapon, impact decals, ragdoll-ish falls, speed curve per event |
 | `client/src/render/Fx.js` | Tracers, flashes, explosion spheres, voxel debris, flame cones and smoke puffs mirrored from the element field | Particle sprites, element-specific VFX (ice crystals, water splash, wind lines) |

@@ -80,6 +80,8 @@ export class Game {
         this.cameraDirector = new CameraDirector(this.scene);
         this.aim = new AimController();
         this.cutins = new CutInDirector(cutinRoot, this.cameraDirector);
+        // Leaving the shoulder view takes the aiming back shot with it.
+        this.cameraDirector.onEnd = () => this.cutins.endAim();
         this.player = new EventPlayer(this);this.player.speed=this.options.turnSpeed;
         this.hud = new Hud(hudRoot, this);
         this.debug = new DebugTools(this, hudRoot);
@@ -337,7 +339,6 @@ export class Game {
         if(Number.isFinite(top)){this.scene.rig.glide=null;this.scene.rig.target.y=top-2;}
         this.setLevel(top);this.hoverPick=null;this.hoverCell=null;
     }
-    cycleCutins() { const i = CUTIN_MODES.indexOf(this.cutins.mode); this.cutins.mode = CUTIN_MODES[(i + 1) % CUTIN_MODES.length]; this.hud.refresh(); }
 
     // ------------------------------------------------------------------ targeting
     enterTargeting() {
@@ -345,7 +346,7 @@ export class Game {
         this.targets = this.targetsFor(u, this.mode.weaponId);
         const keep = this.targets.find(t => t.id === this.lastTargetId) || this.targets[0];
         if (keep) this.aimAt(u, keep, 'torso', { frame: true });
-        else {this.freeAim={x:u.x+.5,y:u.y-8,h:u.z+2.1};this.aim.snap(this.freeAim);this.freeAimManual=true;this.cameraDirector.prepareAim(new THREE.Vector3(u.x+.5,u.z+1,u.y+.5),new THREE.Vector3(this.freeAim.x,this.freeAim.h,this.freeAim.y));}
+        else {this.freeAim={x:u.x+.5,y:u.y-8,h:u.z+2.1};this.aim.snap(this.freeAim);this.freeAimManual=true;this.cutins.beginAim(u);this.cameraDirector.prepareAim(new THREE.Vector3(u.x+.5,u.z+1,u.y+.5),new THREE.Vector3(this.freeAim.x,this.freeAim.h,this.freeAim.y));}
     }
     cycleTarget(d = 1) {
         const u = this.selectedUnit(); if (!u || !this.targets?.length) return;
@@ -728,7 +729,7 @@ export class Game {
         // PLAN-07: the aim swings onto the new anchor through the aim spring; the camera only re-frames when it
         // was not already in the shoulder view.
         const anchor=partCentre(target,part);this.freeAimManual=false;
-        if(!this.aim.current||this.cameraDirector.phase!=='prepare'){this.aim.snap(anchor);this.freeAim={...anchor};this.cameraDirector.prepareAim(new THREE.Vector3(u.x+.5,u.z+1,u.y+.5),new THREE.Vector3(anchor.x,anchor.h,anchor.y));}
+        if(!this.aim.current||this.cameraDirector.phase!=='prepare'){this.aim.snap(anchor);this.freeAim={...anchor};this.cutins.beginAim(u);this.cameraDirector.prepareAim(new THREE.Vector3(u.x+.5,u.z+1,u.y+.5),new THREE.Vector3(anchor.x,anchor.h,anchor.y));}
         else this.aim.setTarget(anchor);
         this.targetInfo.part = part;
         this.overlays.showCone(this.targetInfo.muzzle, partCentre(target, part), this.targetInfo.spread);

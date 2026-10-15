@@ -1045,7 +1045,9 @@ def make_cutin(name, ch):
                 # Paint order back-to-front; parallax is how far each layer drifts during the push-in.
                 'layers': [{'id': 'back', 'image': 'cutin/back.png', 'parallax': 0.4}, {'id': 'body', 'image': 'cutin/body.png', 'parallax': 0.7},
                            {'id': 'arm', 'image': 'cutin/arm.png', 'parallax': 1.0}, {'id': 'fx', 'image': 'cutin/fx.png', 'parallax': 1.2, 'blend': 'screen'}],
-                'anchor': 'lower-left', 'screenHeight': 0.62}
+                'anchor': 'lower-left', 'screenHeight': 0.62,
+                # Barrel tip in the art (fractions of width/height): the back shot is placed so it lands on the crosshair.
+                'muzzle': [round(min(0.995, tip[0] / W_), 3), round(max(0.0, tip[1]) / H, 3)]}
     with open(os.path.join(OUT, name, 'cutin.json'), 'w') as f:
         json.dump(manifest, f, indent=1)
 

@@ -143,7 +143,6 @@ export class DebugTools {
             case 'step': this.paused = true; this.step(); break;
             case 'auto': g.autoPlayer = !g.autoPlayer; if (g.autoPlayer && g.battle.activeSide === 'player') g.maybeRunAi(); break;
             case 'speed': g.player.speed = g.player.speed >= 8 ? 1 : g.player.speed * 2; break;
-            case 'cutins': g.cycleCutins(); break;
             case 'fog': g.fog = !g.fog; g.voxelView.rebuildAll(); g.updateEnemyVisibility();g.overlays.showObjective(g.battle); break;
             case 'reveal': this.op('reveal'); break;
             case 'alert': this.op('alert'); break;
@@ -249,7 +248,7 @@ export class DebugTools {
             body = `<p>Round ${b.round} · active side <b>${b.activeSide}</b>${g.aiRunning ? ' · AI running' : ''}</p>
                 <div class="row"><button data-d="endSide">End ${b.activeSide} turn <kbd>F10</kbd></button><button data-d="manualEnemy" class="${this.manualEnemy ? 'on' : ''}">Control enemy side: ${this.manualEnemy ? 'ON' : 'off'}</button></div>
                 <div class="row"><button data-d="pause" class="${this.paused ? 'on' : ''}">${this.paused ? 'AI paused' : 'Pause AI'}</button><button data-d="step">Step AI action <kbd>F9</kbd></button><button data-d="auto" class="${g.autoPlayer ? 'on' : ''}">Autoplay squad: ${g.autoPlayer ? 'ON' : 'off'}</button></div>
-                <div class="row"><button data-d="speed">Playback ×${g.player.speed}</button><button data-d="cutins">Back shots: ${g.cutins.mode}</button><button data-d="alert">Alert all pods</button></div>
+                <div class="row"><button data-d="speed">Playback ×${g.player.speed}</button><button data-d="alert">Alert all pods</button></div>
                 <p class="hint">With "control enemy side" on, enemy units can be selected and ordered like your own during the enemy phase.</p>`;
         } else if (this.tab === 'view') {
             body = `<div class="row"><button data-d="fog" class="${g.fog ? 'on' : ''}">Fog of war: ${g.fog ? 'on' : 'off'}</button><button data-d="reveal">Reveal all rooms</button><button data-d="shadows">Shadows: ${g.scene.renderer.shadowMap.enabled ? 'on' : 'off'}</button></div>

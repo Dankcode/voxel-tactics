@@ -49,5 +49,5 @@ export class CameraDirector {
         if(!this.clear(this.cam.position))this.cam.position.copy(this.from);
         this.cam.aspect=this.scene.aspect || 1;this.cam.updateProjectionMatrix();this.cam.lookAt(this.look);this.cam.updateMatrixWorld();
     }
-    end() {this.shooter=null;this.active=false;this.phase=null;this.scene.actionCamera=null;this.hidden=new Set();}
+    end() {const was=this.active;this.shooter=null;this.active=false;this.phase=null;if(was)this.onEnd?.();this.scene.actionCamera=null;this.hidden=new Set();}
 }

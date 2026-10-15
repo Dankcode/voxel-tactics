@@ -9,7 +9,7 @@ contract came from there; see `PROVENANCE.md`). Current focus: **mechanics**. Fi
 
 A present-day, turn-based co-op tactics game in three.js: **XCOM 2** side phases, cover, overwatch, breaching and
 an XCOM-style camera, and **Phoenix Point** free-aim ballistics with body parts, on fully destructible maps.
-Characters are 2D. Every committed action plays a **Chaos Zero Nightmare-style back shot**.
+Characters are 2D. Every switch to the shoulder camera uses a **Chaos Zero Nightmare-style back shot**: while aiming, and on every committed action. The art sits in the lower left with its barrel tip on the crosshair.
 
 The battlefield is a voxel grid underneath — movement, cover, line of sight, ballistics, fire and destruction run
 on it — but nothing is drawn as blocks: terrain is meshed with rounded edges, kerbs and recessed roads, buildings
@@ -42,7 +42,6 @@ Deep links for testing:
 | `/?play=operation&plot=downtown&seed=4` | Generated operation (PLAN-04): a new map per seed. `plot` = `downtown` · `industrial` · `suburb`; optional `objective` (`recover` · `extract` · `hold` · `eliminate`) and `time` (`day` · `dawn` · `dusk` · `overcast` · `night` · `night-ops`) |
 | `…&auto=1` | Squad plays itself (AI vs AI), useful to watch balance |
 | `/?test=…` | Launch a previously copied scenario setup (legacy links remain supported) |
-| `…&cutins=off` | Skip back shots (`always` / `first` / `off`) |
 | `…&debug=1` | Start with debug mode on (or tick *Debug mode* in the menu, or press F1 in battle) |
 
 **Online co-op:** `npm run server` (port 2567), then *Host online co-op* in the menu and share the room code;
@@ -94,7 +93,7 @@ Turn it on with `?debug=1`, the menu checkbox, Settings → Test / debug tools, 
 |---|---|
 | **World** (click the map) | inspect (`F2`), teleport the selected unit (`F3`), destroy voxels (`F4`), place any material (radius / height), explode (`F6`, radius / power), ignite (`F7`), freeze (`F8`), soak, gust, quake, smoke, spawn any unit type on either side |
 | **Units** | every unit with HP / AP / position: select, +AP, heal / revive, kill, refill, +stress, burn / chill / stun; heal squad, +AP to the active side, kill visible, god mode |
-| **Turn** | end the active side (`F10`), take control of the enemy side, pause the AI and step it one action at a time (`F9`), autoplay the squad, playback speed, back-shot mode, alert all pods |
+| **Turn** | end the active side (`F10`), take control of the enemy side, pause the AI and step it one action at a time (`F9`), autoplay the squad, playback speed, alert all pods |
 | **View** | fog of war, reveal rooms, overlays (cover map, line of sight from the selected unit, rooms, reach cost, element field), lighting (day / dusk / night), shadows, render stats |
 | **Mission** | restart, new seed, generate fresh map-builder layouts, jump to any map, map metrics and gates, weapon stats, battle hash |
 

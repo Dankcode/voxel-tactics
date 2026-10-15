@@ -9,5 +9,9 @@
       "parallax": 1
     }
   ],
-  "screenHeight": 0.72
+  "screenHeight": 0.72,
+  "muzzle": [
+    0.995,
+    0.392
+  ]
 }

@@ -150,7 +150,7 @@ if (params.get('staged')) {
     if (setup) startBattle(() => LocalSession.create(setup.desc), { generating: setup.desc.scenario === OPERATION_ID, debug: !!setup.desc.debug, autopilot: !!setup.client?.autopilot || !!params.get('auto') });
     else showMenu();
 } else
-// Deep link for quick testing: ?play=cedar-close&seed=3 (&debug=1 &auto=1 &cutins=off)
+// Deep link for quick testing: ?play=cedar-close&seed=3 (&debug=1 &auto=1)
 if(params.get('play')&&params.has('brief')) {
     showMenu().then(()=>startBattle(()=>LocalSession.create({scenario:params.get('play'),seed:Number(params.get('seed'))||1,debug:!!params.get('debug')})));
 } else if (params.get('play')) {
@@ -159,7 +159,6 @@ if(params.get('play')&&params.has('brief')) {
         menu.classList.add('hidden');
         game = new Game({ canvas: $('#view'), hudRoot: $('#hud'), cutinRoot: $('#cutin-layer'), floatRoot: $('#float-layer'), onExit: showMenu });
         await game.start(session);
-        if (params.get('cutins')) game.cutins.mode = params.get('cutins');
         if (params.get('auto')) { game.autoPlayer = true; game.maybeRunAi(); }
         window.__game = game;
     });

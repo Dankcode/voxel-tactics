@@ -12,6 +12,6 @@ export function updateReticle(g){
     const x=(ndc.x+1)*rect.width/2+rect.left,y=(1-ndc.y)*rect.height/2+rect.top;
     // PLAN-07: the outer ring is the whole cone at the aim distance (every round lands inside it), the inner ring holds
     // half of them (uniform disc: r·√0.5). No artificial floor: a sniper's pinpoint is a pinpoint.
-    const R=reticleRadius(radius);el.style.left=`${x}px`;el.style.top=`${y}px`;el.style.setProperty('--aim-radius',`${R}px`);el.style.setProperty('--aim-inner',`${(R*Math.SQRT1_2).toFixed(1)}px`);
+    const R=reticleRadius(radius);el.style.left=`${x}px`;el.style.top=`${y}px`;g.cutins?.placeAim?.({x,y});el.style.setProperty('--aim-radius',`${R}px`);el.style.setProperty('--aim-inner',`${(R*Math.SQRT1_2).toFixed(1)}px`);
     el.querySelector('span').textContent=`${w.name} · ${dist.toFixed(1)} M · ±${(cone).toFixed(2)} M${g.aim?.settled===false?' · STEADYING':''}`;
 }

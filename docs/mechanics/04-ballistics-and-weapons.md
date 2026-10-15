@@ -21,6 +21,10 @@ targets' body-part cylinders. Code: `shared/battle/Ballistics.js`, `Battle.fireW
 - **Shoulder camera and back shot**: while aiming, the shoulder camera looks where the aim currently is and swings
   round behind the shooter once the aim leaves ±35° of its framing; the shooter's back-view sprite turns to the aim
   bearing every frame. The committed back shot starts from that pose.
+- **Back shot on every camera switch**: while aiming, the character's back-view illustration sits in the lower left
+  with its barrel tip (cutin.json `muzzle`) on the crosshair and follows it; its lower edge fades out so the view stays
+  clear. A committed action plays the full cut-in placed the same way, with a crosshair at the aim point. There is no
+  setting that skips it.
 - **Muzzle and leaning** (`chooseMuzzle`): the shoulder (tile centre, z+1+1.35), or that point shifted **0.55
   tiles** right, then left, perpendicular to the aim line: the first candidate that is not inside a solid voxel and
   has no `block` voxel on the straight line to the aim point is used; otherwise the centre. This is how units lean
