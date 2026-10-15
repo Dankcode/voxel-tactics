@@ -2,10 +2,10 @@ import { InventoryPrep } from '../ui/InventoryPrep.js';
 import { Client } from 'colyseus.js';
 import { CONTENT_CONTRACT } from '../../../shared/session/ContentContract.js';
 import { SQUADS, CLASSES } from '../../../shared/content/units.js';
-import { SCENARIOS } from '../../../shared/session/Scenarios.js';
+import { SCENARIOS, sanitizeDesc } from '../../../shared/session/Scenarios.js';
 const root=document.querySelector('#shell');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const url=`${location.protocol==='https:'?'wss':'ws'}://${location.hostname}:2567`;
+const url=`${location.protocol==='https:'?'wss':'ws'}://${location.host}`;
 let room,state,myId;
 let draft=null;try{draft=JSON.parse(sessionStorage.getItem('fireteam.stagingDraft')||'null');}catch{}
 root.innerHTML=`<a href="/">← Battle menu</a><p class="eyebrow">Cooperative operations</p><h1>Mission briefing</h1><p>Assign the squad, review the mission, launch immediately.</p><section id="entry"><div class="row"><label>Name <input id="name" value="Player" maxlength="24"></label><label>Server <input id="server" value="${url}"></label></div><div class="row" style="margin-top:16px"><button id="host" class="primary">Host briefing</button><label>Room code <input id="code"></label><button id="join">Join briefing</button></div></section><div id="lobby"></div><section id="equipment" hidden></section><p id="status" role="status"></p>`;
@@ -14,7 +14,7 @@ async function connect(host) {
     try {
         const client=new Client(document.querySelector('#server').value);
         const options={name:document.querySelector('#name').value,contract:CONTENT_CONTRACT};
-        room=host?await client.create('staging',{...options,desc:draft?.desc||{scenario:'proving-grounds',seed:27,intel:true,asyncCoop:true}}):await client.joinById(document.querySelector('#code').value.trim(),options);
+        room=host?await client.create('staging',{...options,desc:draft?.desc||sanitizeDesc()}):await client.joinById(document.querySelector('#code').value.trim(),options);
         room.onMessage('state',m=>{state=m;render();});room.onMessage('seat',m=>{myId=m.id;render();});
         room.onMessage('error',m=>status(m.message));room.onMessage('launched',m=>{
             // Only the validated, frozen launch contract crosses into the battle entry point.

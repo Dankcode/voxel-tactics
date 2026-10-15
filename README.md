@@ -27,14 +27,17 @@ are drawn as whole objects. The block-world look stays in vibe-game.
 
 ```bash
 npm install            # on macOS run this natively (don't copy node_modules between machines)
-npm run dev            # http://localhost:5173  → menu
+npm run dev            # http://localhost:2567 → shared live UI, maps and co-op
 npm test               # mechanics and co-op tests: voxels, cover, elements, ballistics, battle, buildings, maps, tile set, co-op room
 ```
+
+Claude and Codex share the same checkout and live environment. The menu, descriptor fallback, and co-op briefing all default to **Burger District** using its existing authored map package and visual design. The shared visual check is [Burger District · seed 1](http://localhost:2567/?play=burger-district&seed=1). Legacy port 5173 redirects to this server, preserving deep links.
 
 Deep links for testing:
 
 | URL | What |
 |---|---|
+| `/?play=burger-district&seed=1` | Shared Claude/Codex baseline: authored Burger District map and design |
 | `/?play=cedar-close&seed=3` | Suburbs: two modern homes and a street |
 | `/?play=main-street` · `harbor-yard` · `route-9` | Downtown (dusk) · Industrial docks (night) · Roadside gas station and motel (dusk) |
 | `/?play=signal-house&seed=1` | Four-storey mechanical fixture: stairs, independent ladder escapes, locked service rooms and upper-floor intel recovery |
@@ -44,9 +47,9 @@ Deep links for testing:
 | `/?test=…` | Launch a previously copied scenario setup (legacy links remain supported) |
 | `…&debug=1` | Start with debug mode on (or tick *Debug mode* in the menu, or press F1 in battle) |
 
-**Online co-op:** `npm run server` (port 2567), then *Host online co-op* in the menu and share the room code;
+**Online co-op:** `npm run dev` (shared live UI and backend on port 2567), then *Host online co-op* in the menu and share the room code;
 teammates use *Join*. Soldiers are dealt round-robin; the squad's turn ends when everyone has pressed End turn.
-`npm run dev:all` runs client and server together.
+`npm run dev:all` is an alias for that same shared environment. Stop development before using `npm run play` for a production check.
 
 ## How a turn plays (XCOM 2 flow, Phoenix Point AP)
 
@@ -125,9 +128,9 @@ Map generation replaces the current local battle and resets its progress.
   scout drones, quiet wall cuts, high-precision fire without hit percentages, independent 2–4-player turns and
   per-player support strikes. See [docs/INTEL-COOP-TEST.md](docs/INTEL-COOP-TEST.md).
 
-`npm run dev` (port 5173) always serves the live source. The game server on port 2567 serves the last
-`npm run build`, so after pulling or editing code use **`npm run play`** (build, then server); the server warns
-when its build is older than the source. The menu footer shows which commit a page was built from.
+`npm run dev` serves live source, authored map assets, and co-op from **one origin, port 2567**. Vite runs inside the game server; shared/server edits restart the process, while UI edits hot reload. Port 5173 only redirects to the shared environment. Both Claude and Codex should reuse this running server and test Burger District at seed 1.
+
+`npm run play` builds and serves the same client at the same origin for production verification. `npm run server` is an alias for this build-first production launcher, so it cannot silently serve an old client. Stop the current server before switching between development and production. Client-workspace `dev` and `preview` scripts also use these root launchers. The menu footer identifies the source commit.
 
 ## Play and after-action reports
 

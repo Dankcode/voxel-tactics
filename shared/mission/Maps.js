@@ -33,5 +33,6 @@ export const MAPS = Object.freeze([
     { id: PROVING_GROUNDS_ID, name: 'Training Facility', theme: 'Training', text: 'Every system in one map: firing range, bunker, fuel store, watchtower, pond, hill.', build: buildProvingGrounds }
 ]);
 
-export const DEFAULT_MAP = CEDAR_CLOSE_ID;
+// Shared baseline for local play, co-op, and both agents' visual checks.
+export const DEFAULT_MAP = 'burger-district';
 export const mapById = id => MAPS.find(m => m.id === id) || null;

@@ -4,7 +4,7 @@ import { Game } from './Game.js';
 import { LocalSession } from './net/LocalSession.js';
 import { OnlineSession } from './net/OnlineSession.js';
 import { SQUADS } from '../../shared/content/units.js';
-import { SCENARIOS, OPERATION_ID, operationFor } from '../../shared/session/Scenarios.js';
+import { SCENARIOS, OPERATION_ID, operationFor, scenarioId } from '../../shared/session/Scenarios.js';
 import { PLOT_FAMILIES, PLOT_IDS } from '../../shared/mapgen/PlotCatalogue.js';
 import { OPERATION_OBJECTIVES, OPERATION_TIMES } from '../../shared/mapgen/Generator.js';
 import { drawOperationPreview } from './ui/OperationPreview.js';
@@ -15,18 +15,18 @@ import { DISTRICT_MAP_IDS } from '../../shared/mission/LargeDistricts.js';
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const params = new URLSearchParams(location.search);
-// Which code this page was built from (vite.config.js): `npm run dev` is always live source; the server on :2567
-// serves the last `npm run build`, so compare this line when two runs look different.
+// Which code this page was built from (vite.config.js): the shared :2567 server uses live source
+// in development and the last build in production.
 const BUILD = typeof __BUILD__ !== 'undefined' ? __BUILD__ : { commit: 'dev', time: '', dirty: false };
 const menu = $('#menu');
 let game = null;
 
 async function showMenu(opts = {}) {
     menu.classList.remove('hidden');
-    const defaultServer = `ws://${location.hostname || 'localhost'}:2567`;
+    const defaultServer = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}`;
     const themes = [...new Set(SCENARIOS.map(s => s.theme))];
     const linked = opts.desc?.scenario || params.get('map');
-    const pick = linked === OPERATION_ID || !linked ? OPERATION_ID : SCENARIOS.some(s => s.id === linked) ? linked : SCENARIOS[0].id;
+    const pick = scenarioId(linked);
     const op = { plot: PLOT_IDS.includes(params.get('plot')) ? params.get('plot') : 'downtown', objective: OPERATION_OBJECTIVES.includes(params.get('objective')) ? params.get('objective') : '', timeOfDay: OPERATION_TIMES.includes(params.get('time')) ? params.get('time') : '' };
     menu.innerHTML = `
       <div class="menu-card">
@@ -71,7 +71,7 @@ async function showMenu(opts = {}) {
           <button id="m-join">Join</button>
         </div>
         <p class="status" id="m-status" role="status"></p>
-        <p class="small">Online co-op needs <code>npm run server</code> running. Units are dealt to players round-robin; the squad ends its turn when every player has pressed End turn. With the experimental intel rules each player ends and refreshes their own turn, with an enemy response per completion; supports unlock after detection and recharge every 10 personal turns; sensor contacts are shared snapshots, not firing targets.</p>
+        <p class="small">Online co-op uses this same game server. Units are dealt to players round-robin; the squad ends its turn when every player has pressed End turn. With the experimental intel rules each player ends and refreshes their own turn, with an enemy response per completion; supports unlock after detection and recharge every 10 personal turns; sensor contacts are shared snapshots, not firing targets.</p>
         <p class="small build">Build ${esc(BUILD.commit)} · ${esc(BUILD.time)}${BUILD.dirty ? ' · uncommitted changes' : ''}</p>
       </div>`;
     $('#m-intel').onchange = e => { $('#m-support-row').hidden = !e.target.checked; };

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { execSync } from 'node:child_process';
 
 // Stamp every page with the code it came from, so two runs that look different can be told apart:
-// `npm run dev` serves live source; `npm run build` (served by the game server on :2567) is a snapshot.
+// The shared server embeds Vite for live source on :2567; production on the same port is a snapshot.
 function buildStamp(command) {
     const git = cmd => { try { return execSync(cmd, { cwd: __dirname, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch { return ''; } };
     return {

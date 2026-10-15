@@ -9,9 +9,9 @@
     "server"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace=client",
-    "dev:all": "concurrently --kill-others-on-fail --names client,server \"npm run dev --workspace=client\" \"npm start --workspace=server\"",
-    "server": "npm start --workspace=server",
+    "dev": "npm run content:sync && node --watch-path=server/src --watch-path=shared --watch-path=client/public/maps --watch-preserve-output server/src/index.js --dev",
+    "dev:all": "npm run dev",
+    "server": "npm run play",
     "play": "npm run build && npm start --workspace=server",
     "build": "npm run content:sync && npm run build --workspace=client",
     "test": "npm run content:check && node --test shared/voxel/*.test.js shared/elements/*.test.js shared/battle/*.test.js shared/mission/*.test.js shared/mapgen/*.test.js shared/session/*.test.js client/src/render/kit/*.test.js server/test/*.test.js",
