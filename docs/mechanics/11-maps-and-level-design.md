@@ -16,14 +16,27 @@ Measured on seed 1:
 <!-- generated:maps -->
 | id | name | theme | size W×D×H | buildings | rooms | enemies | pods | lighting | cover density | cover gap | killing field | sightline median | lanes | breachability | spawn safe | gates (seed 1) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `cedar-image` | Cedar Close · Image Study | Suburbs | 54×46×18 | 2 | 16 | 7 | 5 | dusk | 44% | 5 | 10 | 9.6 | 4 | 100% | yes | PASS |
-| `signal-house` | Signal House | Downtown | 58×42×18 | 1 | 16 | 4 | 3 | overcast | 43% | 6 | 12 | 7.3 | 4 | 100% | yes | PASS |
-| `subway-crossing` | Subway Crossing | Downtown | 58×42×18 | 1 | 8 | 4 | 3 | night-ops | 38% | 6 | 12 | 9.2 | 4 | 100% | yes | PASS |
-| `cedar-close` | Cedar Close | Suburbs | 48×40×12 | 2 | 8 | 7 | 4 | day | 47% | 4 | 5 | 6.3 | 4 | 100% | yes | PASS |
-| `main-street` | Main Street | Downtown | 52×42×14 | 4 | 17 | 8 | 4 | dusk | 46% | 4 | 6 | 8.4 | 4 | 94% | yes | PASS |
-| `harbor-yard` | Harbor Yard | Industrial | 54×44×14 | 2 | 5 | 8 | 4 | night | 41% | 5 | 4 | 7.0 | 2 | 100% | yes | PASS |
-| `route-9` | Route 9 Stop | Roadside | 52×42×12 | 2 | 6 | 7 | 4 | dawn | 35% | 5 | 5 | 10.5 | 4 | 100% | yes | PASS |
-| `proving-grounds` | Training Facility | Training | 60×46×16 | 4 | 17 | 9 | 5 | overcast | 39% | 5 | 5 | 8.5 | 4 | 76% | yes | PASS |
+| `park-district` | Civic District | Large districts | 96×72×18 | 6 | 24 | 7 | 3 | overcast | 33% | 5 | 8 | 11.8 | 4 | 92% | yes | PASS |
+| `mall-district` | Market Arcade | Large districts | 96×72×18 | 7 | 29 | 7 | 3 | overcast | 35% | 5 | 7 | 7.5 | 4 | 79% | yes | PASS |
+| `drainage-district` | Drainage Quarter | Large districts | 96×72×18 | 3 | 22 | 7 | 3 | overcast | 32% | 5 | 8 | 7.0 | 4 | 100% | yes | PASS |
+| `suburb-district` | Maple Heights | Large districts | 96×72×18 | 7 | 24 | 7 | 3 | overcast | 29% | 5 | 9 | 11.8 | 4 | 63% | yes | PASS |
+| `downtown-district` | Downtown Core | Large districts | 96×72×18 | 8 | 44 | 7 | 3 | overcast | 40% | 5 | 8 | 7.0 | 4 | 61% | yes | PASS |
+| `dockside-district` | Dockside Yards | Large districts | 96×72×18 | 4 | 16 | 7 | 3 | overcast | 32% | 5 | 8 | 12.8 | 4 | 100% | yes | PASS |
+| `highway-district` | Interstate Strip | Large districts | 96×72×18 | 3 | 15 | 7 | 3 | overcast | 30% | 5 | 7 | 11.8 | 4 | 100% | yes | PASS |
+| `terrace-district` | Hillside Terraces | Large districts | 112×80×22 | 5 | 46 | 7 | 3 | overcast | 31% | 5 | 8 | 8.1 | 4 | 96% | yes | PASS |
+| `sunken-junction` | Sunken Junction | Split-level districts | 64×56×16 | 4 | 10 | 2 | 2 | overcast | 32% | 5 | 8 | 7.4 | 4 | 100% | yes | PASS |
+| `sunken-boulevard` | Sunken Boulevard | Split-level districts | 56×40×16 | 3 | 12 | 2 | 2 | overcast | 34% | 5 | 8 | 5.8 | 4 | 92% | yes | PASS |
+| `freight-terraces` | Freight Terraces | Split-level districts | 56×40×16 | 2 | 8 | 2 | 2 | dusk | 36% | 6 | 6 | 6.4 | 2 | 100% | yes | PASS |
+| `architecture-yard` | Architecture Yard | Training | 48×44×13 | 3 | 24 | 1 | 1 | overcast | 37% | 6 | 7 | 8.1 | 4 | 83% | yes | PASS |
+| `burger-district` | Burger District · Upper-left Parcels | Roadside | 112×56×18 | 3 | 12 | 10 | 7 | day | 34% | 6 | 10 | 14.9 | 4 | 92% | yes | PASS |
+| `cedar-image` | Cedar Close · Image Study | Suburbs | 56×48×18 | 2 | 15 | 7 | 5 | dusk | 50% | 5 | 6 | 8.1 | 4 | 100% | yes | PASS |
+| `signal-house` | Signal House | Downtown | 64×48×18 | 1 | 16 | 4 | 3 | overcast | 50% | 5 | 8 | 7.8 | 4 | 100% | yes | PASS |
+| `subway-crossing` | Subway Crossing | Downtown | 64×48×18 | 1 | 8 | 4 | 3 | night-ops | 50% | 4 | 6 | 9.1 | 3 | 100% | yes | PASS |
+| `cedar-close` | Cedar Close | Suburbs | 48×40×12 | 2 | 8 | 7 | 4 | day | 50% | 5 | 5 | 6.4 | 4 | 100% | yes | PASS |
+| `main-street` | Main Street | Downtown | 52×42×14 | 4 | 17 | 8 | 4 | dusk | 52% | 4 | 6 | 7.0 | 4 | 94% | yes | PASS |
+| `harbor-yard` | Harbor Yard | Industrial | 54×44×14 | 2 | 5 | 8 | 4 | night | 39% | 5 | 5 | 7.0 | 2 | 100% | yes | PASS |
+| `route-9` | Route 9 Stop | Roadside | 52×42×12 | 2 | 6 | 7 | 4 | dawn | 37% | 5 | 5 | 8.8 | 4 | 100% | yes | PASS |
+| `proving-grounds` | Training Facility | Training | 60×46×16 | 4 | 17 | 11 | 7 | overcast | 46% | 5 | 5 | 7.3 | 4 | 76% | yes | PASS |
 <!-- /generated:maps -->
 
 Every map fights the Syndicate. `lighting` and `defaultCut` (storey cutaway 4) in `meta` are presentation only.

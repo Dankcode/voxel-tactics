@@ -36,9 +36,17 @@ const SECTIONS = {
         return table(['id', 'name', 'round', 'AP', 'proj.', 'dmg/proj.', 'pierce', 'shred', 'spread', 'range', 'max range', 'ammo', 'reload AP', 'voxel dmg', 'noise', 'element'], rows);
     },
     calibers() {
-        const rows = Object.values(CALIBERS).map(c => [`\`${c.id}\``, c.name, c.damage, c.pierce, c.voxel,
+        const rows = Object.values(CALIBERS).map(c => [`\`${c.id}\``, c.name, c.damage, c.pierce, c.voxel, c.energy ?? 0,
             Object.values(WEAPONS).filter(w => w.caliber === c.id).map(w => w.name).join(', ') || '—']);
-        return table(['id', 'round', 'dmg/proj.', 'pierce', 'voxel dmg', 'fired by'], rows);
+        return table(['id', 'round', 'dmg/proj.', 'pierce', 'voxel dmg', 'penetration energy', 'fired by'], rows);
+    },
+    resistance() {
+        const by = new Map();
+        for (const m of MATERIALS) if (Number.isFinite(m.resistance)) (by.get(m.resistance) || by.set(m.resistance, []).get(m.resistance)).push(`\`${m.key}\``);
+        const rows = [...by].sort((a, b) => a[0] - b[0]).map(([r, keys]) => [r, keys.join(', '),
+            Object.values(CALIBERS).filter(c => (c.energy ?? 0) > r).map(c => c.name).join(', ') || '—']);
+        rows.push(['∞', 'everything else (ground, floors, slabs, steel, stone masses)', '—']);
+        return table(['resistance', 'materials', 'rounds that pass through one cell (straight on)'], rows);
     },
     melee() {
         const rows = Object.values(WEAPONS).filter(w => w.kind === 'melee').map(w => [

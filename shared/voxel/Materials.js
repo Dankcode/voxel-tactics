@@ -23,7 +23,8 @@ export const RESISTANCE = Object.freeze({
     door: 2, timber: 2, roof: 2, privacy_fence: 2, car_cabin: 2, appliance: 2, siding: 2, roof_metal: 2, shelf: 2,
     cabinet: 2, bench: 2, cart: 2, barrel_water: 2, ice: 2, deep_ice: 2,
     stucco: 3, plaster: 3, crystal: 3, pump: 3,
-    car_body: 4, dumpster: 4, container: 4, trunk: 4, rubble: 4,
+    dumpster: 4, container: 4, trunk: 4, rubble: 4,
+    car_body: 6,
     brick: 6, sandbag: 6, stone: 7, drystone: 7,
     concrete_wall: 9, planter: 9,
     jersey: 14, city_wall: 14

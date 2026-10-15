@@ -33,7 +33,7 @@ Intel mode uses much tighter physical projectile spread and removes hit percenta
 2. Spend P2's actions. End P1's turn: P1 refreshes immediately and P2 stays spent. Verify all clients show the same map and positions.
 3. Use sensing through a wall. Verify the contact appears for teammates but cannot be selected as an unseen shot target.
 4. Place a drone away from ordinary guards, then near a Drone Hunter. Check the detection/loss log.
-5. Quiet-cut a wall behind an unalerted guard, then move into their cone. Check that detection unlocks support.
+5. Quiet-cut a wall behind an unalerted guard, then move into their cone. Check the detection log. (Support no longer waits for detection: it is ready from the start and recharges 10 personal turns after use — PLAN-07.)
 6. Preview each support shape, fire into a building, and verify holes/collapse across clients. Check friendly fire and blocked cooldown; complete ten caller turns before reuse.
 7. Join late, leave, and reconnect during the 60-second grace window. This is manual coverage; automated coverage validates ordered replay, ownership, independent refreshes and matching state hashes.
 

@@ -76,3 +76,24 @@ sample: Cedar Close 50 %, Main Street 50 %, Harbor Yard 100 %, Route 9 Stop 100 
 Battles take 14–16 rounds. Enemy counts per map are set in each map file (`spawns.enemy`); before tuning, run at
 least 24 seeds per map and pick the target (PLAN-01 §15.3: starter kit wins 55–75 %). The old generated-burg
 numbers were removed with the burg generator.
+
+## PLAN-07 combat feel (2026-10-15): data for manual tuning
+
+Leon tunes balance by hand; these AI-vs-AI runs (`tools/sim/battle_sim.mjs --rounds 30`, standard squad, formations
+on) are recorded as a starting point, not a target that was hit. The 12–16 seed samples swing about ±12 pts.
+
+| Run | Change | Cedar Close | Civic District | Downtown Core | Dockside Yards |
+|---|---|---|---|---|---|
+| A | penetration, breakable cover, 7-hostile district pods; old spreads | 75 % · 12.1 rds | 33 % · 23.3 rds | 50 % · 22.8 rds | 67 % · 24.2 rds |
+| B | spreads × 2.5 (AK 1.3°) | 92 % · 13.3 | 83 % · 26.2 | — | — |
+| C | AK 0.9° | 56 % · 13.8 | 50 % · 25.0 | 42 % · 23.3 | — |
+| D | AK 1.1°, 6-hostile pods | 88 % · 14.3 | 81 % · 25.7 | 83 % · 24.7 | — |
+| **E (shipped)** | AK 1.0°, 7-hostile pods | 81 % · 14.9 | 50 % · 25.8 | 19 % · 23.7 | — |
+
+Observations:
+- Cedar Close is dominated by the cultists' AK spread: 0.9° → 56 %, 1.0° → 81 %, 1.1° → 88 %.
+- The 96 × 72 districts run 23–26 rounds against the 30-round cap (long walks between pods); Downtown is the hardest
+  (dense city blocks, enemies indoors).
+- Voxels destroyed per battle rose from 14 (before PLAN-07) to 31–57.
+- Shipped values: AR 1.0°, Marksman 0.6°, Carbine 0.8°, AK 1.0°, Pistol 1.4°, Sniper 0.3°, Shotgun 4°; district pods
+  3 + 2 + 2 (`shared/mapgen/district/Pods.js`). Raw output: re-run with the command above.

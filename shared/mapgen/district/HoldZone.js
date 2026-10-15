@@ -209,8 +209,27 @@ export function interiorHoldZone(m,spawn) {
 
 /** Hold missions: enemy squads start out of the zone's sight and at least 22 cells from it. */
 export function secureHoldSpawns(result,zone) {
- const spots=holdEnemySpawns(result,zone,result.spawns.enemy.length);
- const cx=(zone.x0+zone.x1)/2,cy=(zone.y0+zone.y1)/2;
- result.spawns.enemy.forEach((e,i)=>{const p=e.pos;const bad=Math.hypot(p.x-cx,p.y-cy)<20;if(spots[i])e.pos=spots[i];});
+ // PLAN-07: districts field pods of 2–3. Each pod gets one far, blind anchor; its members take the nearest blind,
+ // reachable interior cells around it (pod-mates may stand close, pods stay ≥ 10 apart).
+ const enemy=result.spawns.enemy,groups=[...new Set(enemy.map(e=>e.group))];
+ const anchors=holdEnemySpawns(result,zone,groups.length);
+ const s=result.store,search=reachable(s,result.spawns.player[0],Infinity,AGENT_PROFILES.player);
+ const cx=(zone.x0+zone.x1)/2,cy=(zone.y0+zone.y1)/2,taken=new Set();
+ const blind=n=>[[zone.x0,zone.y0],[zone.x1,zone.y1],[zone.x0,zone.y1],[zone.x1,zone.y0],[Math.round(cx),Math.round(cy)]].every(([x,y])=>castRay(s,{x:n.x+.5,y:n.y+.5,h:n.z+2.5},{x:x+.5,y:y+.5,h:zone.z+1.5},{blocks:blocksSight}).hit);
+ groups.forEach((g,gi)=>{
+  const a=anchors[gi];if(!a)return;
+  const near=[...search.nodes.values()].filter(n=>Math.abs(n.x-a.x)<=6&&Math.abs(n.y-a.y)<=6&&n.z===a.z&&Math.hypot(n.x-cx,n.y-cy)>=21&&s.roomAt(n.x,n.y,n.z+1)>=0)
+   .sort((p,q)=>Math.hypot(p.x-a.x,p.y-a.y)-Math.hypot(q.x-a.x,q.y-a.y)||p.x-q.x||p.y-q.y);
+  for(const e of enemy.filter(e=>e.group===g)){const n=near.find(n=>!taken.has(`${n.x},${n.y},${n.z}`)&&blind(n));if(!n)continue;taken.add(`${n.x},${n.y},${n.z}`);e.pos={x:n.x,y:n.y,z:n.z};e.placed=true;}
+ });
+ // Anyone left over (too few anchors or no blind cell beside one) takes the next far, blind interior spot.
+ const rest=enemy.filter(e=>!e.placed);
+ if(rest.length){const pool=holdEnemySpawns(result,zone,enemy.length+groups.length).filter(n=>!taken.has(`${n.x},${n.y},${n.z}`));rest.forEach((e,i)=>{if(pool[i]){e.pos=pool[i];e.placed=true;taken.add(`${pool[i].x},${pool[i].y},${pool[i].z}`);}});}
+ // Still unplaced (only one or two far interiors exist): share the nearest anchor's room with another pod.
+ for(const e of enemy.filter(e=>!e.placed&&(Math.hypot(e.pos.x-cx,e.pos.y-cy)<20||!blind(e.pos)))){
+  for(const a of anchors){const n=[...search.nodes.values()].filter(n=>Math.abs(n.x-a.x)<=8&&Math.abs(n.y-a.y)<=8&&Math.hypot(n.x-cx,n.y-cy)>=21&&s.roomAt(n.x,n.y,n.z+1)>=0&&!taken.has(`${n.x},${n.y},${n.z}`)&&blind(n)).sort((p,q)=>Math.hypot(p.x-a.x,p.y-a.y)-Math.hypot(q.x-a.x,q.y-a.y)||p.x-q.x||p.y-q.y)[0];
+   if(n){e.pos={x:n.x,y:n.y,z:n.z};taken.add(`${n.x},${n.y},${n.z}`);break;}}
+ }
+ for(const e of enemy)delete e.placed;
  result.metrics=measureMission(result);
 }

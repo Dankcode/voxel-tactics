@@ -53,7 +53,7 @@ anything else that stops bullets.
 | 13 | `plank` | Wood floor | 4 | yes | yes | block | yes | 1 | — | yes | — | burn→ash | yes | wood | structure | cover (1) | — |
 | 14 | `stone_floor` | Stone floor | 8 | yes | yes | block | yes | 1 | — | — | — | — | yes | stone | structure | cover (1) | — |
 | 15 | `roof` | Roof tiles | 3 | yes | yes | block | — | 1 | — | yes | — | burn→ash | yes | wood | structure | cover (1) | — |
-| 16 | `glass` | Window | 1 | yes | — | pass | yes | 1 | — | — | — | — | — | glass | structure | none (0) | pane 0.1 |
+| 16 | `glass` | Glass pane | 1 | — | — | pass | — | 1 | — | — | — | — | — | glass | structure | none (0) | pane 0.1 |
 | 17 | `door` | Door | 4 | — | yes | block | — | 1 | — | yes | — | — | — | wood | structure | cover (1) | pane 0.08 |
 | 18 | `door_open` | Open door | 4 | — | — | pass | — | 1 | — | — | — | — | — | wood | structure | none (0) | — |
 | 19 | `stairs_wood` | Wooden stairs | 4 | yes | yes | block | yes | 1 | — | yes | — | burn→ash | yes | wood | structure | cover (1) | — |
@@ -95,7 +95,7 @@ anything else that stops bullets.
 | 55 | `desk` | Desk | 3 | yes | yes | block | — | 1 | — | yes | — | — | — | wood | geo | cover (1) | — |
 | 56 | `planter` | Concrete planter | 8 | yes | yes | block | — | 1 | — | — | — | debris→rubble | — | stone | geo | cover (1) | band 0.8 |
 | 57 | `privacy_fence` | Privacy fence | 4 | yes | yes | block | — | 1 | — | yes | — | — | — | wood | geo | cover (1) | band 0.14 |
-| 58 | `car_body` | Parked car | 10 | yes | yes | block | — | 1 | — | — | — | — | — | metal | geo | cover (1) | — |
+| 58 | `car_body` | Parked car | 7 | yes | yes | block | — | 1 | — | — | — | — | — | metal | geo | cover (1) | — |
 | 59 | `appliance` | Appliance | 7 | yes | yes | block | — | 1 | — | — | — | — | — | metal | geo | cover (1) | — |
 | 60 | `road_mark` | Road marking | 8 | yes | yes | block | yes | 1 | — | — | — | — | yes | stone | geo | cover (1) | — |
 | 61 | `paving` | Paving slabs | 10 | yes | yes | block | yes | 1 | — | — | — | debris→rubble | yes | stone | geo | cover (1) | — |
@@ -105,9 +105,9 @@ anything else that stops bullets.
 | 65 | `concrete_wall` | Concrete wall | 12 | yes | yes | block | — | 1 | — | — | — | debris→rubble | yes | stone | geo | cover (1) | wall 0.4 |
 | 66 | `siding` | Metal siding | 5 | yes | yes | block | — | 1 | — | — | — | — | yes | metal | geo | cover (1) | wall 0.4 |
 | 67 | `roof_metal` | Metal roof | 4 | yes | yes | block | — | 1 | — | — | — | — | yes | metal | geo | cover (1) | — |
-| 68 | `car_cabin` | Car cabin | 8 | yes | yes | block | — | 1 | — | — | — | — | — | metal | geo | cover (1) | — |
+| 68 | `car_cabin` | Car cabin | 5 | yes | yes | block | — | 1 | — | — | — | — | — | metal | geo | cover (1) | — |
 | 69 | `container` | Shipping container | 20 | yes | yes | block | yes | 1 | — | — | — | — | — | metal | geo | cover (1) | — |
-| 70 | `dumpster` | Dumpster | 12 | yes | yes | block | — | 1 | — | — | — | — | — | metal | geo | cover (1) | — |
+| 70 | `dumpster` | Dumpster | 9 | yes | yes | block | — | 1 | — | — | — | — | — | metal | geo | cover (1) | — |
 | 71 | `jersey` | Concrete barrier | 14 | yes | yes | block | — | 1 | — | — | — | debris→rubble | — | stone | geo | cover (1) | band 0.62 |
 | 72 | `bench` | Bench | 3 | yes | yes | block | — | 1 | — | yes | — | burn→ash | — | wood | structure | cover (1) | — |
 | 73 | `bin` | Wheelie bin | 2 | yes | yes | block | — | 1 | — | yes | — | — | — | wood | geo | cover (1) | — |

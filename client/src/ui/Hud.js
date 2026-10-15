@@ -171,7 +171,7 @@ export class Hud {
     slotsFor(u) {
         const b = this.game.battle, mode = this.game.mode, s = [];
         const ap = u.ap,w=WEAPONS[u.weapon];
-        s.push({act:w.kind==='melee'?'melee':'weapon',arg:w.id,group:'weapon',icon:weaponIcon(w),name:w.kind==='melee'?'Melee':'Shoot',cost:String(b.shotAp(u,w)),sub:w.ammo?`${u.ammo[w.id]||0} − ${reserveAmmo(u,w)} · ${fireMode(u,w).toUpperCase()}`:'',on:mode.kind==='shoot',disabled:ap<b.shotAp(u,w)||(w.ammo&&u.ammo[w.id]<1),tip:`${w.name} · aim the reticle at a body part or any world point`});
+        s.push({act:w.kind==='melee'?'melee':'weapon',arg:w.id,group:'weapon',icon:weaponIcon(w),name:w.kind==='melee'?'Melee':'Shoot',cost:String(b.shotAp(u,w)),sub:w.ammo?`${u.ammo[w.id]||0} − ${reserveAmmo(u,w)} · ${fireMode(u,w).toUpperCase()}`:'',on:mode.kind==='shoot',disabled:ap<b.shotAp(u,w)||(w.ammo&&u.ammo[w.id]<1),tip:`${w.name} · move the reticle (Tab snaps to an enemy) · Space fires`});
         const ow = WEAPONS[watchWeapon(u)];
         if (ow) s.push({ group:'weapon',act: 'overwatch', icon: ICONS.overwatch, name: 'Overwatch', cost: 'all', disabled: ap < ow.ap || (u.ammo[ow.id] ?? 0) < (ow.perShot || 1), on: mode.kind === 'overwatch', tip: '<b>Overwatch</b> · choose direction · all AP · <span style="color:#5ff2d6">Teal ≥65%</span> / <span style="color:#ffb347">Amber &lt;65%</span> estimated hit' });
         s.push({act:'reload',icon:ICONS.reload,name:'Reload',group:'weapon',cost:'1',disabled:w.boltAction||!w.ammo||ap<w.reloadAp||u.ammo[w.id]>=w.ammo||reserveAmmo(u,w)<1,tip:w.boltAction?'Bolt cycles loose rounds automatically':'Reload from carried loose rounds'});

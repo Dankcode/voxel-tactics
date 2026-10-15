@@ -9,6 +9,7 @@ import {plantTree} from '../mapgen/district/Props.js';
 import {snapshotGround,fillDistrict,finishDistrict} from '../mapgen/district/District.js';
 import {mergeShells} from '../mapgen/district/MixSolver.js';
 import {buildTerraceDistrict} from '../mapgen/district/TerraceLevels.js';
+import {districtPods} from '../mapgen/district/Pods.js';
 import {interiorHoldZone,secureHoldSpawns} from '../mapgen/district/HoldZone.js';
 
 /** Every map id built by the district generator (descriptors carry width/depth/shape/remix for these). */
@@ -159,7 +160,7 @@ export function buildLargeDistrict({seed=1,theme='park',...options}={}) {
  if(remix.objective==='hold'&&!m.district.zones.length)interiorHoldZone(m,spawn);
  const zone=m.district.zones[0];if(zone)zone.objective=true;
  const far=[...m.buildings].filter(b=>b.rooms.length&&(!zone||Math.hypot(b.x0+b.w/2-(zone.x0+zone.x1)/2,b.y0+b.d/2-(zone.y0+zone.y1)/2)>=24)).sort((a,b)=>Math.hypot(b.x0-spawn.x,b.y0-spawn.y)-Math.hypot(a.x0-spawn.x,a.y0-spawn.y));
- const enemy=[{type:'warden_foe',group:0,...(far[0]?{room:{building:far[0].id}}:{at:{x:p.width-10,y:15,z:datum}})},{type:'cultist',group:1,...(far[1]?{room:{building:far[1].id}}:{at:{x:p.width-20,y:p.depth-14,z:datum}})}];
+ const enemy=districtPods(far,{fallback:[{x:p.width-10,y:15,z:datum},{x:p.width-20,y:p.depth-14,z:datum}],street:{x:p.width-12,y:Math.floor(p.depth/2)+(zone?8:0),z:datum}});
  const objective=zone?{kind:'hold',zone:{x0:zone.x0,y0:zone.y0,x1:zone.x1,y1:zone.y1,z:zone.z,dz:1},rounds:4,needed:1,text:'Take the marked ground and hold it for four rounds. Its cover will not last — fall back to the barriers if it burns.'}:{kind:'eliminate',text:'Secure the district through its linked parcels and alternate elevation routes.'};
  const result=m.finish({name:T.name,spawns:{player:[{x:2,y:25,z:datum},{x:2,y:27,z:datum},{x:3,y:26,z:datum},{x:4,y:25,z:datum},{x:4,y:27,z:datum},{x:3,y:29,z:datum}],enemy},objective,meta:{generatorVersion:'district-mix-v3',lanesGoal:zone?'objective':entryGoal(far[0]),remix,streetObjects:report.streetObjects,partAssignments:report.assignments,theme:'Large districts',lighting:'overcast',streetDatum:datum,footprint:p,connectionParcels:connectors,cutLevels:[4,7,10,13,Infinity],defaultCut:datum+3,floorNames:datum===4?{4:'Drainage banks',7:'Street district',10:'Upper interiors',13:'High floors'}:{4:'Street interiors',7:'Upper / bridge interiors',10:'Third floors',13:'High roofs'},designDecisions:[`Playable ${p.shape} footprint: ${p.width} × ${p.depth}; cells outside it are removed.`,'Parcel mixes fill every block between the roads; leftover land becomes alleys, verges, paths and greens.','No scatter pass: every prop carries an origin and every vehicle stands in a slot chosen by the noise map.',theme==='mall'?'Adjacent retail parcels merge through a three-wide indoor passage.':theme==='drainage'?'Only the drainage theme excavates lower banks, with elemental water and service ladders.':'Street-level retail, yards and service paths fill the district.']}});
  const search=reachable(result.store,result.spawns.player[0],Infinity,AGENT_PROFILES.player);

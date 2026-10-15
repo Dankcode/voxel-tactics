@@ -30,6 +30,14 @@ counts as 1.
 
 `coverAt` returns all four faces (the HUD's per-face shields and the map metrics use it).
 
+## Soft cover (PLAN-07)
+
+Cover a standard rifle round (5.56, energy 6) would go straight through is **soft**: `Cover.softToward` /
+`softAt` / `hardCoverAgainst`. The HUD shows a **cracked** shield on soft faces (crates, pallets, doors, timber,
+fences, siding, car cabins, stucco and plaster walls). The AI scores soft cover at half weight against the threat's
+actual round. The rating itself (NONE / HALF / FULL) is unchanged; what the rays do is in
+[04](04-ballistics-and-weapons.md#penetration-plan-07).
+
 ## Directional cover and flanking (`Cover.coverAgainst`, `isFlanked`)
 
 Against a shooter at `(sx, sy)`: only faces whose outward direction is within **60°** of the bearing to the
@@ -40,6 +48,8 @@ would really cross. The best face wins.
 - Height is ignored: only the target's own neighbours at z+1 and z+2 are sampled; the shooter's z plays no part.
 - **Flanked** = `coverAgainst` is NONE. The move tooltip and the red "!" shield use the worst cover against every
   enemy currently visible to the squad (`coverAgainstAll` in `Battle.js`).
+- A squad portrait shows a pulsing red **!** while that soldier is flanked by an enemy the squad can see
+  (`Battle.flankedBy`).
 - Flanking has no damage or crit bonus (there are no crits). It matters only because nothing physical is in the
   way of the rays.
 

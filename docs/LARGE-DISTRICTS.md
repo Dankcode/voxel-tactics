@@ -13,6 +13,10 @@ Select a map under Large districts:
 | **Dockside Yards** | docks | main street, quay road, yard road | deep water and a quay along the north edge, warehouse yards, scrapyards |
 | **Interstate Strip** | highway | 10-lane interstate with a jersey median, frontage road, exit road | motels, dealerships, car washes, bus depot; no kerb parking on the interstate |
 
+**Enemies (PLAN-07).** Every district (and Hillside Terraces) fields three pods, seven hostiles (`district/Pods.js`):
+three in the farthest building, two in the second farthest, and a street pod of two toward the target end. The old
+rosters had two hostiles, and the simulator showed 100 % squad wins.
+
 Each theme is a row in `DISTRICT_THEMES` (`shared/mission/LargeDistricts.js`): its family, remix defaults and a
 per-mix **bias** (docks triples warehouse yards, highway damps homes), plus a road skeleton in `districtRoads`.
 

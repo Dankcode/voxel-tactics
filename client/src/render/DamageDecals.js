@@ -14,7 +14,7 @@ import { collisionFootprint } from '../../../shared/voxel/ConnectedShapes.js';
 import { CHUNK } from '../../../shared/voxel/VoxelStore.js';
 
 /** Whole-object pieces (vehicles, containers) are drawn from hints, not voxel faces: no decals on their cells. */
-const OBJECT_KEYS = new Set(['car_body', 'car_cabin', 'container', 'dumpster', 'pump']);
+const OBJECT_KEYS = new Set(['car_body', 'car_cabin', 'container', 'dumpster', 'pump', 'trunk', 'leaves', 'hedge']);   // trees are species pieces too
 const FAMILY_TINT = { stone: 0x8d857a, metal: 0x55595f, wood: 0xa07e55, earth: 0x6e5c47, glass: 0x9aa5ad, ice: 0xbcd6e4, plant: 0x5d6b3c };
 const DIRS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
 const EPS = 0.012;

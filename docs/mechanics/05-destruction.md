@@ -8,9 +8,10 @@ Every voxel is gameplay truth: when it goes, its cover, its sight block and its 
 
 - Each voxel starts with its material's `hp` (stored per voxel in `VoxelStore.hp`, a Uint16). `hp: Infinity`
   (bedrock, water, deep water, lava) and every liquid are indestructible.
-- Typical values: glass 1, fuel drum 1, hedge 2, crate / sofa / pallet 3, timber / door / roof 3–4, stucco and
-  plaster 6, sandbags 6, drystone and planters 8, brick and stone 9, concrete paving 10, car body 10, concrete wall
-  12, dumpster 12, jersey barrier and boulder 14, iron 16, shipping container 20.
+- Typical values: glass 1, fuel drum 1, hedge 2, crate / sofa / pallet 3, timber / door / roof 3–4, car cabin 5,
+  stucco and plaster 6, sandbags 6, car body 7, drystone and planters 8, brick and stone 9, dumpster 9, concrete
+  paving 10, concrete wall 12, jersey barrier and boulder 14, iron 16, shipping container 20 (PLAN-07 lowered car
+  bodies, cabins and dumpsters so vehicles can be shot apart).
 
 ## Damaging a voxel (`Destruction.damageVoxel`)
 
@@ -34,13 +35,26 @@ Sources of voxel damage:
 
 | Source | Amount per hit | Code |
 |---|---|---|
-| A projectile that stops on a voxel | the weapon's `voxel` value (1–3), ×2 after Demolition | `fireWeapon` |
+| A projectile that stops on or passes through a voxel | the round's `voxel` value (AR / pistol 2, 7.62 3, .338 6, buckshot 1), ×2 after Demolition | `fireWeapon` |
 | Explosion | power × (1 − d ÷ (radius + 0.5)) for every voxel whose centre is within the radius | `explodeVoxels` |
 | Fire | 1 HP per round per burning voxel ([06](06-elements.md)) | `ElementField.tick` |
 | Debug `destroy` | removes voxels outright | `DebugOps` |
 
 Melee never damages voxels (the `voxel` field on melee weapons is unused). A shot that crosses glass also destroys
 the pane it crosses.
+
+## Visible damage (PLAN-07)
+
+Damage stays visible without rubble (`client/src/render/DamageDecals.js`, decal quads on the voxels' real footprints):
+
+| Mark | When | State |
+|---|---|---|
+| cracks / heavy cracks | a voxel at ≤ 66 % / ≤ 33 % of its HP (crossing a band redraws its chunk) | `VoxelStore.hp` |
+| broken edge | a surviving voxel next to a cell that was shot or blown out shows broken material on the face toward the hole, and a frayed, chipped band along the edge of its other faces nearest the hole | `store.scars` |
+| burn marks and soot | every solid cell inside a blast (darkest within 40 % of the radius); the floor and neighbours of a voxel that burnt out; a burning floor when it goes out | `store.scorch` (1–3) |
+
+`scars` and `scorch` are written by `Destruction.destroyVoxel`, `scorchBlast` and the fire tick, so every co-op peer
+sees the same marks, and they are part of the lockstep hash. Rebuilding a scarred cell clears its scar.
 
 ## Destroyed voxels and debris (`Destruction.destroyVoxel`)
 

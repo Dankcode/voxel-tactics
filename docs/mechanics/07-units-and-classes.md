@@ -59,13 +59,13 @@ Data: `shared/content/units.js` (classes, Syndicate types, abilities, squads), `
 <!-- generated:abilities -->
 | id | name | Will | AP | text (from data) | who has it |
 |---|---|---|---|---|---|
-| `killstreak_strike` | Commander Strike | 0 | 0 | One charge per three squad kills. A destructive blast at the marked location; allies are vulnerable too. |  |
+| `killstreak_strike` | Commander Strike | 0 | 0 | Ready at the start of the mission and again 10 rounds after each use. A destructive blast at the marked location; allies are vulnerable too. |  |
 | `seismic_sense` | Seismic Sense | 1 | 1 | Share grounded enemy contacts within 14 tiles and two levels, through walls. Contacts are snapshots. | Assault |
 | `water_sense` | Water Sense | 1 | 1 | Share contacts within 14 tiles near water, through walls. Contacts are snapshots. | Grenadier |
 | `scout_drone` | Scout Drone | 1 | 1 | Scout from a tile within 18. Drone sees 10 tiles through clear sight. Enemies detect within 2; Drone Hunters within 8. Recast to reposition. | Sharpshooter |
 | `quiet_cut` | Quiet Cut | 1 | 1 | Remove two wall voxels within 3 without noise. Enemy sight can still expose you. | Breacher |
-| `carpet_bomb` | Carpet Bomb | 0 | 1 | After detection: three circular craters, radius 3. Damages allies too. Recharges after 10 of your turns. |  |
-| `orbital_laser` | Orbital Laser | 0 | 1 | After detection: cut an east-west line, 17 tiles long and 3 wide. Damages allies too. Recharges after 10 of your turns. |  |
+| `carpet_bomb` | Carpet Bomb | 0 | 1 | Three circular craters, radius 3. Damages allies too. Recharges after 10 of your turns. |  |
+| `orbital_laser` | Orbital Laser | 0 | 1 | Cut an east-west line, 17 tiles long and 3 wide. Damages allies too. Recharges after 10 of your turns. |  |
 | `earth_cover` | Earth Cover | 2 | 1 | Raise destructible half cover on an empty visible tile within 6. Persists until destroyed. | Assault |
 | `water_mend` | Water Mend | 2 | 1 | Restore 8 HP to a visible living ally within 6 and extinguish burning. Disabled limbs stay disabled. | Grenadier |
 | `dash` | Sprint | 2 | 0 | +1 AP that can only be spent moving. | Assault |

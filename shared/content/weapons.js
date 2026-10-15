@@ -10,13 +10,13 @@
 // has 30 HP.
 import { withCaliber } from './calibers.js';
 const CONFIG={
- repeater:{ammoType:'ar',ammo:30,projectiles:1,perShot:1,spread:.42,fireModes:['single','burst','auto'],defaultMode:'burst',weight:3.4},
- blunderbuss:{ammoType:'shotgun',ammo:8,pellets:8,projectiles:8,perShot:1,shellDamage:30,spread:2.4,weight:3.8},
- longrifle:{ammoType:'high',ammo:1,perShot:1,spread:.12,boltAction:true,scoped:true,weight:5.2},
- handcannon:{ammoType:'ar',spread:.55,weight:.9},
- crossbow:{ammoType:'ar',ammo:30,spread:.3,fireModes:['single','burst','auto'],defaultMode:'burst',weight:2.8},
- shortbow:{ammoType:'ar',ammo:20,spread:.24,scoped:true,weight:3.6},
- musket:{ammoType:'ar',ammo:30,spread:.5,fireModes:['single','burst','auto'],defaultMode:'burst',weight:3.7},
+ repeater:{ammoType:'ar',ammo:30,projectiles:1,perShot:1,spread:1.0,fireModes:['single','burst','auto'],defaultMode:'burst',weight:3.4},
+ blunderbuss:{ammoType:'shotgun',ammo:8,pellets:8,projectiles:8,perShot:1,shellDamage:30,spread:4,weight:3.8},
+ longrifle:{ammoType:'high',ammo:1,perShot:1,spread:.3,boltAction:true,scoped:true,weight:5.2},
+ handcannon:{ammoType:'ar',spread:1.4,weight:.9},
+ crossbow:{ammoType:'ar',ammo:30,spread:.8,fireModes:['single','burst','auto'],defaultMode:'burst',weight:2.8},
+ shortbow:{ammoType:'ar',ammo:20,spread:.6,scoped:true,weight:3.6},
+ musket:{ammoType:'ar',ammo:30,spread:1.0,fireModes:['single','burst','auto'],defaultMode:'burst',weight:3.7},
  firelance:{ammoType:'shotgun',ammo:10,pellets:5,shellDamage:30,spread:3.5,weight:7}
 };
 

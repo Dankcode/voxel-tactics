@@ -6,10 +6,21 @@ targets' body-part cylinders. Code: `shared/battle/Ballistics.js`, `Battle.fireW
 
 ## Aiming
 
-- **Aim at a body part** (`Ballistics.aimPointOf` → `partCentre`): the centre of that part's hitbox on the target,
-  arms offset sideways from the target's facing. HUD keys `Z X C V G` = head, torso, left arm, right arm, legs.
-- **Free aim** (move the reticle, then click or press Space): any point, e.g. a wall voxel to shoot away. Target-dependent modifiers (height,
-  smoke, dim room, formation) are skipped because there is no target unit.
+- **Free aim** (move the reticle, then click or press Space): the shot goes at the reticle's point, whatever it is on
+  (an enemy, a wall voxel to shoot away, an unseen spot). Tab snaps the reticle to the next visible enemy's torso;
+  body-part anchors are only snap points, no longer a required choice. Target-dependent modifiers (height, smoke, dim
+  room, formation) apply when the shot is anchored on a unit.
+- **Aim inertia** (`client/src/ui/AimController.js`, PLAN-07): the cursor sets where you want to aim; the aim point
+  follows it through a critically damped spring with a time constant by weapon weight (pistol 0.08 s, rifle 0.14 s,
+  shotgun 0.16 s, sniper 0.22 s, +10 % per wounded arm) plus a slow figure-eight sway (0.12° × (1 + stress ÷ 60),
+  × 2 suppressed, 0 braced or under Deadeye). The shot fires at the **current** point, so flick-and-fire is less
+  precise. The intent carries the exact point, so lockstep is unaffected. Settings → *Aim inertia* turns the spring off.
+- **Reticle**: the outer ring is the whole accuracy cone projected at the aim distance (every round lands inside it),
+  the inner ring holds half the rounds (r × √0.5). No size floor (≥ 1.5 px only so it stays visible). The label shows
+  the weapon, the distance and the cone radius in metres.
+- **Shoulder camera and back shot**: while aiming, the shoulder camera looks where the aim currently is and swings
+  round behind the shooter once the aim leaves ±35° of its framing; the shooter's back-view sprite turns to the aim
+  bearing every frame. The committed back shot starts from that pose.
 - **Muzzle and leaning** (`chooseMuzzle`): the shoulder (tile centre, z+1+1.35), or that point shifted **0.55
   tiles** right, then left, perpendicular to the aim line: the first candidate that is not inside a solid voxel and
   has no `block` voxel on the straight line to the aim point is used; otherwise the centre. This is how units lean
@@ -41,7 +52,8 @@ with the battle RNG.
 
 - The ray runs up to min(`maxRange`, max(d + 10, 1.6 d)) from the muzzle (`fireWeapon`).
 - Voxels: Amanatides–Woo traversal (`Raycast.castRay`) against each voxel's connected footprint
-  ([03](03-cover-and-sight.md#partial-connected-shapes)). It stops at the first `projectile: 'block'` shape.
+  ([03](03-cover-and-sight.md#partial-connected-shapes)). At each `projectile: 'block'` shape the round may
+  **penetrate** (below); otherwise it stops there.
   `pass` materials (hedges, leaves, open doors, water, chain-link, awnings, ladders, **glass**) are ignored. Glass
   (`shatters: true`) is cosmetic: the tracer lists every pane whose real shape the ray crosses before it ends, and
   the live shot (`fireWeapon`) sets those panes to air ([03](03-cover-and-sight.md#glass-is-cosmetic)).
@@ -56,6 +68,33 @@ with the battle RNG.
 | armR / armL | 0.10 | 0.75 – 1.30 | ±0.36 (perpendicular to facing) |
 
 A disabled head, arm or legs (part HP 0) no longer stops rays (`rayUnit`).
+
+## Penetration (PLAN-07)
+
+Every round carries **penetration energy** (calibers table below). Every blocking voxel it meets costs that material's
+**resistance**, divided by max(0.5, |cos|) of the angle to the face it enters (glancing hits cost up to twice as much).
+While energy > cost the round goes through: the voxel takes the round's voxel damage, the energy drops by the cost,
+and the damage of whatever the round hits next is scaled by energy left ÷ starting energy (at least 25 %). Otherwise
+the round stops in that voxel, as before. A round crosses at most six voxels. Materials without a resistance (ground,
+floors, slabs, steel, stone masses) always stop it. Pierce (armour penetration) is separate and unchanged.
+
+<!-- generated:resistance -->
+| resistance | materials | rounds that pass through one cell (straight on) |
+|---|---|---|
+| 1 | `furniture`, `crate`, `barrel_powder`, `ash`, `lantern`, `hay`, `fence`, `stall`, `sofa`, `bed`, `desk`, `bin`, `pallet`, `shelving`, `emergency_light` | .338 Lapua Magnum, 9×19 mm, 5.56×45 mm NATO, .300 BLK subsonic, 7.62×39 mm, 7.62×51 mm NATO |
+| 2 | `timber`, `roof`, `door`, `ice`, `shelf`, `barrel_water`, `cart`, `cabinet`, `privacy_fence`, `appliance`, `siding`, `roof_metal`, `car_cabin`, `bench`, `deep_ice` | .338 Lapua Magnum, 9×19 mm, 5.56×45 mm NATO, .300 BLK subsonic, 7.62×39 mm, 7.62×51 mm NATO |
+| 3 | `plaster`, `crystal`, `stucco`, `pump` | .338 Lapua Magnum, 5.56×45 mm NATO, .300 BLK subsonic, 7.62×39 mm, 7.62×51 mm NATO |
+| 4 | `trunk`, `rubble`, `container`, `dumpster` | .338 Lapua Magnum, 5.56×45 mm NATO, .300 BLK subsonic, 7.62×39 mm, 7.62×51 mm NATO |
+| 6 | `sandbag`, `car_body`, `brick` | .338 Lapua Magnum, 7.62×39 mm, 7.62×51 mm NATO |
+| 7 | `stone`, `drystone` | .338 Lapua Magnum, 7.62×39 mm, 7.62×51 mm NATO |
+| 9 | `planter`, `concrete_wall` | .338 Lapua Magnum, 7.62×51 mm NATO |
+| 14 | `city_wall`, `jersey` | .338 Lapua Magnum |
+| ∞ | everything else (ground, floors, slabs, steel, stone masses) | — |
+<!-- /generated:resistance -->
+
+So a 5.56 round goes through crates, doors, fences, siding and a car cabin but not brick; 7.62×39 goes through one
+brick or a car body; the .338 goes through a concrete wall; buckshot pellets and the flamethrower go through nothing.
+The hit estimate uses the same tracer and reports `throughCover` (share of hits that went through something).
 
 ## Hit chance (`Ballistics.estimateShot`)
 
@@ -96,8 +135,13 @@ Human characters have 30 HP (`UNIT_HP`); constructs can have more. Within five t
 
 ## Overwatch
 
-- **Set** (`Battle.doOverwatch`): requires the weapon's AP cost and ammo, then spends remaining AP. The clicked direction sets the cone. Gun build and armor determine its width; a scope narrows it. Range is capped by sight range and 1.25 × weapon range.
+- **Set** (`Battle.doOverwatch`): requires the weapon's AP cost and ammo, then spends remaining AP. A soldier who
+  ended a move on a blue tile always has that AP ([01](01-turn-flow.md#move-then-act-blue-and-yellow-zones)).
+- **Moving cancels it** (PLAN-07): a voluntary move (including formation follow) clears the unit's own overwatch and
+  logs "Overwatch cancelled"; knockback and falls do not. The clicked direction sets the cone. Gun build and armor determine its width; a scope narrows it. Range is capped by sight range and 1.25 × weapon range.
 - **Trigger**: an enemy movement or breach entry crosses the cone while visible and in range. The watcher fires one normal salvo at the mover's torso, spending actual rounds. Each watcher reacts at most once per movement event and can react to successive movers.
+- **Warning**: while planning a move, path steps a *known* enemy overwatch covers (watcher visible, step in its sector
+  and sight) show a red **!** and the tooltip says "! OVERWATCH" (`Battle.overwatchThreats`).
 - **Persistence**: turn refresh does not remove overwatch. It ends on a wound, a status effect, or empty loaded ammo. `surprised` units cannot react. Bolt actions automatically cycle available loose rounds.
 - Normal formation following triggers reactions; knockback, falls, and debug teleports do not.
 
@@ -110,15 +154,15 @@ itself wins. Guns differ in spread, attachments, range, AP, capacity, fire modes
 Single spends 1 round, burst 3, auto at most 5; each bullet traces independently. Supported rifles default to burst. Reload transfers loose carried ammo up to capacity. Bolt actions cycle without a manual reload. See [the loadout guide](../TACTICAL-LOADOUT.md#guns-and-free-aiming).
 
 <!-- generated:calibers -->
-| id | round | dmg/proj. | pierce | voxel dmg | fired by |
-|---|---|---|---|---|---|
-| `338` | .338 Lapua Magnum | 30 | 5 | 3 | Sniper Rifle |
-| `9mm` | 9×19 mm | 10 | 0 | 1 | Sidearm |
-| `5.56` | 5.56×45 mm NATO | 10 | 2 | 1 | Assault Rifle, Marksman Rifle |
-| `300blk` | .300 BLK subsonic | 10 | 2 | 1 | Suppressed Carbine |
-| `7.62x39` | 7.62×39 mm | 10 | 2 | 2 | AK Rifle |
-| `7.62` | 7.62×51 mm NATO | 10 | 3 | 2 | — |
-| `12g` | 12-gauge 00 buckshot | 3.75 | 0 | 1 | Combat Shotgun |
+| id | round | dmg/proj. | pierce | voxel dmg | penetration energy | fired by |
+|---|---|---|---|---|---|---|
+| `338` | .338 Lapua Magnum | 30 | 5 | 6 | 22 | Sniper Rifle |
+| `9mm` | 9×19 mm | 10 | 0 | 2 | 3 | Sidearm |
+| `5.56` | 5.56×45 mm NATO | 10 | 2 | 2 | 6 | Assault Rifle, Marksman Rifle |
+| `300blk` | .300 BLK subsonic | 10 | 2 | 2 | 5 | Suppressed Carbine |
+| `7.62x39` | 7.62×39 mm | 10 | 2 | 3 | 8 | AK Rifle |
+| `7.62` | 7.62×51 mm NATO | 10 | 3 | 3 | 10 | — |
+| `12g` | 12-gauge 00 buckshot | 3.75 | 0 | 1 | 1 | Combat Shotgun |
 <!-- /generated:calibers -->
 
 `7.62×51 mm NATO` is defined but no current weapon fires it.
@@ -128,17 +172,17 @@ Single spends 1 round, burst 3, auto at most 5; each bullet traces independently
 <!-- generated:weapons -->
 | id | name | round | AP | proj. | dmg/proj. | pierce | shred | spread | range | max range | ammo | reload AP | voxel dmg | noise | element |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `repeater` | Assault Rifle | 5.56×45 mm NATO | 2 | 1 | 10 | 2 | — | 0.42° | 18 | 34 | 30 (1/shot) | 1 | 1 | 14 | — |
-| `blunderbuss` | Combat Shotgun | 12-gauge 00 buckshot | 2 | 8 | 3.75 | 0 | — | 2.4° | 7 | 14 | 8 (1/shot) | 1 | 1 | 14 | — |
-| `longrifle` | Sniper Rifle | .338 Lapua Magnum | 3 | 1 | 30 | 5 | — | 0.12° | 30 | 48 | 1 (1/shot) | 1 | 3 | 18 | — |
-| `handcannon` | Sidearm | 9×19 mm | 1 | 1 | 10 | 0 | — | 0.55° | 12 | 22 | 12 (1/shot) | 1 | 1 | 12 | — |
-| `crossbow` | Suppressed Carbine | .300 BLK subsonic | 2 | 1 | 10 | 2 | — | 0.3° | 20 | 32 | 30 (1/shot) | 1 | 1 | 2 | — |
-| `shortbow` | Marksman Rifle | 5.56×45 mm NATO | 2 | 1 | 10 | 2 | — | 0.24° | 16 | 26 | 20 (1/shot) | 1 | 1 | 12 | — |
-| `musket` | AK Rifle | 7.62×39 mm | 2 | 1 | 10 | 2 | — | 0.5° | 16 | 28 | 30 (1/shot) | 1 | 2 | 14 | — |
+| `repeater` | Assault Rifle | 5.56×45 mm NATO | 2 | 1 | 10 | 2 | — | 1° | 18 | 34 | 30 (1/shot) | 1 | 2 | 14 | — |
+| `blunderbuss` | Combat Shotgun | 12-gauge 00 buckshot | 2 | 8 | 3.75 | 0 | — | 4° | 7 | 14 | 8 (1/shot) | 1 | 1 | 14 | — |
+| `longrifle` | Sniper Rifle | .338 Lapua Magnum | 3 | 1 | 30 | 5 | — | 0.3° | 30 | 48 | 1 (1/shot) | 1 | 6 | 18 | — |
+| `handcannon` | Sidearm | 9×19 mm | 1 | 1 | 10 | 0 | — | 1.4° | 12 | 22 | 12 (1/shot) | 1 | 2 | 12 | — |
+| `crossbow` | Suppressed Carbine | .300 BLK subsonic | 2 | 1 | 10 | 2 | — | 0.8° | 20 | 32 | 30 (1/shot) | 1 | 2 | 2 | — |
+| `shortbow` | Marksman Rifle | 5.56×45 mm NATO | 2 | 1 | 10 | 2 | — | 0.6° | 16 | 26 | 20 (1/shot) | 1 | 2 | 12 | — |
+| `musket` | AK Rifle | 7.62×39 mm | 2 | 1 | 10 | 2 | — | 1° | 16 | 28 | 30 (1/shot) | 1 | 3 | 14 | — |
 | `firelance` | Flamethrower | — (fuel) | 2 | 5 | 4 | 0 | — | 3.5° | 8 | 12 | 10 (1/shot) | 1 | 1 | 10 | pyro |
 <!-- /generated:weapons -->
 
-Notes: `voxel dmg` is the damage each projectile deals to a voxel it hits (doubled by Demolition). The Assault
+Notes: `voxel dmg` is the damage each projectile deals to every voxel it hits or passes through (doubled by Demolition). The Assault
 Rifle fires 1/3/5 bullet rays in single/burst/auto. Shotguns trace their pellet count per shell. The Flamethrower's rays carry `pyro` (status and a 0.6-radius
 fire impact on units, 0.8 on voxels). Display names are what the player sees; ids are legacy and stable. The HUD
 weapon tooltip (`Hud.js`) shows name · round · shot AP · damage (× projectiles) · pierce (when > 0) · range.

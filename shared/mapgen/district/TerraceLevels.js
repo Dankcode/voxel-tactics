@@ -8,6 +8,7 @@
 //   terrace-stairs          a 3-wide stair promenade
 //   split-level-building    a 2-storey building against the wall: street door below, storey-2 door onto the terrace
 //   terrace-ladder          a service ladder (a shortcut; never the only route)
+import { districtPods } from './Pods.js';
 import { MAT } from '../../voxel/Materials.js';
 import { fbm } from '../Fields.js';
 import { createMap } from '../../mission/modern/MapKit.js';
@@ -77,7 +78,7 @@ export function buildTerraceDistrict({ seed = 1, width = 112, depth = 80, remix:
     const zone = m.district.zones[0]; if (zone) zone.objective = true;
     const top = bands.at(-1);
     const far = [...m.buildings].filter(b => b.rooms.length && b.x0 >= top.x0 && (!zone || Math.hypot(b.x0 + b.w / 2 - (zone.x0 + zone.x1) / 2, b.y0 + b.d / 2 - (zone.y0 + zone.y1) / 2) >= 24)).sort((a, b) => b.x0 - a.x0);
-    const enemy = [{ type: 'warden_foe', group: 0, ...(far[0] ? { room: { building: far[0].id } } : { at: { x: W - 8, y: 14, z: top.z } }) }, { type: 'cultist', group: 1, ...(far[1] ? { room: { building: far[1].id } } : { at: { x: W - 14, y: D - 16, z: top.z } }) }];
+    const enemy = districtPods(far, { fallback: [{ x: W - 8, y: 14, z: top.z }, { x: W - 14, y: D - 16, z: top.z }], street: { x: W - 10, y: Math.floor(D / 2), z: top.z } });
     const objective = zone ? { kind: 'hold', zone: { x0: zone.x0, y0: zone.y0, x1: zone.x1, y1: zone.y1, z: zone.z, dz: 1 }, rounds: 4, needed: 1, text: 'Climb to the marked ground and hold it for four rounds.' }
         : { kind: 'eliminate', text: 'Fight up from the sunken yards to the high terrace and clear the district.' };
     const all = [...connectors.filter(c => m.district.connectors.includes(c)).map(({ dress, ...c }) => c), ...m.district.connectors.filter(c => c.sockets?.length && !c.levels)];

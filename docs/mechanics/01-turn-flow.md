@@ -64,9 +64,10 @@ Rejections come back as one of `REJECT` (`not_your_turn`, `not_your_unit`, `unit
 
 There is no XCOM "firing ends the turn" rule; the zones are a client readout (`Game.refreshRange`):
 
-- Every reachable tile gets its AP cost. **Blue** if the AP left afterwards (move-only AP is spent first) is at
-  least the cheapest action the soldier can still take (`Game.minActionAp`: cheapest loaded weapon shot, melee or
-  throwable; 1 if none). **Yellow** ("DASH" in the tooltip) otherwise.
+- Every reachable tile gets its AP cost. **Blue** if the AP left afterwards (move-only AP is spent first) is enough to
+  **fire or overwatch the equipped gun** (`Battle.blueAp`: the larger of its shot AP and its overwatch AP; a melee
+  weapon in hand counts as itself; with no loaded gun, the cheapest remaining action, reload included). So a soldier
+  who stops on blue can always still shoot or go on overwatch (PLAN-07). **Yellow** ("DASH" in the tooltip) otherwise.
 - There is no separate dash action. The **Sprint** ability (id `dash`, 2 Will, 0 AP, Assault only) adds 1
   move-only AP.
 
