@@ -8,6 +8,7 @@ import { ABILITIES } from '../../../shared/content/units.js';
 import { FORMATIONS } from '../../../shared/content/formations.js';
 import { materialById } from '../../../shared/voxel/Materials.js';
 import { TRACER_SPEED, BURST_GAP } from '../render/Fx.js';
+import { explosionSound, weaponHandlingSound } from '../audio/SoundPlayer.js';
 
 const wait = s => new Promise(r => setTimeout(r, s * 1000));
 const PART_LABEL = { head: 'head', torso: 'torso', armL: 'L arm', armR: 'R arm', legs: 'legs' };
@@ -62,36 +63,41 @@ export class EventPlayer {
                 const path = e.path || [];
                 v.animator.play(e.t === 'move' ? 'walk' : 'hit');
                 const speed = (e.t === 'move' ? 7 : 12) * this.speed;
-                for (let i = 1; i < path.length; i++) {
-                    const a = path[i - 1], b = path[i];
-                    v.face(b.x - a.x, b.y - a.y);
-                    const kind = e.kinds?.[i - 1] || (Math.hypot(b.x - a.x, b.y - a.y) > 1.5 ? 'vault' : 'walk');
-                    const windowVault=!!e.windowVaults?.[i-1];
-                    const len = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) * (kind === 'climb' ? 1.6 : 1);
-                    if(e.t === 'move') v.animator.play(kind === 'vault' ? 'vault' : kind === 'climb' ? 'climb' : 'walk');
-                    const steps = Math.max(1, Math.round(len * 6));
-                    for (let s = 1; s <= steps; s++) {
-                        const k = s / steps;
-                        let px = a.x + (b.x - a.x) * k, py = a.y + (b.y - a.y) * k, pz = a.z + (b.z - a.z) * k;
-                        if (kind === 'vault') {pz += Math.sin(k * Math.PI) * (windowVault?1:1.1);if(windowVault)v.group.scale.y=1-.5*Math.sin(k*Math.PI);}                // hop over low cover
-                        else if (kind === 'jump') {
-                            // Step off the edge, then drop under gravity.
-                            const h = Math.min(1, k / 0.35);
-                            px = a.x + (b.x - a.x) * h; py = a.y + (b.y - a.y) * h;
-                            pz = k < 0.35 ? a.z + Math.sin(h * Math.PI / 2) * 0.25 : a.z + 0.25 - (a.z + 0.25 - b.z) * ((k - 0.35) / 0.65) ** 2;
-                        } else if (kind === 'climb') {
-                            // Up: climb the ladder column, then step onto the ledge. Down: step onto the ladder, then descend.
-                            const up = b.z > a.z, split = 0.8;
-                            const vk = up ? Math.min(1, k / split) : Math.max(0, (k - (1 - split)) / split);
-                            const hk = up ? Math.max(0, (k - split) / (1 - split)) : Math.min(1, k / (1 - split));
-                            px = a.x + (b.x - a.x) * hk; py = a.y + (b.y - a.y) * hk; pz = a.z + (b.z - a.z) * vk;
+                let stopFootsteps = null;
+                try {
+                    for (let i = 1; i < path.length; i++) {
+                        const a = path[i - 1], b = path[i];
+                        v.face(b.x - a.x, b.y - a.y);
+                        const kind = e.kinds?.[i - 1] || (Math.hypot(b.x - a.x, b.y - a.y) > 1.5 ? 'vault' : 'walk');
+                        const windowVault=!!e.windowVaults?.[i-1];
+                        const len = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) * (kind === 'climb' ? 1.6 : 1);
+                        if(e.t === 'move') v.animator.play(kind === 'vault' ? 'vault' : kind === 'climb' ? 'climb' : 'walk');
+                        const steps = Math.max(1, Math.round(len * 6));
+                        const walking = e.t === 'move' && kind === 'walk' && (v.unit.side === 'player' || g.isVisible(v.unit)) && !['wall_strider', 'siege_weaver'].includes(v.unit.type);
+                        if (walking && !stopFootsteps) stopFootsteps = g.audio.play('footsteps', { loop: true, volume: 0.22, rate: this.speed });
+                        else if (!walking && stopFootsteps) { stopFootsteps(); stopFootsteps = null; }
+                        for (let s = 1; s <= steps; s++) {
+                            const k = s / steps;
+                            let px = a.x + (b.x - a.x) * k, py = a.y + (b.y - a.y) * k, pz = a.z + (b.z - a.z) * k;
+                            if (kind === 'vault') {pz += Math.sin(k * Math.PI) * (windowVault?1:1.1);if(windowVault)v.group.scale.y=1-.5*Math.sin(k*Math.PI);}                // hop over low cover
+                            else if (kind === 'jump') {
+                                // Step off the edge, then drop under gravity.
+                                const h = Math.min(1, k / 0.35);
+                                px = a.x + (b.x - a.x) * h; py = a.y + (b.y - a.y) * h;
+                                pz = k < 0.35 ? a.z + Math.sin(h * Math.PI / 2) * 0.25 : a.z + 0.25 - (a.z + 0.25 - b.z) * ((k - 0.35) / 0.65) ** 2;
+                            } else if (kind === 'climb') {
+                                // Up: climb the ladder column, then step onto the ledge. Down: step onto the ladder, then descend.
+                                const up = b.z > a.z, split = 0.8;
+                                const vk = up ? Math.min(1, k / split) : Math.max(0, (k - (1 - split)) / split);
+                                const hk = up ? Math.max(0, (k - split) / (1 - split)) : Math.min(1, k / (1 - split));
+                                px = a.x + (b.x - a.x) * hk; py = a.y + (b.y - a.y) * hk; pz = a.z + (b.z - a.z) * vk;
+                            }
+                            v.setCell(px, py, pz);
+                            g.updateEnemyVisibility();
+                            await wait(len / speed / steps);
                         }
-                        v.setCell(px, py, pz);
-                        g.updateEnemyVisibility();
-                        await wait(len / speed / steps);
                     }
-                }
-                v.group.scale.y=1;
+                } finally { stopFootsteps?.(); v.group.scale.y=1; }
                 v.animator.play('idle');
                 if (e.unitId && g.selected === e.unitId) g.focusUnit(g.battle.unit(e.unitId));
                 break;
@@ -122,6 +128,7 @@ export class EventPlayer {
                     } });
                 });
                 await this.d(Math.max(CLIP_HOLD.fire, last * this.speed));
+                if (e.weaponId === 'blunderbuss' && v && (v.unit.side === 'player' || g.isVisible(v.unit))) g.audio.play('shotgunPump', { volume: 0.6 });
                 g.voxelView?.flush();
                 if (step) { await this.slide(v, step, v.unit, 0.18); v.snap(); }
                 break;
@@ -142,7 +149,7 @@ export class EventPlayer {
                 g.scene.scene.remove(ball); ball.geometry.dispose(); ball.material.dispose();
                 break;
             }
-            case 'explosion': fx.explosion(e, e.radius, e.element); g.voxelView?.flush(); await this.d(0.15); break;
+            case 'explosion': g.audio.play(explosionSound(e, g.scene.target), { volume: 0.7 }); fx.explosion(e, e.radius, e.element); g.voxelView?.flush(); await this.d(0.15); break;
             case 'smoke': fx.syncField(g.battle.field); break;
             case 'voxels': g.voxelView.flush(); break;
             case 'collapse': g.voxelView.flush(); fx.float(new THREE.Vector3(e.fallen?.[0]?.x ?? 0, e.fallen?.[0]?.to ?? 1, e.fallen?.[0]?.y ?? 0), 'COLLAPSE', '#ffcc66', 22); g.scene.shake = 0.6; await this.d(0.25); break;
@@ -188,7 +195,7 @@ export class EventPlayer {
             case 'outcome': g.onOutcome(e); break;
             case 'spawn': await g.onSpawn(e); { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition(), 'SPAWNED', '#b388ff', 16); } break;
             case 'debug': { const v = this.view(e.unitId); if (v) { v.snap(); v.drawBar(); if (e.op === 'heal' && !v.unit.dead) v.animator.play('idle'); } break; }
-            case 'reload': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition(), 'RELOAD', '#b0bec5', 14); break; }
+            case 'reload': { const v = this.view(e.unitId); if (v) { fx.float(v.worldPosition(), 'RELOAD', '#b0bec5', 14); if (v.unit.side === 'player' || g.isVisible(v.unit)) g.audio.play(weaponHandlingSound(e.weaponId), { volume: 0.6 }); } break; }
         }
         if (clip && e.t !== 'move' && e.t !== 'shot' && e.t !== 'damage' && e.t !== 'death') void clip;
         g.hud.refresh();

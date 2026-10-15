@@ -29,6 +29,7 @@ import { Overlays } from './render/Overlays.js';
 import { LanternLights } from './render/LanternLights.js';
 import { Fx } from './render/Fx.js';
 import { UnitView, loadCharacterArt } from './units/UnitView.js';
+import { SoundPlayer } from './audio/SoundPlayer.js';
 import { EventPlayer } from './anim/EventPlayer.js';
 import { CutInDirector, CUTIN_MODES } from './anim/CutInDirector.js';
 import { CameraDirector } from './anim/CameraDirector.js';
@@ -68,7 +69,8 @@ export function wearTint(mission) {
 export class Game {
     constructor({ canvas, hudRoot, cutinRoot, floatRoot, onExit, options = {} }) {
         let savedOptions={};try{savedOptions=JSON.parse(localStorage.getItem('tactics-settings')||'{}');}catch{}
-        this.options = { turnSpeed:1,rotateSpeed:1,aimSway:true,aimInertia:true,showEnemyBars:true,confirmMoves:false,autoEndTurn: false, autoNext: true, followCamera: true, edgeScroll: true, buildingView:'auto', ...savedOptions, ...options };
+        this.options = { soundVolume:0.65,turnSpeed:1,rotateSpeed:1,aimSway:true,aimInertia:true,showEnemyBars:true,confirmMoves:false,autoEndTurn: false, autoNext: true, followCamera: true, edgeScroll: true, buildingView:'auto', ...savedOptions, ...options };
+        this.audio = new SoundPlayer({ volume: this.options.soundVolume });
         this.scene = new Scene(canvas);
         this.library = new MaterialLibrary(this.scene.renderer, this.scene.clipping);
         this.kit = new KitLibrary(this.library);
@@ -99,6 +101,8 @@ export class Game {
 
     // ------------------------------------------------------------------ lifecycle
     async start(session) {
+        this.audio.stopAll();
+        this.audio.active = true;
         this.cameraDirector.end();
         this.session = session;
         this.startedAt = performance.now();
@@ -168,7 +172,7 @@ export class Game {
         return v;
     }
     restart() { this.session.restart?.().then(s => this.start(s)).then(() => { if (this.autoPlayer) this.maybeRunAi(); }); }
-    exitToMenu(opts) { this.onExit?.(opts); }
+    exitToMenu(opts) { this.audio.active = false; this.audio.stopAll(); this.onExit?.(opts); }
 
     loop(now) {
         // rAF timestamps can predate the constructor (negative first dt), which used to fling the camera shake.
@@ -269,6 +273,7 @@ export class Game {
         if (glide && this.options.followCamera) this.scene.glideTo(t, 5); else { this.scene.glide = null; this.scene.target.copy(t); }
     }
     setMode(m) {
+        if (m.kind === 'shoot' && m.weaponId === 'handcannon' && (this.mode.kind !== 'shoot' || this.mode.weaponId !== m.weaponId)) this.audio.play('handgunClick', { volume: 0.5 });
         if (this.cameraDirector.phase === 'prepare') this.cameraDirector.end();
         this.mode = m; this.targetInfo = null;this.freeAim=null;this.freeAimManual=false;this.moveConfirmation=null;this.aim.clear();this.aimStance=null;
         this.overlays.clearAim();

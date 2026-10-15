@@ -63,7 +63,7 @@ export class Hud {
         this.lines = [];
         this.slots = [];
         this.equipment=new EquipmentPanel(this.el('.equipment-overlay'),game);
-        root.addEventListener('change',e=>{const k=e.target.dataset.setting;if(!k)return;const v=Number(e.target.value);game.options[k]=v;if(k==='turnSpeed')game.player.speed=v;localStorage.setItem('tactics-settings',JSON.stringify(game.options));});
+        root.addEventListener('change',e=>{const k=e.target.dataset.setting;if(!k)return;const v=Number(e.target.value);game.options[k]=v;if(k==='turnSpeed')game.player.speed=v;if(k==='soundVolume')game.audio.setVolume(v);localStorage.setItem('tactics-settings',JSON.stringify(game.options));});
     }
     reset() { this.report = null; this.equipment.open=false;this.equipment.nested=null;this.equipment.selected=null;this.el('.outcome').classList.add('hidden'); this.hidePanel(); this.squadSpent(false); }
     onClick(e) {
@@ -130,6 +130,7 @@ export class Hud {
         if (el.classList.contains('hidden')) return;
         const row = (k, label) => `<button data-act="opt" data-arg="${k}" class="${o[k] ? 'on' : ''}">${o[k] ? '☑' : '☐'} ${label}</button>`;
         el.innerHTML = `<h3>Settings <button data-act="options">✕</button></h3><h4>Gameplay</h4><label>Turn / animation speed<select data-setting="turnSpeed">${[.5,1,1.5,2,3].map(n=>`<option value="${n}" ${Number(o.turnSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label><label>Camera rotation<select data-setting="rotateSpeed">${[.5,1,1.5,2].map(n=>`<option value="${n}" ${Number(o.rotateSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('confirmMoves','Confirm movement destinations')}${row('showEnemyBars','Show enemy health')}${row('aimSway','Reticle breathing / sprite inertia')}${row('aimInertia','Aim inertia (heavier guns swing slower)')}<button data-act="debug">Test / debug tools (F1)</button><button data-act="inventory">Equipment and body status (I)</button><button data-act="menu">Return to menu</button>${row('autoEndTurn', 'Auto end turn when the squad is spent')}${row('autoNext', 'Auto-select the next ready soldier')}${row('followCamera', 'Camera follows actions')}
+            <h4>Audio</h4><label>Sound effects volume<input type="range" data-setting="soundVolume" min="0" max="1" step="0.05" value="${o.soundVolume ?? 0.65}" aria-label="Sound effects volume"></label>
             <h4>Camera</h4>${row('edgeScroll', 'Screen-edge scrolling')}<button data-act="proj" class="${g.scene.projection === 'ortho' ? 'on' : ''}">${g.scene.projection === 'ortho' ? '☑' : '☐'} Isometric (orthographic) view (V)</button>
             <div class="camhint" style="font-size:11px;opacity:.7;line-height:1.5;margin:4px 0 2px">WASD / arrows / screen edge pan · right-drag grab · middle-drag orbit · wheel zoom · Q/E rotate · H / Home centre on soldier · V isometric</div>
             <h4>Buildings</h4><div class="row"><button data-act="buildingCycle" class="${o.buildingView==='exterior'?'on':''}" aria-pressed="${o.buildingView==='exterior'}">Show outside only</button></div><small>Wheel zoom: roof → upper floors → ground floor. Selected floors stay fixed while zooming. Auto floors restores zoom cutaways. Use the cube arrows for floor changes. I opens equipment.</small>

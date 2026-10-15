@@ -1,0 +1,88 @@
+{
+  "units": "metres",
+  "axes": "blender gun space: +Y muzzle, +Z up, +X right; origin = grip (glTF: x, z, -y)",
+  "grip": [
+    0,
+    0,
+    0
+  ],
+  "support": {
+    "rifle": [
+      0.0,
+      0.3301,
+      0.0765
+    ],
+    "sniper": [
+      0.0,
+      0.3873,
+      0.0482
+    ],
+    "shotgun": [
+      0.0,
+      0.4436,
+      0.0268
+    ]
+  },
+  "muzzles": {
+    "muzzle_std": [
+      0.0,
+      0.5167,
+      0.104
+    ],
+    "muzzle_long": [
+      0.0,
+      0.6498,
+      0.104
+    ],
+    "muzzle_sniper": [
+      0.0,
+      0.8801,
+      0.0964
+    ],
+    "muzzle_shotgun": [
+      0.0,
+      0.748,
+      0.068
+    ]
+  },
+  "bores": {
+    "rifle": 0.104,
+    "sniper": 0.0964,
+    "shotgun": 0.068
+  },
+  "scopeOffset": {
+    "rifle": [
+      0,
+      0,
+      0
+    ],
+    "shotgun": [
+      0.0,
+      0.0451,
+      -0.0647
+    ]
+  },
+  "bodies": {
+    "body_rifle": "rifle",
+    "body_sniper": "sniper",
+    "body_shotgun": "shotgun"
+  },
+  "triangles": {
+    "body_rifle": 660,
+    "barrel_std": 48,
+    "sight_irons": 81,
+    "mag_rifle": 140,
+    "barrel_long": 149,
+    "body_sniper": 927,
+    "optic_scope": 155,
+    "body_shotgun": 653
+  },
+  "totalTriangles": 2813,
+  "references": {
+    "rifle": "Low-poly Colt M5 SCW (m5 scw.blend)",
+    "sniper": "Low-Poly L118A1 (usdz, Sketchfab export)",
+    "shotgun": "pump shotgun (shotgun.obj + reference photo)",
+    "note": "supplied by Leon; licences to confirm"
+  },
+  "source": "tools/art/blender/gun_kit.py"
+}
