@@ -83,20 +83,54 @@ export function rayUnit(o, d, u, maxT, store=null) {
     return best;
 }
 
-/** Shoulder point, leaning out of cover toward the aim point when the straight line is blocked close by. */
-export function chooseMuzzle(store, u, aimPoint) {
+/** Neighbour offsets a soldier can step out to, in a fixed order (determinism). */
+const STEP_DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+/** Step-out tiles beside `u` toward `aimPoint`: sideways first, then forward diagonals; never backward. */
+export function stepOutTiles(store, u, aimPoint, { occupied = null } = {}) {
+    if (WALKERS[u.type]) return [];
+    const cx = u.x + 0.5, cy = u.y + 0.5, dx = aimPoint.x - cx, dy = aimPoint.y - cy, len = Math.hypot(dx, dy);
+    if (len < 1e-6) return [];
+    const fx = dx / len, fy = dy / len, rx = -fy, ry = fx;
+    const open = (x, y, z) => !materialById(store.get(x, y, z)).solid;
+    const stand = (x, y) => store.inBounds?.(x, y, u.z) !== false && store.surfaces(x, y).some(c => c.z === u.z && c.headroom >= 2)
+        && open(x, y, u.z + 1) && open(x, y, u.z + 2) && !occupied?.(x, y, u.z);
+    const out = [];
+    STEP_DIRS.forEach(([ox, oy], i) => {
+        const l = Math.hypot(ox, oy), fwd = (ox * fx + oy * fy) / l, side = (ox * rx + oy * ry) / l;
+        if (fwd < -0.3 || Math.abs(side) < 0.1) return;
+        const x = u.x + ox, y = u.y + oy;
+        if (!stand(x, y)) return;
+        // A diagonal step squeezes past a corner only when both orthogonal tiles are open at body height.
+        if (ox && oy && !(open(u.x + ox, u.y, u.z + 1) && open(u.x + ox, u.y, u.z + 2) && open(u.x, u.y + oy, u.z + 1) && open(u.x, u.y + oy, u.z + 2))) return;
+        out.push({ x, y, z: u.z, side: side > 0 ? 'right' : 'left', rank: Math.abs(fwd) + (ox && oy ? 0.5 : 0) + i * 1e-3 });
+    });
+    return out.sort((a, b) => a.rank - b.rank).map(({ rank, ...t }) => t);
+}
+
+/**
+ * Shoulder point for a shot at `aimPoint`. The straight line from the shoulder is tried first, then a lean out of
+ * cover to either side, then (XCOM-style) a step out to a free side tile when the angle is blocked, e.g. around a
+ * corner or past a pillar. A step-out muzzle carries `step: {x,y,z}` and `side`; the soldier does not move.
+ * `occupied(x,y,z)` keeps steps off tiles other units stand on.
+ */
+export function chooseMuzzle(store, u, aimPoint, { occupied = null } = {}) {
     const base = { x: u.x + 0.5, y: u.y + 0.5, h: u.z + 1 + SHOULDER };
     const dx = aimPoint.x - base.x, dy = aimPoint.y - base.y, len = Math.hypot(dx, dy) || 1;
     const rx = -dy / len, ry = dx / len;
-    const candidates = [base, ...[0.55, -0.55].map(s => ({ x: base.x + rx * s, y: base.y + ry * s, h: base.h, lean: s > 0 ? 'right' : 'left' }))];
-    let fallback = base;
-    for (const c of candidates) {
-        if (materialById(store.get(Math.floor(c.x), Math.floor(c.y), Math.floor(c.h))).solid) continue;
-        const r = castRay(store, c, aimPoint, { blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile !== 'pass' });
-        if (!r.hit) return c;
-        if (r.t > 1.4 && c === base) fallback = base;
+    const leans = [0.55, -0.55].map(s => ({ x: base.x + rx * s, y: base.y + ry * s, h: base.h, lean: s > 0 ? 'right' : 'left', side: s > 0 ? 'right' : 'left' }));
+    const clear = c => !materialById(store.get(Math.floor(c.x), Math.floor(c.y), Math.floor(c.h))).solid
+        && !castRay(store, c, aimPoint, { blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile !== 'pass' }).hit;
+    for (const c of [base, ...leans]) if (clear(c)) return c;
+    for (const t of stepOutTiles(store, u, aimPoint, { occupied })) {
+        const c = { x: t.x + 0.5, y: t.y + 0.5, h: base.h, lean: `step-${t.side}`, side: t.side, step: { x: t.x, y: t.y, z: t.z } };
+        if (clear(c)) return c;
     }
-    return fallback;
+    return base;
+}
+/** Occupancy test for chooseMuzzle from a battle (or a light preview object with `units`). */
+export function occupiedBy(battle, self) {
+    if (battle.occupant) return (x, y, z) => { const o = battle.occupant(x, y, z); return !!o && o !== self; };
+    return (x, y, z) => (battle.units || []).some(o => o !== self && alive(o) && o.x === x && o.y === y && o.z === z);
 }
 
 function basis(d) {
@@ -195,7 +229,7 @@ export function aimPointOf(battle, aim) {
  */
 export function estimateShot(battle, shooter, aim, { weapon, spread, samples = 96, muzzle = null } = {}) {
     const target = aimPointOf(battle, aim);
-    const o = muzzle || chooseMuzzle(battle.store, shooter, target);
+    const o = muzzle || chooseMuzzle(battle.store, shooter, target, { occupied: occupiedBy(battle, shooter) });
     const dv = [target.x - o.x, target.y - o.y, target.h - o.h];
     const dist = Math.hypot(...dv);
     const dir = dv.map(c => c / dist);

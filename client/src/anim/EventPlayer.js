@@ -31,6 +31,11 @@ export class EventPlayer {
         w.forEach(r => r());
     }
     d(s) { return wait(s / this.speed); }
+    /** Slide a unit view between two cells (step-out and back), keeping its facing. */
+    async slide(v, a, b, seconds) {
+        const n = 6;
+        for (let i = 1; i <= n; i++) { const k = i / n, e = k * k * (3 - 2 * k); v.setCell(a.x + (b.x - a.x) * e, a.y + (b.y - a.y) * e, a.z + (b.z - a.z) * e); await this.d(seconds / n); }
+    }
     view(id) { return this.game.views.get(id); }
     async play(e) {
         const g = this.game, fx = g.fx;
@@ -46,8 +51,10 @@ export class EventPlayer {
                 const title = e.kind === 'breach' ? 'BREACH' : (WEAPONS[e.weaponId]?.name || THROWABLES[e.itemId]?.name || ABILITIES[e.abilityId]?.name || e.kind).toUpperCase();
                 const sub = !g.battle.intelMode && g.lastPreview?.unitId === e.unitId && g.lastPreview.hit != null ? `${Math.round(g.lastPreview.hit * 100)}% on target` : (target ? `→ ${target.name}` : '');
                 const sv = this.view(e.unitId), tv = target ? this.view(target.id) : null;
-                await g.cutins.play({ units: group, kind: e.kind, title, subtitle: sub, side: u.side,
-                    shooterPos: sv?.worldPosition(), targetPos: e.aimPoint?new THREE.Vector3(e.aimPoint.x,e.aimPoint.h-1.1,e.aimPoint.y):tv ? tv.worldPosition() : sv?.worldPosition().clone().add(new THREE.Vector3(...faceVec(u)).multiplyScalar(4)) });
+                // A shot from a blocked angle is framed from the side tile the soldier steps out to.
+                const step = e.muzzle?.step, shooterPos = step && sv ? new THREE.Vector3(step.x + 0.5, sv.worldPosition().y, step.y + 0.5) : sv?.worldPosition();
+                await g.cutins.play({ units: group, kind: e.kind, title, subtitle: sub, side: u.side, shoulder: e.muzzle?.side,
+                    shooterPos, targetPos: e.aimPoint?new THREE.Vector3(e.aimPoint.x,e.aimPoint.h-1.1,e.aimPoint.y):tv ? tv.worldPosition() : sv?.worldPosition().clone().add(new THREE.Vector3(...faceVec(u)).multiplyScalar(4)) });
                 break;
             }
             case 'move': case 'knockback': {
@@ -91,6 +98,9 @@ export class EventPlayer {
             }
             case 'shot': {
                 const v = this.view(e.unitId);
+                // Step out to the side tile, fire, step back (the soldier's tile never changes).
+                const step = e.muzzle?.step && v ? e.muzzle.step : null;
+                if (step) await this.slide(v, v.unit, step, 0.14);
                 v?.animator.play('fire', { weaponId: e.weaponId, restart: true });
                 if (e.aim) v?.face(e.aim.x - (v.unit.x + 0.5), e.aim.y - (v.unit.y + 0.5));
                 const w = WEAPONS[e.weaponId];
@@ -113,6 +123,7 @@ export class EventPlayer {
                 });
                 await this.d(Math.max(CLIP_HOLD.fire, last * this.speed));
                 g.voxelView?.flush();
+                if (step) { await this.slide(v, step, v.unit, 0.18); v.snap(); }
                 break;
             }
             case 'melee': {

@@ -27,7 +27,7 @@ import { WEAPONS, THROWABLES } from '../content/weapons.js';
 import { ABILITIES } from '../content/units.js';
 import { B } from '../content/balance.js';
 import { createUnit, alive, hasStatus, addStatus, removeStatus, accuracyMult, mobilityPerAp, partArmor, facingToward, FACING_VEC, EYE, CHEST } from './Units.js';
-import { estimateShot, chooseMuzzle, sampleCone, traceProjectile, aimPointOf, partCentre } from './Ballistics.js';
+import { estimateShot, chooseMuzzle, occupiedBy, sampleCone, traceProjectile, aimPointOf, partCentre } from './Ballistics.js';
 import { Formations } from './Formations.js';
 import { validateDebug, applyDebug } from './DebugOps.js';
 import { createObjective, inZone, extractionOpen } from './Objectives.js';
@@ -691,7 +691,7 @@ export class Battle {
         u.ap -= this.shotAp(u, w);
         u.buffs.quickAim = false;
         const targetIds = intent.aim.unitId ? [intent.aim.unitId] : [];
-        this.emit({ t: 'cutin', unitId: u.id, kind: w.cutIn || 'shot', weaponId: w.id, targetIds,aimPoint:aimPointOf(this,intent.aim) });
+        { const aimPoint=aimPointOf(this,intent.aim); this.emit({ t: 'cutin', unitId: u.id, kind: w.cutIn || 'shot', weaponId: w.id, targetIds,aimPoint,muzzle:chooseMuzzle(this.store,u,aimPoint,{occupied:occupiedBy(this,u)}) }); }
         this.fireWeapon(u, w, intent.aim, { fireMode:intent.fireMode });
         u.buffs.deadeye = false;
     }
@@ -706,7 +706,7 @@ export class Battle {
         u.facing = facingToward(aimPoint.x - u.x - 0.5, aimPoint.y - u.y - 0.5);
         const { spread } = this.spreadFor(u, w, aimPoint, { reaction, breach, target });
         w=weaponBuild(u,w);
-        const muzzle = chooseMuzzle(this.store, u, aimPoint);
+        const muzzle = chooseMuzzle(this.store, u, aimPoint, { occupied: occupiedBy(this, u) });
         const dv = [aimPoint.x - muzzle.x, aimPoint.y - muzzle.y, aimPoint.h - muzzle.h];
         const dist = Math.hypot(...dv);
         const dir = dv.map(c => c / dist);

@@ -27,10 +27,28 @@ targets' body-part cylinders. Code: `shared/battle/Ballistics.js`, `Battle.fireW
   (τ 0.2 s), and its upper body trails the crosshair's motion (skew up to 7°) for a feel of inertia
   (`CutInDirector.aimBackshotLayout` / `aimBackshotPose`). A committed action plays the full cut-in with the art's
   barrel tip (cutin.json `muzzle`) on the aim point and a crosshair there. There is no setting that skips it.
-- **Muzzle and leaning** (`chooseMuzzle`): the shoulder (tile centre, z+1+1.35), or that point shifted **0.55
-  tiles** right, then left, perpendicular to the aim line: the first candidate that is not inside a solid voxel and
-  has no `block` voxel on the straight line to the aim point is used; otherwise the centre. This is how units lean
-  out round corners.
+- **Muzzle, leaning and stepping out** (`chooseMuzzle`): candidates in order, and the first that is not inside a
+  solid voxel and has no bullet-stopping voxel on the straight line to the aim point is used; otherwise the centre.
+  1. The shoulder (tile centre, z+1+1.35).
+  2. That point shifted **0.55 tiles** right, then left, perpendicular to the aim line (leaning out).
+  3. **Step-out** (XCOM style, `stepOutTiles`) for angles a lean cannot clear: the centre of a neighbouring tile at
+     the same height. Sideways tiles first, then forward diagonals, never backward (forward share < −0.3) and never
+     straight ahead. The tile must be standable with headroom ≥ 2 and empty at body height, not occupied by another
+     unit, and a diagonal also needs both orthogonal tiles open at body height (no squeezing through a corner).
+     Walkers (multi-cell units) do not step out.
+  The muzzle carries `side` ('left' / 'right' of the line of fire) and, for a step-out, `step: {x, y, z}`. The
+  soldier's tile does not change: the step is only where the shot leaves from. The shot estimate, the fired shot,
+  reaction fire and the overwatch preview all use the same choice (with the same occupancy), so the HUD hit chance
+  is what fires. The `cutin` and `shot` events carry the muzzle.
+- **Aiming from a blocked angle**: the shoulder camera and the reticle are framed from the step-out tile, over the
+  shoulder on the side the soldier leans or steps to (`Game.frameAim`; re-framed only when the step tile or side
+  changes). The reticle turns red with BLOCKED when even a step-out cannot see the aim point, and shows STEP OUT
+  when the shot will leave from a side tile. In playback the soldier slides out to the side tile, fires and slides
+  back.
+- **Left-shoulder back shot**: when the soldier leans or steps out to the left, the camera looks over the left
+  shoulder and the back shot uses the art's `variants.left` from cutin.json (its own `layers`, `width`, `height`,
+  `muzzle`, `screenHeight`, used as drawn) when it exists. Until that sprite is made the right-hand art is mirrored
+  (muzzle u → 1 − u): bottom-right while aiming, entering from the right in the cut-in (`sideCutin`).
 
 ## The accuracy cone (`Battle.spreadFor`)
 

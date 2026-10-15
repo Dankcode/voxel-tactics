@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { VoxelStore } from '../../../../shared/voxel/VoxelStore.js';
 import { BuildingView } from '../BuildingView.js';
-import { pickVisibleTile } from '../TilePicking.js';
+import { pickVisibleTile, pickReachableAlongRay } from '../TilePicking.js';
 import { buildRoofGeometry } from './RoofBuilder.js';
 import { InteriorVisibility } from '../InteriorVisibility.js';
 function house() {
@@ -79,4 +79,20 @@ test('floor-band picking keeps intermediate stair tops and ramps selectable befo
     }
     // Choosing the next floor still excludes the lower terrain beneath it.
     assert.equal(pickVisibleTile(store,{x:5.5,y:5.5,h:10},{x:5.5,y:5.5,h:0},{cutZ:7,preferredFloor:4}),null);
+});
+
+test('move picking without an elevation cut: the ray goes through the roof to the highest reachable floor',()=>{
+    const {store}=house(),from={x:7.5,y:7.5,h:11.5},to={x:7.5,y:7.5,h:.1};
+    // With no cut the visible pick is the roof, which is not a destination.
+    assert.equal(pickVisibleTile(store,from,to).voxel.z,7);
+    const both=new Set(['7,7,1','7,7,4','2,7,1']);
+    assert.deepEqual(pickReachableAlongRay(store,from,to,both).cell,{x:7,y:7,z:4},'upper floor first');
+    assert.deepEqual(pickReachableAlongRay(store,from,to,new Set(['7,7,1'])).cell,{x:7,y:7,z:1},'ground floor when only it is reachable');
+    assert.deepEqual(pickReachableAlongRay(store,from,to,both,{cutZ:4}).cell,{x:7,y:7,z:1},'a cut level still limits it');
+    assert.equal(pickReachableAlongRay(store,from,to,new Set(['2,7,1'])),null,'nothing reachable under the cursor');
+    // A slanted ray that first meets the outer wall still reaches the room behind it.
+    const side=pickReachableAlongRay(store,{x:1.5,y:7.5,h:5.5},{x:9.5,y:7.5,h:.5},new Set(['6,7,1','7,7,1','8,7,1']));
+    assert.ok(side&&side.cell.z===1&&side.cell.x>=6,JSON.stringify(side));
+    // Open ground in front of the house: the floor the ray touches first.
+    assert.deepEqual(pickReachableAlongRay(store,{x:2.5,y:7.5,h:6},{x:2.5,y:7.5,h:.5},both).cell,{x:2,y:7,z:1});
 });

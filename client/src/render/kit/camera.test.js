@@ -52,3 +52,14 @@ test('CAD presets select plan and compass views while pan stays screen-relative'
  r.moveBy(2,0);assert.ok(Math.abs(r.target.x)<1e-9);assert.equal(r.target.z,-2);
  r.setPreset('iso');r.update(0);assert.equal(r.yaw,Math.PI/4);
 });
+
+test('aiming over the left shoulder puts the camera on the left of the line of fire', () => {
+    const shooter = new THREE.Vector3(8.5, 2, 8.5), target = new THREE.Vector3(8.5, 2, 18.5);
+    const right = new CameraDirector({ aspect: 1.6 }), left = new CameraDirector({ aspect: 1.6 });
+    right.prepareAim(shooter, target); left.prepareAim(shooter, target, { side: 'left' });
+    // Looking down +z (voxel +y), the right-hand vector is (-1, 0, 0) in three space.
+    const rx = c => -(c.from.x - shooter.x);
+    assert.ok(rx(right) > 0.5, `right shoulder ${rx(right)}`);
+    assert.ok(rx(left) < -0.5, `left shoulder ${rx(left)}`);
+    assert.equal(left.side, 'left');
+});

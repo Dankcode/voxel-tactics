@@ -3,7 +3,7 @@ import { updateReticle } from './ui/AimReticle.js';
 import { AimController, aimTau, swayDegrees } from './ui/AimController.js';
 import { floorCutLevels, zoomCutLevel } from './render/FloorCutaway.js';
 import { BuildingView, BUILDING_VIEWS } from './render/BuildingView.js';
-import { pickVisibleTile } from './render/TilePicking.js';
+import { pickVisibleTile, pickReachableAlongRay } from './render/TilePicking.js';
 import { footprint } from '../../shared/battle/IntelOps.js';
 import { InteriorVisibility } from './render/InteriorVisibility.js';
 import { battleReport } from '../../shared/session/BattleReport.js';
@@ -38,7 +38,7 @@ import { reasonText } from './ui/Reasons.js';
 import { castRay } from '../../shared/voxel/Raycast.js';
 import { MAT, AIR, materialById } from '../../shared/voxel/Materials.js';
 import { nodeKey, pathTo } from '../../shared/world/PathSearch.js';
-import { estimateShot, partCentre } from '../../shared/battle/Ballistics.js';
+import { estimateShot, partCentre, chooseMuzzle, occupiedBy } from '../../shared/battle/Ballistics.js';
 import { coverAgainst, COVER } from '../../shared/voxel/Cover.js';
 import { decide, formationIntents } from '../../shared/battle/Ai.js';
 import { alive } from '../../shared/battle/Units.js';
@@ -270,7 +270,7 @@ export class Game {
     }
     setMode(m) {
         if (this.cameraDirector.phase === 'prepare') this.cameraDirector.end();
-        this.mode = m; this.targetInfo = null;this.freeAim=null;this.freeAimManual=false;this.moveConfirmation=null;this.aim.clear();
+        this.mode = m; this.targetInfo = null;this.freeAim=null;this.freeAimManual=false;this.moveConfirmation=null;this.aim.clear();this.aimStance=null;
         this.overlays.clearAim();
         this.overlays.clearPath();
         this.overlays.showCover(this.battle?.store, null);
@@ -346,7 +346,7 @@ export class Game {
         this.targets = this.targetsFor(u, this.mode.weaponId);
         const keep = this.targets.find(t => t.id === this.lastTargetId) || this.targets[0];
         if (keep) this.aimAt(u, keep, 'torso', { frame: true });
-        else {this.freeAim={x:u.x+.5,y:u.y-8,h:u.z+2.1};this.aim.snap(this.freeAim);this.freeAimManual=true;this.cutins.beginAim(u);this.cameraDirector.prepareAim(new THREE.Vector3(u.x+.5,u.z+1,u.y+.5),new THREE.Vector3(this.freeAim.x,this.freeAim.h,this.freeAim.y));}
+        else {this.freeAim={x:u.x+.5,y:u.y-8,h:u.z+2.1};this.aim.snap(this.freeAim);this.freeAimManual=true;this.frameAim(u,this.freeAim);}
     }
     cycleTarget(d = 1) {
         const u = this.selectedUnit(); if (!u || !this.targets?.length) return;
@@ -619,7 +619,14 @@ export class Game {
         if (!seg) return null;
         const { from, to } = seg;
         const freePick=['mark','shoot'].includes(this.mode.kind);
-        return pickVisibleTile(store,from,to,{cutZ:top,buildingView:this.buildingView,preferredFloor:!freePick&&Number.isFinite(top)?top-3:null,reachable:freePick?null:this.search?.costs,origin:this.selectedUnit()});
+        const hit=pickVisibleTile(store,from,to,{cutZ:top,buildingView:this.buildingView,preferredFloor:!freePick&&Number.isFinite(top)?top-3:null,reachable:freePick?null:this.search?.costs,origin:this.selectedUnit()});
+        // Moving never needs the elevation cut: when the visible pick is not a destination (a roof, a wall face, an
+        // upper floor), take the highest reachable floor along the same ray instead.
+        if(this.mode.kind==='move'&&this.zones?.size&&!(hit?.cell&&this.zones.has(nodeKey(hit.cell)))){
+            const through=pickReachableAlongRay(store,from,to,this.zones,{cutZ:top});
+            if(through)return through;
+        }
+        return hit;
     }
     unitAt(px, py) {
         const ray = this.scene.rayAt(px, py);
@@ -729,7 +736,7 @@ export class Game {
         // PLAN-07: the aim swings onto the new anchor through the aim spring; the camera only re-frames when it
         // was not already in the shoulder view.
         const anchor=partCentre(target,part);this.freeAimManual=false;
-        if(!this.aim.current||this.cameraDirector.phase!=='prepare'){this.aim.snap(anchor);this.freeAim={...anchor};this.cutins.beginAim(u);this.cameraDirector.prepareAim(new THREE.Vector3(u.x+.5,u.z+1,u.y+.5),new THREE.Vector3(anchor.x,anchor.h,anchor.y));}
+        if(!this.aim.current||this.cameraDirector.phase!=='prepare'){this.aim.snap(anchor);this.freeAim={...anchor};this.frameAim(u,anchor);}
         else this.aim.setTarget(anchor);
         this.targetInfo.part = part;
         this.overlays.showCone(this.targetInfo.muzzle, partCentre(target, part), this.targetInfo.spread);
@@ -747,8 +754,28 @@ export class Game {
         const p=this.aim.step(dt,{tau:aimTau(u,w),sway:this.options.aimSway?swayDegrees(u):0,origin,inertia:this.options.aimInertia!==false});
         if(!p)return;
         this.freeAim=p;
+        // Blocked angles: the shot steps out to a side tile (shared chooseMuzzle); the shoulder camera and the reticle
+        // follow it, so the view is from where the soldier will actually fire and not into the wall.
+        const st=this.aimStance;
+        if(!st||st.unitId!==u.id||Math.hypot(p.x-st.at.x,p.y-st.at.y,p.h-st.at.h)>0.25){
+            const m=this.aimMuzzle(u,p);
+            if(!st||st.unitId!==u.id||aimStanceKey(m)!==st.key)this.frameAim(u,p,m);
+            else Object.assign(st,{at:{...p},muzzle:m,blocked:shotBlocked(this.battle.store,m,p)});
+        }
         this.views.get(u.id)?.face(p.x-origin.x,p.y-origin.y);
         if(this.cameraDirector.phase==='prepare')this.cameraDirector.track(new THREE.Vector3(p.x,p.h,p.y),dt);
+    }
+    /** Where a shot at `p` would leave from (lean or step-out), as the battle will resolve it. */
+    aimMuzzle(u,p){return chooseMuzzle(this.battle.store,u,p,{occupied:occupiedBy(this.battle,u)});}
+    /**
+     * Frame the aiming shoulder camera and the aiming back shot for a shot at `p`: from the step-out tile when the
+     * angle is blocked, over the shoulder on the side the soldier leans or steps to.
+     */
+    frameAim(u,p,m=this.aimMuzzle(u,p)){
+        const side=m.side||'right',o=m.step?new THREE.Vector3(m.step.x+.5,u.z+1,m.step.y+.5):new THREE.Vector3(u.x+.5,u.z+1,u.y+.5);
+        this.aimStance={unitId:u.id,key:aimStanceKey(m),side,muzzle:m,at:{...p},blocked:shotBlocked(this.battle.store,m,p)};
+        this.cutins.beginAim(u,{shoulder:side});
+        this.cameraDirector.prepareAim(o,new THREE.Vector3(p.x,p.h,p.y),{side});
     }
     updateFreeAim(x,y,pick=null){
         const u=this.selectedUnit();if(!u)return;const ray=this.scene.rayAt(x,y).ray;
@@ -787,6 +814,11 @@ export class Game {
         }
     }
 }
+
+/** Camera framing changes only when the step-out tile or the shoulder side changes (not on every small lean). */
+export function aimStanceKey(m){return `${m.step?`${m.step.x},${m.step.y}`:'tile'}:${m.side||'right'}`;}
+/** True when the straight line from the muzzle to the aim point meets a bullet-stopping voxel before it. */
+export function shotBlocked(store,m,p){const r=castRay(store,m,p);return !!r.hit&&r.t<r.length-0.3;}
 
 /** Clip a three-space ray to the voxel grid's box; returns voxel-space { from, to } or null when it misses. */
 export function clipToBox(o, d, store) {

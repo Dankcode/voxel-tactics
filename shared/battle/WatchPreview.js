@@ -1,7 +1,7 @@
 import { inWatchSector } from './WatchSector.js';
 import { createUnit, facingToward } from './Units.js';
 import { WEAPONS } from '../content/weapons.js';
-import { estimateShot, partCentre, chooseMuzzle, sampleCone, rayUnit } from './Ballistics.js';
+import { estimateShot, partCentre, chooseMuzzle, occupiedBy, sampleCone, rayUnit } from './Ballistics.js';
 import { materialById } from '../voxel/Materials.js';
 import { collisionFootprint } from '../voxel/ConnectedShapes.js';
 import { createRng, hashString } from '../util/Rng.js';
@@ -22,7 +22,7 @@ export function watchAccuracy(battle, unit, cell, weaponId, { terrain = false } 
         return estimateShot(preview, unit, { unitId: target.id, part: 'torso' }, { weapon, spread, samples: 32 }).hit;
     }
     // Solid surfaces cannot contain a soldier: show the same body's aim quality before terrain obstruction.
-    const muzzle = chooseMuzzle(battle.store, unit, point);
+    const muzzle = chooseMuzzle(battle.store, unit, point, { occupied: occupiedBy(battle, unit) });
     const delta = [point.x-muzzle.x, point.y-muzzle.y, point.h-muzzle.h], distance = Math.hypot(...delta);
     const direction = delta.map(v=>v/distance), rng = createRng(hashString(`watch:${unit.id}:${cell.x},${cell.y},${cell.z}:${spread}`));
     let hits=0;

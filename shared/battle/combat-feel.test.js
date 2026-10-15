@@ -151,3 +151,56 @@ test('! alerts: path steps a visible enemy overwatch covers, and soldiers flanke
     for (const x of [11, 12, 13]) for (let h = 2; h <= 3; h++) b.store.set(x, 22, h, MAT.brick);
     assert.equal(b.flankedBy(u).length, 0);
 });
+
+import { chooseMuzzle, stepOutTiles, estimateShot, occupiedBy } from './Ballistics.js';
+// A soldier at (12,23) hugging a wall that runs north of it from x=9..12; the target is north and a little west, so a
+// lean past the wall's end does not clear it but a step to the east tile does.
+const corner = () => {
+    const b = arena(['grenadier'], { enemy: [{ x: 10, y: 12 }] }), s = b.store;
+    for (let x = 9; x <= 12; x++) for (let h = 2; h <= 4; h++) s.set(x, 22, h, MAT.concrete);   // a full-block wall
+    return b;
+};
+test('step-out: a wall straight ahead makes the muzzle step to the open side tile with a clear line', () => {
+    const b = corner(), u = b.unit('p0'), e = b.unit('e0');
+    const aim = { x: e.x + 0.5, y: e.y + 0.5, h: e.z + 2.2 };
+    const m = chooseMuzzle(b.store, u, aim, { occupied: occupiedBy(b, u) });
+    assert.deepEqual(m.step, { x: 13, y: 23, z: 1 }, JSON.stringify(m));
+    assert.equal(m.lean, `step-${m.side}`);
+    assert.equal(m.x, 13.5); assert.equal(m.y, 23.5);
+    // The shot estimate uses the same muzzle and sees the target.
+    const est = estimateShot(b, u, { unitId: e.id, part: 'torso' }, { weapon: WEAPONS[u.weapon], spread: 1, samples: 32 });
+    assert.deepEqual(est.muzzle.step, m.step); assert.ok(est.hit > 0.5, `hit ${est.hit}`);
+    // Deterministic.
+    assert.deepEqual(chooseMuzzle(b.store, u, aim, { occupied: occupiedBy(b, u) }), m);
+});
+test('step-out: blocked or occupied side tiles are not used; walls on the other side mirror the step', () => {
+    const b = corner(), u = b.unit('p0'), e = b.unit('e0'), aim = { x: e.x + 0.5, y: e.y + 0.5, h: e.z + 2.2 };
+    // Somebody standing on the open side tile: no step, the straight (blocked) line remains.
+    const occ = (x, y, z) => x === 13 && y === 23 && z === 1;
+    assert.equal(chooseMuzzle(b.store, u, aim, { occupied: occ }).step, undefined);
+    // A wall on the open side: no step either.
+    for (let h = 2; h <= 3; h++) b.store.set(13, 23, h, MAT.brick);
+    assert.equal(chooseMuzzle(b.store, u, aim).step, undefined);
+    // Mirror: wall from x=12..15, open to the west → steps left of the line of fire.
+    const c = arena(['grenadier'], { enemy: [{ x: 14, y: 12 }] }), v = c.unit('p0');
+    for (let x = 12; x <= 15; x++) for (let h = 2; h <= 4; h++) c.store.set(x, 22, h, MAT.concrete);
+    const m = chooseMuzzle(c.store, v, { x: 14.5, y: 12.5, h: 3.2 });
+    assert.deepEqual(m.step, { x: 11, y: 23, z: 1 });
+    assert.notEqual(m.side, chooseMuzzle(corner().store, corner().unit('p0'), aim).side, 'opposite side to the first corner');
+    // A clear line needs no step; a lean is used before a step when it is enough.
+    assert.equal(chooseMuzzle(c.store, v, { x: 9.5, y: 12.5, h: 3.2 }).step, undefined);
+    // Never steps backward.
+    assert.ok(stepOutTiles(c.store, v, aim).every(t => t.y <= v.y));
+});
+test('step-out: the fired shot leaves from the side tile and the cut-in event says so; the soldier stays put', () => {
+    const b = corner(), u = b.unit('p0'), e = b.unit('e0');
+    b.startSide('player');
+    // Free aim at the target's chest: the wall hides it from this soldier's eyes, but not from the stepped shoulder.
+    const r = b.apply({ type: 'shoot', unitId: u.id, fireMode: 'single', aim: { point: { x: e.x + 0.5, y: e.y + 0.5, h: e.z + 2.2 } } });
+    assert.ok(r.ok, JSON.stringify(r));
+    const shot = r.events.find(x => x.t === 'shot'), cut = r.events.find(x => x.t === 'cutin');
+    assert.deepEqual(shot.muzzle.step, { x: 13, y: 23, z: 1 });
+    assert.deepEqual(cut.muzzle.step, shot.muzzle.step);
+    assert.deepEqual([u.x, u.y, u.z], [12, 23, 1]);
+    assert.ok(shot.projectiles.some(p => p.kind === 'unit' || p.to.y < 22), 'rounds get past the wall');
+});

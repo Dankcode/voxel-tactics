@@ -321,3 +321,17 @@ Differences from the plan:
 - **Concrete walls keep 12 HP**: hold-zone anchors are built from them and the hold gates count HP ≥ 12 as durable.
 - **The damage atlas is procedural** (DataTexture), so it needs no asset and runs in headless tests.
 - **Camera re-anchors on yaw only**; pitch is followed by the look-at (a pitch re-anchor jittered on high targets).
+
+### Follow-ups after review
+
+- **Back shot placement**: barrel on the crosshair in the committed cut-in; while aiming, the whole figure stands still
+  in the bottom-left corner past the squad rail and leans/bends after the crosshair with a slight delay.
+- **Step-out aiming** (Leon: "the aiming needs to be adjusted to the side tile in order to get a line of sight on the
+  target… do this for all angles that will be blocked"): `chooseMuzzle` now tries a step out to a free side tile
+  (sideways, then forward diagonals) after the two leans. Shot estimate, fired shot, reaction fire and the overwatch
+  preview share it. The shoulder camera and reticle are framed from that tile (`Game.frameAim`), the reticle shows
+  STEP OUT / BLOCKED, and playback slides the soldier out and back.
+- **Left shoulder**: leaning or stepping out to the left looks over the left shoulder; the back shot uses cutin.json
+  `variants.left` (Leon is drawing it) and mirrors the right-hand art until it exists (`sideCutin`).
+- **Moving without the elevation cut**: a move click that does not land on a destination walks the pick ray through
+  roofs and walls to the highest reachable floor (`pickReachableAlongRay`). The cut only helps browse buildings.

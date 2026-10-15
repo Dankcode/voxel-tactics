@@ -18,6 +18,15 @@ Movement runs on the voxel grid with vibe-game's copied path search (`shared/wor
   [13](13-materials.md).
 - One unit per tile: a tile with another living unit on it is blocked (`Battle.reach` → `blocked`).
 
+## Picking a destination
+
+Choosing a move tile does not need an elevation level. The click first takes the visible tile under the cursor
+(`pickVisibleTile`); when that is not a blue or yellow destination (a roof, a wall face, an upper floor you did not
+mean), the same ray is walked through everything and the **highest reachable floor** it passes is used
+(`pickReachableAlongRay`), so a room under a roof or a floor behind a wall is selectable straight away and the path
+preview shows where you are going. A selected elevation still limits picking to floors below it; it exists to browse
+buildings, not to make moves possible.
+
 ## Path cost
 
 Dijkstra over the 8 neighbours plus vaults, jumps down and ladders (`PathSearch.reachable`; `Battle.reach` uses all

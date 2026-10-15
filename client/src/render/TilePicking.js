@@ -33,3 +33,26 @@ export function pickVisibleTile(store,from,to,{cutZ=Infinity,buildingView=null,p
     if(Number.isFinite(preferredFloor)&&(!cell||cell.z<preferredFloor))return null;
     return {cell,voxel:v,point:r.point,normal:r.normal};
 }
+
+/**
+ * Move picking that does not depend on the elevation cut: walk the whole pick ray (through roofs, walls and floors,
+ * nothing blocks) and return the first standable node in `reachable` whose floor voxel the ray passes, i.e. the
+ * highest reachable floor under the cursor. Used when the ordinary visible pick is not a tile the unit can move to,
+ * so a roof or wall under the cursor no longer stops a move to the floor inside; the elevation cut only helps browse.
+ * `reachable` is a Set/Map of "x,y,z" node keys; cells at or above `cutZ` are skipped.
+ */
+export function pickReachableAlongRay(store, from, to, reachable, { cutZ = Infinity } = {}) {
+    if (!reachable?.size) return null;
+    let found = null;
+    const take = (x, y, z, t) => {
+        if (found || z >= cutZ || !reachable.has(`${x},${y},${z}`)) return;
+        found = { cell: { x, y, z }, voxel: { x, y, z }, t };
+    };
+    // The start cell is not visited by the traversal; test it first.
+    take(Math.floor(from.x), Math.floor(from.y), Math.floor(from.h), 0);
+    castRay(store, from, to, { blocks: () => false, visit: (x, y, z, t) => take(x, y, z, t) });
+    if (!found) return null;
+    const len = Math.hypot(to.x - from.x, to.y - from.y, to.h - from.h) || 1, k = found.t / len;
+    const { t, ...out } = found;
+    return { ...out, point: { x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k, h: from.h + (to.h - from.h) * k }, normal: [0, 0, 1], through: true };
+}
