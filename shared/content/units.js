@@ -39,13 +39,13 @@ export const ENEMIES = Object.freeze({
 });
 
 export const ABILITIES = Object.freeze({
-    killstreak_strike:{id:'killstreak_strike',name:'Commander Strike',commander:true,targeting:'tile',wp:0,ap:0,range:40,text:'One charge per three squad kills. A destructive blast at the marked location; allies are vulnerable too.'},
+    killstreak_strike:{id:'killstreak_strike',name:'Commander Strike',commander:true,targeting:'tile',wp:0,ap:0,range:40,text:'Ready at the start of the mission and again 10 rounds after each use. A destructive blast at the marked location; allies are vulnerable too.'},
     seismic_sense: {id:'seismic_sense',name:'Seismic Sense',intel:true,wp:1,ap:1,text:'Share grounded enemy contacts within 14 tiles and two levels, through walls. Contacts are snapshots.'},
     water_sense: {id:'water_sense',name:'Water Sense',intel:true,wp:1,ap:1,text:'Share contacts within 14 tiles near water, through walls. Contacts are snapshots.'},
     scout_drone: {id:'scout_drone',name:'Scout Drone',intel:true,targeting:'tile',range:18,wp:1,ap:1,text:'Scout from a tile within 18. Drone sees 10 tiles through clear sight. Enemies detect within 2; Drone Hunters within 8. Recast to reposition.'},
     quiet_cut: {id:'quiet_cut',name:'Quiet Cut',intel:true,targeting:'tile',range:3,wp:1,ap:1,text:'Remove two wall voxels within 3 without noise. Enemy sight can still expose you.'},
-    carpet_bomb: {id:'carpet_bomb',name:'Carpet Bomb',intel:true,support:true,targeting:'tile',wp:0,ap:1,text:'After detection: three circular craters, radius 3. Damages allies too. Recharges after 10 of your turns.'},
-    orbital_laser: {id:'orbital_laser',name:'Orbital Laser',intel:true,support:true,targeting:'tile',wp:0,ap:1,text:'After detection: cut an east-west line, 17 tiles long and 3 wide. Damages allies too. Recharges after 10 of your turns.'},
+    carpet_bomb: {id:'carpet_bomb',name:'Carpet Bomb',intel:true,support:true,targeting:'tile',wp:0,ap:1,text:'Three circular craters, radius 3. Damages allies too. Recharges after 10 of your turns.'},
+    orbital_laser: {id:'orbital_laser',name:'Orbital Laser',intel:true,support:true,targeting:'tile',wp:0,ap:1,text:'Cut an east-west line, 17 tiles long and 3 wide. Damages allies too. Recharges after 10 of your turns.'},
     earth_cover: { id: 'earth_cover', name: 'Earth Cover', element: 'geo', targeting: 'tile', wp: 2, ap: 1, range: 6, text: 'Raise destructible half cover on an empty visible tile within 6. Persists until destroyed.' },
     water_mend: { id: 'water_mend', name: 'Water Mend', element: 'hydro', targeting: 'ally', wp: 2, ap: 1, range: 6, heal: 8, text: 'Restore 8 HP to a visible living ally within 6 and extinguish burning. Disabled limbs stay disabled.' },
     dash: { id: 'dash', name: 'Sprint', wp: 2, ap: 0, text: '+1 AP that can only be spent moving.' },

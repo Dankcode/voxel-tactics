@@ -39,10 +39,10 @@ test('quiet cut opens wall without alerting a guard facing away',()=>{
     assert.ok(b.apply({type:'ability',unitId:'p0',abilityId:'quiet_cut',to:{x:8,y:14,z:1}}).ok);
     assert.equal(b.store.get(8,14,2),AIR);assert.equal(b.unit('e0').alerted,false);assert.equal(b.detected,false);
 });
-test('support validates choice and detection, carves deterministic terrain and recharges on personal turns',()=>{
+test('support validates choice (no detection gate), carves deterministic terrain and recharges on personal turns',()=>{
     const a=arena(),b=arena();const intent={type:'ability',unitId:'p0',abilityId:'orbital_laser',to:{x:22,y:20,z:1}};
     for(const battle of [a,b]){
-        battle.supportChoices.P1='orbital_laser';assert.equal(battle.apply(intent).reason,'not_detected');battle.detected=true;
+        battle.supportChoices.P1='orbital_laser';assert.equal(battle.detected,false,'ready before detection (PLAN-07)');
         assert.ok(battle.apply(intent).ok);assert.equal(battle.store.get(22,20,1),AIR);assert.equal(battle.store.get(22,20,0),MAT.bedrock);
         assert.equal(battle.apply(intent).reason,'support_cooldown');
         battle.personalTurns.P1=9;assert.equal(battle.apply(intent).reason,'support_cooldown');battle.personalTurns.P1=10;assert.ok(battle.apply(intent).ok);

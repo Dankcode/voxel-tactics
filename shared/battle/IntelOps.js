@@ -26,7 +26,6 @@ export function validateIntel(b,u,intent) {
     }
     if(SUPPORT_IDS.includes(a.id)) {
         if(b.supportChoices[u.owner]!==a.id)return 'bad_intent';
-        if(!b.detected)return 'not_detected';
         if((b.personalTurns[u.owner]||0)<(b.supportReady[u.owner]||0))return 'support_cooldown';
     }
     return null;

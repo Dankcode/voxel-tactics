@@ -77,8 +77,9 @@ test('a patrol file repositions only on unseen incoming fire and spends members 
  const b=arena(['grenadier','vanguard']),u=b.unit('p0'),ally=b.unit('p1'),enemy=b.unit('e0');b.apply({type:'formation_plan',unitId:u.id,template:'file',facing:'n'});const f=b.formations.of(u);assert.ok(b.apply({type:'move',unitId:ally.id,to:b.formations.plannedSlots(f)[1]}).ok);
  const pos=()=>[u.x,u.y,ally.x,ally.y],before=pos(),ap=u.ap+ally.ap;b.formations.onIncomingFire(u,enemy,true);assert.deepEqual(pos(),before);b.formations.onIncomingFire(u,enemy,false);assert.notDeepEqual(pos(),before);assert.ok(u.ap+ally.ap<ap);
 });
-test('a commander strike needs three team kills and consumes a single team charge',()=>{
- const b=arena(),u=b.unit('p0'),i={type:'ability',unitId:u.id,abilityId:'killstreak_strike',to:{x:4,y:4,z:1}};assert.equal(b.apply(i).reason,'no_item');u.stats.kills=3;assert.ok(b.apply(i).ok);assert.equal(b.supportUsed,1);assert.equal(b.apply(i).reason,'no_item');
+test('a commander strike is ready at the start without kills and recharges 10 rounds after use (PLAN-07)',()=>{
+ const b=arena(),u=b.unit('p0'),i={type:'ability',unitId:u.id,abilityId:'killstreak_strike',to:{x:4,y:4,z:1}};assert.equal(u.stats.kills,0);assert.ok(b.apply(i).ok);assert.equal(b.supportUsed,1);assert.equal(b.apply(i).reason,'support_cooldown');
+ b.round+=9;assert.equal(b.apply(i).reason,'support_cooldown');b.round+=1;assert.ok(b.apply(i).ok);assert.equal(b.strikeReadyAt,b.round+10);
 });
 test('an AI with exhausted reserves does not loop on impossible reloads',()=>{
  const b=arena(),u=b.unit('p0');u.ammo.repeater=0;u.rigInventory=[];assert.equal(decide(b,u),null);u.rigInventory=[{id:'last-rounds',itemId:'ammo_ar',quantity:2,x:0,y:0,rotated:false}];const i=decide(b,u);assert.equal(i.type,'reload');assert.ok(b.apply(i).ok);assert.equal(u.ammo.repeater,2);

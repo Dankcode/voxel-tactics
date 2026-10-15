@@ -43,7 +43,7 @@ export class Battle {
      * mission: { store, rooms, buildings, spawns: { player: pos[], enemy: {pos, type, group}[] }, name, id }
      */
     constructor({ mission, squad, seed = 1, controllers = { player: 'human', enemy: 'ai' }, enemies = null, debug = false, intel = false, asyncCoop = false, support = 'carpet_bomb', testArsenal = false }) {
-        this.intelMode=intel; this.asyncCoop=asyncCoop; this.personalTurns={}; this.supportReady={}; this.supportChoices={player:support || 'carpet_bomb'}; this.contacts={}; this.markers=[];this.supportUsed=0; this.drones={}; this.detected=false; this.refreshOwner=null;
+        this.intelMode=intel; this.asyncCoop=asyncCoop; this.personalTurns={}; this.supportReady={}; this.supportChoices={player:support || 'carpet_bomb'}; this.contacts={}; this.markers=[];this.supportUsed=0; this.strikeReadyAt=1; this.drones={}; this.detected=false; this.refreshOwner=null;
         this.mission = mission;
         this.debugEnabled = !!debug;
         this.store = mission.store;
@@ -287,7 +287,7 @@ export class Battle {
                 if (u.will < a.wp) return 'no_will';
                 if (u.ap < a.ap) return 'no_ap';
                 if (hasStatus(u, 'panicked')) return 'no_will';
-                if(a.commander){const t=intent.to,kills=this.units.filter(o=>o.side==='player').reduce((n,o)=>n+o.stats.kills,0);if(!t||![t.x,t.y,t.z].every(Number.isInteger)||!this.store.inBounds(t.x,t.y,t.z)||this.distance(u,t)>a.range)return 'out_of_range';if(Math.floor(kills/3)<=this.supportUsed)return 'no_item';}
+                if(a.commander){const t=intent.to;if(!t||![t.x,t.y,t.z].every(Number.isInteger)||!this.store.inBounds(t.x,t.y,t.z)||this.distance(u,t)>a.range)return 'out_of_range';if(this.round<this.strikeReadyAt)return 'support_cooldown';}
                 if(a.intel)return validateIntel(this,u,intent);
                 if (a.id === 'earth_cover') {
                     const t = intent.to;
@@ -958,7 +958,7 @@ export class Battle {
         this.emit({ t: 'ability', unitId: u.id, abilityId: a.id });
         if(a.intel){executeIntel(this,u,intent);return;}
         switch (a.id) {
-            case 'killstreak_strike':this.supportUsed++;this.explode({x:intent.to.x+.5,y:intent.to.y+.5,h:intent.to.z+1.5,radius:3,damage:25,power:12,element:'geo',by:u.id});break;
+            case 'killstreak_strike':this.supportUsed++;this.strikeReadyAt=this.round+10;this.explode({x:intent.to.x+.5,y:intent.to.y+.5,h:intent.to.z+1.5,radius:3,damage:25,power:12,element:'geo',by:u.id});break;
             case 'earth_cover': {
                 const t = intent.to;
                 const changes = this.store.record(() => this.store.set(t.x,t.y,t.z+1,MAT.drystone));
@@ -1185,7 +1185,7 @@ export class Battle {
     hash() {
         let voxelHp = 0x811c9dc5;
         for (const hp of this.store.hp) { voxelHp ^= hp; voxelHp = Math.imul(voxelHp, 0x01000193); }
-        const state = { supportUsed:this.supportUsed,markers:this.markers,squareCorners:[...this.store.squareCorners].sort(),windowOpenings:[...this.store.windowOpenings].sort(([a],[b])=>a<b?-1:a>b?1:0), intelMode:this.intelMode, asyncCoop:this.asyncCoop, personalTurns:this.personalTurns,supportReady:this.supportReady,supportChoices:this.supportChoices,contacts:this.contacts,drones:this.drones,detected:this.detected,refreshOwner:this.refreshOwner, units: this.units, round: this.round, activeSide: this.activeSide, outcome: this.outcome,
+        const state = { supportUsed:this.supportUsed,strikeReadyAt:this.strikeReadyAt,markers:this.markers,squareCorners:[...this.store.squareCorners].sort(),windowOpenings:[...this.store.windowOpenings].sort(([a],[b])=>a<b?-1:a>b?1:0), intelMode:this.intelMode, asyncCoop:this.asyncCoop, personalTurns:this.personalTurns,supportReady:this.supportReady,supportChoices:this.supportChoices,contacts:this.contacts,drones:this.drones,detected:this.detected,refreshOwner:this.refreshOwner, units: this.units, round: this.round, activeSide: this.activeSide, outcome: this.outcome,
             revealedRooms: [...this.revealedRooms].sort((a, b) => a - b), field: this.field.snapshot(),
             formations: this.formations.snapshot(), nextFormationId: this.formations.nextId,
             objective: this.objective, rng: this.rng.state, debugEnabled: this.debugEnabled, controllers: this.controllers, seq: this.seq };
