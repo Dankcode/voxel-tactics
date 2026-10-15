@@ -1,3 +1,4 @@
+import { portraitSrc } from './Portraits.js';
 import { EquipmentPanel } from './EquipmentPanel.js';
 import { reserveAmmo } from '../../../shared/inventory/Equipment.js';
 import { fireMode, fireModes } from '../../../shared/battle/FireControl.js';
@@ -230,7 +231,7 @@ export class Hud {
         phase.className = `phase ${b.activeSide}`;
         this.el('.enemyturn').classList.toggle('hidden', !(b.activeSide !== 'player' && !b.outcome && !g.debug.manualEnemy));
         // Squad column.
-        this.el('.squad').innerHTML = b.units.filter(u=>u.side==='player').map((u,i)=>`<button class="squad-head ${u.id===g.selected?'sel':''} ${u.dead?'dead':''}" data-act="select" data-arg="${u.id}" aria-label="Select ${esc(u.name)}" title="${esc(u.name)} · ${u.hp}/${u.maxHp} HP · ${u.ap} AP"><img src="/assets/characters/${esc(u.art)}/portrait.png" alt="${esc(u.name)}"><b>${u.hp}<small>/${u.maxHp}</small></b><span>${u.dead?'KIA':`${u.ap} AP`}</span>${u.overwatch?'<em>WATCH</em>':''}${!u.dead&&b.flankedBy(u).length?'<i class="flank-alert" title="Flanked by a visible enemy">!</i>':''}</button>`).join('')+`<button class="inventory-toggle" data-act="inventory" aria-label="Open inventory">${ICONS.backpack}<kbd>I</kbd></button>`;
+        this.el('.squad').innerHTML = b.units.filter(u=>u.side==='player').map((u,i)=>`<button class="squad-head ${u.id===g.selected?'sel':''} ${u.dead?'dead':''}" data-act="select" data-arg="${u.id}" aria-label="Select ${esc(u.name)}" title="${esc(u.name)} · ${u.hp}/${u.maxHp} HP · ${u.ap} AP"><img src="${portraitSrc(u)}" alt="${esc(u.name)}"><b>${u.hp}<small>/${u.maxHp}</small></b><span>${u.dead?'KIA':`${u.ap} AP`}</span>${u.overwatch?'<em>WATCH</em>':''}${!u.dead&&b.flankedBy(u).length?'<i class="flank-alert" title="Flanked by a visible enemy">!</i>':''}</button>`).join('')+`<button class="inventory-toggle" data-act="inventory" aria-label="Open inventory">${ICONS.backpack}<kbd>I</kbd></button>`;
         const u=g.selectedUnit();this.equipment.render(u);
         // Ability bar.
         const canAct = u && g.controllable(u) && !b.outcome && !g.aiRunning;
@@ -251,7 +252,7 @@ export class Hud {
         const list = g.targetsFor(u, g.mode.weaponId || watchWeapon(u));
         const cur = g.targetInfo?.target?.id;
         el.innerHTML = list.map(t => {
-            return `<button class="tgt ${cur === t.id ? 'on' : ''}" data-act="target" data-arg="${t.id}" title="${esc(t.name)}"><img src="/assets/characters/${esc(t.art)}/portrait.png" alt="${esc(t.name)}"></button>`;
+            return `<button class="tgt ${cur === t.id ? 'on' : ''}" data-act="target" data-arg="${t.id}" title="${esc(t.name)}"><img src="${portraitSrc(t)}" alt="${esc(t.name)}"></button>`;
         }).join('');
     }
     renderTarget(){const g=this.game,t=g.targetInfo,el=this.el('.target');if(g.mode.kind!=='shoot'||!t){el.classList.add('hidden');return;}el.classList.remove('hidden');const u=t.target,w=WEAPONS[g.mode.weaponId];el.innerHTML=`<header><b>${esc(u.name)}</b><span>${u.hp}/${u.maxHp} HP · ${t.distance.toFixed(1)} M</span></header><div class="parts">${PARTS.map(([k,label,key])=>`<button data-act="part" data-arg="${k}" class="${t.part===k?'on':''}"><b>${label}</b><small>${u.parts[k].hp}/${u.parts[k].max} · ARM ${u.parts[k].armor}</small></button>`).join('')}</div><p>${t.blocked>.5?'Cover intercepts this angle':'Aim freely at a body part or the environment'}</p><div class="tbtns"><button data-act="cancel">Back</button><button data-act="fire">Fire · ${t.ap} AP <kbd>Space</kbd></button></div>`;}
