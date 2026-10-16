@@ -1,0 +1,13 @@
+{
+  "tool": "built-in image_gen",
+  "prompt": "Create a transparent production sprite sheet: 1024x1536, 2 columns x 3 rows, six isolated HUMAN gloved hands, each fitting within a 512px cell with 50px margin. Anatomical correctness is the priority. References 1 and 2 are REAL HUMAN ANATOMY AND GRIP references; reference 3 is ONLY drawing style. Match the olive ranger's tan cloth / charcoal rubber gloves, simple anime ink outlines, flat cel colours and restrained folds. NOT photoreal. No background, shadows, glow, text, logos or weapons.\nEach ROW contains exactly ONE anatomical RIGHT hand in left cell and ONE anatomical LEFT hand in right cell. These are the same person's two hands, not multiple pairs simultaneously. ROW1 carbine grip, ROW2 sniper grip, ROW3 shotgun traditional sloping stock wrist grip. Do not render a weapon; leave it transparent.\nRIGHT hand: one coherent dorsal back-of-hand/palm mass flows from cuff to knuckles, three fingers curled compactly around a grip and largely occluded on its far side, index finger separate along trigger guard, ONE thumb on far side mostly hidden. Show broad connected charcoal reinforcement on the back of the glove, tan knuckles, not a ladder of eight fingers. FIVE DIGITS TOTAL including thumb, no duplicate fingertips emerging on opposite sides. Real adult hand proportions, compact fist, middle finger longest, pinky shortest, fingers approximately palm length when extended but foreshortened when gripping. \nLEFT support hand: palm cradles the underside of a horizontal handguard, FOUR curved fingers wrap up ONE side and ONE thumb on the other side, joined knuckle base, relaxed natural curve, not four detached tubes, not a waving hand. Thumb is opposed to fingers, no second thumb. A snug continuous cuff, proportional to adult wrist, on each hand. TWO hands per row only. No arms, no sleeve chunks.\nUse confident thin dark outlines, 3 material colours, no skin exposed. No decorative knuckle rectangles on every joint. Draw complete anatomically correct gloves that will be split into near/far fragments later, never draw additional fingers to simulate layers.",
+  "selected": "source/gloves-cleaned/anatomy-painted.png",
+  "referencePages": [
+    "https://skdtac.com/pig-alpha-gloves/",
+    "https://www.vbs.admin.ch/fr/acquisition-materiel-armee-2023",
+    "https://www.mechanix.com/us-en/tactical-and-military-gloves/MPSD-55-010.html"
+  ],
+  "referenceRole": "human hand anatomy and proportion only; photos not shipped in game",
+  "style": "source/ready-arm-sections.png",
+  "placement": "tools/art/pack_glove_paintings.py"
+}

@@ -9,7 +9,13 @@ const [cutin,field]=await Promise.all(['cutin.json','field.json'].map(p=>fetch(b
 const world={camera:new THREE.PerspectiveCamera(),sun:new THREE.DirectionalLight(),hemi:new THREE.HemisphereLight(),back:new THREE.DirectionalLight(0x9fb8ff,.55),renderer:{toneMappingExposure:1}};
 world.camera.rotation.y=Math.PI;world.sun.position.set(-.55,1,.8);world.back.position.set(.8,.6,1);
 let weapon, follow={}, target={x:0,y:0}, recoil=0, generation=0;
-function sections(){if(!weapon?.ready)return;const mode=$('sections').value;for(const {mesh,layer}of weapon.cards)mesh.visible=mode==='all'||(mode==='body'?layer.id==='body':layer.id!=='body');weapon.model.visible=mode==='all'&&weapon.gunVisible;$('anchors').style.display=mode==='body'?'none':'';}
+function sections(){
+ if(!weapon?.ready)return;const mode=$('sections').value;
+ for(const {mesh,layer}of weapon.cards)mesh.visible=!!(mode==='all'||
+  (mode==='body'?layer.id==='body':mode==='arms'?!!layer.anatomicalSide:mode==='grips'?layer.bone?.endsWith('-hand'):layer.anatomicalSide===mode));
+ weapon.model.visible=(mode==='all'||mode==='grips')&&weapon.gunVisible;
+ $('anchors').style.display=mode==='body'?'none':'';
+}
 function lighting(){const l=LIGHTING[$('lighting').value];world.sun.color.set(l.sun);world.sun.intensity=l.sunI;world.sun.position.fromArray(l.sunDir);world.hemi.color.set(l.sky);world.hemi.groundColor.set(l.ground);world.hemi.intensity=l.hemiI;world.renderer.toneMappingExposure=l.exposure;}
 async function rebuild(){
  const token=++generation;weapon?.dispose();$('hero').replaceChildren();
@@ -45,7 +51,7 @@ function step(now){const dt=Math.min(.05,(now-last)/1000);last=now;followStep(fo
   $('rig-metrics').textContent=`Wrist seam ${(weapon.rigPose?.arms.maxGap||0).toFixed(3)} px · S shoulder / E elbow / W wrist / P palm`;
   $('rig-metrics').dataset.wristGap=weapon.rigPose?.arms.maxGap||0;
   const a=weapon.assembly;
-  if(a)$('dimensions').textContent=`${weapon.config.family} · ${a.measuredLengthMetres.toFixed(3)} m · ${a.parts.map(n=>weapon.anchors.parts[n].role).join(' / ')}`;
+  if(a)$('dimensions').textContent=`${weapon.config.family} · ${a.measuredLengthMetres.toFixed(3)} m · ${a.triangles?.toLocaleString()??'—'} triangles · cel shaded · ${a.parts.map(n=>weapon.anchors.parts[n].role).join(' / ')}`;
   const error=Math.hypot(targets.stock[0]-weapon.art.rig.stock[0],targets.stock[1]-weapon.art.rig.stock[1]);$('status').dataset.stockError=error.toFixed(6);}
  anim.update(dt);const c=field.clips[anim.clip];context.clearRect(0,0,512,512);context.imageSmoothingEnabled=true;
  context.drawImage(img,(c.column+anim.frame)*field.frameWidth,anim.row*field.frameHeight,field.frameWidth,field.frameHeight,64,0,384,512);

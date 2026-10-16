@@ -76,3 +76,40 @@ The sprite studio tests all three provided guns, mirrored ready poses, lighting,
 ## Art references
 
 The original ranger uses simplified anime line work and flat material blocks informed by the [official Chaos Zero Nightmare art direction interview](https://newsroom.smilegate.com/en/game/chaos_pd_interview) and [official game page](https://www.smilegate.com/en/game/chaoszeronightmare.do). User-supplied screenshots define the shoulder camera and corner-ready poses. No Chaos Zero Nightmare character or game texture is included.
+
+## Gloves that hold the gun (2026-10-16)
+
+The active gloves now come from `source/gloves-cleaned/anatomy-painted.png`, drawn using real human grip references. `tools/art/paint_gloves.py` remains the earlier editable geometric contact guide; its segmented fingers are no longer the displayed artwork. `pack_glove_paintings.py` registers each complete painting with two anatomical landmarks (wrist and weapon socket), using uniform scale and rotation. It splits disjoint near/far pixels from that same hand, rather than building additional fingers on both sides of the gun.
+
+- **Trigger hand (2)** wraps the grip: back of the hand and knuckle pads toward the camera, finger roots round the grip front, index finger along the trigger guard with its tip on the trigger. Thumb and fingertips are a separate `trigger-fingers` layer drawn behind the gun.
+- **Support hand (3)** cradles the handguard from below: palm and thumb (`support-hand`) behind the gun, the four fingers (`support-fingers`) curled up the camera side in front of it.
+- **Per family:** the carbine's pistol grip, the sniper's grip and forend, and the pump gun's straight stock wrist and pump each have their own glove (`variants` in `cutin.json`); `SpriteWeapon` picks the one for the gun in hand. Each variant is painted in that gun's neutral frame and mapped back into the rig's rest frame, so the existing hand bone (rotation with the gun axis) puts it exactly on the grip.
+- Each pose has exactly one anatomical left upper arm, forearm and hand, and one anatomical right upper arm, forearm and hand. `cutin.json.anatomy` identifies them; near/far hand layers carry `fragmentOf` and share the same hand bone. The aiming wrist/elbow and sleeve width were adjusted for the new compact grip. Runtime IK preserves the revised lengths throughout the 2,808-sample sweep.
+- Real anatomy references: [PIG Alpha glove grip photograph](https://skdtac.com/pig-alpha-gloves/), [Swiss defence over-shoulder handguard photograph](https://www.vbs.admin.ch/fr/acquisition-materiel-armee-2023), and [Mechanix M-Pact grip photographs](https://www.mechanix.com/us-en/tactical-and-military-gloves/MPSD-55-010.html). These informed proportions and occlusion; photos are not shipped in the game. No human mocap capture was supplied. `anatomy-glove-prompts.json` records the built-in image-generation prompt and references.
+
+Rebuild the active anatomical glove layers:
+
+```sh
+python3 tools/art/pack_glove_paintings.py
+python3 -c "import runpy; runpy.run_path('tools/art/sprite_formula.py')['bake_heroes']()"
+```
+
+The earlier contact guides can still be regenerated separately when authoring another weapon:
+
+```sh
+node tools/art/gun_guides.mjs            # writes tools/art/sprites/ranger-01/gun-guides.json
+python3 tools/art/paint_gloves.py tools/art/sprites/ranger-01/gun-guides.json client/public/assets/characters/ranger-01/cutin.json tools/art/sprites/ranger-01/source/gloves '{"aim":{"trigger":[492,505],"support":[527,380]},"ready":{"trigger":[358,530],"support":[692,493]}}'
+python3 -c "import runpy; runpy.run_path('tools/art/sprite_formula.py')['bake_heroes']()"
+```
+
+`sprite_formula.py` now also runs in plain Python (PIL reads the sources); Blender is only needed for the preview render and the editable `.blend`.
+
+## Game weapon mesh and cel materials
+
+The Blender exporter keeps the original metre-space stock, grip, support and muzzle sockets before simplifying geometry. Planar dissolution and selective decimation reduce the active kit from **29,290 to 11,703 triangles** (60% fewer): carbine 8,722, sniper 2,625, shotgun 356. Part names, roles and assembly scale remain intact. The self-contained GLB is about 1.02 MB rather than 1.86 MB; original source files remain available for future LODs.
+
+`SpriteGunMaterial.js` supplies Three.js `MeshToonMaterial`, a nearest-filtered three-band ramp and a thin back-face ink shell. The shell shares the reduced geometry and adds a second draw pass; triangle counts shown in the studio describe the mesh, excluding that outline pass. Scene light and exposure still affect the gun. Character interior colours remain fixed, with world lighting applied only at the sprite edges. Each cut-in owns and disposes its cel materials and ramp; cached GLTF geometry is shared.
+
+## Field atlas scale
+
+`bake_field` used to scale every frame to its own target height and centre it by its bounding box, so the character changed size between clips and slid sideways while running. Now each source sheet has one scale per facing (standing frames of the field sheet = 232 px; the run/down sheet so its run cycle is 0.94 of that), frames are anchored on the head-and-torso centre (the whole body when lying down), and only frames that would not fit the 192×256 cell shrink (never below 85 %, listed in `sprite-list.json` → `scale`). The field sheet's colours are pulled 60 % toward the cleaner run/down sheet so the two paintings read as one character.

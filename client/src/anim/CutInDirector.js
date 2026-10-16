@@ -157,6 +157,11 @@ export class CutInDirector {
         const now = performance.now(), dt = a.t ? Math.min(0.05, (now - a.t) / 1000) : 0; a.t = now;
         const view = viewport(), rail = Math.max(0, ...[...document.querySelectorAll('#hud .squad-head')].map(e => e.getBoundingClientRect().right));
         const layout = aimBackshotLayout(a.art.cutin, view, rail);
+        if(a.art.cutin.motion==='static'){
+            a.weapon?.update();
+            Object.assign(a.el.querySelector('.figure').style,{left:`${layout.left}px`,top:`${layout.top}px`,width:`${layout.width}px`,height:`${layout.height}px`,transform:'none'});
+            return;
+        }
         followStep(a.follow ||= {}, screenAim, dt);
         const pose = aimBackshotPose(a.art.cutin, layout, a.follow.pos, a.follow.vel, { x: view.width / 2, y: view.height / 2 });
         const mirror = a.art.cutin.mirror ? -1 : 1;

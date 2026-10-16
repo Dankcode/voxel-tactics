@@ -112,7 +112,26 @@ test('independent gloves keep cuffs opaque and place gun sockets within the grip
  for(const[name,pose]of Object.entries(audit))for(const[side,arm]of Object.entries(pose)){
   assert.ok(arm.wristCoverage>.9,`${name}/${side} wrist`);
   assert.ok(arm.palmDistancePixels<768*.045,`${name}/${side} socket near glove`);assert.ok(arm.wristDistancePixels<1);
+  for(const family of ['rifle','sniper','shotgun']){
+   assert.ok(arm.families[family].wristCoverage>.9,`${name}/${side}/${family} opaque cuff`);
+   assert.ok(arm.families[family].wristDistancePixels<1,`${name}/${side}/${family} wrist covered`);
+  }
  }
+});
+
+test('game gun meshes cut source triangle cost by at least half without losing named parts',()=>{
+ const metadata=JSON.parse(readFileSync(new URL('../../../public/assets/weapons/ranger-preview/gun-kit.json',import.meta.url)));
+ const buffer=readFileSync(new URL('../../../public/assets/weapons/ranger-preview/gun-kit.glb',import.meta.url));
+ const gltf=JSON.parse(buffer.subarray(20,20+buffer.readUInt32LE(12)).toString());
+ let total=0;
+ for(const node of gltf.nodes.filter(n=>n.mesh!=null)){
+  const actual=gltf.meshes[node.mesh].primitives.reduce((n,p)=>n+gltf.accessors[p.indices].count/3,0);
+  assert.equal(actual,metadata.parts[node.name].triangles,node.name);
+  assert.ok(actual>0);total+=actual;
+ }
+ assert.equal(total,metadata.optimization.triangles);
+ assert.ok(total<metadata.optimization.sourceTriangles*.5);
+ assert.ok(buffer.length<1200000,'no accidental source mesh re-export');
 });
 
 test('support wrists remain below the barrel and pistol-grip placement cannot twist the support glove',()=>{
@@ -126,5 +145,40 @@ test('support wrists remain below the barrel and pistol-grip placement cannot tw
   const palm=art.layers.find(l=>l.id==='support-hand'),fingers=art.layers.find(l=>l.id==='support-fingers');
   assert.equal(palm.stage,'back');assert.equal(fingers.stage,'front');assert.equal(fingers.bone,'support-hand');
   assert.equal(art.sections,'complete-independent-paintings');
+ }
+});
+
+test('gloves come per gun family and every variant file exists',()=>{
+ for(const art of [cutin,cutin.ready.right])for(const id of ['trigger-hand','trigger-fingers','support-hand','support-fingers']){
+  const l=art.layers.find(x=>x.id===id);assert.ok(l,id);
+  for(const fam of ['sniper','shotgun']){const v=l.variants?.[fam];assert.ok(v,`${id} ${fam}`);
+   for(const k of ['image','normal','lightingMask'])readFileSync(new URL(`../../../public/assets/characters/ranger-01/${v[k]}`,import.meta.url));}
+ }
+ // The thumb sits behind the gun and the support fingers in front of it.
+ for(const art of [cutin,cutin.ready.right]){
+  assert.equal(art.layers.find(l=>l.id==='support-fingers').stage,'front');assert.equal(art.layers.find(l=>l.id==='support-hand').stage,'back');
+  assert.equal(art.layers.find(l=>l.id==='trigger-hand').stage,'front');assert.equal(art.layers.find(l=>l.id==='trigger-fingers').stage,'back');
+ }
+});
+test('every pose has exactly one left and right arm; occlusion fragments belong to those same hands',()=>{
+ for(const art of [cutin,cutin.ready.right,cutin.ready.left]){
+  assert.deepEqual(Object.keys(art.anatomy).sort(),['left','right']);
+  for(const [side,limb] of Object.entries(art.anatomy)){
+   for(const kind of ['upper','forearm','hand']){
+    const layers=art.layers.filter(l=>l.id===limb[kind]);assert.equal(layers.length,1);
+    assert.equal(layers[0].anatomicalSide,side);
+   }
+   for(const id of [...(limb.nearFragments||[]),...(limb.farFragments||[])]){
+    const fragment=art.layers.find(l=>l.id===id);assert.equal(fragment.fragmentOf,limb.hand);
+    assert.equal(fragment.bone,limb.hand);assert.equal(fragment.anatomicalSide,side);
+   }
+  }
+ }
+});
+test('field frames keep one scale per source sheet; only oversized frames shrink, and never much',()=>{
+ const scale=json('sprite-list.json').scale;
+ for(const f of field.facings){
+  assert.ok(scale[f].scales.field>0&&scale[f].scales.actions>0,f);
+  for(const[,,fit]of scale[f].shrunkToFit)assert.ok(fit>=.85,`${f} frame shrunk to ${fit}`);
  }
 });

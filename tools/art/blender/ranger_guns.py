@@ -8,7 +8,7 @@ BASE=runpy.run_path(os.path.join(os.path.dirname(__file__),'gun_kit.py'))
 ROOT=BASE['REPO'];OUT=os.path.join(ROOT,'client/public/assets/weapons/ranger-preview')
 ROLES={'body':'Stock / receiver / barrel assembly','receiver':'Receiver','stock':'Buttstock','grip':'Trigger grip','foregrip':'Handguard / foregrip','magazine':'Magazine','barrel':'Barrel + muzzle','sight':'Iron sights','scope':'Scope'}
 
-def run():
+def run(render_reference=True):
  sc=bpy.data.scenes.get('VT_WeaponReference')
  if sc:
   for o in list(sc.objects):bpy.data.objects.remove(o,do_unlink=True)
@@ -45,7 +45,31 @@ def run():
   assemblies[family]={'parts':names,'stock':st,'support':support,'muzzle':mu,'grip':[0,0,0],'source':ref['file'],'referenceLengthMetres':{'rifle':.705,'sniper':1.18,'shotgun':1.02}[family]}
   allbounds=[bounds(parts[n]) for n in names];minimum=min(b[0][1] for b in allbounds);maximum=max(b[1][1] for b in allbounds)
   assemblies[family]['measuredLengthMetres']=maximum-minimum
- anchors={'units':'metres','axes':'Blender +Y muzzle +Z up; glTF (x,z,-y)','assemblies':assemblies,'parts':{n:{'role':o['reference_role'],'source':o['reference_file'],'bounds':bounds(o),'scale':list(o.scale),'sourceObjects':list(o['reference_objects'])} for n,o in parts.items()},'source':'tools/art/blender/ranger_guns.py'}
+ # Capture sockets from the source before simplification. They must never move with LOD.
+ optimization={}
+ for name,ob in parts.items():
+  ob.data.calc_loop_triangles();before=len(ob.data.loop_triangles)
+  def simplify():
+   for item in sc.objects:item.select_set(False)
+   ob.select_set(True);sc.view_layers[0].objects.active=ob
+   planar=ob.modifiers.new('Remove coplanar tessellation','DECIMATE');planar.decimate_type='DISSOLVE';planar.angle_limit=math.radians(.5);planar.delimit={'NORMAL'}
+   bpy.ops.object.modifier_apply(modifier=planar.name)
+   # Small meshes (notably the supplied shotgun) are already economical.
+   if before>1000:
+    collapse=ob.modifiers.new('Game silhouette LOD','DECIMATE');collapse.ratio=.38;collapse.use_collapse_triangulate=True
+    bpy.ops.object.modifier_apply(modifier=collapse.name)
+  BASE['_in_scene'](sc,simplify)
+  ob.data.validate(clean_customdata=True);ob.data.update()
+  ob.data.calc_loop_triangles();after=len(ob.data.loop_triangles)
+  optimization[name]={'sourceTriangles':before,'triangles':after}
+  ob['source_triangles']=before;ob['game_triangles']=after
+  # Surface colour comes from Three.js cel bands; retain authored hard edges/normals.
+ for family,a in assemblies.items():
+  bb=[bounds(parts[n]) for n in a['parts']]
+  a['measuredLengthMetres']=max(b[1][1] for b in bb)-min(b[0][1] for b in bb)
+  a['triangles']=sum(optimization[n]['triangles'] for n in a['parts'])
+  a['sourceTriangles']=sum(optimization[n]['sourceTriangles'] for n in a['parts'])
+ anchors={'units':'metres','axes':'Blender +Y muzzle +Z up; glTF (x,z,-y)','assemblies':assemblies,'parts':{n:{'role':o['reference_role'],'source':o['reference_file'],'bounds':bounds(o),'scale':list(o.scale),'sourceObjects':list(o['reference_objects']),**optimization[n]} for n,o in parts.items()},'source':'tools/art/blender/ranger_guns.py','optimization':{'method':'planar dissolve 0.5 degrees; collapse 0.38 on source parts above 1000 triangles','sourceTriangles':sum(p['sourceTriangles'] for p in optimization.values()),'triangles':sum(p['triangles'] for p in optimization.values()),'socketPolicy':'source metre coordinates preserved before simplification'},'shading':'Three.js MeshToonMaterial with three discrete bands'}
  for family,a in assemblies.items():
   for role in ['stock','grip','support','muzzle']:
    e=bpy.data.objects.new(family+'__'+role,None);sc.collection.objects.link(e);e.parent=root;e.location=a[role];e.empty_display_type='SPHERE';e.empty_display_size=.012;e['reference_role']=role;e['units']='metres'
@@ -54,6 +78,7 @@ def run():
  for ob in [root,*root.children_recursive]:ob.select_set(True,view_layer=sc.view_layers[0])
  BASE['_in_scene'](sc,lambda:bpy.ops.export_scene.gltf(filepath=OUT+'/gun-kit.glb',export_format='GLB',use_selection=True,use_active_scene=True,export_apply=True,export_yup=True,export_extras=True,export_cameras=False,export_lights=False))
  with open(OUT+'/gun-kit.json','w') as f:json.dump(anchors,f,indent=2)
+ if not render_reference:return anchors['optimization']
  # Labelled equal-scale reference: real source assemblies, side-on, with physical anchor markers.
  colours=[(.15,.8,.85,1),(.95,.65,.2,1),(.8,.3,.5,1),(.3,.8,.5,1)]
  for row,(family,a) in enumerate(assemblies.items()):

@@ -63,12 +63,12 @@
               0.59
             ],
             "elbow": [
-              0.75,
-              0.83
+              0.6966145833333334,
+              0.6640625
             ],
             "wrist": [
-              0.6473652694884616,
-              0.6553835194332578
+              0.5768229166666666,
+              0.7044270833333334
             ],
             "palm": [
               0.6067680946493947,
@@ -81,12 +81,12 @@
               0.54
             ],
             "elbow": [
-              0.61,
-              0.76
+              0.5611277168097836,
+              0.7863192743023579
             ],
             "wrist": [
-              0.7394685600509281,
-              0.4703989073494898
+              0.6861979166666666,
+              0.4947916666666667
             ],
             "palm": [
               0.6937967383569779,
@@ -109,12 +109,12 @@
         "jointRadii": {},
         "limbRadii": {
           "upper": [
-            0.095,
-            0.072
+            0.1,
+            0.08
           ],
           "forearm": [
-            0.075,
-            0.04
+            0.065,
+            0.048
           ]
         },
         "handAxis": [
@@ -146,7 +146,8 @@
             480
           ],
           "sourceWidth": 310,
-          "stage": "front"
+          "stage": "front",
+          "anatomicalSide": "right"
         },
         {
           "id": "support-upper",
@@ -165,7 +166,8 @@
             480
           ],
           "sourceWidth": 300,
-          "stage": "back"
+          "stage": "back",
+          "anatomicalSide": "left"
         },
         {
           "id": "trigger-forearm",
@@ -184,7 +186,8 @@
             1025
           ],
           "sourceWidth": 260,
-          "stage": "front"
+          "stage": "front",
+          "anatomicalSide": "right"
         },
         {
           "id": "support-forearm",
@@ -203,95 +206,99 @@
             1025
           ],
           "sourceWidth": 250,
-          "stage": "back"
+          "stage": "back",
+          "anatomicalSide": "left"
         },
         {
           "id": "trigger-hand",
           "rect": [
             0,
-            1090,
-            512,
-            1536
+            0,
+            768,
+            768
           ],
           "start": [
-            165,
-            1380
+            443.0,
+            541.0
           ],
           "end": [
-            335,
-            1250
+            465.99789669073516,
+            478.27674944472176
           ],
           "sourceWidth": 0,
-          "stage": "front"
+          "stage": "front",
+          "source": "gloves-cleaned/aim-trigger-glove.png",
+          "fingersSource": "gloves-cleaned/aim-trigger-glove-fingers.png",
+          "fingersStage": "back",
+          "fingersOrder": 11,
+          "variants": {
+            "sniper": {
+              "source": "gloves-cleaned/aim-trigger-glove-sniper.png",
+              "fingersSource": "gloves-cleaned/aim-trigger-glove-fingers-sniper.png"
+            },
+            "shotgun": {
+              "source": "gloves-cleaned/aim-trigger-glove-shotgun.png",
+              "fingersSource": "gloves-cleaned/aim-trigger-glove-fingers-shotgun.png"
+            }
+          },
+          "anatomicalSide": "right"
         },
         {
           "id": "support-hand",
           "rect": [
-            512,
-            1090,
-            1024,
-            1536
+            0,
+            0,
+            768,
+            768
           ],
           "start": [
-            758,
-            1435
+            527.0,
+            380.0
           ],
           "end": [
-            800,
-            1260
+            532.8358950581589,
+            333.0763431793854
           ],
           "sourceWidth": 0,
           "stage": "back",
-          "wrapFingers": [
-            [
-              [
-                0.855,
-                0.73
-              ],
-              [
-                1,
-                0.73
-              ],
-              [
-                1,
-                0.9
-              ],
-              [
-                0.84,
-                0.9
-              ],
-              [
-                0.855,
-                0.81
-              ]
-            ],
-            [
-              [
-                0.59,
-                0.73
-              ],
-              [
-                0.68,
-                0.73
-              ],
-              [
-                0.72,
-                0.83
-              ],
-              [
-                0.68,
-                0.875
-              ],
-              [
-                0.59,
-                0.875
-              ]
-            ]
-          ]
+          "source": "gloves-cleaned/aim-support-glove.png",
+          "fingersSource": "gloves-cleaned/aim-support-glove-fingers.png",
+          "order": 10,
+          "fingersStage": "front",
+          "fingersOrder": 0,
+          "variants": {
+            "sniper": {
+              "source": "gloves-cleaned/aim-support-glove-sniper.png",
+              "fingersSource": "gloves-cleaned/aim-support-glove-fingers-sniper.png"
+            },
+            "shotgun": {
+              "source": "gloves-cleaned/aim-support-glove-shotgun.png",
+              "fingersSource": "gloves-cleaned/aim-support-glove-fingers-shotgun.png"
+            }
+          },
+          "anatomicalSide": "left"
         }
       ],
       "bodySource": "aim-body-modular.png",
-      "sectionsSource": "aim-arm-sections.png"
+      "sectionsSource": "aim-arm-sections.png",
+      "anatomy": {
+        "left": {
+          "upper": "support-upper",
+          "forearm": "support-forearm",
+          "hand": "support-hand",
+          "nearFragments": [
+            "support-fingers"
+          ]
+        },
+        "right": {
+          "upper": "trigger-upper",
+          "forearm": "trigger-forearm",
+          "hand": "trigger-hand",
+          "farFragments": [
+            "trigger-fingers"
+          ]
+        }
+      }
     },
     "ready": {
       "source": "ready-flat.png",
@@ -347,12 +354,12 @@
               0.39
             ],
             "elbow": [
-              0.14,
-              0.68
+              0.10078334280346964,
+              0.6758548832610459
             ],
             "wrist": [
-              0.27110736586488726,
-              0.7180605038469164
+              0.23307291666666666,
+              0.6901041666666666
             ],
             "palm": [
               0.2718937592205684,
@@ -365,12 +372,12 @@
               0.452
             ],
             "elbow": [
-              0.37,
-              0.79
+              0.3380226780661266,
+              0.7976749651514276
             ],
             "wrist": [
-              0.4888952343729885,
-              0.6545879051986502
+              0.4505208333333333,
+              0.6419270833333334
             ],
             "palm": [
               0.48977992689812977,
@@ -393,12 +400,12 @@
         "jointRadii": {},
         "limbRadii": {
           "upper": [
-            0.07,
-            0.055
+            0.091,
+            0.0715
           ],
           "forearm": [
-            0.055,
-            0.033
+            0.0715,
+            0.0429
           ]
         },
         "handAxis": [
@@ -430,7 +437,8 @@
             470
           ],
           "sourceWidth": 310,
-          "stage": "front"
+          "stage": "front",
+          "anatomicalSide": "right"
         },
         {
           "id": "support-upper",
@@ -449,7 +457,8 @@
             465
           ],
           "sourceWidth": 320,
-          "stage": "back"
+          "stage": "back",
+          "anatomicalSide": "left"
         },
         {
           "id": "trigger-forearm",
@@ -468,7 +477,8 @@
             995
           ],
           "sourceWidth": 260,
-          "stage": "front"
+          "stage": "front",
+          "anatomicalSide": "right"
         },
         {
           "id": "support-forearm",
@@ -487,98 +497,112 @@
             990
           ],
           "sourceWidth": 260,
-          "stage": "back"
+          "stage": "back",
+          "anatomicalSide": "left"
         },
         {
           "id": "trigger-hand",
           "rect": [
             0,
-            1090,
-            530,
-            1536
+            0,
+            1536,
+            768
           ],
           "start": [
-            160,
-            1330
+            358.0,
+            530.0
           ],
           "end": [
-            385,
-            1280
+            417.6288141627931,
+            511.4887089000322
           ],
           "sourceWidth": 0,
-          "stage": "front"
+          "stage": "front",
+          "source": "gloves-cleaned/ready-trigger-glove.png",
+          "fingersSource": "gloves-cleaned/ready-trigger-glove-fingers.png",
+          "fingersStage": "back",
+          "fingersOrder": 11,
+          "variants": {
+            "sniper": {
+              "source": "gloves-cleaned/ready-trigger-glove-sniper.png",
+              "fingersSource": "gloves-cleaned/ready-trigger-glove-fingers-sniper.png"
+            },
+            "shotgun": {
+              "source": "gloves-cleaned/ready-trigger-glove-shotgun.png",
+              "fingersSource": "gloves-cleaned/ready-trigger-glove-fingers-shotgun.png"
+            }
+          },
+          "anatomicalSide": "right"
         },
         {
           "id": "support-hand",
           "rect": [
-            530,
-            1090,
-            1024,
-            1536
+            0,
+            0,
+            1536,
+            768
           ],
           "start": [
-            755,
-            1415
+            692.0,
+            493.0
           ],
           "end": [
-            800,
-            1235
+            752.3019677155273,
+            457.7440333813638
           ],
           "sourceWidth": 0,
           "stage": "back",
-          "wrapFingers": [
-            [
-              [
-                0.855,
-                0.73
-              ],
-              [
-                1,
-                0.73
-              ],
-              [
-                1,
-                0.9
-              ],
-              [
-                0.84,
-                0.9
-              ],
-              [
-                0.855,
-                0.81
-              ]
-            ],
-            [
-              [
-                0.59,
-                0.73
-              ],
-              [
-                0.68,
-                0.73
-              ],
-              [
-                0.72,
-                0.83
-              ],
-              [
-                0.68,
-                0.875
-              ],
-              [
-                0.59,
-                0.875
-              ]
-            ]
-          ]
+          "source": "gloves-cleaned/ready-support-glove.png",
+          "fingersSource": "gloves-cleaned/ready-support-glove-fingers.png",
+          "order": 10,
+          "fingersStage": "front",
+          "fingersOrder": 0,
+          "variants": {
+            "sniper": {
+              "source": "gloves-cleaned/ready-support-glove-sniper.png",
+              "fingersSource": "gloves-cleaned/ready-support-glove-fingers-sniper.png"
+            },
+            "shotgun": {
+              "source": "gloves-cleaned/ready-support-glove-shotgun.png",
+              "fingersSource": "gloves-cleaned/ready-support-glove-fingers-shotgun.png"
+            }
+          },
+          "anatomicalSide": "left"
         }
       ],
       "canvasWidth": 1536,
       "maxWidthShare": 0.56,
       "bodySource": "ready-body-modular.png",
-      "sectionsSource": "ready-arm-sections.png"
+      "sectionsSource": "ready-arm-sections.png",
+      "anatomy": {
+        "left": {
+          "upper": "support-upper",
+          "forearm": "support-forearm",
+          "hand": "support-hand",
+          "nearFragments": [
+            "support-fingers"
+          ]
+        },
+        "right": {
+          "upper": "trigger-upper",
+          "forearm": "trigger-forearm",
+          "hand": "trigger-hand",
+          "farFragments": [
+            "trigger-fingers"
+          ]
+        }
+      }
     }
   },
-  "sectionPolicy": "Independent complete torso and limb paintings; never subtract arm masks from torso"
+  "sectionPolicy": "Independent complete torso and limb paintings; never subtract arm masks from torso",
+  "gloveArt": {
+    "source": "source/gloves-cleaned/anatomy-painted.png",
+    "packing": "tools/art/pack_glove_paintings.py",
+    "skeleton": "anatomical wrist and grip registration; no mocap capture supplied",
+    "handsPerPose": {
+      "left": 1,
+      "right": 1
+    },
+    "rule": "near/far fragments are disjoint pixels of one hand, never additional hands"
+  }
 }

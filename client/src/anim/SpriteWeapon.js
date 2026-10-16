@@ -1,7 +1,8 @@
 // Flat painted character cards + a 3D gun. There is no character volume or character model.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { constrainGunPose } from './SpriteArmRig.js';
+import { constrainGunPose, armRigPose } from './SpriteArmRig.js';
+import { gunCelRamp, gunCelMaterial, gunInkMaterial } from './SpriteGunMaterial.js';
 
 export function spriteGunParts(weaponId) {
     if (weaponId === 'blunderbuss') return { family: 'shotgun' };
@@ -40,6 +41,29 @@ export function gunPivotMatrix(stock, {yaw=0,pitch=0,recoil=0}={}) {
     const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch-recoil*1.8,yaw+recoil*.4,0,'YXZ'));
     const p=stock.clone().sub(stock.clone().applyQuaternion(q));
     return new THREE.Matrix4().compose(p,q,new THREE.Vector3(1,1,1));
+}
+
+/** Authoring rotation about point 4. Raise the butt without translating the muzzle or scaling any part. */
+export function barrelButtMatrix(camera, assembly, degrees = 8) {
+    const muzzle=gunPoint(assembly.muzzle),stock=gunPoint(assembly.stock);
+    const s=stock.clone().project(camera),m=muzzle.clone().project(camera);
+    const axis=camera.getWorldDirection(new THREE.Vector3());
+    const q=new THREE.Quaternion().setFromAxisAngle(axis,Math.sign(m.x-s.x)*THREE.MathUtils.degToRad(degrees));
+    const p=muzzle.clone().sub(muzzle.clone().applyQuaternion(q));
+    return new THREE.Matrix4().compose(p,q,new THREE.Vector3(1,1,1));
+}
+
+export function gunPoseSample(art, assembly, camera, input={}, degrees=art.rig.buttRaiseDegrees??8) {
+    const rest=barrelButtMatrix(camera,assembly,degrees);
+    const seatedStock=gunPoint(assembly.stock).applyMatrix4(rest);
+    const matrix=gunPivotMatrix(seatedStock,input).multiply(rest);
+    const uv=p=>{const q=gunPoint(p).applyMatrix4(matrix).project(camera);return[(q.x+1)/2,(1-q.y)/2];};
+    return {matrix,targets:{stock:uv(assembly.stock),grip:uv(assembly.grip),support:uv(assembly.support),muzzle:uv(assembly.muzzle)}};
+}
+
+/** Ready cut-ins use authored snapshots; only firing sprites accept inertia and solve IK every frame. */
+export function spriteMotion(art,input={}) {
+    return art.motion==='static'?{yaw:0,pitch:0,recoil:0}:input;
 }
 
 let kit;
@@ -94,7 +118,9 @@ export class SpriteWeapon {
     }
     async load() {
         const [gltf, anchors] = await loadKit();
-        const layers = await Promise.all(this.art.layers.filter(l => l.image).sort((a,b) => { const order=l=>l.id==='body'?0:l.id.endsWith('upper')?1:l.id.endsWith('forearm')?2:3; return order(a)-order(b); }).map(async l => ({ ...l,
+        // Gloves come per gun family (pistol grip, pump-gun stock wrist, sniper forend): use the variant for this gun.
+        const pick = l => ({ ...l, ...(l.variants?.[this.config.family] || {}) });
+        const layers = await Promise.all(this.art.layers.filter(l => l.image).map(pick).sort((a,b) => { const order=l=>l.id==='body'?0:l.id.endsWith('upper')?1:l.id.endsWith('forearm')?2:3; return order(a)-order(b); }).map(async l => ({ ...l,
             maps: await Promise.all([loadTexture(this.base + l.image, true), loadTexture(this.base + l.normal), loadTexture(this.base + l.lightingMask)]) })));
         const jointMaps = await Promise.all([loadTexture(this.base+'joint.png',true),loadTexture(this.base+'joint-normal.png'),loadTexture(this.base+'joint-lighting.png')]);
         if (this.disposed) return;
@@ -106,10 +132,26 @@ export class SpriteWeapon {
         this.model = gltf.scene.clone(true); this.model.visible = this.gunVisible; this.scene.add(this.model);
         this.pivot = this.model.getObjectByName('Gun') || this.model;
         const known = new Set(Object.values(anchors.assemblies).flatMap(a => a.parts));
-        this.model.traverse(ob => { if (known.has(ob.name)) ob.visible = this.config.parts.includes(ob.name); });
+        const ramp = gunCelRamp(), ink = gunInkMaterial(); this.resources.push(ramp, ink);
+        const gunMeshes = [];
+        this.model.traverse(ob => {
+            if (!known.has(ob.name)) return;
+            ob.visible = this.config.parts.includes(ob.name);
+            if (ob.isMesh) {
+                // Per-instance materials; the cached GLTF and its metre-space geometry stay immutable.
+                ob.material = gunCelMaterial(ob.name, ramp); this.resources.push(ob.material);
+                gunMeshes.push(ob);
+            }
+        });
+        for (const ob of gunMeshes) {
+            const outline = new THREE.Mesh(ob.geometry, ink); outline.name = `${ob.name} ink`;
+            outline.renderOrder = -1; ob.add(outline);
+        }
         this.stock = gunPoint(this.assembly.stock);
         this.camera = new THREE.OrthographicCamera();
         fitGunPose(this.camera, this.art.rig, this.stock, this.art.width / this.art.height);
+        this.buttRaise=this.art.rig.buttRaiseDegrees??8;
+        this.staticPose=this.art.staticPoses?.[this.config.family];
         this.flatCamera = new THREE.OrthographicCamera(0, this.art.width, 0, -this.art.height, .01, 20);
         this.flatCamera.position.z = 10;
         for (const layer of layers) {
@@ -172,16 +214,31 @@ export class SpriteWeapon {
         this.fill.color.copy(fill); this.fill.intensity = 2; this.fill.position.copy(fillDir).applyQuaternion(this.camera.quaternion).multiplyScalar(5);
         this.renderer.toneMappingExposure = w?.renderer?.toneMappingExposure ?? 1;
     }
-    update({ yaw = 0, pitch = 0, recoil = 0 } = {}) {
+    setButtRaise(degrees) {
+        this.buttRaise=degrees;
+        // Manual studio editing makes one new snapshot. Pointer aiming never changes a ready pose.
+        if(this.art.motion==='static'){
+            const {targets}=gunPoseSample(this.art,this.assembly,this.camera,{},degrees);
+            this.staticPose={targets,arms:armRigPose(this.art.rig,targets,this.art.width,this.art.height)};
+        }
+    }
+    update(input = {}) {
+        const {yaw=0,pitch=0,recoil=0}=spriteMotion(this.art,input);
         this.last = { yaw, pitch, recoil };
         if (!this.ready || this.disposed) return null;
         const sample = ({yaw: y, pitch: p, recoil: r}) => {
-            this.pivot.matrixAutoUpdate=false;this.pivot.matrix.copy(gunPivotMatrix(this.stock,{yaw:y,pitch:p,recoil:r}));
+            const pose=gunPoseSample(this.art,this.assembly,this.camera,{yaw:y,pitch:p,recoil:r},this.buttRaise);
+            this.pivot.matrixAutoUpdate=false;this.pivot.matrix.copy(pose.matrix);
             this.model.updateMatrixWorld(true);
             return this.gunVisible ? {stock:this.project(this.stock),grip:this.project(new THREE.Vector3()),support:this.project(this.support),muzzle:this.project(gunPoint(this.assembly.muzzle))}
                 : {stock:this.art.rig.stock,grip:this.art.rig.grip,support:this.art.rig.support,muzzle:this.art.muzzle};
         };
-        const solved=constrainGunPose(sample,{yaw,pitch,recoil},this.art.rig,this.art.width,this.art.height);
+        let solved;
+        if(this.art.motion==='static'){
+            sample({});
+            if(!this.staticPose)throw Error('Missing authored ready pose for '+this.config.family);
+            solved={...this.staticPose,input:{yaw:0,pitch:0,recoil:0},scale:0};
+        }else solved=constrainGunPose(sample,{yaw,pitch,recoil},this.art.rig,this.art.width,this.art.height);
         const targets=solved.targets,transforms=solved.arms.transforms;
         this.rigPose=solved;
         for (const { mesh, layer } of this.cards) {

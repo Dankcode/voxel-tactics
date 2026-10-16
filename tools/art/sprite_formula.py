@@ -3,7 +3,11 @@ MCP: import runpy; p=runpy.run_path(PATH); p['build'](); p['bake_field'](); p['b
 CLI: blender -b -P tools/art/sprite_formula.py
 The editable formula owns grid layout, arm cutouts, pivots and separate lighting passes.
 """
-import bpy, numpy as np, os, json, math, zlib, struct
+import numpy as np, os, json, math, zlib, struct
+try:
+    import bpy                      # Blender: previews, the editable .blend and the MCP workflow
+except ImportError:                 # plain Python: the bakes still run (PIL reads the sources)
+    bpy = None
 from collections import deque
 ROOT=os.path.abspath(os.path.join(os.path.dirname(__file__),'../..'))
 OUT=os.path.join(ROOT,'client/public/assets/characters/ranger-01')
@@ -14,6 +18,9 @@ FACINGS=['s','sw','w','nw','n','ne','e','se']
 S=None
 
 def read_png(path):
+    if bpy is None:
+        from PIL import Image
+        return np.asarray(Image.open(path).convert('RGBA'),dtype=np.float32)/255.0
     im=bpy.data.images.load(path,check_existing=False);im.colorspace_settings.name='Non-Color'
     w,h=im.size;data=np.empty(w*h*4,dtype=np.float32);im.pixels.foreach_get(data)
     bpy.data.images.remove(im)
@@ -107,13 +114,31 @@ def row_bounds(a,rows=3):
         cuts.append(cut)
     return cuts+[h]
 
+def match_colours(cell,ref_stats,strength=.6):
+    """Pull a frame's colour statistics toward the reference sheet's (opaque pixels only, per channel)."""
+    m=cell[:,:,3]>.5
+    if not m.any() or ref_stats is None:return cell
+    out=cell.copy();rgb=out[:,:,:3];mu=rgb[m].mean(0);sd=rgb[m].std(0)+1e-4
+    rmu,rsd=ref_stats;mapped=(rgb-mu)/sd*rsd+rmu
+    out[:,:,:3]=np.clip(rgb*(1-strength)+mapped*strength,0,1);return out
+
+def body_centre(cell,kind):
+    """Horizontal anchor: the head-and-torso centre for upright clips (feet swing, the body does not slide), the
+    whole silhouette for a body lying down."""
+    a=cell[:,:,3]>.08;ys,xs=np.nonzero(a)
+    if kind=='down' or not len(xs):return (cell.shape[1]-1)/2
+    top=ys.min()+(ys.max()-ys.min())*.42;sel=ys<=top
+    return float(xs[sel].mean())
+
 def bake_field():
     fw,fh,columns=192,256,24;atlas=np.zeros((fh*8,fw*columns,4),dtype=np.float32);sources=[]
     names={col+i:(clip,i) for clip,(col,n,fps,loop) in CLIPS.items() for i in range(n)}
     old={'idle':0,'aim':6,'fire':7,'throw':9,'hit':11,'stacked':13,'hunker':14,'vault':15,'climb':18}
+    report={}
     for row,facing in enumerate(FACINGS):
         original=read_png(os.path.join(SRC,'field-'+facing+'.png'))
         actions=read_png(os.path.join(SRC,'run-down-'+facing+'.png'))
+        cells={}
         for col in range(columns):
             kind,frame=names[col]
             a=actions if kind in ('run','down') else original
@@ -122,16 +147,30 @@ def bake_field():
             h,w=a.shape[:2];cuts=row_bounds(a,2 if count==4 else 3)
             sr,sc=divmod(source_index,count);x0,x1=round(w*sc/count),round(w*(sc+1)/count);y0,y1=cuts[sr],cuts[sr+1]
             cell=largest(a[y0:y1,x0:x1].copy());box=bounds(cell);cell=cell[box[1]:box[3],box[0]:box[2]]
-            if kind=='down':
-                height=232*[.92,.64,.40,.28][frame]
-                scale=min(height/max(1,cell.shape[0]),176/max(1,cell.shape[1]))
-            else:
-                height=232*{'hunker':.62,'stacked':.85,'vault':.82,'climb':.98,'run':.96}.get(kind,1)
-                scale=min(height/max(1,cell.shape[0]),174/max(1,cell.shape[1]))
-            tw,th=max(1,round(cell.shape[1]*scale)),max(1,round(cell.shape[0]*scale));th=min(th,240);tw=min(tw,180)
-            cell=cleaned_albedo(resample(cell,tw,th));px=(fw-tw)//2;py=fh-8-th
+            cells[col]=(kind,frame,cell,count,[x0,y0,x1,y1])
+        # One scale per source sheet, so a clip never changes the character's size: the standing frames of the
+        # field sheet are 232 px tall; the run/down sheet is scaled so its run cycle stands 0.94 of that.
+        standing=[c[2].shape[0] for c in cells.values() if c[0] in ('idle','aim','fire','hit')]
+        running=[c[2].shape[0] for c in cells.values() if c[0]=='run']
+        sheet_scale={'field':232/float(np.median(standing)),'actions':232*.94/float(np.median(running))}
+        # The two sheets are painted with slightly different palettes: pull the field sheet toward the run/down one.
+        ref=np.concatenate([c[2][c[2][:,:,3]>.5][:,:3] for c in cells.values() if c[0] in ('run','down')])
+        ref_stats=(ref.mean(0),ref.std(0)+1e-4)
+        shrunk=[]
+        for col,(kind,frame,cell,count,rect) in cells.items():
+            scale=sheet_scale['actions' if count==4 else 'field']
+            fit=min(1,(fw-6)/(cell.shape[1]*scale),(fh-12)/(cell.shape[0]*scale))
+            if fit<1:shrunk.append((kind,frame,round(fit,3)))
+            scale*=fit
+            tw,th=max(1,round(cell.shape[1]*scale)),max(1,round(cell.shape[0]*scale))
+            centre=body_centre(cell,kind)*scale
+            cell=cleaned_albedo(resample(cell,tw,th))
+            if count!=4:cell=match_colours(cell,ref_stats)
+            px=int(round(fw/2-centre));px=max(2,min(fw-2-tw,px));py=fh-8-th
             atlas[row*fh+py:row*fh+py+th,col*fw+px:col*fw+px+tw]=cell
-            sources.append({'facing':facing,'column':col,'clip':kind,'frame':frame,'source':('run-down-' if count==4 else 'field-')+facing+'.png','sourceRect':[x0,y0,x1,y1]})
+            sources.append({'facing':facing,'column':col,'clip':kind,'frame':frame,'source':('run-down-' if count==4 else 'field-')+facing+'.png','sourceRect':rect})
+        report[facing]={'scales':{k:round(v,4) for k,v in sheet_scale.items()},'shrunkToFit':shrunk}
+    sources.sort(key=lambda s:(FACINGS.index(s['facing']),s['column']))
     preview=np.concatenate([atlas[:256,2*192:6*192],atlas[:256,12*192:16*192],atlas[2*256:3*256,2*192:6*192],atlas[2*256:3*256,12*192:16*192]],axis=0)
     write_png(os.path.join(os.path.dirname(CONFIG),'run-downed-preview.png'),preview)
     write_png(os.path.join(OUT,'field.png'),atlas);normal,mask=lighting_passes(atlas,[( (c+.5)/columns,(r+.45)/8,.32/columns,.40/8,.22) for r in range(8) for c in range(columns)],edge_width=2)
@@ -139,11 +178,11 @@ def bake_field():
     manifest={'version':2,'character':'ranger-01','placeholder':False,'image':'field.png','normal':'field-normal.png','lightingMask':'field-lighting.png','frameWidth':fw,'frameHeight':fh,'columns':columns,'rows':8,'facings':FACINGS,'anchor':[.5,8/fh],'worldHeight':2.4,
         'clips':{k:dict(column=v[0],frames=v[1],fps=v[2],loop=v[3]) for k,v in CLIPS.items()},'events':{'fire':{'frame':0,'event':'muzzle'}},'notes':'One 2D anime identity; 8 illustrated facing sheets; cleaned source colours and line art + separate tangent normals and edge-only light-response mask. No 3D character.'}
     with open(os.path.join(OUT,'field.json'),'w') as f:json.dump(manifest,f,indent=2)
-    with open(os.path.join(OUT,'sprite-list.json'),'w') as f:json.dump({'character':'ranger-01','frames':sources,'formula':'tools/art/sprite_formula.py'},f,indent=2)
+    with open(os.path.join(OUT,'sprite-list.json'),'w') as f:json.dump({'character':'ranger-01','frames':sources,'formula':'tools/art/sprite_formula.py','scale':report},f,indent=2)
     # Matching UI head: the first front-facing illustrated frame, never an unrelated character.
     front=read_png(os.path.join(SRC,'field-s.png'));cuts=row_bounds(front);head=largest(front[:round(cuts[1]*.36),:round(front.shape[1]/7)])
     bb=bounds(head);head=head[bb[1]:bb[3],bb[0]:bb[2]];size=256;out=np.zeros((size,size,4),dtype=np.float32);sc=min(236/head.shape[1],236/head.shape[0]);head=resample(head,round(head.shape[1]*sc),round(head.shape[0]*sc));oy=(size-head.shape[0])//2;ox=(size-head.shape[1])//2;out[oy:oy+head.shape[0],ox:ox+head.shape[1]]=cleaned_albedo(head);write_png(os.path.join(OUT,'portrait.png'),out)
-    return {'frames':len(sources),'size':[fw*columns,fh*8],'rowBounds':'auto from transparent gutters'}
+    return {'frames':len(sources),'size':[fw*columns,fh*8],'rowBounds':'auto from transparent gutters','report':report}
 
 def poly_mask(points,w,h):
     yy,xx=np.mgrid[:h,:w];x=(xx+.5)/w;y=(yy+.5)/h;inside=np.zeros((h,w),dtype=bool)
@@ -225,27 +264,48 @@ def bake_heroes():
         body=cleaned_albedo(resample(read_png(os.path.join(SRC,p['bodySource'])),768,768))
         if p.get('canvasWidth',768)>768:body=np.pad(body,((0,0),(0,p['canvasWidth']-768),(0,0)))
         h,w=body.shape[:2];sheet=read_png(os.path.join(SRC,p['sectionsSource']))
-        layers=[];images={};hand_layers={};contact_audit[name]={}
-        def emit(id,a,stage,bone=None,order=None):
+        layers=[];images={};hand_layers={};hand_variants={};contact_audit[name]={}
+        def files(id,a):
             filename=name+'-'+id+'.png';normal,mask=lighting_passes(a,p.get('normalVolumes',[]) if id=='body' else [])
             write_png(os.path.join(OUT,filename),a)
             write_png(os.path.join(OUT,name+'-'+id+'-normal.png'),normal)
             write_png(os.path.join(OUT,name+'-'+id+'-lighting.png'),mask)
-            layer={'id':id,'image':filename,'normal':name+'-'+id+'-normal.png','lightingMask':name+'-'+id+'-lighting.png','stage':stage}
+            return {'image':filename,'normal':name+'-'+id+'-normal.png','lightingMask':name+'-'+id+'-lighting.png'}
+        def emit(id,a,stage,bone=None,order=None):
+            layer={'id':id,**files(id,a),'stage':stage}
             if bone:layer['bone']=bone
+            if bone:
+                side=bone.split('-')[0];layer['anatomicalSide']='right' if side=='trigger' else 'left'
+                if id.endswith('fingers'):layer['fragmentOf']=side+'-hand'
             if order is not None:layer['order']=order
             layers.append(layer);images[id]=a
+            return layer
         emit('body',body,'back',order=5)
         for part in p['parts']:
             side,kind=part['id'].split('-');arm=p['rig']['arms'][side]
             joints={'upper':('shoulder','elbow'),'forearm':('elbow','wrist'),'hand':('wrist','palm')}[kind]
             start,end=[arm[j] for j in joints]
             width=h*2*max(p['rig']['limbRadii'][kind]) if kind!='hand' else None
-            a=place_section(sheet,part,start,end,w,h,width)
-            emit(part['id'],a,part['stage'],part['id'],10 if part['id']=='support-hand' else None)
+            # A part may come from its own painting (e.g. the gloves painted on the gun guides, tools/art/paint_gloves.py).
+            source=read_png(os.path.join(SRC,part['source'])) if part.get('source') else sheet
+            a=place_section(source,part,start,end,w,h,width)
+            emit(part['id'],a,part['stage'],part['id'],part.get('order',10 if part['id']=='support-hand' else None))
             if kind=='hand':
                 hand_layers[side]=a
-                if part.get('wrapFingers'):
+                hand_variants[side]={'rifle':a}
+                hand_layer=layers[-1]
+                if part.get('fingersSource'):
+                    # Fingers on the other side of the gun from the palm: their own layer and stage.
+                    fingers=place_section(read_png(os.path.join(SRC,part['fingersSource'])),part,start,end,w,h)
+                    finger_layer=emit(side+'-fingers',fingers,part.get('fingersStage','front'),part['id'],order=part.get('fingersOrder',0))
+                    # Per gun family gloves (a pump gun's straight wrist, the sniper's grip and forend): same anchors,
+                    # the runtime picks the variant for the gun in hand.
+                    for family,v in part.get('variants',{}).items():
+                        variant=place_section(read_png(os.path.join(SRC,v['source'])),part,start,end,w,h)
+                        hand_variants[side][family]=variant
+                        hand_layer.setdefault('variants',{})[family]=files(part['id']+'-'+family,variant)
+                        finger_layer.setdefault('variants',{})[family]=files(side+'-fingers-'+family,place_section(read_png(os.path.join(SRC,v['fingersSource'])),part,start,end,w,h))
+                elif part.get('wrapFingers'):
                     front=sheet.copy();mask=np.maximum.reduce([poly_mask(poly,sheet.shape[1],sheet.shape[0]) for poly in part['wrapFingers']]);front[:,:,3]*=mask
                     fingers=place_section(front,part,start,end,w,h)
                     emit('support-fingers',fingers,'front','support-hand',order=0)
@@ -259,6 +319,12 @@ def bake_heroes():
             assert audit['wristCoverage']>.9,name+' '+side+' wrist must lie inside cuff'
             assert audit['palmDistancePixels']<h*.045,name+' '+side+' gun socket must be surrounded by glove'
             audit['socketIsOpen']=True;contact_audit[name][side]=audit
+            audit['families']={}
+            for family,variant in hand_variants[side].items():
+                ys,xs=np.where(variant[:,:,3]>.5);u,v=arm['wrist']
+                coverage=float(variant[round(v*h),round(u*w),3])
+                assert coverage>.9,f'{name} {side} {family} cuff must cover the wrist'
+                audit['families'][family]={'wristCoverage':coverage,'wristDistancePixels':float(np.min(np.hypot(xs-u*w,ys-v*h)))}
         # Compatibility diagnostic textures. Runtime uses each independent layer's maps.
         normal,mask=lighting_passes(body,p.get('normalVolumes',[]))
         write_png(os.path.join(OUT,name+'-normal.png'),normal);write_png(os.path.join(OUT,name+'-lighting.png'),mask)
@@ -266,10 +332,12 @@ def bake_heroes():
         for layer in sorted(layers,key=lambda l:(l['stage']!='back',l.get('order',1 if l['id'].endswith('upper') else 2 if l['id'].endswith('forearm') else 3))):preview=over(preview,images[layer['id']])
         write_png(os.path.join(OUT,name+'-albedo.png'),preview)
         layers.insert(1,{'id':'gun','gun':True})
-        poses[name]={'character':'ranger-01','version':3,'placeholder':False,'width':w,'height':h,'screenHeight':.72,'maxWidthShare':p.get('maxWidthShare',.42),'muzzle':p['muzzle'],'layers':layers,'rig':p['rig'],'lighting':'albedo-normal-response-mask','gun':True,'sections':'complete-independent-paintings'}
+        poses[name]={'character':'ranger-01','version':3,'placeholder':False,'width':w,'height':h,'screenHeight':.72,'maxWidthShare':p.get('maxWidthShare',.42),'muzzle':p['muzzle'],'layers':layers,'rig':p['rig'],'anatomy':p.get('anatomy'),'lighting':'albedo-normal-response-mask','gun':True,'sections':'complete-independent-paintings'}
     with open(os.path.join(os.path.dirname(CONFIG),'rig-image-audit.json'),'w') as f:json.dump(contact_audit,f,indent=2)
     base=poses['aim'];base['variants']={'left':{**dict(base),'mirror':True,'mirrorGun':True,'pose':'aim-left'}};base['ready']={'right':poses['ready'],'left':{**poses['ready'],'mirror':True,'mirrorGun':True,'pose':'ready-left'}}
     with open(os.path.join(OUT,'cutin.json'),'w') as f:json.dump(base,f,indent=2)
+    if bpy is None:
+        return {'poses':list(poses),'scene':None,'note':'baked without Blender: no preview render or .blend update'}
     sc=stage_2d([l for l in poses['aim']['layers'] if l.get('image')]);sc.render.filepath=os.path.join(os.path.dirname(CONFIG),'blender-2d-preview.png');bpy.ops.render.render(write_still=True,scene=sc.name)
     stage_2d([l for l in poses['ready']['layers'] if l.get('image')],pose='ready')
     if bpy.context.window:bpy.context.window.scene=sc
@@ -282,7 +350,7 @@ def bake_heroes():
 
 def build():
     os.makedirs(OUT,exist_ok=True)
-    return {'character':'2D only','blender':bpy.app.version_string,'formula':CONFIG}
+    return {'character':'2D only','blender':bpy.app.version_string if bpy else None,'formula':CONFIG}
 
 if __name__=='__main__':
     print(build());print(bake_field());print(bake_heroes())

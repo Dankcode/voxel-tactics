@@ -1,0 +1,266 @@
+[
+  {
+    "pose": "aim",
+    "family": "rifle",
+    "hand": "right",
+    "wrist": [
+      443.0,
+      541.0
+    ],
+    "socket": [
+      465.99789669073516,
+      478.27674944472176
+    ],
+    "sourceWrist": [
+      172,
+      325
+    ],
+    "sourceSocket": [
+      365,
+      285
+    ],
+    "occlusion": "main near / thumb far"
+  },
+  {
+    "pose": "aim",
+    "family": "rifle",
+    "hand": "left",
+    "wrist": [
+      527.0,
+      380.0
+    ],
+    "socket": [
+      532.8358950581589,
+      333.0763431793854
+    ],
+    "sourceWrist": [
+      669,
+      361
+    ],
+    "sourceSocket": [
+      805,
+      255
+    ],
+    "occlusion": "palm and thumb far / fingers near"
+  },
+  {
+    "pose": "aim",
+    "family": "sniper",
+    "hand": "right",
+    "wrist": [
+      443.0,
+      541.0
+    ],
+    "socket": [
+      465.99789669073516,
+      478.27674944472176
+    ],
+    "sourceWrist": [
+      176,
+      831
+    ],
+    "sourceSocket": [
+      369,
+      790
+    ],
+    "occlusion": "main near / thumb far"
+  },
+  {
+    "pose": "aim",
+    "family": "sniper",
+    "hand": "left",
+    "wrist": [
+      527.0,
+      380.0
+    ],
+    "socket": [
+      532.8358950581589,
+      333.0763431793854
+    ],
+    "sourceWrist": [
+      675,
+      869
+    ],
+    "sourceSocket": [
+      814,
+      759
+    ],
+    "occlusion": "palm and thumb far / fingers near"
+  },
+  {
+    "pose": "aim",
+    "family": "shotgun",
+    "hand": "right",
+    "wrist": [
+      443.0,
+      541.0
+    ],
+    "socket": [
+      465.99789669073516,
+      478.27674944472176
+    ],
+    "sourceWrist": [
+      170,
+      1290
+    ],
+    "sourceSocket": [
+      370,
+      1250
+    ],
+    "occlusion": "main near / thumb far"
+  },
+  {
+    "pose": "aim",
+    "family": "shotgun",
+    "hand": "left",
+    "wrist": [
+      527.0,
+      380.0
+    ],
+    "socket": [
+      532.8358950581589,
+      333.0763431793854
+    ],
+    "sourceWrist": [
+      697,
+      1352
+    ],
+    "sourceSocket": [
+      824,
+      1233
+    ],
+    "occlusion": "palm and thumb far / fingers near"
+  },
+  {
+    "pose": "ready",
+    "family": "rifle",
+    "hand": "right",
+    "wrist": [
+      358.0,
+      530.0
+    ],
+    "socket": [
+      417.6288141627931,
+      511.4887089000322
+    ],
+    "sourceWrist": [
+      172,
+      325
+    ],
+    "sourceSocket": [
+      365,
+      285
+    ],
+    "occlusion": "main near / thumb far"
+  },
+  {
+    "pose": "ready",
+    "family": "rifle",
+    "hand": "left",
+    "wrist": [
+      692.0,
+      493.0
+    ],
+    "socket": [
+      752.3019677155273,
+      457.7440333813638
+    ],
+    "sourceWrist": [
+      669,
+      361
+    ],
+    "sourceSocket": [
+      805,
+      255
+    ],
+    "occlusion": "palm and thumb far / fingers near"
+  },
+  {
+    "pose": "ready",
+    "family": "sniper",
+    "hand": "right",
+    "wrist": [
+      358.0,
+      530.0
+    ],
+    "socket": [
+      417.6288141627931,
+      511.4887089000322
+    ],
+    "sourceWrist": [
+      176,
+      831
+    ],
+    "sourceSocket": [
+      369,
+      790
+    ],
+    "occlusion": "main near / thumb far"
+  },
+  {
+    "pose": "ready",
+    "family": "sniper",
+    "hand": "left",
+    "wrist": [
+      692.0,
+      493.0
+    ],
+    "socket": [
+      752.3019677155273,
+      457.7440333813638
+    ],
+    "sourceWrist": [
+      675,
+      869
+    ],
+    "sourceSocket": [
+      814,
+      759
+    ],
+    "occlusion": "palm and thumb far / fingers near"
+  },
+  {
+    "pose": "ready",
+    "family": "shotgun",
+    "hand": "right",
+    "wrist": [
+      358.0,
+      530.0
+    ],
+    "socket": [
+      417.6288141627931,
+      511.4887089000322
+    ],
+    "sourceWrist": [
+      170,
+      1290
+    ],
+    "sourceSocket": [
+      370,
+      1250
+    ],
+    "occlusion": "main near / thumb far"
+  },
+  {
+    "pose": "ready",
+    "family": "shotgun",
+    "hand": "left",
+    "wrist": [
+      692.0,
+      493.0
+    ],
+    "socket": [
+      752.3019677155273,
+      457.7440333813638
+    ],
+    "sourceWrist": [
+      697,
+      1352
+    ],
+    "sourceSocket": [
+      824,
+      1233
+    ],
+    "occlusion": "palm and thumb far / fingers near"
+  }
+]

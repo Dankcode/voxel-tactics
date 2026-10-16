@@ -2498,5 +2498,216 @@
       ]
     }
   ],
-  "formula": "tools/art/sprite_formula.py"
+  "formula": "tools/art/sprite_formula.py",
+  "scale": {
+    "s": {
+      "scales": {
+        "field": 0.601,
+        "actions": 0.4437
+      },
+      "shrunkToFit": [
+        [
+          "idle",
+          0,
+          1.0
+        ]
+      ]
+    },
+    "sw": {
+      "scales": {
+        "field": 0.633,
+        "actions": 0.4725
+      },
+      "shrunkToFit": [
+        [
+          "idle",
+          0,
+          0.954
+        ],
+        [
+          "idle",
+          1,
+          0.966
+        ],
+        [
+          "down",
+          2,
+          0.889
+        ],
+        [
+          "down",
+          3,
+          0.948
+        ],
+        [
+          "climb",
+          0,
+          0.991
+        ]
+      ]
+    },
+    "w": {
+      "scales": {
+        "field": 0.6436,
+        "actions": 0.4705
+      },
+      "shrunkToFit": [
+        [
+          "run",
+          0,
+          0.976
+        ],
+        [
+          "run",
+          2,
+          0.917
+        ],
+        [
+          "down",
+          2,
+          0.924
+        ],
+        [
+          "down",
+          3,
+          0.946
+        ],
+        [
+          "climb",
+          2,
+          0.993
+        ]
+      ]
+    },
+    "nw": {
+      "scales": {
+        "field": 0.6453,
+        "actions": 0.428
+      },
+      "shrunkToFit": [
+        [
+          "climb",
+          0,
+          0.99
+        ],
+        [
+          "climb",
+          2,
+          0.924
+        ]
+      ]
+    },
+    "n": {
+      "scales": {
+        "field": 0.6212,
+        "actions": 0.4506
+      },
+      "shrunkToFit": [
+        [
+          "idle",
+          0,
+          0.994
+        ],
+        [
+          "throw",
+          0,
+          0.987
+        ],
+        [
+          "climb",
+          0,
+          0.975
+        ]
+      ]
+    },
+    "ne": {
+      "scales": {
+        "field": 0.6212,
+        "actions": 0.4741
+      },
+      "shrunkToFit": [
+        [
+          "idle",
+          0,
+          0.985
+        ],
+        [
+          "idle",
+          1,
+          0.985
+        ],
+        [
+          "down",
+          2,
+          0.952
+        ],
+        [
+          "climb",
+          2,
+          0.987
+        ]
+      ]
+    },
+    "e": {
+      "scales": {
+        "field": 0.6824,
+        "actions": 0.4841
+      },
+      "shrunkToFit": [
+        [
+          "idle",
+          0,
+          0.954
+        ],
+        [
+          "idle",
+          1,
+          0.954
+        ],
+        [
+          "run",
+          0,
+          0.995
+        ],
+        [
+          "run",
+          2,
+          0.953
+        ],
+        [
+          "down",
+          2,
+          0.956
+        ],
+        [
+          "climb",
+          0,
+          0.939
+        ],
+        [
+          "climb",
+          2,
+          0.885
+        ]
+      ]
+    },
+    "se": {
+      "scales": {
+        "field": 0.6279,
+        "actions": 0.4206
+      },
+      "shrunkToFit": [
+        [
+          "idle",
+          0,
+          0.962
+        ],
+        [
+          "idle",
+          1,
+          0.984
+        ]
+      ]
+    }
+  }
 }
