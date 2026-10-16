@@ -25,11 +25,13 @@ There is no exported walking clip. Rules/path edges still use the existing inter
 
 ## Lighting and arm rig
 
-Albedo PNGs contain simplified local material colours and line work. Directional illumination is supplied separately through tangent normal maps and saturated magenta response maps: R = direct, G = emission, B = ambient, A = coverage. The magenta map is sampled as metadata, never displayed as a visible colour.
+Albedo PNGs preserve the cleaned source illustrations' colours, cel shading and thin line work. The exporter only cleans near-transparent alpha; it does not quantize colours or apply a majority filter, which previously muted the palette and erased outlines. Shooting and readying use independent `source/*-body-modular.png` and `source/*-arm-sections.png` paintings, styled after the retained `aim-flat.png` and `ready-flat.png` references. Field frames and portraits likewise retain their source colours. Directional illumination is supplied separately through tangent normal maps and saturated magenta response maps: R = direct, G = emission, B = ambient, A = coverage. The magenta map is sampled as metadata, never displayed as a visible colour.
 
 Field sprites use the world’s standard lighting and shadows. Shoulder cards use the live sun, hemisphere, back light, nearby point lights, camera orientation and exposure. Changing day/dusk/night lights the existing art rather than changing images.
 
-Each pose contains a body plus trigger/support upper-arm, forearm and glove cards. Shoulders, elbows, wrists and palms use full-frame UV pivots in `tools/art/sprites/ranger-01/formula.json`. Overlapping flat joint patches and underpaint prevent holes when the limbs rotate. Limb contours retain painted details over a simplified 2D silhouette. Two-bone IK preserves segment lengths; glove palms follow the actual projected gun grips. Gun sway is constrained to the joint workspace so forearms and gloves remain joined. Recoil rotates around the seated stock. The rig regression sweeps 2,808 combinations of poses, supplied guns, mirrored sides, yaw, pitch and recoil; wrist seams stay below 0.01 source pixels, with no bone scaling.
+Each pose now has a complete independently painted torso, two upper sleeves, two forearm sleeves, two gloves and an extra support-finger overlay. The torso is never produced by subtracting arm silhouettes: the chest, harness and side panels continue beneath the arms. `source/*-body-modular.png` contains the complete body; `source/*-arm-sections.png` contains separate complete parts with overlapping ends. The formula records each section's source rectangle and two joint anchors. The exporter places these sections without borrowing pixels from the torso or filling joints with capsule shapes.
+
+Shoulders, elbows, wrists and gun sockets use full-frame UV pivots in `tools/art/sprites/ranger-01/formula.json`. Two-bone IK preserves segment lengths; glove sockets follow the actual projected gun grips. Hand rotation follows the projected stock-to-muzzle axis, so the lower pistol grip cannot twist the support hand. Its cuff stays below the barrel, with the palm behind the gun and curled fingers in front. A socket may be transparent because the gun occupies it; the exported cuff must remain opaque. Each section has its own normal and light-response maps. Gun sway is constrained to the joint workspace and recoil rotates around the seated stock. The rig regression sweeps 2,808 combinations of poses, supplied guns, mirrored sides, yaw, pitch and recoil; wrist seams stay below 0.01 source pixels, with no bone scaling.
 
 The ready frame is 1536×768: transparent space beside the original square body artwork accommodates the full-size gun. The character, arms and gun are never squeezed independently to fit the frame. The right ready pose is authored once. Left ready mirrors the entire assembled sprite and gun, with light direction and pointer yaw corrected. The committed shooting pose uses the supplied rear-shoulder reference angle.
 
@@ -49,7 +51,7 @@ The runtime uses one camera scale per pose for all three guns, instead of resizi
 
 ## Editable formula and rebuild
 
-Authoring sources and prompts are under `tools/art/sprites/ranger-01/`; they are kept outside the public game bundle. `ranger-01-2d.blend` contains flat aiming and readying scenes, named layers and parented planar pivot controls. No 3D character is built or exported. `formula.json` owns segmentation, pivots, neutral palette, underpaint, light volumes and per-pose gun camera calibration.
+Authoring sources and prompts are under `tools/art/sprites/ranger-01/`; they are kept outside the public game bundle. `modular-prompts.json` records the built-in image generation prompts used for the independent body and arm illustrations. `ranger-01-2d.blend` contains flat aiming and readying scenes, named layers and parented planar pivot controls. No 3D character is built or exported. `formula.json` owns source selection, section placement, pivots, light volumes and per-pose gun camera calibration. All existing 3D gun assets are retained.
 
 With Blender MCP at `127.0.0.1:9876`:
 
@@ -69,7 +71,7 @@ For a long bake, schedule the calls with `bpy.app.timers.register` so the MCP re
 
 Gun rebuilds need the supplied originals in the ignored `output/reference/` directory; the generated GLB is self-contained. Sources are `m5-scw.blend`, `l118a1.usdz`, and `shotgun/shotgun.obj`.
 
-The sprite studio tests all three provided guns, mirrored ready poses, lighting, inertia, recoil and all field clips/facings. The game uses the active ranger pack; previous character folders remain legacy fixtures for unrelated tests.
+The sprite studio tests all three provided guns, mirrored ready poses, lighting, inertia, recoil and all field clips/facings. The Sections selector isolates the complete torso or the arm/glove layers to review overlaps. The game uses the active ranger pack; previous character folders remain legacy fixtures for unrelated tests.
 
 ## Art references
 

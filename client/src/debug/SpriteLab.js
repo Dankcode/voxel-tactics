@@ -9,6 +9,7 @@ const [cutin,field]=await Promise.all(['cutin.json','field.json'].map(p=>fetch(b
 const world={camera:new THREE.PerspectiveCamera(),sun:new THREE.DirectionalLight(),hemi:new THREE.HemisphereLight(),back:new THREE.DirectionalLight(0x9fb8ff,.55),renderer:{toneMappingExposure:1}};
 world.camera.rotation.y=Math.PI;world.sun.position.set(-.55,1,.8);world.back.position.set(.8,.6,1);
 let weapon, follow={}, target={x:0,y:0}, recoil=0, generation=0;
+function sections(){if(!weapon?.ready)return;const mode=$('sections').value;for(const {mesh,layer}of weapon.cards)mesh.visible=mode==='all'||(mode==='body'?layer.id==='body':layer.id!=='body');weapon.model.visible=mode==='all'&&weapon.gunVisible;$('anchors').style.display=mode==='body'?'none':'';}
 function lighting(){const l=LIGHTING[$('lighting').value];world.sun.color.set(l.sun);world.sun.intensity=l.sunI;world.sun.position.fromArray(l.sunDir);world.hemi.color.set(l.sky);world.hemi.groundColor.set(l.ground);world.hemi.intensity=l.hemiI;world.renderer.toneMappingExposure=l.exposure;}
 async function rebuild(){
  const token=++generation;weapon?.dispose();$('hero').replaceChildren();
@@ -18,9 +19,10 @@ async function rebuild(){
  for(const l of art.layers.filter(l=>l.image)){const img=new Image();img.src=base+l.image;content.appendChild(img);}
  weapon=new SpriteWeapon(content,art,{weapon:$('weapon').value},$('weapon').value,world,base);
  $('status').textContent='Loading rig…';await weapon.loaded;
- if(token!==generation)return;$('status').textContent=weapon.error?weapon.error.message:'Rig ready · 2D character / 3D gun';
+ if(token!==generation)return;sections();$('status').textContent=weapon.error?weapon.error.message:'Rig ready · 2D character / 3D gun';
 }
 $('pose').onchange=rebuild;$('weapon').onchange=rebuild;$('lighting').onchange=lighting;
+$('sections').onchange=sections;
 $('hero').onpointermove=e=>{const r=$('hero').getBoundingClientRect();target={x:((e.clientX-r.left)/r.width-.5)*.22,y:((e.clientY-r.top)/r.height-.5)*.16};};
 $('hero').onpointerleave=()=>target={x:0,y:0};$('fire').onclick=()=>recoil=.02;
 const img=new Image();img.src=base+field.image;await img.decode();

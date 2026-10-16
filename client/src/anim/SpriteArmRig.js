@@ -23,8 +23,12 @@ export function armRigPose(rig, targets, width, height) {
     const result={transforms:{},joints:{},maxGap:0};
     if (!rig || !targets) return result;
     const point=p=>({x:p[0]*width,y:p[1]*height});
-    const restLine={x:(rig.support[0]-rig.grip[0])*width,y:(rig.support[1]-rig.grip[1])*height};
-    const line={x:(targets.support[0]-targets.grip[0])*width,y:(targets.support[1]-targets.grip[1])*height};
+    // Hands cup the barrel, so orient them from the barrel axis, not the diagonal
+    // between the lower pistol grip and fore-end. Preserve legacy fixtures.
+    const restAxis=rig.handAxis || [rig.grip,rig.support];
+    const axis=rig.handAxis&&targets.muzzle?[targets.stock,targets.muzzle]:[targets.grip,targets.support];
+    const restLine={x:(restAxis[1][0]-restAxis[0][0])*width,y:(restAxis[1][1]-restAxis[0][1])*height};
+    const line={x:(axis[1][0]-axis[0][0])*width,y:(axis[1][1]-axis[0][1])*height};
     const rotation=Math.atan2(line.y,line.x)-Math.atan2(restLine.y,restLine.x),co=Math.cos(rotation),si=Math.sin(rotation);
     for (const [side,arm] of Object.entries(rig.arms)) {
         const shoulder=point(arm.shoulder),elbow=point(arm.elbow),wrist=point(arm.wrist),palm=point(arm.palm);

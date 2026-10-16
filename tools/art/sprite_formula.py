@@ -1,7 +1,7 @@
 """Bake a 2D anime character pack through Blender, never a 3D character.
 MCP: import runpy; p=runpy.run_path(PATH); p['build'](); p['bake_field'](); p['bake_heroes']()
 CLI: blender -b -P tools/art/sprite_formula.py
-The editable formula owns grid layout, arm cutouts, pivots, neutral palette and lighting passes.
+The editable formula owns grid layout, arm cutouts, pivots and separate lighting passes.
 """
 import bpy, numpy as np, os, json, math, zlib, struct
 from collections import deque
@@ -36,30 +36,10 @@ def resample(a,w,h):
     out[:,:,:3]/=np.maximum(out[:,:,3:4],1e-5)
     return out.astype(np.float32)
 
-def neutral_albedo(a):
-    # Local materials, not baked key/rim lighting. Flat, deliberately low-detail palette.
-    r,g,b=a[:,:,0],a[:,:,1],a[:,:,2];v=np.maximum(np.maximum(r,g),b)
-    out=a.copy();out[:,:,:3]=(.31,.35,.235)
-    olive=(g>r*.95)&(g>b*1.1)
-    out[olive,:3]=(.31,.35,.235)
-    tan=(r>g*1.10)&(g>b*1.12)
-    out[tan,:3]=(.53,.46,.32)
-    skin=(r>g*1.35)&(g>b*1.15)&(v>.52)
-    out[skin,:3]=(.76,.58,.43)
-    dark=(v<.15);out[dark,:3]=(.095,.11,.12)
-    ink=(v<.055);out[ink,:3]=(.025,.033,.045)
-    teal=(b>r*1.18)&(g>r*1.3)&(v>.24);out[teal,:3]=(.12,.57,.62)
-    white=(np.minimum(np.minimum(r,g),b)>.7);out[white,:3]=(.8,.83,.81)
-    # Majority local-material filtering removes the tiny camo/noise shapes at field scale.
-    if a.shape[0] < 1000:
-        palette=np.array([(.18,.21,.16),(.31,.35,.235),(.53,.46,.32),(.76,.58,.43),(.095,.11,.12),(.025,.033,.045),(.12,.57,.62),(.8,.83,.81)],dtype=np.float32)
-        labels=np.argmin(np.sum((out[:,:,:3,None]-palette.T[None,None,:,:])**2,axis=2),axis=2)
-        scores=[]
-        for i in range(len(palette)):
-            m=(labels==i).astype(np.uint8);scores.append(sum(np.roll(np.roll(m,dy,0),dx,1) for dx in [-1,0,1] for dy in [-1,0,1]))
-        smooth=np.argmax(np.stack(scores,axis=2),axis=2)
-        smooth[(labels==5)&(scores[5]>=3)]=5
-        out[:,:,:3]=palette[smooth]
+def cleaned_albedo(a):
+    # Keep the approved cleaned illustration's RGB, cel shading and fine ink intact.
+    # Lighting belongs in normal/response maps, not destructive palette quantization.
+    out=a.copy()
     out[:,:,3]=np.where(out[:,:,3]<.04,0,out[:,:,3])
     return out
 
@@ -135,7 +115,7 @@ def bake_field():
                 height=232*{'hunker':.62,'stacked':.85,'vault':.82,'climb':.98,'run':.96}.get(kind,1)
                 scale=min(height/max(1,cell.shape[0]),174/max(1,cell.shape[1]))
             tw,th=max(1,round(cell.shape[1]*scale)),max(1,round(cell.shape[0]*scale));th=min(th,240);tw=min(tw,180)
-            cell=neutral_albedo(resample(cell,tw,th));px=(fw-tw)//2;py=fh-8-th
+            cell=cleaned_albedo(resample(cell,tw,th));px=(fw-tw)//2;py=fh-8-th
             atlas[row*fh+py:row*fh+py+th,col*fw+px:col*fw+px+tw]=cell
             sources.append({'facing':facing,'column':col,'clip':kind,'frame':frame,'source':('run-down-' if count==4 else 'field-')+facing+'.png','sourceRect':[x0,y0,x1,y1]})
     preview=np.concatenate([atlas[:256,2*192:6*192],atlas[:256,12*192:16*192],atlas[2*256:3*256,2*192:6*192],atlas[2*256:3*256,12*192:16*192]],axis=0)
@@ -143,12 +123,12 @@ def bake_field():
     write_png(os.path.join(OUT,'field.png'),atlas);normal,mask=lighting_passes(atlas,[( (c+.5)/columns,(r+.45)/8,.32/columns,.40/8,.22) for r in range(8) for c in range(columns)])
     write_png(os.path.join(OUT,'field-normal.png'),normal);write_png(os.path.join(OUT,'field-lighting.png'),mask)
     manifest={'version':2,'character':'ranger-01','placeholder':False,'image':'field.png','normal':'field-normal.png','lightingMask':'field-lighting.png','frameWidth':fw,'frameHeight':fh,'columns':columns,'rows':8,'facings':FACINGS,'anchor':[.5,8/fh],'worldHeight':2.4,
-        'clips':{k:dict(column=v[0],frames=v[1],fps=v[2],loop=v[3]) for k,v in CLIPS.items()},'events':{'fire':{'frame':0,'event':'muzzle'}},'notes':'One 2D anime identity; 8 illustrated facing sheets; neutral local colour + separate tangent normals and magenta light-response mask. No 3D character.'}
+        'clips':{k:dict(column=v[0],frames=v[1],fps=v[2],loop=v[3]) for k,v in CLIPS.items()},'events':{'fire':{'frame':0,'event':'muzzle'}},'notes':'One 2D anime identity; 8 illustrated facing sheets; cleaned source colours and line art + separate tangent normals and magenta light-response mask. No 3D character.'}
     with open(os.path.join(OUT,'field.json'),'w') as f:json.dump(manifest,f,indent=2)
     with open(os.path.join(OUT,'sprite-list.json'),'w') as f:json.dump({'character':'ranger-01','frames':sources,'formula':'tools/art/sprite_formula.py'},f,indent=2)
     # Matching UI head: the first front-facing illustrated frame, never an unrelated character.
     front=read_png(os.path.join(SRC,'field-s.png'));cuts=row_bounds(front);head=largest(front[:round(cuts[1]*.36),:round(front.shape[1]/7)])
-    bb=bounds(head);head=head[bb[1]:bb[3],bb[0]:bb[2]];size=256;out=np.zeros((size,size,4),dtype=np.float32);sc=min(236/head.shape[1],236/head.shape[0]);head=resample(head,round(head.shape[1]*sc),round(head.shape[0]*sc));oy=(size-head.shape[0])//2;ox=(size-head.shape[1])//2;out[oy:oy+head.shape[0],ox:ox+head.shape[1]]=neutral_albedo(head);write_png(os.path.join(OUT,'portrait.png'),out)
+    bb=bounds(head);head=head[bb[1]:bb[3],bb[0]:bb[2]];size=256;out=np.zeros((size,size,4),dtype=np.float32);sc=min(236/head.shape[1],236/head.shape[0]);head=resample(head,round(head.shape[1]*sc),round(head.shape[0]*sc));oy=(size-head.shape[0])//2;ox=(size-head.shape[1])//2;out[oy:oy+head.shape[0],ox:ox+head.shape[1]]=cleaned_albedo(head);write_png(os.path.join(OUT,'portrait.png'),out)
     return {'frames':len(sources),'size':[fw*columns,fh*8],'rowBounds':'auto from transparent gutters'}
 
 def poly_mask(points,w,h):
@@ -169,7 +149,7 @@ def stage_2d(layers,pose='aim'):
     sc.render.image_settings.file_format='PNG';sc.render.image_settings.color_mode='RGBA';sc.view_settings.view_transform='Standard'
     world=bpy.data.worlds.new('2D transparent stage');sc.world=world
     cam=bpy.data.objects.new('2D orthographic camera',bpy.data.cameras.new('2D orthographic camera'));sc.collection.objects.link(cam);cam.location=(aspect/2,.5,10);cam.data.type='ORTHO';cam.data.ortho_scale=aspect;sc.camera=cam
-    order=lambda l:(0 if l.get('stage')=='back' and l['id']!='body' else 1 if l['id']=='body' else 2,0 if l['id']=='support-hand' else 1 if l['id'].endswith('upper') else 2 if l['id'].endswith('forearm') else 3)
+    order=lambda l:(l.get('stage')!='back',l.get('order',1 if l['id'].endswith('upper') else 2 if l['id'].endswith('forearm') else 3))
     layers=sorted(layers,key=order)
     for i,layer in enumerate(layers):
         im=bpy.data.images.load(os.path.join(OUT,layer['image']),check_existing=True);im.reload()
@@ -198,62 +178,82 @@ def stage_2d(layers,pose='aim'):
                 parent=pivots[(side,joint)];ob.parent=parent;ob.matrix_parent_inverse=parent.matrix_world.inverted()
     return sc
 
-def flat_limb(arm,part,w,h,radii):
-    start,end=(arm['shoulder'],arm['elbow']) if part=='upper' else (arm['elbow'],arm['wrist'])
-    start=[start[0]*w/h,start[1]];end=[end[0]*w/h,end[1]]
-    yy,xx=np.mgrid[:h,:w];x=xx/h;y=yy/h;dx=end[0]-start[0];dy=end[1]-start[1]
-    t=np.clip(((x-start[0])*dx+(y-start[1])*dy)/(dx*dx+dy*dy),0,1)
-    radius=radii[0]*(1-t)+radii[1]*t;d=np.sqrt((x-start[0]-t*dx)**2+(y-start[1]-t*dy)**2)/radius
-    a=np.zeros((h,w,4),dtype=np.float32);a[:,:,:3]=(.31,.35,.235);a[:,:,3]=np.clip((1-d)*h*radius,0,1)
-    a[(d>.97)&(d<1),:3]=(.025,.033,.045)
-    # One broad cloth plane; the illumination itself comes from the normal/light pass.
-    fold=(t>.81)&(t<.825)&(d<.6);a[fold,:3]=(.18,.21,.16)
-    return a
+def place_section(sheet, spec, start, end, w, h, target_width=None):
+    """Pack a complete illustrated section by two artist-authored joint anchors.
+    This is an affine atlas placement, never a cut from the body image.
+    """
+    x0,y0,x1,y1=spec['rect'];src=sheet[y0:y1,x0:x1].copy()
+    a=np.array(spec['start'],dtype=float)-[x0,y0];b=np.array(spec['end'],dtype=float)-[x0,y0]
+    q=np.array(start)*[w,h];r=np.array(end)*[w,h]
+    u=(b-a)/np.linalg.norm(b-a);v=np.array([-u[1],u[0]])
+    d=(r-q)/np.linalg.norm(r-q);e=np.array([-d[1],d[0]])
+    along=np.linalg.norm(r-q)/np.linalg.norm(b-a)
+    across=target_width/spec['sourceWidth'] if target_width else along
+    matrix=np.outer(d,u)*along+np.outer(e,v)*across;inverse=np.linalg.inv(matrix)
+    yy,xx=np.mgrid[:h,:w];uv=inverse@np.stack([xx.ravel()-q[0],yy.ravel()-q[1]])+a[:,None]
+    x,y=uv[0].reshape(h,w),uv[1].reshape(h,w)
+    valid=(x>=0)&(y>=0)&(x<src.shape[1]-1)&(y<src.shape[0]-1)
+    x=np.clip(x,0,src.shape[1]-1.001);y=np.clip(y,0,src.shape[0]-1.001)
+    ix=x.astype(int);iy=y.astype(int);fx=(x-ix)[:,:,None];fy=(y-iy)[:,:,None]
+    src[:,:,:3]*=src[:,:,3:4]
+    out=(src[iy,ix]*(1-fx)+src[iy,ix+1]*fx)*(1-fy)+(src[iy+1,ix]*(1-fx)+src[iy+1,ix+1]*fx)*fy
+    out[:,:,:3]/=np.maximum(out[:,:,3:4],1e-5);out[:,:,3]*=valid
+    return cleaned_albedo(out.astype(np.float32))
+
+def over(back,front):
+    a=front[:,:,3:4];b=back[:,:,3:4];alpha=a+b*(1-a)
+    rgb=(front[:,:,:3]*a+back[:,:,:3]*b*(1-a))/np.maximum(alpha,1e-5)
+    return np.concatenate([rgb,alpha],axis=2)
 
 def bake_heroes():
     formula=json.load(open(CONFIG));poses={};contact_audit={}
     for name,p in formula['poses'].items():
-        a=read_png(os.path.join(SRC,p['source']));a=neutral_albedo(resample(a,768,768))
-        if p.get('canvasWidth',768)>768:a=np.pad(a,((0,0),(0,p['canvasWidth']-768),(0,0)))
-        h,w=a.shape[:2]
-        normal,mask=lighting_passes(a,p.get('normalVolumes',[]));write_png(os.path.join(OUT,name+'-normal.png'),normal);write_png(os.path.join(OUT,name+'-lighting.png'),mask)
-        all_masks=[];layers=[];hand_layers={};claimed=np.zeros((h,w),dtype=np.float32)
+        body=cleaned_albedo(resample(read_png(os.path.join(SRC,p['bodySource'])),768,768))
+        if p.get('canvasWidth',768)>768:body=np.pad(body,((0,0),(0,p['canvasWidth']-768),(0,0)))
+        h,w=body.shape[:2];sheet=read_png(os.path.join(SRC,p['sectionsSource']))
+        layers=[];images={};hand_layers={};contact_audit[name]={}
+        def emit(id,a,stage,bone=None,order=None):
+            filename=name+'-'+id+'.png';normal,mask=lighting_passes(a,p.get('normalVolumes',[]) if id=='body' else [])
+            write_png(os.path.join(OUT,filename),a)
+            write_png(os.path.join(OUT,name+'-'+id+'-normal.png'),normal)
+            write_png(os.path.join(OUT,name+'-'+id+'-lighting.png'),mask)
+            layer={'id':id,'image':filename,'normal':name+'-'+id+'-normal.png','lightingMask':name+'-'+id+'-lighting.png','stage':stage}
+            if bone:layer['bone']=bone
+            if order is not None:layer['order']=order
+            layers.append(layer);images[id]=a
+        emit('body',body,'back',order=5)
         for part in p['parts']:
-            m=poly_mask(part['polygon'],w,h)*(1-claimed);claimed=np.maximum(claimed,m);all_masks.append(m);layer=a.copy();layer[:,:,3]*=m
-            limb=part['id'].split('-')
-            normal_filename=name+'-normal.png'
-            if limb[-1] in ('upper','forearm'):
-                painted=layer.copy()
-                layer=flat_limb(p['rig']['arms'][limb[0]],limb[-1],w,h,p['rig']['limbRadii'][limb[-1]])
-                ink=painted[:,:,3:4]*layer[:,:,3:4]
-                layer[:,:,:3]=layer[:,:,:3]*(1-ink)+painted[:,:,:3]*ink
-                limb_normal,_=lighting_passes(layer);normal_filename=name+'-'+part['id']+'-normal.png';write_png(os.path.join(OUT,normal_filename),limb_normal)
-            if part['id'].endswith('-hand'):hand_layers[part['id'].split('-')[0]]=layer
-            filename=name+'-'+part['id']+'.png';write_png(os.path.join(OUT,filename),layer);layers.append({'id':part['id'],'bone':part['id'],'image':filename,'normal':normal_filename,'lightingMask':name+'-lighting.png','stage':part.get('stage','front')})
-        contact_audit[name]={}
+            side,kind=part['id'].split('-');arm=p['rig']['arms'][side]
+            joints={'upper':('shoulder','elbow'),'forearm':('elbow','wrist'),'hand':('wrist','palm')}[kind]
+            start,end=[arm[j] for j in joints]
+            width=h*2*max(p['rig']['limbRadii'][kind]) if kind!='hand' else None
+            a=place_section(sheet,part,start,end,w,h,width)
+            emit(part['id'],a,part['stage'],part['id'],10 if part['id']=='support-hand' else None)
+            if kind=='hand':
+                hand_layers[side]=a
+                if part.get('wrapFingers'):
+                    front=sheet.copy();mask=np.maximum.reduce([poly_mask(poly,sheet.shape[1],sheet.shape[0]) for poly in part['wrapFingers']]);front[:,:,3]*=mask
+                    fingers=place_section(front,part,start,end,w,h)
+                    emit('support-fingers',fingers,'front','support-hand',order=0)
+        # The glove socket may be transparent: the gun occupies it. Check the wrist
+        # and actual glove pixels around that socket, not a filled-in palm silhouette.
         for side,arm in p['rig']['arms'].items():
             hand=hand_layers[side];ys,xs=np.where(hand[:,:,3]>.5);audit={}
             for point in ['palm','wrist']:
                 u,v=arm[point];coverage=float(hand[min(h-1,round(v*h)),min(w-1,round(u*w)),3])
                 audit[point+'Coverage']=coverage;audit[point+'DistancePixels']=float(np.min(np.sqrt((xs-u*w)**2+(ys-v*h)**2)))
-                assert coverage>.9,name+' '+side+' '+point+' must lie inside the painted glove'
-            contact_audit[name][side]=audit
-        body=a.copy();body[:,:,3]*=1-np.maximum.reduce(all_masks)
-        if p.get('bodyErase'):body[:,:,3]*=1-poly_mask(p['bodyErase'],w,h)
-        for fill in p.get('underpaint',[]):
-            coverage=poly_mask(fill['polygon'],w,h)*(1-body[:,:,3]);body[:,:,:3]=body[:,:,:3]*(1-coverage[:,:,None])+np.array(fill['colour'])*coverage[:,:,None];body[:,:,3]=np.maximum(body[:,:,3],coverage)
-
-        if p.get('bodyKeep'):body[:,:,3]*=poly_mask(p['bodyKeep'],w,h)
-        filename=name+'-body.png';write_png(os.path.join(OUT,filename),body)
-        layers.insert(0,{'id':'body','image':filename,'normal':name+'-normal.png','lightingMask':name+'-lighting.png','stage':'back'})
-        layers.insert(3,{'id':'gun','gun':True})
-        write_png(os.path.join(OUT,name+'-albedo.png'),a)
-        poses[name]={'character':'ranger-01','version':2,'placeholder':False,'width':w,'height':h,'screenHeight':.72,'maxWidthShare':p.get('maxWidthShare',.42),'muzzle':p['muzzle'],'layers':layers,'rig':p['rig'],'lighting':'albedo-normal-response-mask','gun':True}
+            assert audit['wristCoverage']>.9,name+' '+side+' wrist must lie inside cuff'
+            assert audit['palmDistancePixels']<h*.045,name+' '+side+' gun socket must be surrounded by glove'
+            audit['socketIsOpen']=True;contact_audit[name][side]=audit
+        # Compatibility diagnostic textures. Runtime uses each independent layer's maps.
+        normal,mask=lighting_passes(body,p.get('normalVolumes',[]))
+        write_png(os.path.join(OUT,name+'-normal.png'),normal);write_png(os.path.join(OUT,name+'-lighting.png'),mask)
+        preview=np.zeros_like(body)
+        for layer in sorted(layers,key=lambda l:(l['stage']!='back',l.get('order',1 if l['id'].endswith('upper') else 2 if l['id'].endswith('forearm') else 3))):preview=over(preview,images[layer['id']])
+        write_png(os.path.join(OUT,name+'-albedo.png'),preview)
+        layers.insert(1,{'id':'gun','gun':True})
+        poses[name]={'character':'ranger-01','version':3,'placeholder':False,'width':w,'height':h,'screenHeight':.72,'maxWidthShare':p.get('maxWidthShare',.42),'muzzle':p['muzzle'],'layers':layers,'rig':p['rig'],'lighting':'albedo-normal-response-mask','gun':True,'sections':'complete-independent-paintings'}
     with open(os.path.join(os.path.dirname(CONFIG),'rig-image-audit.json'),'w') as f:json.dump(contact_audit,f,indent=2)
-    # Overlapping flat joint sprites keep the transposable cutouts sealed at shoulders/elbows/wrists.
-    yy,xx=np.mgrid[:128,:128];d=np.sqrt(((xx-63.5)/62)**2+((yy-63.5)/62)**2);joint=np.zeros((128,128,4),dtype=np.float32);joint[:,:,:3]=(.31,.35,.235);joint[:,:,3]=np.clip((1-d)*62,0,1);joint[(d>.965)&(d<1),:3]=(.025,.033,.045)
-    normal,mask=lighting_passes(joint,[(.5,.5,.5,.5,.6)])
-    write_png(os.path.join(OUT,'joint.png'),joint);write_png(os.path.join(OUT,'joint-normal.png'),normal);write_png(os.path.join(OUT,'joint-lighting.png'),mask)
     base=poses['aim'];base['variants']={'left':{**dict(base),'mirror':True,'mirrorGun':True,'pose':'aim-left'}};base['ready']={'right':poses['ready'],'left':{**poses['ready'],'mirror':True,'mirrorGun':True,'pose':'ready-left'}}
     with open(os.path.join(OUT,'cutin.json'),'w') as f:json.dump(base,f,indent=2)
     sc=stage_2d([l for l in poses['aim']['layers'] if l.get('image')]);sc.render.filepath=os.path.join(os.path.dirname(CONFIG),'blender-2d-preview.png');bpy.ops.render.render(write_still=True,scene=sc.name)

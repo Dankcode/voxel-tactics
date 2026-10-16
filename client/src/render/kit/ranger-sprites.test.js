@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { SpriteAnimator } from '../../anim/SpriteAnimator.js';
 import { EVENT_TO_CLIP } from '../../anim/AnimationClips.js';
-import { solveArm, boneMatrix, armTransforms, constrainGunPose } from '../../anim/SpriteArmRig.js';
+import { solveArm, boneMatrix, armTransforms, armRigPose, constrainGunPose } from '../../anim/SpriteArmRig.js';
 import { fitGunPose, gunPoint, spriteGunParts, gunPivotMatrix } from '../../anim/SpriteWeapon.js';
 import { readyCutin, sideCutin } from '../../anim/CutInDirector.js';
 const json = name => JSON.parse(readFileSync(new URL(`../../../public/assets/characters/ranger-01/${name}`,import.meta.url)));
@@ -107,10 +107,24 @@ test('the emitted gun nodes match the reference part list and metre bounds',()=>
  near(-barrel.min[2],metadata.assemblies.rifle.muzzle[1],.001);
 });
 
-test('the authored wrist and palm pivots lie inside the exported painted gloves',()=>{
+test('independent gloves keep cuffs opaque and place gun sockets within the gripping silhouette',()=>{
  const audit=JSON.parse(readFileSync(new URL('../../../../tools/art/sprites/ranger-01/rig-image-audit.json',import.meta.url)));
  for(const[name,pose]of Object.entries(audit))for(const[side,arm]of Object.entries(pose)){
-  assert.ok(arm.palmCoverage>.9,`${name}/${side} palm`);assert.ok(arm.wristCoverage>.9,`${name}/${side} wrist`);
-  assert.ok(arm.palmDistancePixels<1);assert.ok(arm.wristDistancePixels<1);
+  assert.ok(arm.wristCoverage>.9,`${name}/${side} wrist`);
+  assert.ok(arm.palmDistancePixels<768*.045,`${name}/${side} socket near glove`);assert.ok(arm.wristDistancePixels<1);
+ }
+});
+
+test('support wrists remain below the barrel and pistol-grip placement cannot twist the support glove',()=>{
+ for(const art of [cutin,cutin.ready.right]){
+  const rig=art.rig,targets={stock:rig.handAxis[0],muzzle:rig.handAxis[1],grip:rig.grip,support:rig.support};
+  const first=armRigPose(rig,targets,art.width,art.height);
+  const moved=armRigPose(rig,{...targets,grip:[targets.grip[0]+.03,targets.grip[1]-.04]},art.width,art.height);
+  assert.deepEqual(first.transforms['support-hand'],moved.transforms['support-hand']);
+  const j=first.joints.support,dx=(targets.muzzle[0]-targets.stock[0])*art.width,dy=(targets.muzzle[1]-targets.stock[1])*art.height;
+  assert.ok(dx*(j.handWrist.y-j.palm.y)-dy*(j.handWrist.x-j.palm.x)>0,'support cuff below barrel');
+  const palm=art.layers.find(l=>l.id==='support-hand'),fingers=art.layers.find(l=>l.id==='support-fingers');
+  assert.equal(palm.stage,'back');assert.equal(fingers.stage,'front');assert.equal(fingers.bone,'support-hand');
+  assert.equal(art.sections,'complete-independent-paintings');
  }
 });

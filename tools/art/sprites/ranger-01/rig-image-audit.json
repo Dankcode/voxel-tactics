@@ -2,29 +2,33 @@
   "aim": {
     "trigger": {
       "palmCoverage": 0.9921569228172302,
-      "palmDistancePixels": 0.28182263926090745,
+      "palmDistancePixels": 0.27675743723279655,
       "wristCoverage": 0.9921569228172302,
-      "wristDistancePixels": 0.42248786964842416
+      "wristDistancePixels": 0.3782601467536016,
+      "socketIsOpen": true
     },
     "support": {
-      "palmCoverage": 0.9921569228172302,
-      "palmDistancePixels": 0.4843139477652588,
+      "palmCoverage": 0.939752995967865,
+      "palmDistancePixels": 0.18099368214202277,
       "wristCoverage": 0.9921569228172302,
-      "wristDistancePixels": 0.39077359173821935
+      "wristDistancePixels": 0.28056691849040233,
+      "socketIsOpen": true
     }
   },
   "ready": {
     "trigger": {
       "palmCoverage": 0.9921569228172302,
-      "palmDistancePixels": 0.2777048793234118,
-      "wristCoverage": 0.9960784912109375,
-      "wristDistancePixels": 0.37608509675334373
+      "palmDistancePixels": 0.6136899173961113,
+      "wristCoverage": 0.9921569228172302,
+      "wristDistancePixels": 0.6312746819434722,
+      "socketIsOpen": true
     },
     "support": {
-      "palmCoverage": 0.9921569228172302,
-      "palmDistancePixels": 0.2972944668170387,
+      "palmCoverage": 0.0,
+      "palmDistancePixels": 1.4369068227601172,
       "wristCoverage": 0.9921569228172302,
-      "wristDistancePixels": 0.19481273059013385
+      "wristDistancePixels": 0.28228699472249785,
+      "socketIsOpen": true
     }
   }
 }

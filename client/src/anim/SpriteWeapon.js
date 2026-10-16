@@ -116,7 +116,7 @@ export class SpriteWeapon {
             const geometry = new THREE.PlaneGeometry(this.art.width, this.art.height);
             geometry.translate(this.art.width / 2, -this.art.height / 2, 0);
             const material = paintedMaterial(...layer.maps), mesh = new THREE.Mesh(geometry, material);
-            mesh.matrixAutoUpdate = false; mesh.renderOrder = layer.id === 'body' ? 5 : layer.id === 'support-hand' ? 0 : layer.id.endsWith('upper') ? 1 : layer.id.endsWith('forearm') ? 2 : 3;
+            mesh.matrixAutoUpdate = false; mesh.renderOrder = layer.order ?? (layer.id === 'body' ? 5 : layer.id === 'support-hand' ? 0 : layer.id.endsWith('upper') ? 1 : layer.id.endsWith('forearm') ? 2 : 3);
             (layer.stage === 'back' ? this.backScene : this.frontScene).add(mesh);
             this.cards.push({ mesh, layer }); this.resources.push(geometry, material);
         }
