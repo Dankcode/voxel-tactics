@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { AimController, aimTau, aimClass, swayDegrees, AIM_TAU } from '../../ui/AimController.js';
+import { AimController, aimTau, aimClass, swayDegrees, AIM_TAU, aimDelta, AIM_PITCH_LIMIT } from '../../ui/AimController.js';
 import { reticleRadius } from '../../ui/AimReticle.js';
 import { CameraDirector, MAX_YAW } from '../../anim/CameraDirector.js';
 import { WEAPONS } from '../../../../shared/content/weapons.js';
@@ -49,4 +49,31 @@ test('the shoulder camera follows the aim and re-anchors only past its yaw limit
     const yaw = MAX_YAW + 0.2, far = new THREE.Vector3(Math.sin(yaw) * 10, 2, -Math.cos(yaw) * 10);
     cd.track(far, 0.016);
     assert.ok(!cd.from.equals(from), 'past the limit the camera swings round behind the shooter');
+});
+
+test('re-anchoring the shoulder camera while the reticle moves keeps the shooter hidden', () => {
+    const cd = new CameraDirector({ aspect: 1 });
+    const shooter = new THREE.Vector3(0, 1, 0);
+    cd.hidden = new Set(['p0']);
+    cd.prepareAim(shooter, new THREE.Vector3(0, 2, -10));
+    const yaw = MAX_YAW + 0.2;
+    cd.track(new THREE.Vector3(Math.sin(yaw) * 10, 2, -Math.cos(yaw) * 10), 0.016);
+    assert.ok(cd.hidden.has('p0'), 'still hidden after the swing');
+    cd.end();
+    assert.equal(cd.hidden.size, 0, 'shown again once the shoulder view ends');
+});
+
+test('relative aim: cursor motion turns the aim by a damped angle and never runs away', () => {
+    const origin = { x: 0, y: 0, h: 2 }, focus = { x: 10, y: 0, h: 2 };
+    assert.equal(aimDelta(focus, origin, 0, 0), null);
+    const opts = { fov: 38, height: 760 };
+    const half = aimDelta(focus, origin, 100, 0, { ...opts, sensitivity: 0.5 }), full = aimDelta(focus, origin, 100, 0, { ...opts, sensitivity: 1 });
+    const ang = p => Math.atan2(p.y - origin.y, p.x - origin.x);
+    assert.ok(Math.abs(ang(half) - ang(full) / 2) < 1e-9, 'half sensitivity turns half as far');
+    assert.ok(Math.abs(ang(full) - 100 * 38 * Math.PI / 180 / 760) < 1e-9, 'one px = fov/height radians at 1x');
+    assert.ok(half.y > 0, 'moving right turns toward screen right (clockwise from above)');
+    assert.ok(Math.abs(Math.hypot(half.x, half.y, half.h - 2) - 10) < 1e-9, 'the aim distance is kept');
+    const down = aimDelta(focus, origin, 0, 50, opts); assert.ok(down.h < 2, 'moving down lowers the aim');
+    let p = focus; for (let i = 0; i < 50; i++) p = aimDelta(p, origin, 0, -400, opts);
+    assert.ok(Math.atan2(p.h - 2, Math.hypot(p.x, p.y)) <= AIM_PITCH_LIMIT + 1e-9, 'pitch is clamped');
 });

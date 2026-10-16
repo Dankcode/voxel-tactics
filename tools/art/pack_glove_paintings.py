@@ -126,5 +126,5 @@ def pack():
  for pose in formula['poses'].values():pose['rig']['triggerContact']=TRIGGER_CONTACT
  formula['gloveArt']=dict(source='source/gloves-cleaned/anatomy-painted.png',packing='tools/art/pack_glove_paintings.py',skeleton='anatomical wrist and grip registration; no mocap capture supplied',handsPerPose={'left':1,'right':1},rule='near/far fragments are disjoint pixels of one hand, never additional hands')
  path.write_text(json.dumps(formula,indent=2)+'\n');(ROOT/'glove-cleanup-audit.json').write_text(json.dumps(audit,indent=2)+'\n')
- return dict(poses=2,handsPerPose=2,weaponFamilies=3,fragmentsPerHand=2)
+ return dict(poses=len(formula['poses']),handsPerPose=2,weaponFamilies=3,fragmentsPerHand=2)
 if __name__=='__main__':print(pack())

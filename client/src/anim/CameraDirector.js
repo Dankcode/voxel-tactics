@@ -60,7 +60,8 @@ export class CameraDirector {
         if(!this.clear(this.to)||!this.sees(this.to,look))this.to.copy(this.from);
         this.look.copy(target).add(new THREE.Vector3(0,1.1,0));
         this.cam.fov=phase==='prepare'?38:44;this.cam.aspect=this.scene.aspect || 1;this.cam.updateProjectionMatrix();
-        this.active=true;this.scene.actionCamera=this.cam;this.hidden=new Set();this.apply(0);return true;
+        // Keep whoever is hidden (the aiming shooter): re-framing while the reticle moves must not reveal them.
+        this.active=true;this.scene.actionCamera=this.cam;this.hidden||=new Set();this.apply(0);return true;
     }
     update(dt) {if(this.active&&this.phase==='prepare'){this.elapsed+=dt;this.apply(Math.min(1,this.elapsed/0.65));}}
     apply(k) {

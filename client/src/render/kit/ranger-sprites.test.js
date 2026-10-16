@@ -6,7 +6,7 @@ import { SpriteAnimator } from '../../anim/SpriteAnimator.js';
 import { EVENT_TO_CLIP } from '../../anim/AnimationClips.js';
 import { solveArm, boneMatrix, armTransforms, armRigPose, constrainGunPose } from '../../anim/SpriteArmRig.js';
 import { fitGunPose, gunPoint, spriteGunParts, gunPivotMatrix } from '../../anim/SpriteWeapon.js';
-import { readyCutin, sideCutin } from '../../anim/CutInDirector.js';
+import { sideCutin } from '../../anim/CutInDirector.js';
 const json = name => JSON.parse(readFileSync(new URL(`../../../public/assets/characters/ranger-01/${name}`,import.meta.url)));
 const field=json('field.json'), cutin=json('cutin.json');
 const near=(a,b,epsilon=1e-5)=>assert.ok(Math.abs(a-b)<epsilon,`${a} != ${b}`);
@@ -28,9 +28,10 @@ test('the new atlas covers all clips, eight facings, and 192 named frames',()=>{
   assert.equal(list.filter(l=>l.facing===f&&l.clip===clip).length,c.frames);
  }
 });
-test('ready left flips the complete same character and gun without switching identity or layers',()=>{
- const r=readyCutin(cutin,'right'),l=readyCutin(cutin,'left');
- assert.equal(l.mirror,true);assert.equal(l.mirrorGun,true);assert.deepEqual(l.layers,r.layers);assert.deepEqual(l.rig,r.rig);
+test('one sprite: the shooting pose serves aiming and firing; the left shoulder flips that same rig',()=>{
+ assert.equal(cutin.ready,undefined,'no separate readying sprite');
+ const r=sideCutin(cutin,'right'),l=sideCutin(cutin,'left');
+ assert.equal(r,cutin);assert.equal(l.mirror,true);assert.equal(l.mirrorGun,true);assert.deepEqual(l.layers,r.layers);assert.deepEqual(l.rig,r.rig);
  assert.equal(l.character,cutin.character);
 });
 test('2D arm IK preserves bone lengths and affine pivots',()=>{
@@ -45,7 +46,7 @@ test('source assemblies retain physical scale and gloves follow their actual 3D 
  const guns=JSON.parse(readFileSync(new URL('../../../public/assets/weapons/ranger-preview/gun-kit.json',import.meta.url)));
  for(const [name,part] of Object.entries(guns.parts))assert.deepEqual(part.scale,[1,1,1],name);
  assert.equal(guns.assemblies.sniper.parts.filter(n=>n.includes('scope')).length,1);
- for(const art of [cutin,readyCutin(cutin,'right')]){
+ for(const art of [cutin]){
   let height;
   for(const kit of Object.values(guns.assemblies)){
    near(kit.measuredLengthMetres,kit.referenceLengthMetres,.001);
@@ -70,7 +71,7 @@ test('missing sidearm and melee assets do not masquerade as an unrelated rifle',
 test('full aiming range and recoil preserve both wrists, every bone length, stock contact and mirroring',()=>{
  const guns=JSON.parse(readFileSync(new URL('../../../public/assets/weapons/ranger-preview/gun-kit.json',import.meta.url)));
  let samples=0;
- for(const art of [cutin,sideCutin(cutin,'left'),readyCutin(cutin,'right'),readyCutin(cutin,'left')])for(const gun of Object.values(guns.assemblies)){
+ for(const art of [cutin,sideCutin(cutin,'left')])for(const gun of Object.values(guns.assemblies)){
   const camera=new THREE.OrthographicCamera(),stock=gunPoint(gun.stock);fitGunPose(camera,art.rig,stock,art.width/art.height);
   const sample=input=>{
    const m=gunPivotMatrix(stock,input),uv=point=>{point=point.clone().applyMatrix4(m).project(camera);return[(point.x+1)/2,(1-point.y)/2];};
@@ -88,7 +89,7 @@ test('full aiming range and recoil preserve both wrists, every bone length, stoc
    }
   }
  }
- assert.equal(samples,2808);
+ assert.equal(samples,1404);
 });
 test('the emitted gun nodes match the reference part list and metre bounds',()=>{
  const metadata=JSON.parse(readFileSync(new URL('../../../public/assets/weapons/ranger-preview/gun-kit.json',import.meta.url)));
@@ -135,7 +136,7 @@ test('game gun meshes cut source triangle cost by at least half without losing n
 });
 
 test('support wrists remain below the barrel and pistol-grip placement cannot twist the support glove',()=>{
- for(const art of [cutin,cutin.ready.right]){
+ for(const art of [cutin]){
   const rig=art.rig,targets={stock:rig.handAxis[0],muzzle:rig.handAxis[1],grip:rig.grip,support:rig.support};
   const first=armRigPose(rig,targets,art.width,art.height);
   const moved=armRigPose(rig,{...targets,grip:[targets.grip[0]+.03,targets.grip[1]-.04]},art.width,art.height);
@@ -149,19 +150,19 @@ test('support wrists remain below the barrel and pistol-grip placement cannot tw
 });
 
 test('gloves come per gun family and every variant file exists',()=>{
- for(const art of [cutin,cutin.ready.right])for(const id of ['trigger-hand','trigger-fingers','support-hand','support-fingers']){
+ for(const art of [cutin])for(const id of ['trigger-hand','trigger-fingers','support-hand','support-fingers']){
   const l=art.layers.find(x=>x.id===id);assert.ok(l,id);
   for(const fam of ['sniper','shotgun']){const v=l.variants?.[fam];assert.ok(v,`${id} ${fam}`);
    for(const k of ['image','normal','lightingMask'])readFileSync(new URL(`../../../public/assets/characters/ranger-01/${v[k]}`,import.meta.url));}
  }
  // The thumb sits behind the gun and the support fingers in front of it.
- for(const art of [cutin,cutin.ready.right]){
+ for(const art of [cutin]){
   assert.equal(art.layers.find(l=>l.id==='support-fingers').stage,'front');assert.equal(art.layers.find(l=>l.id==='support-hand').stage,'back');
   assert.equal(art.layers.find(l=>l.id==='trigger-hand').stage,'front');assert.equal(art.layers.find(l=>l.id==='trigger-fingers').stage,'back');
  }
 });
 test('every pose has exactly one left and right arm; occlusion fragments belong to those same hands',()=>{
- for(const art of [cutin,cutin.ready.right,cutin.ready.left]){
+ for(const art of [cutin,sideCutin(cutin,'left')]){
   assert.deepEqual(Object.keys(art.anatomy).sort(),['left','right']);
   for(const [side,limb] of Object.entries(art.anatomy)){
    for(const kind of ['upper','forearm','hand']){
@@ -185,12 +186,12 @@ test('field frames keep one scale per source sheet; only oversized frames shrink
 
 test('the trigger finger rests on top of the trigger guard and its contact point follows the gun',()=>{
  const guns=JSON.parse(readFileSync(new URL('../../../public/assets/weapons/ranger-preview/gun-kit.json',import.meta.url)));
- for(const art of [cutin,readyCutin(cutin,'right')]){
+ for(const art of [cutin]){
   const contact=art.rig.triggerContact,tip=art.rig.arms.trigger.fingertip;assert.ok(contact?.rifle&&contact.sniper&&contact.shotgun);assert.ok(tip);
   const gun=guns.assemblies.rifle,camera=new THREE.OrthographicCamera(),stock=gunPoint(gun.stock);fitGunPose(camera,art.rig,stock,art.width/art.height);
-  // Exact at rest; the side-on ready pose keeps it within a few pixels over the in-game sway range. (In the
-  // over-the-shoulder aim the gripping hand sits under the upper arm, so only its rest contact is checked.)
-  let worst=0;const sway=art===cutin?[[0,0]]:[[-.15,-.09],[-.15,.09],[0,0],[.15,-.09],[.15,.09]];
+  // Exact at rest. (In the over-the-shoulder pose the gripping hand sits under the upper arm, so only its rest
+  // contact is checked.)
+  let worst=0;const sway=[[0,0]];
   for(const [yaw,pitch] of sway){
    const sample=input=>{const m=gunPivotMatrix(stock,input),uv=p=>{p=p.clone().applyMatrix4(m).project(camera);return[(p.x+1)/2,(1-p.y)/2];};
     return{stock:uv(stock),grip:uv(new THREE.Vector3()),support:uv(gunPoint(gun.support)),muzzle:uv(gunPoint(gun.muzzle)),trigger:uv(gunPoint(contact.rifle))};};

@@ -42,49 +42,5 @@
         }
       }
     }
-  },
-  "ready": {
-    "trigger": {
-      "palmCoverage": 1.0,
-      "palmDistancePixels": 0.6136899173961113,
-      "wristCoverage": 1.0,
-      "wristDistancePixels": 0.5941522297260912,
-      "socketIsOpen": true,
-      "families": {
-        "rifle": {
-          "wristCoverage": 1.0,
-          "wristDistancePixels": 0.5941522297260912
-        },
-        "sniper": {
-          "wristCoverage": 1.0,
-          "wristDistancePixels": 0.5941522297260912
-        },
-        "shotgun": {
-          "wristCoverage": 1.0,
-          "wristDistancePixels": 0.5941522297260912
-        }
-      }
-    },
-    "support": {
-      "palmCoverage": 0.0,
-      "palmDistancePixels": 4.3095759809168515,
-      "wristCoverage": 1.0,
-      "wristDistancePixels": 0.0,
-      "socketIsOpen": true,
-      "families": {
-        "rifle": {
-          "wristCoverage": 1.0,
-          "wristDistancePixels": 0.0
-        },
-        "sniper": {
-          "wristCoverage": 1.0,
-          "wristDistancePixels": 0.0
-        },
-        "shotgun": {
-          "wristCoverage": 1.0,
-          "wristDistancePixels": 0.0
-        }
-      }
-    }
   }
 }

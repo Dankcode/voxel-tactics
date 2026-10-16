@@ -5,7 +5,7 @@ import { fitGunPose, gunPoint } from '../../client/src/anim/SpriteWeapon.js';
 const cutin=JSON.parse(readFileSync('client/public/assets/characters/ranger-01/cutin.json'));
 const guns=JSON.parse(readFileSync('client/public/assets/weapons/ranger-preview/gun-kit.json'));
 const out={};
-for (const [pname,art] of [['aim',cutin],['ready',cutin.ready.right]]) {
+for (const [pname,art] of [['aim',cutin]]) {
   out[pname]={width:art.width,height:art.height,guns:{}};
   for (const [gname,kit] of Object.entries(guns.assemblies)) {
     const cam=new THREE.OrthographicCamera(),stock=gunPoint(kit.stock);fitGunPose(cam,art.rig,stock,art.width/art.height);
@@ -18,4 +18,4 @@ for (const [pname,art] of [['aim',cutin],['ready',cutin.ready.right]]) {
   }
 }
 writeFileSync('tools/art/sprites/ranger-01/gun-guides.json',JSON.stringify(out));
-console.log(JSON.stringify(out.ready.guns.rifle.unitX),JSON.stringify(out.ready.guns.rifle.unitZ),JSON.stringify(out.aim.guns.rifle.unitX),JSON.stringify(out.aim.guns.rifle.unitZ),JSON.stringify(out.aim.guns.rifle.unitY));
+console.log(JSON.stringify(out.aim.guns.rifle.unitX),JSON.stringify(out.aim.guns.rifle.unitZ),JSON.stringify(out.aim.guns.rifle.unitY));

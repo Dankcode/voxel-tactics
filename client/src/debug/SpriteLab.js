@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { SpriteWeapon } from '../anim/SpriteWeapon.js';
 import { SpriteAnimator } from '../anim/SpriteAnimator.js';
-import { followStep } from '../anim/CutInDirector.js';
+import { followStep, sideCutin } from '../anim/CutInDirector.js';
 import { LIGHTING } from '../render/Scene.js';
 async function main() {
 const base='/assets/characters/ranger-01/', $=id=>document.getElementById(id);
@@ -19,7 +19,7 @@ function sections(){
 function lighting(){const l=LIGHTING[$('lighting').value];world.sun.color.set(l.sun);world.sun.intensity=l.sunI;world.sun.position.fromArray(l.sunDir);world.hemi.color.set(l.sky);world.hemi.groundColor.set(l.ground);world.hemi.intensity=l.hemiI;world.renderer.toneMappingExposure=l.exposure;}
 async function rebuild(){
  const token=++generation;weapon?.dispose();$('hero').replaceChildren();
- const pose=$('pose').value,art=pose==='aim'?cutin:cutin.ready[pose];
+ const art=sideCutin(cutin,$('pose').value);
  $('hero').style.aspectRatio=`${art.width}/${art.height}`;
  const content=document.createElement('div');content.className='sprite-content'+(art.mirror?' sprite-mirrored':'');$('hero').appendChild(content);const overlay=document.createElement('div');overlay.id='anchors';overlay.style.pointerEvents='none';$('hero').appendChild(overlay);
  for(const l of art.layers.filter(l=>l.image)){const img=new Image();img.src=base+l.image;content.appendChild(img);}

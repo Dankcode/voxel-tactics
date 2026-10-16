@@ -213,7 +213,7 @@ def to_rest(img, target, palm_rest, delta):
 
 def paint(hulls, cutin, out_dir, wrists):
     out = {}
-    for pname, art in [('aim', cutin), ('ready', cutin['ready']['right'])]:
+    for pname, art in [('aim', cutin)]:
         h = hulls[pname]; W, H = h['width'], h['height']
         cam = {'aim': [1.5, -5, 1.3], 'ready': [5, -1.5, 0.3]}[pname]
         k = {'aim': 900, 'ready': 1010}[pname]

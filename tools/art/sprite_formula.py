@@ -334,12 +334,11 @@ def bake_heroes():
         layers.insert(1,{'id':'gun','gun':True})
         poses[name]={'character':'ranger-01','version':3,'placeholder':False,'width':w,'height':h,'screenHeight':.72,'maxWidthShare':p.get('maxWidthShare',.42),'muzzle':p['muzzle'],'layers':layers,'rig':p['rig'],'anatomy':p.get('anatomy'),'lighting':'albedo-normal-response-mask','gun':True,'sections':'complete-independent-paintings'}
     with open(os.path.join(os.path.dirname(CONFIG),'rig-image-audit.json'),'w') as f:json.dump(contact_audit,f,indent=2)
-    base=poses['aim'];base['variants']={'left':{**dict(base),'mirror':True,'mirrorGun':True,'pose':'aim-left'}};base['ready']={'right':poses['ready'],'left':{**poses['ready'],'mirror':True,'mirrorGun':True,'pose':'ready-left'}}
+    base=poses['aim'];base['variants']={'left':{**dict(base),'mirror':True,'mirrorGun':True,'pose':'aim-left'}}
     with open(os.path.join(OUT,'cutin.json'),'w') as f:json.dump(base,f,indent=2)
     if bpy is None:
         return {'poses':list(poses),'scene':None,'note':'baked without Blender: no preview render or .blend update'}
     sc=stage_2d([l for l in poses['aim']['layers'] if l.get('image')]);sc.render.filepath=os.path.join(os.path.dirname(CONFIG),'blender-2d-preview.png');bpy.ops.render.render(write_still=True,scene=sc.name)
-    stage_2d([l for l in poses['ready']['layers'] if l.get('image')],pose='ready')
     if bpy.context.window:bpy.context.window.scene=sc
     for area in bpy.context.screen.areas if bpy.context.screen else []:
         if area.type=='VIEW_3D':area.spaces.active.region_3d.view_perspective='CAMERA';area.spaces.active.shading.type='MATERIAL'

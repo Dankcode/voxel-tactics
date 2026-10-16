@@ -1,7 +1,7 @@
 import { FORMATIONS } from '../../shared/content/formations.js';
 import { TacticalMarks } from './render/TacticalMarks.js';
 import { updateReticle } from './ui/AimReticle.js';
-import { AimController, aimTau, swayDegrees } from './ui/AimController.js';
+import { AimController, aimTau, swayDegrees, aimDelta } from './ui/AimController.js';
 import { floorCutLevels, zoomCutLevel } from './render/FloorCutaway.js';
 import { BuildingView, BUILDING_VIEWS } from './render/BuildingView.js';
 import { pickVisibleTile, pickReachableAlongRay } from './render/TilePicking.js';
@@ -71,7 +71,7 @@ export function wearTint(mission) {
 export class Game {
     constructor({ canvas, hudRoot, cutinRoot, floatRoot, onExit, options = {} }) {
         let savedOptions={};try{savedOptions=JSON.parse(localStorage.getItem('tactics-settings')||'{}');}catch{}
-        this.options = { soundVolume:0.65,turnSpeed:1,rotateSpeed:1,aimSway:true,aimInertia:true,showEnemyBars:true,confirmMoves:false,autoEndTurn: false, autoNext: true, followCamera: true, edgeScroll: true, buildingView:'auto', ...savedOptions, ...options };
+        this.options = { soundVolume:0.65,turnSpeed:1,rotateSpeed:1,aimSensitivity:0.5,aimSway:true,aimInertia:true,showEnemyBars:true,confirmMoves:false,autoEndTurn: false, autoNext: true, followCamera: true, edgeScroll: true, buildingView:'auto', ...savedOptions, ...options };
         this.audio = new SoundPlayer({ volume: this.options.soundVolume });
         this.scene = new Scene(canvas);
         this.library = new MaterialLibrary(this.scene.renderer, this.scene.clipping);
@@ -757,7 +757,7 @@ export class Game {
         }
         // PLAN-07: the aim swings onto the new anchor through the aim spring; the camera only re-frames when it
         // was not already in the shoulder view.
-        const anchor=partCentre(target,part);this.freeAimManual=false;
+        const anchor=partCentre(target,part);this.freeAimManual=false;this.aimCursor=null;
         if(!this.aim.current||this.cameraDirector.phase!=='prepare'){this.aim.snap(anchor);this.freeAim={...anchor};this.frameAim(u,anchor);}
         else this.aim.setTarget(anchor);
         this.targetInfo.part = part;
@@ -805,9 +805,17 @@ export class Game {
         const u=this.selectedUnit();if(!u)return;const ray=this.scene.rayAt(x,y).ray;
         if(this.cameraDirector.phase==='prepare'){
             const focus=this.aim.target||(this.targetInfo?partCentre(this.targetInfo.target,this.targetInfo.part):this.freeAim);
-            const base=focus?new THREE.Vector3(focus.x,focus.h,focus.y):new THREE.Vector3(u.x+.5,u.z+2.1,u.y-8);
-            const plane=new THREE.Plane().setFromNormalAndCoplanarPoint(this.scene.camera.getWorldDirection(new THREE.Vector3()),base);
-            const point=ray.intersectPlane(plane,new THREE.Vector3());if(point)this.aim.setTarget({x:point.x,y:point.z,h:point.y});
+            const last=this.aimCursor;this.aimCursor={x,y,unitId:u.id,mode:this.mode};
+            if(focus&&last&&last.unitId===u.id&&last.mode===this.mode){
+                // The shoulder camera turns toward the aim, so an absolute cursor ray runs away from the hand; move the aim
+                // by the cursor's motion instead, scaled by the sensitivity setting (1 = one screen pixel per pixel).
+                const step=aimDelta(focus,{x:u.x+.5,y:u.y+.5,h:u.z+2.35},x-last.x,y-last.y,{fov:this.cameraDirector.cam.fov,height:this.scene.renderer.domElement.clientHeight||innerHeight,sensitivity:this.options.aimSensitivity??.5});
+                if(step)this.aim.setTarget(step);
+            }else if(!focus){
+                const base=new THREE.Vector3(u.x+.5,u.z+2.1,u.y-8);
+                const plane=new THREE.Plane().setFromNormalAndCoplanarPoint(this.scene.camera.getWorldDirection(new THREE.Vector3()),base);
+                const point=ray.intersectPlane(plane,new THREE.Vector3());if(point)this.aim.setTarget({x:point.x,y:point.z,h:point.y});
+            }
         }else if(pick?.point)this.aim.setTarget({...pick.point});
         else {const point=ray.at(15,new THREE.Vector3());this.aim.setTarget({x:point.x,y:point.z,h:point.y});}
         if(!this.freeAim)this.freeAim={...this.aim.current};

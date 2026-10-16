@@ -24,6 +24,24 @@ export function swayDegrees(u) {
     return 0.12 * (1 + (u.stress || 0) / 60) * suppressed;
 }
 
+/** Pitch limit for relative aiming (radians from level). */
+export const AIM_PITCH_LIMIT = 70 * Math.PI / 180;
+/**
+ * Relative aim: turn the line origin→focus by a cursor motion of (dx, dy) CSS px. One px is fov/height radians at
+ * sensitivity 1 (about a screen pixel); the distance to the focus is kept. Returns the new point {x, y, h}.
+ */
+export function aimDelta(focus, origin, dx, dy, { fov = 38, height = 720, sensitivity = 0.5 } = {}) {
+    if (!focus || !origin || (!dx && !dy)) return null;
+    const vx = focus.x - origin.x, vy = focus.y - origin.y, vh = focus.h - origin.h;
+    const dist = Math.hypot(vx, vy, vh); if (dist < 1e-6) return null;
+    const k = (fov * Math.PI / 180) / Math.max(1, height) * sensitivity;
+    // Screen right is clockwise seen from above (x east, y south): yaw grows with dx; screen down lowers the pitch.
+    const yaw = Math.atan2(vy, vx) + dx * k;
+    const pitch = Math.max(-AIM_PITCH_LIMIT, Math.min(AIM_PITCH_LIMIT, Math.atan2(vh, Math.hypot(vx, vy)) - dy * k));
+    const flat = Math.cos(pitch) * dist;
+    return { x: origin.x + Math.cos(yaw) * flat, y: origin.y + Math.sin(yaw) * flat, h: origin.h + Math.sin(pitch) * dist };
+}
+
 export class AimController {
     constructor() { this.target = null; this.current = null; this.vel = [0, 0, 0]; this.t = 0; }
     /** Jump straight to a point (entering aim mode, or with inertia turned off). */
