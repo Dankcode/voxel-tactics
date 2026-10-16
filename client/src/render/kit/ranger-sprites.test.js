@@ -182,3 +182,22 @@ test('field frames keep one scale per source sheet; only oversized frames shrink
   for(const[,,fit]of scale[f].shrunkToFit)assert.ok(fit>=.85,`${f} frame shrunk to ${fit}`);
  }
 });
+
+test('the trigger finger rests on top of the trigger guard and its contact point follows the gun',()=>{
+ const guns=JSON.parse(readFileSync(new URL('../../../public/assets/weapons/ranger-preview/gun-kit.json',import.meta.url)));
+ for(const art of [cutin,readyCutin(cutin,'right')]){
+  const contact=art.rig.triggerContact,tip=art.rig.arms.trigger.fingertip;assert.ok(contact?.rifle&&contact.sniper&&contact.shotgun);assert.ok(tip);
+  const gun=guns.assemblies.rifle,camera=new THREE.OrthographicCamera(),stock=gunPoint(gun.stock);fitGunPose(camera,art.rig,stock,art.width/art.height);
+  // Exact at rest; the side-on ready pose keeps it within a few pixels over the in-game sway range. (In the
+  // over-the-shoulder aim the gripping hand sits under the upper arm, so only its rest contact is checked.)
+  let worst=0;const sway=art===cutin?[[0,0]]:[[-.15,-.09],[-.15,.09],[0,0],[.15,-.09],[.15,.09]];
+  for(const [yaw,pitch] of sway){
+   const sample=input=>{const m=gunPivotMatrix(stock,input),uv=p=>{p=p.clone().applyMatrix4(m).project(camera);return[(p.x+1)/2,(1-p.y)/2];};
+    return{stock:uv(stock),grip:uv(new THREE.Vector3()),support:uv(gunPoint(gun.support)),muzzle:uv(gunPoint(gun.muzzle)),trigger:uv(gunPoint(contact.rifle))};};
+   const solved=constrainGunPose(sample,{yaw,pitch},art.rig,art.width,art.height);
+   const finger=apply(solved.arms.transforms['trigger-hand'],{x:tip[0]*art.width,y:tip[1]*art.height});
+   worst=Math.max(worst,Math.hypot(finger.x-solved.targets.trigger[0]*art.width,finger.y-solved.targets.trigger[1]*art.height));
+  }
+  assert.ok(worst<4,`fingertip strays ${worst.toFixed(2)} px from the trigger guard contact`);
+ }
+});

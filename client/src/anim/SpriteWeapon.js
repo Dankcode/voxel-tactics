@@ -148,6 +148,9 @@ export class SpriteWeapon {
             outline.renderOrder = -1; ob.add(outline);
         }
         this.stock = gunPoint(this.assembly.stock);
+        // Trigger finger contact (top of the trigger guard), gun space; the glove's index fingertip is registered on it.
+        const contact = this.art.rig.triggerContact?.[this.config.family];
+        this.triggerContact = contact ? gunPoint(contact) : null;
         this.camera = new THREE.OrthographicCamera();
         fitGunPose(this.camera, this.art.rig, this.stock, this.art.width / this.art.height);
         this.buttRaise=this.art.rig.buttRaiseDegrees??8;
@@ -230,7 +233,8 @@ export class SpriteWeapon {
             const pose=gunPoseSample(this.art,this.assembly,this.camera,{yaw:y,pitch:p,recoil:r},this.buttRaise);
             this.pivot.matrixAutoUpdate=false;this.pivot.matrix.copy(pose.matrix);
             this.model.updateMatrixWorld(true);
-            return this.gunVisible ? {stock:this.project(this.stock),grip:this.project(new THREE.Vector3()),support:this.project(this.support),muzzle:this.project(gunPoint(this.assembly.muzzle))}
+            return this.gunVisible ? {stock:this.project(this.stock),grip:this.project(new THREE.Vector3()),support:this.project(this.support),muzzle:this.project(gunPoint(this.assembly.muzzle)),
+                ...(this.triggerContact?{trigger:this.project(this.triggerContact)}:{})}
                 : {stock:this.art.rig.stock,grip:this.art.rig.grip,support:this.art.rig.support,muzzle:this.art.muzzle};
         };
         let solved;

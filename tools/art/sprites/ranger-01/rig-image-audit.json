@@ -4,20 +4,20 @@
       "palmCoverage": 1.0,
       "palmDistancePixels": 0.27675743723279655,
       "wristCoverage": 1.0,
-      "wristDistancePixels": 0.0,
+      "wristDistancePixels": 0.2515183955977864,
       "socketIsOpen": true,
       "families": {
         "rifle": {
           "wristCoverage": 1.0,
-          "wristDistancePixels": 0.0
+          "wristDistancePixels": 0.25151839559778644
         },
         "sniper": {
           "wristCoverage": 1.0,
-          "wristDistancePixels": 0.0
+          "wristDistancePixels": 0.25151839559778644
         },
         "shotgun": {
           "wristCoverage": 1.0,
-          "wristDistancePixels": 0.0
+          "wristDistancePixels": 0.25151839559778644
         }
       }
     },
@@ -48,20 +48,20 @@
       "palmCoverage": 1.0,
       "palmDistancePixels": 0.6136899173961113,
       "wristCoverage": 1.0,
-      "wristDistancePixels": 0.0,
+      "wristDistancePixels": 0.5941522297260912,
       "socketIsOpen": true,
       "families": {
         "rifle": {
           "wristCoverage": 1.0,
-          "wristDistancePixels": 0.0
+          "wristDistancePixels": 0.5941522297260912
         },
         "sniper": {
           "wristCoverage": 1.0,
-          "wristDistancePixels": 0.0
+          "wristDistancePixels": 0.5941522297260912
         },
         "shotgun": {
           "wristCoverage": 1.0,
-          "wristDistancePixels": 0.0
+          "wristDistancePixels": 0.5941522297260912
         }
       }
     },
