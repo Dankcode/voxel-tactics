@@ -24,29 +24,30 @@ export const CLASSES = Object.freeze({
 });
 
 export const ENEMIES = Object.freeze({
-    wall_strider: {id:'wall_strider',name:'Wall Strider',faction:'construct',art:'wall_strider',hp:60,accuracy:.7,mobility:2.6,will:6,armor:'medium',weapons:['musket','sword'],items:{},abilities:[],role:'Four articulated legs; five occupied tiles. Climbs facades and flanks from rooftops.'},
+    wall_strider: {id:'wall_strider',name:'Wall Strider',faction:'construct',art:'wall_strider',hp:60,accuracy:.7,mobility:2.6,will:6,armor:'medium',weapons:['strider_claws'],items:{},abilities:['smash'],role:'Four-legged melee monster; five occupied tiles. Climbs facades, smashes through walls and claws whatever it reaches.'},
     siege_weaver: {id:'siege_weaver',name:'Siege Weaver',faction:'construct',art:'siege_weaver',hp:90,accuracy:.65,mobility:1.8,will:8,armor:'heavy',weapons:['repeater'],items:{},abilities:[],role:'Six articulated legs; seven occupied tiles across a five-tile span. Armoured climbing gun platform.'},
     cultist: { id: 'cultist', name: 'Gunman', faction: 'syndicate', art: 'cultist', hp: UNIT_HP, accuracy: 0.55, mobility: 3, will: 4, armor: 'light',
-        weapons: ['musket', 'sword'], items: { fire_flask: 1 }, abilities: [] },
+        weapons: ['musket', 'sword'], items: { fire_flask: 1, water_flask: 1 }, abilities: [] },
     archer: { id: 'archer', name: 'Lookout', intelName: 'Drone Hunter', droneDetector: true, faction: 'syndicate', art: 'archer', hp: UNIT_HP, accuracy: 0.64, mobility: 3.2, will: 4, armor: 'hide',
-        weapons: ['shortbow'], items: {}, abilities: [] },
+        weapons: ['shortbow'], items: { frost_flask: 1, smoke_pot: 1 }, abilities: [] },
     pyromancer: { id: 'pyromancer', name: 'Arsonist', faction: 'syndicate', art: 'pyromancer', hp: UNIT_HP, accuracy: 0.68, mobility: 2.8, will: 6, armor: 'light',
         weapons: ['firelance'], items: { fire_flask: 2 }, abilities: [] },
     brute: { id: 'brute', name: 'Enforcer', faction: 'syndicate', art: 'brute', hp: UNIT_HP, accuracy: 0.6, mobility: 3.2, will: 6, armor: 'heavy',
-        weapons: ['maul'], items: {}, abilities: [] },
+        weapons: ['maul'], items: { smoke_pot: 1 }, abilities: [] },
     warden_foe: { id: 'warden_foe', name: 'Riot Guard', faction: 'syndicate', art: 'guard', hp: UNIT_HP, accuracy: 0.62, mobility: 2.8, will: 6, armor: 'plate',
-        weapons: ['musket', 'sword'], items: {}, abilities: ['brace'] }
+        weapons: ['musket', 'sword'], items: {}, abilities: ['brace', 'earth_cover'] }
 });
 
 export const ABILITIES = Object.freeze({
-    killstreak_strike:{id:'killstreak_strike',name:'Commander Strike',commander:true,targeting:'tile',wp:0,ap:0,range:40,text:'Ready at the start of the mission and again 10 rounds after each use. A destructive blast at the marked location; allies are vulnerable too.'},
+    killstreak_strike:{id:'killstreak_strike',name:'Commander Strike',commander:true,targeting:'tile',wp:0,ap:0,range:40,text:'Ready at the start of the mission and again 10 rounds after each use. A destructive blast, radius 4, at the marked location (the highlighted circle). Open ground keeps a one-level crater. Allies are vulnerable too.'},
     seismic_sense: {id:'seismic_sense',name:'Seismic Sense',intel:true,wp:1,ap:1,text:'Share grounded enemy contacts within 14 tiles and two levels, through walls. Contacts are snapshots.'},
     water_sense: {id:'water_sense',name:'Water Sense',intel:true,wp:1,ap:1,text:'Share contacts within 14 tiles near water, through walls. Contacts are snapshots.'},
     scout_drone: {id:'scout_drone',name:'Scout Drone',intel:true,targeting:'tile',range:18,wp:1,ap:1,text:'Scout from a tile within 18. Drone sees 10 tiles through clear sight. Enemies detect within 2; Drone Hunters within 8. Recast to reposition.'},
     quiet_cut: {id:'quiet_cut',name:'Quiet Cut',intel:true,targeting:'tile',range:3,wp:1,ap:1,text:'Remove two wall voxels within 3 without noise. Enemy sight can still expose you.'},
-    carpet_bomb: {id:'carpet_bomb',name:'Carpet Bomb',intel:true,support:true,targeting:'tile',wp:0,ap:1,text:'Three circular craters, radius 3. Damages allies too. Recharges after 10 of your turns.'},
-    orbital_laser: {id:'orbital_laser',name:'Orbital Laser',intel:true,support:true,targeting:'tile',wp:0,ap:1,text:'Cut an east-west line, 17 tiles long and 3 wide. Damages allies too. Recharges after 10 of your turns.'},
+    carpet_bomb: {id:'carpet_bomb',name:'Airstrike',intel:true,support:true,targeting:'tile',wp:0,ap:1,text:'A bombing run along a wide 21 x 7 corridor toward the marked tile: five heavy blasts land inside it. Craters stay one level deep on open ground; buildings lose up to two storeys. Damages allies too. Recharges after 10 of your turns.'},
+    orbital_laser: {id:'orbital_laser',name:'Orbital Laser',intel:true,support:true,targeting:'tile',wp:0,ap:1,text:'Cut a 33-tile line, 5 wide, along your facing: everything standing in it is destroyed down to the ground floor. Damages allies too. Recharges after 10 of your turns.'},
     earth_cover: { id: 'earth_cover', name: 'Earth Cover', element: 'geo', targeting: 'tile', wp: 2, ap: 1, range: 6, text: 'Raise destructible half cover on an empty visible tile within 6. Persists until destroyed.' },
+    smash: { id: 'smash', name: 'Wall Smash', monster: true, targeting: 'tile', wp: 0, ap: 1, range: 3, text: 'Walker monsters: tear through walls and cover within 3 tiles of the body, two storeys high, battering anyone behind.' },
     water_mend: { id: 'water_mend', name: 'Water Mend', element: 'hydro', targeting: 'ally', wp: 2, ap: 1, range: 6, heal: 8, text: 'Restore 8 HP to a visible living ally within 6 and extinguish burning. Disabled limbs stay disabled.' },
     dash: { id: 'dash', name: 'Sprint', wp: 2, ap: 0, text: '+1 AP that can only be spent moving.' },
     rally: { id: 'rally', name: 'Rally', wp: 2, ap: 1, radius: 6, text: 'Allies within 6 lose 25 stress and gain 1 WP.' },

@@ -121,3 +121,8 @@ Duration details:
 - Panic halves AP on the next own turn and prevents abilities throughout that turn. Its final zero-round entry
   remains until side end, as do rooted and accuracy statuses (freezing and suppression).
 - `braced` still expires at the next own-turn start, protecting the preceding opponent phase.
+
+## PLAN-09: chill vs freeze
+
+Cryo freezes only **wet** units (rooted, −2 AP, +20 to be hit). On a dry unit it chills: −30 % movement per AP per
+stack (`B.chillMobility`, `Units.js:mobilityPerAp`); chill no longer costs AP.

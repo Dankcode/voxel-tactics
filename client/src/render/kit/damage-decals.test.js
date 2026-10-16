@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { VoxelStore } from '../../../../shared/voxel/VoxelStore.js';
 import { MAT } from '../../../../shared/voxel/Materials.js';
+import { edgeTexture } from '../DamageDecals.js';
 import { damageVoxel, destroyVoxel, scorchBlast } from '../../../../shared/voxel/Destruction.js';
 import { DamageDecals, damageLevel, faceMatrix } from '../DamageDecals.js';
 
@@ -43,6 +44,10 @@ test('blasts and fire leave soot: burn marks on floors and soot on walls; meshes
     const out = d.collect(s, 0, 0, 0);
     assert.ok(out.some(x => x.kind === 'scorch'), 'the floor is burnt');
     assert.ok(out.some(x => x.kind === 'soot'), 'the wall is sooty');
+    // PLAN-09: every sooty side face also gets chipped, broken edges (XCOM-style blast wear), never the floor.
+    const sootFaces = out.filter(x => x.kind === 'soot').length, edges = out.filter(x => x.kind === 'edge');
+    assert.equal(edges.length, sootFaces);
+    assert.ok(edges.every(x => x.opacity > 0 && x.tint !== 0xffffff), 'tinted by material, faded by soot level');
     const meshes = d.buildChunk(s, 0, 0, 0);
     assert.equal(meshes.reduce((n, m) => n + m.count, 0), out.length);
     assert.ok(meshes.every(m => m.isInstancedMesh && m.material.transparent && m.material.depthWrite === false));
@@ -55,4 +60,10 @@ test('decals sit on the real footprint of thin walls, not on the cell face', () 
     const p = { x: m.elements[12], y: m.elements[13], z: m.elements[14] };
     assert.ok(Math.abs(p.z - 5.712) < 1e-6, `face plane at y 5.712, got ${p.z}`);
     assert.ok(Math.abs(p.y - 1.5) < 1e-6);
+});
+
+test('the edge-chip texture is opaque along all four edges and clear in the middle', () => {
+    const t = edgeTexture(), n = t.image.width, a = (x, y) => t.image.data[(y * n + x) * 4 + 3];
+    for (const [x, y] of [[n >> 1, 1], [n >> 1, n - 2], [1, n >> 1], [n - 2, n >> 1]]) assert.ok(a(x, y) > 150, `edge ${x},${y}`);
+    assert.equal(a(n >> 1, n >> 1), 0);
 });

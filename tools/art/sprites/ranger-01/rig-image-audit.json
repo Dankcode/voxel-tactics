@@ -1,0 +1,30 @@
+{
+  "aim": {
+    "trigger": {
+      "palmCoverage": 0.9921569228172302,
+      "palmDistancePixels": 0.28182263926090745,
+      "wristCoverage": 0.9921569228172302,
+      "wristDistancePixels": 0.42248786964842416
+    },
+    "support": {
+      "palmCoverage": 0.9921569228172302,
+      "palmDistancePixels": 0.4843139477652588,
+      "wristCoverage": 0.9921569228172302,
+      "wristDistancePixels": 0.39077359173821935
+    }
+  },
+  "ready": {
+    "trigger": {
+      "palmCoverage": 0.9921569228172302,
+      "palmDistancePixels": 0.2777048793234118,
+      "wristCoverage": 0.9960784912109375,
+      "wristDistancePixels": 0.37608509675334373
+    },
+    "support": {
+      "palmCoverage": 0.9921569228172302,
+      "palmDistancePixels": 0.2972944668170387,
+      "wristCoverage": 0.9921569228172302,
+      "wristDistancePixels": 0.19481273059013385
+    }
+  }
+}

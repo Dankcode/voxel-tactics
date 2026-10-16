@@ -5,6 +5,9 @@ import { WALKERS, occupiedCells, walkerReach, walkerFits, fitWalkerSpawn } from 
 import { validateIntel, executeIntel, intelSpread, refreshDrones } from './IntelOps.js';
 import { normalizeInventory } from '../inventory/Inventory.js';
 import { watchSector, inWatchSector, watchWeapon } from './WatchSector.js';
+import { hitChance } from './HitChance.js';
+import { commanderStrike } from './Strikes.js';
+import { aiTuningFrom } from '../session/Playstyle.js';
 import { LightField } from '../lighting/LightField.js';
 // The deterministic battle engine (PLAN-01 rev 2 §9–§14).
 //
@@ -33,7 +36,7 @@ import { validateDebug, applyDebug } from './DebugOps.js';
 import { createObjective, inZone, extractionOpen } from './Objectives.js';
 
 export const REJECT = Object.freeze(['not_your_turn', 'not_your_unit', 'unit_down', 'no_ap', 'unreachable', 'occupied', 'no_ammo', 'out_of_range',
-    'no_item', 'no_target', 'bad_intent', 'no_will', 'battle_over', 'no_door', 'not_adjacent', 'formation_invalid', 'not_in_zone']);
+    'no_item', 'no_target', 'bad_intent', 'no_will', 'battle_over', 'no_door', 'not_adjacent', 'formation_invalid', 'not_in_zone', 'formation_blocked']);
 
 const PROFILE = AGENT_PROFILES.player;
 
@@ -42,7 +45,7 @@ export class Battle {
      * @param {{ mission, squad: {type, owner?, name?}[], seed, controllers? }} o
      * mission: { store, rooms, buildings, spawns: { player: pos[], enemy: {pos, type, group}[] }, name, id }
      */
-    constructor({ mission, squad, seed = 1, controllers = { player: 'human', enemy: 'ai' }, enemies = null, debug = false, intel = false, asyncCoop = false, support = 'carpet_bomb', testArsenal = false }) {
+    constructor({ mission, squad, seed = 1, controllers = { player: 'human', enemy: 'ai' }, enemies = null, debug = false, intel = false, asyncCoop = false, support = 'carpet_bomb', testArsenal = false, aiProfile = null }) {
         this.intelMode=intel; this.asyncCoop=asyncCoop; this.personalTurns={}; this.supportReady={}; this.supportChoices={player:support || 'carpet_bomb'}; this.contacts={}; this.markers=[];this.supportUsed=0; this.strikeReadyAt=1; this.drones={}; this.detected=false; this.refreshOwner=null;
         this.mission = mission;
         this.debugEnabled = !!debug;
@@ -63,7 +66,11 @@ export class Battle {
         this.objective = createObjective(mission.objective);
         this.revealedRooms = new Set();
         this.formations = new Formations(this);
-        this.stats = { weapons: {}, throwables: {}, voxelsDestroyed: 0, fires: 0, breaches: 0, reactions: 0, formations: {}, undergroundSteps:0,drops:0,flankSteps:0 };
+        this.stats = { weapons: {}, throwables: {}, voxelsDestroyed: 0, fires: 0, breaches: 0, reactions: 0, formations: {}, undergroundSteps:0,drops:0,flankSteps:0, turnEnds: { inCover: 0, exposed: 0, unseen: 0 } };
+        // PLAN-09: how the AI plays this match, from the player's cached playstyle (desc.aiProfile); and what the enemy
+        // side knows about the squad (last seen / heard positions), so NPCs hunt and ambush instead of charging blind.
+        this.aiTuning = aiTuningFrom(aiProfile);
+        this.enemyIntel = {};
         // Flank cells well off the main line of play (PLAN-04): the sim reports how often squads actually flank.
         const main=(mission.meta?.lineOfPlay?.main||[]);
         this.flankCells=new Set((mission.meta?.flanks||[]).flatMap(f=>f.cells).filter(([x,y])=>!main.some(([a,b])=>Math.max(Math.abs(a-x),Math.abs(b-y))<3)).map(([x,y])=>`${x},${y}`));
@@ -78,7 +85,10 @@ export class Battle {
         (enemies || mission.spawns.enemy).forEach((e, i) => {
             this.units.push(createUnit(e.type, 'enemy', e.pos, `e${i}`, { group: e.group ?? 0, facing: e.facing || 's', extra: e.alerted ? { alerted: true, scattered: true } : undefined }));
         });
-        for(const u of this.units)if(WALKERS[u.type]){fitWalkerSpawn(this,u);u.footprint=occupiedCells(u,{x:u.x,y:u.y,z:u.z},this.store);}
+        for(const u of [...this.units])if(WALKERS[u.type]){
+            // A monster that cannot stand anywhere near its spawn is left out rather than failing the mission.
+            try{fitWalkerSpawn(this,u);u.footprint=occupiedCells(u,{x:u.x,y:u.y,z:u.z},this.store);}catch{this.units.splice(this.units.indexOf(u),1);}
+        }
         this.startSide('player', true);
         for(const u of this.unitsOf('player')) this.revealRoom(this.roomOf(u),u);
         this.updateVisibility({initial:true});
@@ -246,6 +256,8 @@ export class Battle {
                 const group = intent.group && this.formations.of(u);
                 if (group && intent.by && intent.by !== '*' && this.formations.members(group).some(m => m.owner !== intent.by)) return 'not_your_unit';
                 const t = intent.to; if (!t) return 'bad_intent';
+                // A formation too wide for the destination (narrow corridor, doorway) must break or switch first.
+                if (group && group.leaderId === u.id && this.formations.blockedAt(group, t)) return 'formation_blocked';
                 const o = this.occupant(t.x, t.y, t.z); if (o && o.id !== u.id) return 'occupied';
                 if(WALKERS[u.type] && occupiedCells(u,t,this.store).some(c=>{const v=this.occupant(c.x,c.y,c.z);return v&&v.id!==u.id;}))return 'occupied';
                 const cost = this.reach(u).costs.get(nodeKey(t));
@@ -323,6 +335,13 @@ export class Battle {
                     if (this.store.get(t.x,t.y,t.z+3)!==AIR || this.protectedCoverTile(t)) return 'unreachable';
                     if (!this.sightLine(this.eye(u), {x:t.x+.5,y:t.y+.5,h:t.z+1.5})) return 'no_target';
                 }
+                if (a.id === 'smash') {
+                    // Walker monsters: any voxel within reach of the body, up to three levels above its feet.
+                    const t = intent.to;
+                    if (!t || ![t.x, t.y, t.z].every(Number.isInteger) || !this.store.inBounds(t.x, t.y, t.z)) return 'bad_intent';
+                    if (Math.abs(t.z - u.z) > 3) return 'out_of_range';
+                    if (Math.min(...occupiedCells(u).map(c => Math.hypot(c.x - t.x, c.y - t.y))) > a.range) return 'out_of_range';
+                }
                 if (a.id === 'water_mend') {
                     const t = this.unit(intent.targetId);
                     if (!t || !alive(t) || t.side !== u.side || (t.hp >= t.maxHp && !hasStatus(t,'burning'))) return 'no_target';
@@ -349,6 +368,8 @@ export class Battle {
             case 'breach': return this.validateBreach(intent);
             case 'formation_plan': return this.formations.validatePlan(intent);
             case 'formation': return this.formations.validate(intent);
+            case 'formation_swap': return this.formations.validateSwap(intent);
+            case 'formation_switch': return this.formations.validateSwitch(intent);
             case 'formation_break': {
                 const f = this.formations.list.get(intent.formationId);
                 if (!f || !f.members.includes(u.id)) return 'formation_invalid';
@@ -402,6 +423,8 @@ export class Battle {
             case 'formation_plan': this.formations.plan(intent);break;
             case 'formation': this.formations.declare(intent); break;
             case 'formation_break': this.formations.dissolve(intent.formationId, 'ordered'); break;
+            case 'formation_swap': this.formations.swap(intent); break;
+            case 'formation_switch': this.formations.switchTemplate(intent); break;
             case 'face': u.facing = intent.facing; this.emit({ t: 'face', unitId: u.id, facing: u.facing }); break;
             case 'extract': this.doExtract(u); break;
             case 'recover': this.doRecover(u); break;
@@ -418,6 +441,7 @@ export class Battle {
         for(const u of this.units)if(WALKERS[u.type])u.footprint=occupiedCells(u,{x:u.x,y:u.y,z:u.z},this.store);
         settleMarks(this);
         this.updateVisibility();
+        this.recordSightings();
         if(this.intelMode)refreshDrones(this);
         if(this.intelMode && this.unitsOf('enemy').some(e=>e.alerted))this.detected=true;
         this.checkOutcome();
@@ -435,8 +459,7 @@ export class Battle {
             }
             if (!alive(u)) continue;
             let ap = u.maxAp;
-            const chill = u.statuses.find(s => s.id === 'chilled');
-            if (chill) ap += STATUS_DEFS.chilled.apPerStack * (chill.stacks || 1);
+            if (hasStatus(u, 'frozen')) ap += STATUS_DEFS.frozen.apPenalty;   // chilled slows movement instead (mobilityPerAp)
             if (hasStatus(u, 'stunned')) ap += STATUS_DEFS.stunned.apPenalty;
             if (hasStatus(u, 'surprised')) ap += STATUS_DEFS.surprised.apPenalty;
             if (hasStatus(u, 'panicked')) ap = Math.ceil(ap / 2);
@@ -458,6 +481,7 @@ export class Battle {
     endTurn(side) {
         for (const u of this.unitsOf(side).filter(u=>side!=='player'||!this.refreshOwner||u.owner===this.refreshOwner)) u.statuses = u.statuses.filter(s => s.rounds > 0);
         if (side === 'player') {
+            this.recordTurnEnds();
             this.formations.onSideEnd('player',this.refreshOwner);
             this.startSide('enemy');
         } else {
@@ -679,7 +703,7 @@ export class Battle {
             if(reacted.has(w.id))continue;
             reacted.add(w.id);
             this.stats.reactions++;
-            this.emit({ t: 'reaction', watcherId: w.id, targetId: mover.id });
+            this.emit({ t: 'reaction', watcherId: w.id, targetId: mover.id, chance: hitChance(this, w, mover, WEAPONS[ow.weaponId], { reaction: true }).chance });
             this.fireWeapon(w, WEAPONS[ow.weaponId], { unitId: mover.id, part: 'torso' }, { reaction: true });
             if ((w.ammo[ow.weaponId]||0)===0) w.overwatch = null;
         }
@@ -691,7 +715,7 @@ export class Battle {
         u.ap -= this.shotAp(u, w);
         u.buffs.quickAim = false;
         const targetIds = intent.aim.unitId ? [intent.aim.unitId] : [];
-        { const aimPoint=aimPointOf(this,intent.aim); this.emit({ t: 'cutin', unitId: u.id, kind: w.cutIn || 'shot', weaponId: w.id, targetIds,aimPoint,muzzle:chooseMuzzle(this.store,u,aimPoint,{occupied:occupiedBy(this,u)}) }); }
+        { const aimPoint=aimPointOf(this,intent.aim),t0=intent.aim.unitId?this.unit(intent.aim.unitId):null; this.emit({ t: 'cutin', unitId: u.id, kind: w.cutIn || 'shot', weaponId: w.id, targetIds,aimPoint,muzzle:chooseMuzzle(this.store,u,aimPoint,{occupied:occupiedBy(this,u)}),...(u.side==='enemy'&&t0?{chance:hitChance(this,u,t0,w).chance}:{}) }); }
         this.fireWeapon(u, w, intent.aim, { fireMode:intent.fireMode });
         u.buffs.deadeye = false;
     }
@@ -705,6 +729,10 @@ export class Battle {
         const aimPoint = aimPointOf(this, aim);
         u.facing = facingToward(aimPoint.x - u.x - 0.5, aimPoint.y - u.y - 0.5);
         const { spread } = this.spreadFor(u, w, aimPoint, { reaction, breach, target });
+        // PLAN-09: overwatch reactions and NPC shots roll an XCOM-style chance to hit per round; a hit flies at a visible
+        // part of the target, a miss is thrown wide past it and lands in cover or walls (so misses still chew up cover).
+        const hc = target && (reaction || u.side === 'enemy') ? hitChance(this, u, target, w, { reaction, breach }) : null;
+        const rolls = [];
         w=weaponBuild(u,w);
         const muzzle = chooseMuzzle(this.store, u, aimPoint, { occupied: occupiedBy(this, u) });
         const dv = [aimPoint.x - muzzle.x, aimPoint.y - muzzle.y, aimPoint.h - muzzle.h];
@@ -718,9 +746,15 @@ export class Battle {
         let targetHit = false;
         const threatened=new Map();
         const changes = this.store.record(() => {
+            let rollHit = false, rollCrit = false;
             for (let i = 0; i < count; i++) {
-                const d = sampleCone(dir, spread, this.rng);
-                const res = traceProjectile(this, muzzle, d, maxDist, { ignore: u.id, energy: w.energy || 0 });
+                let d, ignore = u.id;
+                if (hc) {
+                    if (i % (w.pellets || 1) === 0) { rollHit = this.rng.next() * 100 < hc.chance; rollCrit = rollHit && this.rng.next() * 100 < hc.crit; rolls.push({ hit: rollHit, crit: rollCrit }); }
+                    if (rollHit) d = sampleCone(this.rollAim(muzzle, target, rollCrit), 0.25, this.rng);
+                    else { d = this.rollMiss(muzzle, target); ignore = [u.id, target.id]; }
+                } else d = sampleCone(dir, spread, this.rng);
+                const res = traceProjectile(this, muzzle, d, maxDist, { ignore, energy: w.energy || 0 });
                 for (const [gx, gy, gz] of res.glass) if (this.store.get(gx, gy, gz) === MAT.glass) { this.store.set(gx, gy, gz, AIR); this.stats.voxelsDestroyed++; }
                 const p = { to: res.point, kind: res.kind };
                 const mult = u.buffs.demolish ? 2 : 1;
@@ -738,7 +772,9 @@ export class Battle {
                 if (res.kind === 'unit') {
                     if(!reaction&&res.unit.side!==u.side&&!threatened.has(res.unit.id))threatened.set(res.unit.id,{unit:res.unit,visible:this.sees(res.unit,u)});
                     p.unitId = res.unit.id; p.part = res.part;
-                    const dealt = this.dealDamage(res.unit, res.part, Math.round(projectileDamage(w,res.t,i) * (res.scale ?? 1)), { pierce: w.pierce, shred: w.shred, element: w.element, source: u.id });
+                    const critK = hc && rollCrit && target && res.unit.id === target.id ? B.critDamageMult : 1;
+                    if (critK > 1) p.crit = true;
+                    const dealt = this.dealDamage(res.unit, res.part, Math.round(projectileDamage(w,res.t,i) * (res.scale ?? 1) * critK), { pierce: w.pierce, shred: w.shred, element: w.element, source: u.id });
                     if (res.pierced.length) p.through = true;
                     p.damage = dealt;
                     ws.hits++; ws.damage += dealt; u.stats.hits++; u.stats.damage += dealt;
@@ -756,7 +792,8 @@ export class Battle {
             }
         });
         u.buffs.demolish = false;
-        this.emit({ t: 'shot', unitId: u.id, weaponId: w.id, muzzle, aim: aimPoint, projectiles, reaction, breach, rounds });
+        const style = target ? { cover: coverAgainst(this.store, target.x, target.y, target.z, u.x, u.y, u.z), dist: +Math.hypot(target.x - u.x, target.y - u.y).toFixed(1) } : {};
+        this.emit({ t: 'shot', unitId: u.id, weaponId: w.id, muzzle, aim: aimPoint, projectiles, reaction, breach, rounds, ...style, ...(hc ? { chance: hc.chance, crit: hc.crit, rolls } : {}) });
         if(w.boltAction&&reserveAmmo(u,w)>0)u.ammo[w.id]+=consumeAmmo(u,w,1);
         if (changes.length) this.emit({ t: 'voxels', changes });
         if (target && alive(target) && !targetHit) this.addStress(target, B.stressOnNearMiss, 'near miss');
@@ -764,6 +801,24 @@ export class Battle {
         if (changes.some(c => materialById(c[3]).structural)) this.settle();
         this.checkFalls();
         for(const t of threatened.values())if(alive(t.unit))this.formations.onIncomingFire(t.unit,u,t.visible);
+    }
+
+    /** Direction of a rolled hit: the first part of the target the muzzle can see (the head on a crit). */
+    rollAim(muzzle, t, crit) {
+        const parts = crit ? ['head', 'torso', 'armR', 'armL', 'legs'] : ['torso', 'head', 'armR', 'armL', 'legs'];
+        let p = partCentre(t, parts[0]);
+        for (const part of parts) { const c = partCentre(t, part); if (this.sightLine(muzzle, c)) { p = c; break; } }
+        const v = [p.x - muzzle.x, p.y - muzzle.y, p.h - muzzle.h], l = Math.hypot(...v) || 1;
+        return v.map(c => c / l);
+    }
+    /** Direction of a rolled miss: wide of the body by 0.7-1.6 m, half the time low into whatever covers it. */
+    rollMiss(muzzle, t) {
+        const c = partCentre(t, 'torso'), v = [c.x - muzzle.x, c.y - muzzle.y, c.h - muzzle.h], l = Math.hypot(...v) || 1;
+        const f = v.map(x => x / l), side = [-f[1], f[0], 0], sl = Math.hypot(...side) || 1;
+        const a = this.rng.next() * Math.PI * 2, r = 0.7 + this.rng.next() * 0.9, low = this.rng.next() < 0.5;
+        const ox = Math.cos(a) * r * side[0] / sl, oy = Math.cos(a) * r * side[1] / sl, oz = low ? -0.6 - this.rng.next() * 0.5 : Math.sin(a) * r;
+        const q = [c.x + ox - muzzle.x, c.y + oy - muzzle.y, c.h + oz - muzzle.h], ql = Math.hypot(...q) || 1;
+        return q.map(x => x / ql);
     }
 
     doMelee(u, intent) {
@@ -879,15 +934,15 @@ export class Battle {
     }
     explode(b) {
         const item = THROWABLES[b.item];
-        const canDamage = item && !item.placed
+        const canDamage = b.canDamage || (item && !item.placed
             ? (x, y, z) => z > this.grenadeGroundLevels[x + y * this.store.width]
-            : null;
+            : null);
         const changes = this.store.record(() => {
             const { destroyed, explosions } = b.power > 0 ? explodeVoxels(this.store, b, { canDamage }) : { destroyed: [], explosions: [b] };
             this.stats.voxelsDestroyed += destroyed.length;
             if (b.item && this.stats.throwables[b.item]) this.stats.throwables[b.item].voxels += destroyed.length;
             for (const e of explosions) {
-                if ((e.power > 0 || e.element === 'pyro') && e.element !== 'hydro') scorchBlast(this.store, e);
+                if ((e.power > 0 || e.element === 'pyro') && e.element !== 'hydro' && !(e === b && b.blunt)) scorchBlast(this.store, e);
                 this.emit({ t: 'explosion', x: e.x, y: e.y, h: e.h, radius: e.radius, element: e.element || null, source: e.source || b.item || null });
                 this.blastUnits(e, b.by, b.item);
                 if (e.element) this.elementImpact(e.element, e, e.radius);
@@ -995,11 +1050,20 @@ export class Battle {
         this.emit({ t: 'ability', unitId: u.id, abilityId: a.id });
         if(a.intel){executeIntel(this,u,intent);return;}
         switch (a.id) {
-            case 'killstreak_strike':this.supportUsed++;this.strikeReadyAt=this.round+10;this.explode({x:intent.to.x+.5,y:intent.to.y+.5,h:intent.to.z+1.5,radius:3,damage:25,power:12,element:'geo',by:u.id});break;
+            case 'killstreak_strike':this.supportUsed++;this.strikeReadyAt=this.round+10;commanderStrike(this,u,intent.to);break;
             case 'earth_cover': {
                 const t = intent.to;
                 const changes = this.store.record(() => this.store.set(t.x,t.y,t.z+1,MAT.drystone));
                 this.emit({t:'voxels', changes});
+                break;
+            }
+            case 'smash': {
+                // PLAN-09 monsters: a blunt blow through two storeys of wall (no scorch), battering anyone behind it.
+                const t = intent.to, floor = t.z;
+                this.stats.smashes = (this.stats.smashes || 0) + 1;
+                for (const [h, damage] of [[t.z + 1.6, 12], [t.z + 3.1, 0]])
+                    this.explode({ x: t.x + 0.5, y: t.y + 0.5, h, radius: 1.7, power: B.smashVoxelDamage, damage, knockback: damage ? 2 : 0, by: u.id, excludeUnits: [u.id], blunt: true, canDamage: (x, y, z) => z > floor });
+                this.noise(t.x, t.y, t.z, 16, u);
                 break;
             }
             case 'water_mend': {
@@ -1147,6 +1211,9 @@ export class Battle {
     // ---------------------------------------------------------------- awareness
     noise(x, y, z, radius, by) {
         if (!radius) return;
+        // Any NPC within earshot learns roughly where the squad member is (PLAN-09 enemy intel).
+        if (by && by.side === 'player' && this.units.some(e => alive(e) && e.side === 'enemy' && Math.hypot(e.x - x, e.y - y, e.z - z) <= radius))
+            this.enemyIntel[by.id] = { x, y, z, round: this.round, source: 'heard' };
         const groups = [];
         for (const e of this.units) {
             if (!alive(e) || e.alerted || (by && e.side === by.side)) continue;
@@ -1216,6 +1283,30 @@ export class Battle {
         this.visibleInterior=seen;
     }
 
+    /** PLAN-09: alerted NPCs remember where they last saw each squad member. */
+    recordSightings() {
+        const watchers = this.unitsOf('enemy').filter(e => e.alerted);
+        if (!watchers.length) return;
+        for (const p of this.unitsOf('player')) {
+            if (watchers.some(e => this.sees(e, p))) { this.enemyIntel[p.id] = { x: p.x, y: p.y, z: p.z, round: this.round, source: 'seen' }; continue; }
+            // Searched the spot and nobody is there: the lead goes cold.
+            const m = this.enemyIntel[p.id];
+            if (m && m.source !== 'lost' && watchers.some(e => Math.hypot(e.x - m.x, e.y - m.y) <= 2 && Math.abs(e.z - m.z) <= 1)) m.source = 'lost';
+        }
+        for (const id of Object.keys(this.enemyIntel)) { const p = this.unit(id); if (!p || !alive(p)) delete this.enemyIntel[id]; }
+    }
+    /** Playstyle stats: does the squad end its turns in cover from the hostiles it can see? */
+    recordTurnEnds() {
+        const t = this.stats.turnEnds;
+        for (const u of this.unitsOf('player')) {
+            const seen = this.visibleEnemies(u);
+            if (!seen.length) { t.unseen++; continue; }
+            const worst = Math.min(...seen.map(e => coverAgainst(this.store, u.x, u.y, u.z, e.x, e.y, e.z)));
+            if (worst > COVER.NONE) t.inCover++; else t.exposed++;
+        }
+    }
+    /** XCOM 2-style chance to hit (overwatch and NPC shots); see HitChance.js. */
+    hitChance(shooter, target, weapon, opts = {}) { return hitChance(this, shooter, target, weapon, opts); }
     weaponStats(id) { return this.stats.weapons[id] ||= { shots: 0, projectiles: 0, hits: 0, damage: 0, kills: 0, ap: 0, voxels: 0 }; }
 
     /** Hash of everything that matters for lockstep: map, units, field. */
@@ -1225,7 +1316,7 @@ export class Battle {
         const state = { supportUsed:this.supportUsed,strikeReadyAt:this.strikeReadyAt,marks:this.store.marksSnapshot?.(),markers:this.markers,squareCorners:[...this.store.squareCorners].sort(),windowOpenings:[...this.store.windowOpenings].sort(([a],[b])=>a<b?-1:a>b?1:0), intelMode:this.intelMode, asyncCoop:this.asyncCoop, personalTurns:this.personalTurns,supportReady:this.supportReady,supportChoices:this.supportChoices,contacts:this.contacts,drones:this.drones,detected:this.detected,refreshOwner:this.refreshOwner, units: this.units, round: this.round, activeSide: this.activeSide, outcome: this.outcome,
             revealedRooms: [...this.revealedRooms].sort((a, b) => a - b), field: this.field.snapshot(),
             formations: this.formations.snapshot(), nextFormationId: this.formations.nextId,
-            objective: this.objective, rng: this.rng.state, debugEnabled: this.debugEnabled, controllers: this.controllers, seq: this.seq };
+            objective: this.objective, enemyIntel: this.enemyIntel, aiTuning: this.aiTuning, rng: this.rng.state, debugEnabled: this.debugEnabled, controllers: this.controllers, seq: this.seq };
         return `${this.store.hash()}:${(voxelHp >>> 0).toString(16)}:${hashString(JSON.stringify(state)).toString(16)}`;
     }
 }

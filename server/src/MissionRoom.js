@@ -14,7 +14,9 @@ import { hashString } from '../../shared/util/Rng.js';
 import { createBattle, sanitizeDesc } from '../../shared/session/Scenarios.js';
 import { unpackMission } from '../../shared/session/MissionSnapshot.js';
 import { buildMissionAsync } from './MissionBuilder.js';
-import { decide } from '../../shared/battle/Ai.js';
+import { decide, formationIntents, aiOrder } from '../../shared/battle/Ai.js';
+import { aiProfileFor, recordAiMatch } from './AiCache.js';
+import { playstyleFromBattle } from '../../shared/session/Playstyle.js';
 
 const { Room } = colyseus;
 export class MissionRoom extends Room {
@@ -30,7 +32,8 @@ export class MissionRoom extends Room {
         this.maxClients = 4;
         const d = options.desc || {};
         try {
-            this.desc = sanitizeDesc(d);
+            // PLAN-09: the server's AI cache decides what the AI expects (clients cannot send their own profile).
+            this.desc = sanitizeDesc({ ...d, aiProfile: options.aiCache === false ? null : aiProfileFor((this.roster || []).map(s => s.name).filter(Boolean)) });
             this.initialMission=await buildMissionAsync(this.desc);
             this.battle=createBattle(this.desc,unpackMission(this.initialMission));
         }catch(error){throw new colyseus.ServerError(4211,error.message);}
@@ -103,6 +106,11 @@ export class MissionRoom extends Room {
     commit(intent, nonce = null) {
         const r = this.battle.apply(intent);
         if (!r.ok) return r;
+        if (this.battle.outcome && !this.aiRecorded) {
+            this.aiRecorded = true;
+            try { recordAiMatch(playstyleFromBattle(this.battle), { outcome: this.battle.outcome.winner, scenario: this.desc.scenario }, this.players.map(p => p.name)); }
+            catch (error) { console.warn('AI cache:', error.message); }
+        }
         const entry = { seq: this.log.length + 1, intent, nonce };
         this.log.push(entry);
         this.broadcast('intent', entry);
@@ -159,7 +167,7 @@ export class MissionRoom extends Room {
             return this.endPlayerTurn(m.nonce);
         }
         if (intent.type === 'debug' && p.id !== this.hostPlayer) return this.rejectCommand(client, m.nonce, 'not_your_unit' );
-        if (['owners','personalEnd'].includes(intent.type) || !['setFireMode','inventoryMove','equipCargo','mark','formation_plan','move','shoot','melee','throw','overwatch','reload','gadget','wait','switchWeapon','ability','door','breach','formation','formation_break','face','extract','recover','debug'].includes(intent.type)) return this.rejectCommand(client, m.nonce, 'bad_intent' );
+        if (['owners','personalEnd'].includes(intent.type) || !['setFireMode','inventoryMove','equipCargo','mark','formation_plan','move','shoot','melee','throw','overwatch','reload','gadget','wait','switchWeapon','ability','door','breach','formation','formation_break','formation_swap','formation_switch','face','extract','recover','debug'].includes(intent.type)) return this.rejectCommand(client, m.nonce, 'bad_intent' );
         const r = this.commit(intent, m.nonce);
         if (!r.ok) this.rejectCommand(client, m.nonce, r.reason );
     }
@@ -174,7 +182,8 @@ export class MissionRoom extends Room {
         const b = this.battle;
         for (let guard = 0; guard < 200 && !b.outcome && b.activeSide === 'enemy'; guard++) {
             let acted = false;
-            for (const u of b.unitsOf('enemy')) {
+            for (const intent of formationIntents(b, 'enemy')) this.commit({ ...intent, by: '*' });   // PLAN-09 enemy formations
+            for (const u of aiOrder(b, 'enemy')) {
                 for (let k = 0; k < 6 && !b.outcome; k++) {
                     const intent = decide(b, u);
                     if (!intent) break;

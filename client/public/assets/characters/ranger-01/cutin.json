@@ -1,0 +1,650 @@
+{
+  "character": "ranger-01",
+  "version": 2,
+  "placeholder": false,
+  "width": 768,
+  "height": 768,
+  "screenHeight": 0.72,
+  "maxWidthShare": 0.42,
+  "muzzle": [
+    0.57,
+    0.36
+  ],
+  "layers": [
+    {
+      "id": "body",
+      "image": "aim-body.png",
+      "normal": "aim-normal.png",
+      "lightingMask": "aim-lighting.png",
+      "stage": "back"
+    },
+    {
+      "id": "trigger-hand",
+      "bone": "trigger-hand",
+      "image": "aim-trigger-hand.png",
+      "normal": "aim-normal.png",
+      "lightingMask": "aim-lighting.png",
+      "stage": "front"
+    },
+    {
+      "id": "support-hand",
+      "bone": "support-hand",
+      "image": "aim-support-hand.png",
+      "normal": "aim-normal.png",
+      "lightingMask": "aim-lighting.png",
+      "stage": "front"
+    },
+    {
+      "id": "gun",
+      "gun": true
+    },
+    {
+      "id": "trigger-forearm",
+      "bone": "trigger-forearm",
+      "image": "aim-trigger-forearm.png",
+      "normal": "aim-trigger-forearm-normal.png",
+      "lightingMask": "aim-lighting.png",
+      "stage": "front"
+    },
+    {
+      "id": "trigger-upper",
+      "bone": "trigger-upper",
+      "image": "aim-trigger-upper.png",
+      "normal": "aim-trigger-upper-normal.png",
+      "lightingMask": "aim-lighting.png",
+      "stage": "front"
+    },
+    {
+      "id": "support-forearm",
+      "bone": "support-forearm",
+      "image": "aim-support-forearm.png",
+      "normal": "aim-support-forearm-normal.png",
+      "lightingMask": "aim-lighting.png",
+      "stage": "back"
+    },
+    {
+      "id": "support-upper",
+      "bone": "support-upper",
+      "image": "aim-support-upper.png",
+      "normal": "aim-support-upper-normal.png",
+      "lightingMask": "aim-lighting.png",
+      "stage": "back"
+    }
+  ],
+  "rig": {
+    "stock": [
+      0.54,
+      0.6
+    ],
+    "grip": [
+      0.651,
+      0.54
+    ],
+    "support": [
+      0.614,
+      0.462
+    ],
+    "cameraPosition": [
+      0.32,
+      0.14,
+      5
+    ],
+    "arms": {
+      "trigger": {
+        "shoulder": [
+          0.49,
+          0.59
+        ],
+        "elbow": [
+          0.75,
+          0.83
+        ],
+        "wrist": [
+          0.675,
+          0.577
+        ],
+        "palm": [
+          0.651,
+          0.54
+        ]
+      },
+      "support": {
+        "shoulder": [
+          0.46,
+          0.54
+        ],
+        "elbow": [
+          0.61,
+          0.76
+        ],
+        "wrist": [
+          0.564,
+          0.48
+        ],
+        "palm": [
+          0.614,
+          0.462
+        ]
+      }
+    },
+    "gunView": {
+      "cameraPosition": [
+        1.5,
+        1.3,
+        5
+      ],
+      "referenceMuzzle": [
+        0.75,
+        0.38
+      ],
+      "referenceLengthMetres": 0.705
+    },
+    "jointRadii": {
+      "shoulder": 0.075,
+      "elbow": 0.065,
+      "wrist": 0.028
+    },
+    "limbRadii": {
+      "upper": [
+        0.075,
+        0.062
+      ],
+      "forearm": [
+        0.063,
+        0.036
+      ]
+    }
+  },
+  "lighting": "albedo-normal-response-mask",
+  "gun": true,
+  "variants": {
+    "left": {
+      "character": "ranger-01",
+      "version": 2,
+      "placeholder": false,
+      "width": 768,
+      "height": 768,
+      "screenHeight": 0.72,
+      "maxWidthShare": 0.42,
+      "muzzle": [
+        0.57,
+        0.36
+      ],
+      "layers": [
+        {
+          "id": "body",
+          "image": "aim-body.png",
+          "normal": "aim-normal.png",
+          "lightingMask": "aim-lighting.png",
+          "stage": "back"
+        },
+        {
+          "id": "trigger-hand",
+          "bone": "trigger-hand",
+          "image": "aim-trigger-hand.png",
+          "normal": "aim-normal.png",
+          "lightingMask": "aim-lighting.png",
+          "stage": "front"
+        },
+        {
+          "id": "support-hand",
+          "bone": "support-hand",
+          "image": "aim-support-hand.png",
+          "normal": "aim-normal.png",
+          "lightingMask": "aim-lighting.png",
+          "stage": "front"
+        },
+        {
+          "id": "gun",
+          "gun": true
+        },
+        {
+          "id": "trigger-forearm",
+          "bone": "trigger-forearm",
+          "image": "aim-trigger-forearm.png",
+          "normal": "aim-trigger-forearm-normal.png",
+          "lightingMask": "aim-lighting.png",
+          "stage": "front"
+        },
+        {
+          "id": "trigger-upper",
+          "bone": "trigger-upper",
+          "image": "aim-trigger-upper.png",
+          "normal": "aim-trigger-upper-normal.png",
+          "lightingMask": "aim-lighting.png",
+          "stage": "front"
+        },
+        {
+          "id": "support-forearm",
+          "bone": "support-forearm",
+          "image": "aim-support-forearm.png",
+          "normal": "aim-support-forearm-normal.png",
+          "lightingMask": "aim-lighting.png",
+          "stage": "back"
+        },
+        {
+          "id": "support-upper",
+          "bone": "support-upper",
+          "image": "aim-support-upper.png",
+          "normal": "aim-support-upper-normal.png",
+          "lightingMask": "aim-lighting.png",
+          "stage": "back"
+        }
+      ],
+      "rig": {
+        "stock": [
+          0.54,
+          0.6
+        ],
+        "grip": [
+          0.651,
+          0.54
+        ],
+        "support": [
+          0.614,
+          0.462
+        ],
+        "cameraPosition": [
+          0.32,
+          0.14,
+          5
+        ],
+        "arms": {
+          "trigger": {
+            "shoulder": [
+              0.49,
+              0.59
+            ],
+            "elbow": [
+              0.75,
+              0.83
+            ],
+            "wrist": [
+              0.675,
+              0.577
+            ],
+            "palm": [
+              0.651,
+              0.54
+            ]
+          },
+          "support": {
+            "shoulder": [
+              0.46,
+              0.54
+            ],
+            "elbow": [
+              0.61,
+              0.76
+            ],
+            "wrist": [
+              0.564,
+              0.48
+            ],
+            "palm": [
+              0.614,
+              0.462
+            ]
+          }
+        },
+        "gunView": {
+          "cameraPosition": [
+            1.5,
+            1.3,
+            5
+          ],
+          "referenceMuzzle": [
+            0.75,
+            0.38
+          ],
+          "referenceLengthMetres": 0.705
+        },
+        "jointRadii": {
+          "shoulder": 0.075,
+          "elbow": 0.065,
+          "wrist": 0.028
+        },
+        "limbRadii": {
+          "upper": [
+            0.075,
+            0.062
+          ],
+          "forearm": [
+            0.063,
+            0.036
+          ]
+        }
+      },
+      "lighting": "albedo-normal-response-mask",
+      "gun": true,
+      "mirror": true,
+      "mirrorGun": true,
+      "pose": "aim-left"
+    }
+  },
+  "ready": {
+    "right": {
+      "character": "ranger-01",
+      "version": 2,
+      "placeholder": false,
+      "width": 1536,
+      "height": 768,
+      "screenHeight": 0.72,
+      "maxWidthShare": 0.56,
+      "muzzle": [
+        0.4825,
+        0.625
+      ],
+      "layers": [
+        {
+          "id": "body",
+          "image": "ready-body.png",
+          "normal": "ready-normal.png",
+          "lightingMask": "ready-lighting.png",
+          "stage": "back"
+        },
+        {
+          "id": "trigger-hand",
+          "bone": "trigger-hand",
+          "image": "ready-trigger-hand.png",
+          "normal": "ready-normal.png",
+          "lightingMask": "ready-lighting.png",
+          "stage": "front"
+        },
+        {
+          "id": "support-hand",
+          "bone": "support-hand",
+          "image": "ready-support-hand.png",
+          "normal": "ready-normal.png",
+          "lightingMask": "ready-lighting.png",
+          "stage": "front"
+        },
+        {
+          "id": "gun",
+          "gun": true
+        },
+        {
+          "id": "trigger-forearm",
+          "bone": "trigger-forearm",
+          "image": "ready-trigger-forearm.png",
+          "normal": "ready-trigger-forearm-normal.png",
+          "lightingMask": "ready-lighting.png",
+          "stage": "front"
+        },
+        {
+          "id": "trigger-upper",
+          "bone": "trigger-upper",
+          "image": "ready-trigger-upper.png",
+          "normal": "ready-trigger-upper-normal.png",
+          "lightingMask": "ready-lighting.png",
+          "stage": "front"
+        },
+        {
+          "id": "support-forearm",
+          "bone": "support-forearm",
+          "image": "ready-support-forearm.png",
+          "normal": "ready-support-forearm-normal.png",
+          "lightingMask": "ready-lighting.png",
+          "stage": "back"
+        },
+        {
+          "id": "support-upper",
+          "bone": "support-upper",
+          "image": "ready-support-upper.png",
+          "normal": "ready-support-upper-normal.png",
+          "lightingMask": "ready-lighting.png",
+          "stage": "back"
+        }
+      ],
+      "rig": {
+        "stock": [
+          0.155,
+          0.55
+        ],
+        "grip": [
+          0.298,
+          0.733
+        ],
+        "support": [
+          0.423,
+          0.66
+        ],
+        "cameraPosition": [
+          4,
+          0.4,
+          1.1
+        ],
+        "arms": {
+          "trigger": {
+            "shoulder": [
+              0.128,
+              0.39
+            ],
+            "elbow": [
+              0.112,
+              0.624
+            ],
+            "wrist": [
+              0.231,
+              0.704
+            ],
+            "palm": [
+              0.298,
+              0.733
+            ]
+          },
+          "support": {
+            "shoulder": [
+              0.3335,
+              0.452
+            ],
+            "elbow": [
+              0.271,
+              0.778
+            ],
+            "wrist": [
+              0.394,
+              0.698
+            ],
+            "palm": [
+              0.423,
+              0.66
+            ]
+          }
+        },
+        "gunView": {
+          "cameraPosition": [
+            5,
+            0.3,
+            1.5
+          ],
+          "referenceMuzzle": [
+            0.61,
+            0.62
+          ],
+          "referenceLengthMetres": 0.705
+        },
+        "jointRadii": {
+          "shoulder": 0.055,
+          "elbow": 0.052,
+          "wrist": 0.028
+        },
+        "limbRadii": {
+          "upper": [
+            0.07,
+            0.055
+          ],
+          "forearm": [
+            0.055,
+            0.033
+          ]
+        }
+      },
+      "lighting": "albedo-normal-response-mask",
+      "gun": true
+    },
+    "left": {
+      "character": "ranger-01",
+      "version": 2,
+      "placeholder": false,
+      "width": 1536,
+      "height": 768,
+      "screenHeight": 0.72,
+      "maxWidthShare": 0.56,
+      "muzzle": [
+        0.4825,
+        0.625
+      ],
+      "layers": [
+        {
+          "id": "body",
+          "image": "ready-body.png",
+          "normal": "ready-normal.png",
+          "lightingMask": "ready-lighting.png",
+          "stage": "back"
+        },
+        {
+          "id": "trigger-hand",
+          "bone": "trigger-hand",
+          "image": "ready-trigger-hand.png",
+          "normal": "ready-normal.png",
+          "lightingMask": "ready-lighting.png",
+          "stage": "front"
+        },
+        {
+          "id": "support-hand",
+          "bone": "support-hand",
+          "image": "ready-support-hand.png",
+          "normal": "ready-normal.png",
+          "lightingMask": "ready-lighting.png",
+          "stage": "front"
+        },
+        {
+          "id": "gun",
+          "gun": true
+        },
+        {
+          "id": "trigger-forearm",
+          "bone": "trigger-forearm",
+          "image": "ready-trigger-forearm.png",
+          "normal": "ready-trigger-forearm-normal.png",
+          "lightingMask": "ready-lighting.png",
+          "stage": "front"
+        },
+        {
+          "id": "trigger-upper",
+          "bone": "trigger-upper",
+          "image": "ready-trigger-upper.png",
+          "normal": "ready-trigger-upper-normal.png",
+          "lightingMask": "ready-lighting.png",
+          "stage": "front"
+        },
+        {
+          "id": "support-forearm",
+          "bone": "support-forearm",
+          "image": "ready-support-forearm.png",
+          "normal": "ready-support-forearm-normal.png",
+          "lightingMask": "ready-lighting.png",
+          "stage": "back"
+        },
+        {
+          "id": "support-upper",
+          "bone": "support-upper",
+          "image": "ready-support-upper.png",
+          "normal": "ready-support-upper-normal.png",
+          "lightingMask": "ready-lighting.png",
+          "stage": "back"
+        }
+      ],
+      "rig": {
+        "stock": [
+          0.155,
+          0.55
+        ],
+        "grip": [
+          0.298,
+          0.733
+        ],
+        "support": [
+          0.423,
+          0.66
+        ],
+        "cameraPosition": [
+          4,
+          0.4,
+          1.1
+        ],
+        "arms": {
+          "trigger": {
+            "shoulder": [
+              0.128,
+              0.39
+            ],
+            "elbow": [
+              0.112,
+              0.624
+            ],
+            "wrist": [
+              0.231,
+              0.704
+            ],
+            "palm": [
+              0.298,
+              0.733
+            ]
+          },
+          "support": {
+            "shoulder": [
+              0.3335,
+              0.452
+            ],
+            "elbow": [
+              0.271,
+              0.778
+            ],
+            "wrist": [
+              0.394,
+              0.698
+            ],
+            "palm": [
+              0.423,
+              0.66
+            ]
+          }
+        },
+        "gunView": {
+          "cameraPosition": [
+            5,
+            0.3,
+            1.5
+          ],
+          "referenceMuzzle": [
+            0.61,
+            0.62
+          ],
+          "referenceLengthMetres": 0.705
+        },
+        "jointRadii": {
+          "shoulder": 0.055,
+          "elbow": 0.052,
+          "wrist": 0.028
+        },
+        "limbRadii": {
+          "upper": [
+            0.07,
+            0.055
+          ],
+          "forearm": [
+            0.055,
+            0.033
+          ]
+        }
+      },
+      "lighting": "albedo-normal-response-mask",
+      "gun": true,
+      "mirror": true,
+      "mirrorGun": true,
+      "pose": "ready-left"
+    }
+  }
+}

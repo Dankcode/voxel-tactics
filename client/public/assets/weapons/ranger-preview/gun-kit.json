@@ -1,88 +1,368 @@
 {
   "units": "metres",
-  "axes": "blender gun space: +Y muzzle, +Z up, +X right; origin = grip (glTF: x, z, -y)",
-  "grip": [
-    0,
-    0,
-    0
-  ],
-  "support": {
-    "rifle": [
-      0.0,
-      0.3301,
-      0.0765
-    ],
-    "sniper": [
-      0.0,
-      0.3873,
-      0.0482
-    ],
-    "shotgun": [
-      0.0,
-      0.4436,
-      0.0268
-    ]
+  "axes": "Blender +Y muzzle +Z up; glTF (x,z,-y)",
+  "assemblies": {
+    "rifle": {
+      "parts": [
+        "rifle_receiver",
+        "rifle_stock",
+        "rifle_grip",
+        "rifle_foregrip",
+        "rifle_magazine",
+        "rifle_barrel",
+        "rifle_sight"
+      ],
+      "stock": [
+        0,
+        -0.18822737038135529,
+        0.07244684919714928
+      ],
+      "support": [
+        0.0,
+        0.3301,
+        0.0765
+      ],
+      "muzzle": [
+        0.0,
+        0.5167,
+        0.104
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "source": "m5-scw.blend",
+      "referenceLengthMetres": 0.705,
+      "measuredLengthMetres": 0.7049740105867386
+    },
+    "sniper": {
+      "parts": [
+        "sniper_body",
+        "sniper_scope"
+      ],
+      "stock": [
+        0,
+        -0.300088107585907,
+        0.01962626539170742
+      ],
+      "support": [
+        0.0,
+        0.3873,
+        0.0482
+      ],
+      "muzzle": [
+        0.0,
+        0.8801,
+        0.0964
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "source": "l118a1.usdz",
+      "referenceLengthMetres": 1.18,
+      "measuredLengthMetres": 1.1799925565719604
+    },
+    "shotgun": {
+      "parts": [
+        "shotgun_body"
+      ],
+      "stock": [
+        0,
+        -0.2721331715583801,
+        -0.025424008257687092
+      ],
+      "support": [
+        0.0,
+        0.4436,
+        0.0268
+      ],
+      "muzzle": [
+        0.0,
+        0.748,
+        0.068
+      ],
+      "grip": [
+        0,
+        0,
+        0
+      ],
+      "source": "shotgun/shotgun.obj",
+      "referenceLengthMetres": 1.02,
+      "measuredLengthMetres": 1.0199896693229675
+    }
   },
-  "muzzles": {
-    "muzzle_std": [
-      0.0,
-      0.5167,
-      0.104
-    ],
-    "muzzle_long": [
-      0.0,
-      0.6498,
-      0.104
-    ],
-    "muzzle_sniper": [
-      0.0,
-      0.8801,
-      0.0964
-    ],
-    "muzzle_shotgun": [
-      0.0,
-      0.748,
-      0.068
-    ]
+  "parts": {
+    "rifle_receiver": {
+      "role": "Receiver",
+      "source": "m5-scw.blend",
+      "bounds": [
+        [
+          -0.035407837480306625,
+          -0.11036758124828339,
+          0.007683485746383667
+        ],
+        [
+          0.041346367448568344,
+          0.21639560163021088,
+          0.1388062834739685
+        ]
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "sourceObjects": [
+        "m5scw lower",
+        "m5scw upper",
+        "m5scw trigga",
+        "m5scw dust cover",
+        "m5scw charging handle",
+        "m5scw selector",
+        "m5scw bolt catch R",
+        "m5scw bolt catch L",
+        "m5scw bolt",
+        "m5scw mag catch R",
+        "m5scw mag catch L"
+      ]
+    },
+    "rifle_stock": {
+      "role": "Buttstock",
+      "source": "m5-scw.blend",
+      "bounds": [
+        [
+          -0.02695637382566929,
+          -0.18822737038135529,
+          0.02098049968481064
+        ],
+        [
+          0.02695625275373459,
+          0.014120742678642273,
+          0.12391319870948792
+        ]
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "sourceObjects": [
+        "m5scw stock"
+      ]
+    },
+    "rifle_grip": {
+      "role": "Trigger grip",
+      "source": "m5-scw.blend",
+      "bounds": [
+        [
+          -0.016551421955227852,
+          -0.046360716223716736,
+          -0.06291276961565018
+        ],
+        [
+          0.016551395878195763,
+          0.05243990197777748,
+          0.04954420030117035
+        ]
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "sourceObjects": [
+        "m5scw grip"
+      ]
+    },
+    "rifle_foregrip": {
+      "role": "Handguard / foregrip",
+      "source": "m5-scw.blend",
+      "bounds": [
+        [
+          -0.021502459421753883,
+          0.19987989962100983,
+          0.07132577151060104
+        ],
+        [
+          0.021502472460269928,
+          0.4633263349533081,
+          0.1388062834739685
+        ]
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "sourceObjects": [
+        "m5scw handguard"
+      ]
+    },
+    "rifle_magazine": {
+      "role": "Magazine",
+      "source": "m5-scw.blend",
+      "bounds": [
+        [
+          -0.017773594707250595,
+          0.11767278611660004,
+          -0.11079558730125427
+        ],
+        [
+          0.01777365431189537,
+          0.21370813250541687,
+          0.0968465581536293
+        ]
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "sourceObjects": [
+        "55645 ar15 30rnd mag empty (pmag)"
+      ]
+    },
+    "rifle_barrel": {
+      "role": "Barrel + muzzle",
+      "source": "m5-scw.blend",
+      "bounds": [
+        [
+          -0.019620154052972794,
+          0.18088297545909882,
+          0.08035729825496674
+        ],
+        [
+          0.019620241597294807,
+          0.5167466402053833,
+          0.1276434063911438
+        ]
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "sourceObjects": [
+        "m5scw 10.3in barrel ",
+        "m5scw flash hider"
+      ]
+    },
+    "rifle_sight": {
+      "role": "Iron sights",
+      "source": "m5-scw.blend",
+      "bounds": [
+        [
+          -0.01855560764670372,
+          0.028551310300827026,
+          0.13130387663841248
+        ],
+        [
+          0.021564338356256485,
+          0.4533979892730713,
+          0.17635014653205872
+        ]
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "sourceObjects": [
+        "m5scw iron sights"
+      ]
+    },
+    "sniper_body": {
+      "role": "Stock / receiver / barrel assembly",
+      "source": "l118a1.usdz",
+      "bounds": [
+        [
+          -0.023069866001605988,
+          -0.300088107585907,
+          -0.0525052435696125
+        ],
+        [
+          0.049730606377124786,
+          0.8799044489860535,
+          0.11197669804096222
+        ]
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "sourceObjects": [
+        "Cube_Material_0",
+        "Cube_Material_001_0",
+        "Cube_Material_002_0",
+        "Cube_Material_003_0",
+        "Cube_Material_004_0",
+        "Cube_Material_005_0",
+        "Cube_Material_006_0",
+        "Cube_Material_007_0",
+        "Cube_Material_008_0",
+        "Cube_Material_009_0",
+        "Cube_Material_010_0"
+      ]
+    },
+    "sniper_scope": {
+      "role": "Scope",
+      "source": "l118a1.usdz",
+      "bounds": [
+        [
+          -0.02431153878569603,
+          -0.011591285467147827,
+          0.10644276440143585
+        ],
+        [
+          0.03355502337217331,
+          0.3425704538822174,
+          0.17918957769870758
+        ]
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "sourceObjects": [
+        "Cylinder_000_Material_018_0",
+        "Cylinder_000_Material_019_0",
+        "Cylinder_000_Material_020_0",
+        "Cylinder_000_Material_021_0",
+        "Cylinder_000_Material_022_0",
+        "Cylinder_000_Material_023_0",
+        "Cylinder_000_Material_024_0",
+        "Cylinder_000_Material_026_0"
+      ]
+    },
+    "shotgun_body": {
+      "role": "Stock / receiver / barrel assembly",
+      "source": "shotgun/shotgun.obj",
+      "bounds": [
+        [
+          -0.03331342712044716,
+          -0.2721331715583801,
+          -0.11581170558929443
+        ],
+        [
+          0.033313389867544174,
+          0.7478564977645874,
+          0.07603417336940765
+        ]
+      ],
+      "scale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "sourceObjects": [
+        "Cube_Cube.001"
+      ]
+    }
   },
-  "bores": {
-    "rifle": 0.104,
-    "sniper": 0.0964,
-    "shotgun": 0.068
-  },
-  "scopeOffset": {
-    "rifle": [
-      0,
-      0,
-      0
-    ],
-    "shotgun": [
-      0.0,
-      0.0451,
-      -0.0647
-    ]
-  },
-  "bodies": {
-    "body_rifle": "rifle",
-    "body_sniper": "sniper",
-    "body_shotgun": "shotgun"
-  },
-  "triangles": {
-    "body_rifle": 660,
-    "barrel_std": 48,
-    "sight_irons": 81,
-    "mag_rifle": 140,
-    "barrel_long": 149,
-    "body_sniper": 927,
-    "optic_scope": 155,
-    "body_shotgun": 653
-  },
-  "totalTriangles": 2813,
-  "references": {
-    "rifle": "Low-poly Colt M5 SCW (m5 scw.blend)",
-    "sniper": "Low-Poly L118A1 (usdz, Sketchfab export)",
-    "shotgun": "pump shotgun (shotgun.obj + reference photo)",
-    "note": "supplied by Leon; licences to confirm"
-  },
-  "source": "tools/art/blender/gun_kit.py"
+  "source": "tools/art/blender/ranger_guns.py"
 }

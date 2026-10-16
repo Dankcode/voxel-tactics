@@ -27,8 +27,8 @@ export function combineSurface(current, incoming) {
 export const STATUS_DEFS = Object.freeze({
     burning: { rounds: 2, dotPerRound: 3, removes: [], tags: ['fire'] },
     wet: { rounds: 2, removes: ['burning'], tags: ['water'] },
-    chilled: { rounds: 2, maxStacks: 2, apPerStack: -1, tags: ['cold'] },
-    frozen: { rounds: 1, rooted: true, tags: ['cold'] },
+    chilled: { rounds: 2, maxStacks: 2, tags: ['cold'] },             // cryo on a dry unit: slower (B.chillMobility per stack)
+    frozen: { rounds: 1, rooted: true, apPenalty: -2, tags: ['cold'] },   // cryo on a WET unit: rooted, -2 AP, easier to hit
     stunned: { rounds: 1, apPenalty: -2, tags: ['concussion'] },
     bleeding: { rounds: 3, dotPerRound: 2, tags: ['wound'] },
     suppressed: { rounds: 1, accuracyMult: 0.6, tags: ['fear'] },

@@ -94,3 +94,10 @@ The plan's numbers are not what shipped: members must be within 3 tiles of their
 spread multiplier ×1.3 for attackers (plan: +10 defence) at −0.5 tiles per AP (plan: −1 mobility, no dash); static
 decay is 34 % of the bonus per static turn (plan: −5 defence per phase); Sprint and stun do not break formations
 (a breakdown does remove the panicking member); co-op accept / opt-in flows do not exist (legacy declarations and group moves check every member's ownership).
+
+## PLAN-09: free swaps, narrow spaces, switching, enemy formations
+
+`formation_swap` trades slots (and tiles) with a squadmate or takes an empty spot for free; `formation_switch`
+reshapes a formation without breaking it; a group move that leaves a slot without standing room is refused with
+`formation_blocked`. Single-tile enemy pods use Shield Line (dug in) and Wedge (advancing on an intel lead).
+See [../PLAN-09-intel-ai-hit-chance-monsters.md](../PLAN-09-intel-ai-hit-chance-monsters.md) §6.

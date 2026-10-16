@@ -1,4 +1,5 @@
 import { sensorMarks } from './Markers.js';
+import { executeStrike } from './Strikes.js';
 import { occupiedCells } from './Walker.js';
 // Experimental intel rules. Contacts are observations, never permission to shoot through cover.
 import { ABILITIES, ENEMIES } from '../content/units.js';
@@ -6,16 +7,7 @@ import { AIR } from '../voxel/Materials.js';
 import { alive, hasStatus } from './Units.js';
 
 export const SUPPORT_IDS = ['carpet_bomb', 'orbital_laser'];
-export function footprint(b, id, to) {
-    const cells=[];
-    for(let y=0;y<b.store.depth;y++)for(let x=0;x<b.store.width;x++) {
-        const dx=x-to.x,dy=y-to.y;
-        const inside=id==='orbital_laser' ? Math.abs(dy)<=1 && Math.abs(dx)<=8
-            : [-4,0,4].some(offset=>(dx-offset)**2+dy**2<=9);
-        if(inside)cells.push({x,y,z:to.z});
-    }
-    return cells;
-}
+export { footprint } from './Strikes.js';
 export function validateIntel(b,u,intent) {
     const a=ABILITIES[intent.abilityId],t=intent.to;
     if(!b.intelMode||u.side!=='player')return 'bad_intent';
@@ -48,21 +40,21 @@ export function executeIntel(b,u,intent) {
         if(detectors.length){drone.active=false;b.detected=true;b.alertGroup(detectors.map(e=>e.group),'drone_detected');}
         else observe(b,id,b.unitsOf('enemy').filter(e=>b.distance(drone,e)<=10&&b.sightLine({x:t.x+.5,y:t.y+.5,h:t.z+2.5},b.chest(e))));
         b.emit({t:'drone',...drone,detected:!drone.active});
-    } else {
-        const cells=id==='quiet_cut'?[t]:footprint(b,id,t);
+    } else if(id==='quiet_cut') {
         const changes=b.store.record(()=>{
-            for(const c of cells)for(let z=id==='quiet_cut'?t.z+1:1;z<(id==='quiet_cut'?t.z+3:b.store.height);z++) {
-                const m=b.store.material(c.x,c.y,z);
-                if(m.id!==AIR&&Number.isFinite(m.hp)&&!m.liquid){b.store.set(c.x,c.y,z,AIR);b.stats.voxelsDestroyed++;}
+            for(let z=t.z+1;z<t.z+3;z++) {
+                const m=b.store.material(t.x,t.y,z);
+                if(m.id!==AIR&&Number.isFinite(m.hp)&&!m.liquid){b.store.set(t.x,t.y,z,AIR);b.stats.voxelsDestroyed++;}
             }
             b.settle();
         });
         b.emit({t:'voxels',changes});
-        if(id!=='quiet_cut') {
-            b.supportReady[u.owner]=(b.personalTurns[u.owner]||0)+10;
-            for(const e of b.units.filter(alive))if(occupiedCells(e).some(p=>cells.some(c=>c.x===p.x&&c.y===p.y)))b.dealDamage(e,'torso',40,{pierce:99,source:id,applyStatuses:false});
-            b.noise(t.x,t.y,t.z,30,u);
-        }
+        b.checkFalls();
+    } else {
+        // Airstrike / Orbital Laser: shared/battle/Strikes.js (highlight = footprint; crater depth rules there).
+        executeStrike(b,u,id,t);
+        b.supportReady[u.owner]=(b.personalTurns[u.owner]||0)+10;
+        b.noise(t.x,t.y,t.z,30,u);
         b.checkFalls();
     }
 }

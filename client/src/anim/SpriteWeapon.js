@@ -1,88 +1,210 @@
-// The only 3D model in a character cut-in is the gun. Body/arms/gloves stay painted RGBA cutouts.
+// Flat painted character cards + a 3D gun. There is no character volume or character model.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { constrainGunPose } from './SpriteArmRig.js';
 
-export function spriteGunParts(weaponId, mods = {}) {
-    if (weaponId === 'handcannon') return { family: 'pistol', body: 'body_pistol', parts: ['body_pistol'], muzzle: 'muzzle_pistol', support: [0, 0.02, 0] };
-    if (weaponId === 'blunderbuss' || weaponId === 'firelance') return { family: 'rifle', body: 'body_shotgun', parts: ['body_shotgun', ...(mods.scope ? ['optic_scope'] : [])], muzzle: 'muzzle_shotgun', support: [0, 0.33, 0.072] };
-    if (weaponId === 'longrifle') return { family: 'rifle', body: 'body_sniper', parts: ['body_sniper', 'optic_scope'], muzzle: 'muzzle_sniper', support: [0, 0.27, 0.07] };
-    if (!['repeater', 'musket', 'crossbow', 'shortbow'].includes(weaponId)) return null;
-    const long = mods.barrel || weaponId === 'shortbow';
-    return { family: 'rifle', body: 'body_rifle', parts: ['body_rifle', weaponId === 'musket' ? 'mag_ak' : 'mag_rifle', long ? 'barrel_long' : 'barrel_std', mods.scope || weaponId === 'shortbow' ? 'optic_scope' : 'sight_irons', ...(weaponId === 'crossbow' ? ['suppressor'] : [])], muzzle: long ? 'muzzle_long' : 'muzzle_std', support: [0, 0.27, 0.09] };
+export function spriteGunParts(weaponId) {
+    if (weaponId === 'blunderbuss') return { family: 'shotgun' };
+    if (weaponId === 'longrifle') return { family: 'sniper' };
+    if (['repeater','crossbow','shortbow','musket'].includes(weaponId)) return { family: 'rifle' };
+    return null;
 }
 export const gunPoint = p => new THREE.Vector3(p[0], p[2], -p[1]);
 
-/** Orthographic camera fitted to two painted palm anchors; leaves the character entirely 2D. */
-export function fitSpriteGunCamera(camera, spec, support, aspect) {
-    camera.position.fromArray(spec.cameraPosition || [0.8, 0.6, 5]);
-    camera.lookAt(0, 0, 0); camera.updateMatrixWorld(true);
-    const v = gunPoint(support).applyMatrix4(camera.matrixWorldInverse);
-    const dx = (spec.support[0] - spec.grip[0]) * aspect, dy = spec.grip[1] - spec.support[1];
-    const height = Math.hypot(v.x, v.y) / Math.max(0.005, Math.hypot(dx, dy));
-    camera.rotateZ(Math.atan2(v.y, v.x) - Math.atan2(dy, dx));
-    camera.left = -spec.grip[0] * height * aspect; camera.right = (1 - spec.grip[0]) * height * aspect;
-    camera.top = spec.grip[1] * height; camera.bottom = (spec.grip[1] - 1) * height;
-    camera.near = .01; camera.far = 50; camera.updateProjectionMatrix(); camera.updateMatrixWorld(true);
+/** Seat the stock at the painted armpit and fit the actual foregrip to the support palm. */
+export function fitSpriteGunCamera(camera, spec, stock, support, aspect) {
+    camera.position.fromArray(spec.cameraPosition || [.32, .14, 5]);
+    camera.up.set(0, 1, 0); camera.lookAt(0, 0, 0); camera.updateMatrixWorld(true);
+    const s = stock.clone().applyMatrix4(camera.matrixWorldInverse);
+    const g = support.clone().applyMatrix4(camera.matrixWorldInverse);
+    const dx = (spec.support[0] - spec.stock[0]) * aspect, dy = spec.stock[1] - spec.support[1];
+    const height = Math.hypot(g.x - s.x, g.y - s.y) / Math.max(.005, Math.hypot(dx, dy));
+    camera.rotateZ(Math.atan2(g.y - s.y, g.x - s.x) - Math.atan2(dy, dx));
+    camera.updateMatrixWorld(true);
+    s.copy(stock).applyMatrix4(camera.matrixWorldInverse);
+    camera.left = s.x - spec.stock[0] * height * aspect; camera.right = camera.left + height * aspect;
+    camera.top = s.y + spec.stock[1] * height; camera.bottom = camera.top - height;
+    camera.near = .01; camera.far = 50; camera.updateProjectionMatrix();
     return camera;
+}
+
+/** One camera scale per pose, shared by all guns. A 1.18m rifle stays longer than a .705m carbine. */
+export function fitGunPose(camera, rig, stock, aspect) {
+    const view = rig.gunView;
+    const axis = stock.clone().add(new THREE.Vector3(0, 0, -view.referenceLengthMetres));
+    return fitSpriteGunCamera(camera, { stock: rig.stock, support: view.referenceMuzzle, cameraPosition: view.cameraPosition }, stock, axis, aspect);
+}
+
+/** A stock-fixed transform shared by the live renderer and the rig audit. Recoil kicks about the shoulder. */
+export function gunPivotMatrix(stock, {yaw=0,pitch=0,recoil=0}={}) {
+    const q=new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch-recoil*1.8,yaw+recoil*.4,0,'YXZ'));
+    const p=stock.clone().sub(stock.clone().applyQuaternion(q));
+    return new THREE.Matrix4().compose(p,q,new THREE.Vector3(1,1,1));
 }
 
 let kit;
 function loadKit() {
     return kit ||= Promise.all([
         new GLTFLoader().loadAsync('/assets/weapons/ranger-preview/gun-kit.glb'),
-        fetch('/assets/weapons/ranger-preview/gun-kit.json').then(r => { if (!r.ok) throw Error('Gun anchor data unavailable'); return r.json(); })
+        fetch('/assets/weapons/ranger-preview/gun-kit.json').then(r => { if (!r.ok) throw Error('Gun anchors unavailable'); return r.json(); })
     ]).catch(error => { kit = null; throw error; });
+}
+const textureLoader = new THREE.TextureLoader(), textures = new Map();
+function loadTexture(url, colour = false) {
+    if (!textures.has(url)) textures.set(url, textureLoader.loadAsync(url).then(t => {
+        if (colour) t.colorSpace = THREE.SRGBColorSpace;
+        t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter; return t;
+    }));
+    return textures.get(url);
+}
+function paintedMaterial(map, normal, mask) {
+    return new THREE.ShaderMaterial({ transparent: true, depthTest: false, depthWrite: false,
+        uniforms: { map: { value: map }, normalMap: { value: normal }, response: { value: mask },
+            sun: { value: new THREE.Vector3(.3, .8, .6) }, sunColour: { value: new THREE.Color() },
+            sky: { value: new THREE.Color() }, ground: { value: new THREE.Color() },
+            fill: { value: new THREE.Color() }, fillDir: { value: new THREE.Vector3() },
+            localLight: { value: new THREE.Color(0) }, localDir: { value: new THREE.Vector3(0, 0, 1) },
+            boneRotation: { value: new THREE.Vector2(1, 0) } },
+        vertexShader: `varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+        fragmentShader: `uniform sampler2D map,normalMap,response; uniform vec3 sun,sunColour,sky,ground,fill,fillDir,localLight,localDir;
+            uniform vec2 boneRotation; varying vec2 vUv;
+            void main(){ vec4 albedo=texture2D(map,vUv); if(albedo.a<.005)discard;
+                vec3 n=normalize(texture2D(normalMap,vUv).xyz*2.-1.);
+                n.xy=mat2(boneRotation.x,boneRotation.y,-boneRotation.y,boneRotation.x)*n.xy;
+                vec3 m=texture2D(response,vUv).rgb;
+                vec3 ambient=mix(ground,sky,clamp(n.y*.5+.5,0.,1.));
+                vec3 direct=sunColour*max(0.,dot(n,sun))+fill*max(0.,dot(n,fillDir))+localLight*max(0.,dot(n,localDir));
+                gl_FragColor=vec4(albedo.rgb*(ambient*m.b+direct*m.r)+albedo.rgb*m.g,albedo.a);
+                #include <tonemapping_fragment>
+                #include <colorspace_fragment>
+            }` });
 }
 
 export class SpriteWeapon {
-    constructor(slot, art, unit, weaponId = unit.weapon) {
-        this.slot = slot; this.art = art; this.unit = unit;
-        this.config = spriteGunParts(weaponId, unit.attachments?.[weaponId]);
-        this.ready = false; this.disposed = false; this.last = { yaw: 0, pitch: 0 };
-        if (this.config) this.load().catch(error => console.warn('3D weapon: using sprite fallback', error.message));
+    constructor(slot, art, unit, weaponId = unit.weapon, world = null, base = '/assets/characters/ranger-01/') {
+        this.slot = slot; this.art = art; this.unit = unit; this.world = world; this.base = base;
+        this.config = spriteGunParts(weaponId);
+        this.gunVisible = !!this.config; this.config ||= { family: 'rifle', parts: [] };
+        this.ready = false; this.disposed = false; this.last = {}; this.cards = []; this.resources = [];
+        this.loaded = this.load().catch(error => {
+            this.error = error; this.ready = false; this.slot.classList.remove('sprite-composite-ready');
+            this.renderer?.domElement.remove(); this.renderer?.dispose();
+            console.warn('Sprite composition unavailable', error);
+        });
     }
     async load() {
         const [gltf, anchors] = await loadKit();
+        const layers = await Promise.all(this.art.layers.filter(l => l.image).sort((a,b) => { const order=l=>l.id==='body'?0:l.id.endsWith('upper')?1:l.id.endsWith('forearm')?2:3; return order(a)-order(b); }).map(async l => ({ ...l,
+            maps: await Promise.all([loadTexture(this.base + l.image, true), loadTexture(this.base + l.normal), loadTexture(this.base + l.lightingMask)]) })));
+        const jointMaps = await Promise.all([loadTexture(this.base+'joint.png',true),loadTexture(this.base+'joint-normal.png'),loadTexture(this.base+'joint-lighting.png')]);
         if (this.disposed) return;
         this.anchors = anchors;
-        this.scene = new THREE.Scene();
-        this.model = gltf.scene.clone(true); this.scene.add(this.model);
+        this.assembly = anchors.assemblies[this.config.family];
+        this.config.parts = this.gunVisible ? this.assembly.parts : [];
+        this.support = gunPoint(this.assembly.support);
+        this.scene = new THREE.Scene(); this.backScene = new THREE.Scene(); this.frontScene = new THREE.Scene();
+        this.model = gltf.scene.clone(true); this.model.visible = this.gunVisible; this.scene.add(this.model);
         this.pivot = this.model.getObjectByName('Gun') || this.model;
-        const known = new Set(['body_rifle', 'body_shotgun', 'body_sniper', 'body_pistol', 'mag_rifle', 'mag_ak', 'barrel_std', 'barrel_long', 'suppressor', 'sight_irons', 'optic_scope']);
+        const known = new Set(Object.values(anchors.assemblies).flatMap(a => a.parts));
         this.model.traverse(ob => { if (known.has(ob.name)) ob.visible = this.config.parts.includes(ob.name); });
-        if (this.config.parts.includes('suppressor')) {
-            const suppressor = this.model.getObjectByName('suppressor');
-            const std = gunPoint(anchors.muzzles.muzzle_std), end = gunPoint(anchors.muzzles[this.config.muzzle]);
-            if (suppressor) suppressor.position.add(end.sub(std));
-        }
-        this.scene.add(new THREE.HemisphereLight(0xdfeaff, 0x394033, 2));
-        const light = new THREE.DirectionalLight(0xfff2d9, 3); light.position.set(2, 4, 5); this.scene.add(light);
+        this.stock = gunPoint(this.assembly.stock);
         this.camera = new THREE.OrthographicCamera();
-        // The original arm drawing is calibrated for a rifle. IK handles each actual foregrip.
-        fitSpriteGunCamera(this.camera, this.art.rig, [0, .29, .07], this.art.width / this.art.height);
+        fitGunPose(this.camera, this.art.rig, this.stock, this.art.width / this.art.height);
+        this.flatCamera = new THREE.OrthographicCamera(0, this.art.width, 0, -this.art.height, .01, 20);
+        this.flatCamera.position.z = 10;
+        for (const layer of layers) {
+            const geometry = new THREE.PlaneGeometry(this.art.width, this.art.height);
+            geometry.translate(this.art.width / 2, -this.art.height / 2, 0);
+            const material = paintedMaterial(...layer.maps), mesh = new THREE.Mesh(geometry, material);
+            mesh.matrixAutoUpdate = false; mesh.renderOrder = layer.id === 'body' ? 5 : layer.id === 'support-hand' ? 0 : layer.id.endsWith('upper') ? 1 : layer.id.endsWith('forearm') ? 2 : 3;
+            (layer.stage === 'back' ? this.backScene : this.frontScene).add(mesh);
+            this.cards.push({ mesh, layer }); this.resources.push(geometry, material);
+        }
+        for (const [side] of Object.entries(this.art.rig.arms)) for (const [joint, radius] of Object.entries(this.art.rig.jointRadii || {})) {
+            const geometry = new THREE.PlaneGeometry(radius*this.art.height*2,radius*this.art.height*2);
+            const material = paintedMaterial(...jointMaps), mesh = new THREE.Mesh(geometry,material);
+            mesh.matrixAutoUpdate = false; mesh.renderOrder = -1;
+            (side === 'support' ? this.backScene : this.frontScene).add(mesh);
+            this.cards.push({mesh,layer:{joint,side}});this.resources.push(geometry,material);
+        }
+        this.hemi = new THREE.HemisphereLight(); this.sun = new THREE.DirectionalLight(); this.fill = new THREE.DirectionalLight();
+        this.scene.add(this.hemi, this.sun, this.sun.target, this.fill, this.fill.target);
         this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'low-power' });
-        this.renderer.setClearColor(0, 0); this.renderer.setPixelRatio(1);
-        this.renderer.setSize(Math.min(1024, this.art.width), Math.min(1024, this.art.width) * this.art.height / this.art.width, false);
-        this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+        this.renderer.setClearColor(0, 0); this.renderer.setPixelRatio(1); this.renderer.autoClear = false;
+        this.renderer.setSize(this.art.width, this.art.height, false);
+        this.renderer.outputColorSpace = THREE.SRGBColorSpace; this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.domElement.className = 'sprite-weapon-canvas';
         this.slot.appendChild(this.renderer.domElement);
-        this.ready = true; this.slot.classList.add('weapon-ready'); this.update(this.last);
+        this.ready = true; this.slot.classList.add('sprite-composite-ready'); this.update(this.last);
     }
     project(point) {
-        const p = gunPoint(point).applyMatrix4(this.pivot.matrixWorld).project(this.camera);
+        const p = point.clone().applyMatrix4(this.pivot.matrixWorld).project(this.camera);
         return [(p.x + 1) / 2, (1 - p.y) / 2];
+    }
+    updateLights() {
+        const w = this.world;
+        const direction = light => light.position.clone().sub(light.target.position).normalize();
+        const view = v => w?.camera ? v.applyQuaternion(w.camera.quaternion.clone().invert()) : v;
+        const sunDir = view(w?.sun ? direction(w.sun) : new THREE.Vector3(-.4, 1, .6).normalize());
+        const fillDir = view(w?.back ? direction(w.back) : new THREE.Vector3(.5, .3, 1).normalize());
+        // Match the world's actual light colours/intensities. Reflection is corrected when the art is mirrored.
+        const mirror = this.art.mirror ? -1 : 1; sunDir.x *= mirror; fillDir.x *= mirror;
+        const sky = (w?.hemi?.color || new THREE.Color(0xc9dcf2)).clone().multiplyScalar((w?.hemi?.intensity ?? .45) * 1.4);
+        const ground = (w?.hemi?.groundColor || new THREE.Color(0x5a4c3a)).clone().multiplyScalar((w?.hemi?.intensity ?? .45) * 1.4);
+        const sunColour = (w?.sun?.color || new THREE.Color(0xfff0d8)).clone().multiplyScalar((w?.sun?.intensity ?? 2.6) * .6);
+        const fill = (w?.back?.color || new THREE.Color(0x9fb8ff)).clone().multiplyScalar((w?.back?.intensity ?? .55) * .6);
+        const local = new THREE.Color(0), localDir = new THREE.Vector3(0, 0, 1);
+        if (w?.scene && this.unit.x != null) w.scene.traverse(l => {
+            if (!l.isPointLight || !l.visible || !l.intensity) return;
+            const d = l.getWorldPosition(new THREE.Vector3()).sub(new THREE.Vector3(this.unit.x + .5, (this.unit.z || 0) + 2, this.unit.y + .5));
+            const distance = d.length();
+            if (distance > (l.distance || 12)) return;
+            const strength = Math.min(2, l.intensity / Math.max(1, distance * distance));
+            local.add(l.color.clone().multiplyScalar(strength)); localDir.copy(view(d.normalize())); localDir.x *= mirror;
+        });
+        for (const { mesh } of this.cards) {
+            const u = mesh.material.uniforms;
+            u.sun.value.copy(sunDir); u.sunColour.value.copy(sunColour); u.sky.value.copy(sky); u.ground.value.copy(ground);
+            u.fill.value.copy(fill); u.fillDir.value.copy(fillDir); u.localLight.value.copy(local); u.localDir.value.copy(localDir);
+        }
+        this.hemi.color.copy(sky); this.hemi.groundColor.copy(ground); this.hemi.intensity = 1;
+        this.sun.color.copy(sunColour); this.sun.intensity = 2; this.sun.position.copy(sunDir).applyQuaternion(this.camera.quaternion).multiplyScalar(5);
+        this.fill.color.copy(fill); this.fill.intensity = 2; this.fill.position.copy(fillDir).applyQuaternion(this.camera.quaternion).multiplyScalar(5);
+        this.renderer.toneMappingExposure = w?.renderer?.toneMappingExposure ?? 1;
     }
     update({ yaw = 0, pitch = 0, recoil = 0 } = {}) {
         this.last = { yaw, pitch, recoil };
         if (!this.ready || this.disposed) return null;
-        this.pivot.rotation.set(pitch, yaw, 0, 'YXZ'); this.pivot.position.z = recoil;
-        this.model.updateMatrixWorld(true);
-        this.renderer.render(this.scene, this.camera);
-        return { grip: this.project([0, 0, 0]), support: this.project(this.config.support), muzzle: this.project(this.anchors.muzzles[this.config.muzzle]) };
+        const sample = ({yaw: y, pitch: p, recoil: r}) => {
+            this.pivot.matrixAutoUpdate=false;this.pivot.matrix.copy(gunPivotMatrix(this.stock,{yaw:y,pitch:p,recoil:r}));
+            this.model.updateMatrixWorld(true);
+            return this.gunVisible ? {stock:this.project(this.stock),grip:this.project(new THREE.Vector3()),support:this.project(this.support),muzzle:this.project(gunPoint(this.assembly.muzzle))}
+                : {stock:this.art.rig.stock,grip:this.art.rig.grip,support:this.art.rig.support,muzzle:this.art.muzzle};
+        };
+        const solved=constrainGunPose(sample,{yaw,pitch,recoil},this.art.rig,this.art.width,this.art.height);
+        const targets=solved.targets,transforms=solved.arms.transforms;
+        this.rigPose=solved;
+        for (const { mesh, layer } of this.cards) {
+            if (layer.joint) {
+                const arm=this.art.rig.arms[layer.side], p=arm[layer.joint], bone=layer.joint==='wrist'?'forearm':'upper';
+                const [a,b,c,d,x,y]=transforms[layer.side+'-'+bone];
+                const px=p[0]*this.art.width,py=p[1]*this.art.height;
+                mesh.matrix.makeTranslation(a*px+c*py+x,-(b*px+d*py+y),0); continue;
+            }
+            const m = transforms[layer.bone] || [1, 0, 0, 1, 0, 0], [a, b, c, d, x, y] = m;
+            mesh.matrix.set(a, -c, 0, x, -b, d, 0, -y, 0, 0, 1, 0, 0, 0, 0, 1);
+            const n = Math.max(.00001, Math.hypot(a, b)); mesh.material.uniforms.boneRotation.value.set(a / n, -b / n);
+        }
+        this.updateLights();
+        this.renderer.clear(); this.renderer.render(this.backScene, this.flatCamera);
+        this.renderer.clearDepth(); this.renderer.render(this.scene, this.camera);
+        this.renderer.clearDepth(); this.renderer.render(this.frontScene, this.flatCamera);
+        this.targets = targets; return targets;
     }
     dispose() {
         this.disposed = true;
         if (this.renderer) { this.renderer.domElement.remove(); this.renderer.dispose(); this.renderer.forceContextLoss(); }
-        // Geometry/materials belong to the cached kit and are reused by the next pose.
+        this.resources.forEach(r => r.dispose()); this.slot.classList.remove('sprite-composite-ready');
+        // Textures and kit geometry belong to their shared immutable caches.
     }
 }

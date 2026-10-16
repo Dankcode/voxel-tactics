@@ -4,7 +4,8 @@ import { WEAPONS } from '../content/weapons.js';
 import { coverAt } from '../voxel/Cover.js';
 import { FORMATIONS, FORMATION_RULES as R } from '../content/formations.js';
 import { nodeKey, pathTo } from '../world/PathSearch.js';
-import { alive } from './Units.js';
+import { alive, hasStatus } from './Units.js';
+import { WALKERS } from './Walker.js';
 
 const CARDINAL = { n: [0, -1], e: [1, 0], s: [0, 1], w: [-1, 0] };
 const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
@@ -117,6 +118,87 @@ export class Formations {
             const candidates=[...search.nodes.values()].filter(p=>!b.occupant(p.x,p.y,p.z)&&b.distance(p,u)<=2).sort((a,c)=>score(c)-score(a));
             if(candidates[0]&&score(candidates[0])>score(u))b.doMove(u,candidates[0]);
         }}
+    }
+
+    // ---- free slot swaps and template switches (no AP)
+    /** Slot index of every member ({ unitId: slot }); declared formations without assignments use member order. */
+    assignmentsOf(f) { return { ...(f.assignments || Object.fromEntries(f.members.map((id, i) => [id, i]))) }; }
+    /** Template slot tiles around the formation's current anchor (slot 0), indexed by slot. */
+    slotTiles(f) { return this.plannedSlots(f); }
+    /** Can `intent.unitId` take slot `intent.slot` of its formation (swapping with whoever holds it)? */
+    validateSwap(intent) {
+        const b = this.battle, u = b.unit(intent.unitId), f = this.of(u), tpl = f && FORMATIONS[f.template];
+        if (!f || !tpl?.slots || WALKERS[u.type]) return 'formation_invalid';
+        const k = intent.slot;
+        if (!Number.isInteger(k) || k < 0 || k >= Math.min(tpl.slots.length, tpl.max)) return 'formation_invalid';
+        const asg = this.assignmentsOf(f), j = asg[u.id];
+        if (j === k || hasStatus(u, 'frozen')) return 'formation_invalid';
+        const otherId = Object.keys(asg).find(id => asg[id] === k), other = otherId ? b.unit(otherId) : null;
+        if (other && alive(other)) {
+            if (intent.by && intent.by !== '*' && other.owner !== intent.by) return 'not_your_unit';
+            return hasStatus(other, 'frozen') ? 'formation_invalid' : null;
+        }
+        if (j === 0) return 'formation_invalid';            // the anchor only trades places with a member
+        const p = this.slotTiles(f)[k];
+        if (!p || !b.store.surfaces(p.x, p.y).some(s => s.z === p.z && s.headroom >= 2) || b.occupant(p.x, p.y, p.z)) return 'occupied';
+        if (cheb(u, p) > 4 || Math.abs(u.z - p.z) > 1) return 'out_of_range';
+        return null;
+    }
+    swap(intent) {
+        const b = this.battle, u = b.unit(intent.unitId), f = this.of(u), k = intent.slot;
+        const asg = this.assignmentsOf(f), j = asg[u.id];
+        const otherId = Object.keys(asg).find(id => asg[id] === k), other = otherId ? b.unit(otherId) : null;
+        const from = { x: u.x, y: u.y, z: u.z };
+        const to = other && alive(other) ? { x: other.x, y: other.y, z: other.z } : this.slotTiles(f)[k];
+        const moved = [[u, from, to]];
+        if (other && alive(other)) { moved.push([other, to, from]); asg[other.id] = j; }
+        asg[u.id] = k;
+        for (const [m, , p] of moved) { m.x = p.x; m.y = p.y; m.z = p.z; }
+        f.assignments = asg;
+        const anchor = Object.keys(asg).find(id => asg[id] === 0);
+        if (anchor && anchor !== f.leaderId) { f.leaderId = anchor; f.members = [anchor, ...f.members.filter(id => id !== anchor)]; }
+        for (const [m, a, p] of moved) b.emit({ t: 'move', unitId: m.id, path: [a, p], kinds: ['walk'], windowVaults: [false], ap: 0, swap: true });
+        b.emit({ t: 'formation', action: 'swap', formationId: f.id, unitIds: moved.map(([m]) => m.id), slot: k });
+        this.recruit(f);
+        if (!f.assembling) this.recompute(f);
+    }
+    /** Switch an existing formation to another template without breaking it (same members, same anchor). */
+    validateSwitch(intent) {
+        const b = this.battle, u = b.unit(intent.unitId), f = this.of(u), tpl = FORMATIONS[intent.template];
+        if (!f || !tpl?.slots || f.template === 'crossfire' || f.template === tpl.id || !['n', 'e', 's', 'w'].includes(intent.facing || f.facing)) return 'formation_invalid';
+        if (intent.by && intent.by !== '*' && this.members(f).some(m => m.owner !== intent.by)) return 'not_your_unit';
+        if (tpl.requiresDoor && !b.breachPoints(b.unit(f.leaderId)).length) return 'formation_invalid';
+        return null;
+    }
+    switchTemplate(intent) {
+        const b = this.battle, f = this.of(b.unit(intent.unitId)), tpl = FORMATIONS[intent.template];
+        const keep = f.members.slice(0, tpl.max);
+        for (const id of f.members.slice(tpl.max)) { const m = b.unit(id); if (m) m.formationId = null; }
+        Object.assign(f, { template: tpl.id, facing: intent.facing || f.facing, members: keep, assignments: Object.fromEntries(keep.map((id, i) => [id, i])), staticPhases: 0 });
+        f.open = true;
+        f.assembling = keep.length < tpl.min;
+        const st = b.stats.formations[tpl.id] ||= { declared: 0, phasesActive: 0, dissolved: 0, breaches: 0 };
+        st.declared++;
+        b.emit({ t: 'formation', action: 'switch', formation: { ...f } });
+        this.recruit(f);
+        if (!f.assembling) this.recompute(f);
+    }
+    /**
+     * Would a group move of `f` with its anchor on `to` leave a slot with nowhere to stand (a corridor too narrow for
+     * a wide formation)? Then the move is refused: break the formation or switch to a narrower one.
+     */
+    blockedAt(f, to) {
+        const tpl = FORMATIONS[f?.template];
+        if (!tpl?.slots || f.assembling) return false;
+        const st = this.battle.store, asg = this.assignmentsOf(f);
+        const slots = this.slotsFor({ ...f, assignments: asg }, { x: to.x, y: to.y, z: to.z });
+        return f.members.some((id, i) => {
+            if (id === f.leaderId) return false;
+            const m = this.battle.unit(id);
+            if (!m || !alive(m)) return false;
+            const p = slots[i];
+            return !st.inBounds(p.x, p.y, p.z) || !st.surfaces(p.x, p.y).some(s => Math.abs(s.z - to.z) <= 1 && s.headroom >= 2);
+        });
     }
 
     dissolve(id, why) {

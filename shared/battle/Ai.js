@@ -11,6 +11,8 @@ import { AGENT_PROFILES } from '../world/TraversalRules.js';
 import { MAT } from '../voxel/Materials.js';
 import { inZone, extractionOpen, objectiveGoal } from './Objectives.js';
 import { reserveAmmo } from '../inventory/Equipment.js';
+import { decideEnemy, enemyThreats } from './EnemyAi.js';
+import { DEFAULT_TUNING } from '../session/Playstyle.js';
 
 export const DEFAULT_POLICY = Object.freeze({ formations: false, breach: true, grenadeMinTargets: 2, shootThreshold: 0.9, samples: 24 });
 
@@ -18,9 +20,9 @@ export const DEFAULT_POLICY = Object.freeze({ formations: false, breach: true, g
 export function runAiSide(battle, side, policy = DEFAULT_POLICY, { maxActions = 80 } = {}) {
     const start = battle.log.length;
     policy = { ...DEFAULT_POLICY, ...policy };
-    if (policy.formations) for (const intent of formationIntents(battle, side)) battle.apply(intent);
+    if (policy.formations || side === 'enemy') for (const intent of formationIntents(battle, side)) battle.apply(intent);
     let actions = 0;
-    for (const u of battle.unitsOf(side)) {
+    for (const u of aiOrder(battle, side)) {
         let guard = 0;
         while (alive(u) && !battle.outcome && guard++ < 6 && actions < maxActions) {
             const intent = decide(battle, u, policy);
@@ -35,6 +37,12 @@ export function runAiSide(battle, side, policy = DEFAULT_POLICY, { maxActions = 
     return battle.log.slice(start);
 }
 
+/** Turn order for AI units: formation leaders first, so members follow the group move before acting themselves. */
+export function aiOrder(battle, side) {
+    const lead = u => { const f = battle.formations.of(u); return f && f.leaderId === u.id ? 0 : f ? 2 : 1; };
+    return battle.unitsOf(side).map((u, i) => ({ u, i, k: lead(u) })).sort((a, b) => a.k - b.k || a.i - b.i).map(x => x.u);
+}
+
 function knownEnemies(battle, u) {
     const seen = battle.visibleTo(u.side);
     const known = battle.enemiesOf(u).filter(e => seen.has(e.id));
@@ -45,6 +53,8 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
     policy = { ...DEFAULT_POLICY, ...policy };
     if (u.side === 'enemy' && !u.alerted) return null;
     if (u.ap <= 0 && u.moveOnlyAp <= 0) return null;
+    // PLAN-09: the enemy side plays by its own intel, hit chances, roles, gadgets and the player's cached playstyle.
+    if (u.side === 'enemy' && !policy.classicEnemies) return decideEnemy(battle, u, policy);
     const known = knownEnemies(battle, u);
     if(WALKERS[u.type] && !known.length){const target=nearest(u,battle.enemiesOf(u));if(!target)return null;const step=approach(battle,u,target,0);return step?{type:'move',unitId:u.id,to:step}:null;}
     const guns = u.weapons.map(id => WEAPONS[id]).filter(w => w.kind === 'ballistic');
@@ -130,6 +140,7 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
         if (door && u.ap >= 1 && Math.max(Math.abs(door.door.x - u.x), Math.abs(door.door.y - u.y)) <= 1 && Math.abs(door.door.z - u.z) <= 1)
             return { type: 'door', unitId: u.id, door: { x: door.door.x, y: door.door.y, z: door.door.z } };
         const step = advance(battle, u, door ? door.approach : target);
+        if (step && group && battle.formations.blockedAt(formation, step)) return { type: 'formation_break', unitId: u.id, formationId: formation.id };
         return step ? { type: 'move', unitId: u.id, to: step, group } : null;
     }
 
@@ -137,6 +148,7 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
     if (u.ap + u.moveOnlyAp > (ammoOk ? shotAp : 0) && !u.movedThisTurn) {
         const budgetAp = Math.max(1, u.ap + u.moveOnlyAp - (ammoOk ? shotAp : 0));
         const tile = bestTile(battle, u, ranged, known.length ? known : battle.enemiesOf(u), budgetAp, goal);
+        if (tile && group && battle.formations.blockedAt(formation, tile)) return { type: 'formation_break', unitId: u.id, formationId: formation.id };
         if (tile && (tile.x !== u.x || tile.y !== u.y || tile.z !== u.z)) return { type: 'move', unitId: u.id, to: tile, group };
     }
     if (shot) return shot.intent;
@@ -292,9 +304,14 @@ export function formationIntents(battle, side) {
     const known = [...battle.visibleTo(side)].map(id => battle.unit(id)).filter(Boolean);
     for (const f of battle.formations.snapshot().filter(f => f.side === side)) {
         if (!known.length && f.template === 'shield_line') intents.push({ type: 'formation_break', unitId: f.leaderId, formationId: f.id });
+        // Enemy pods advance in a wedge and spread into cover on contact.
+        else if (side === 'enemy' && known.length && f.template === 'wedge') intents.push({ type: 'formation_break', unitId: f.leaderId, formationId: f.id });
     }
-    if (!known.length) return intents;
-    const units = battle.unitsOf(side).filter(u => !u.formationId && u.ap >= 2);
+    // PLAN-09: single-tile enemies use formations too (walker monsters never do). A squad that punishes clusters with
+    // grenades and elements (cached playstyle) makes them stay loose.
+    if (side === 'enemy' && (battle.aiTuning || DEFAULT_TUNING).spread >= 1.5) return intents;
+    if (!known.length) return side === 'enemy' ? [...intents, ...enemyWedges(battle)] : intents;
+    const units = battle.unitsOf(side).filter(u => !u.formationId && u.ap >= 2 && !WALKERS[u.type] && (side !== 'enemy' || u.alerted));
     const cx = known.reduce((s, e) => s + e.x, 0) / known.length, cy = known.reduce((s, e) => s + e.y, 0) / known.length, cz = known.reduce((s,e)=>s+e.z,0)/known.length;
     for (const leader of units) {
         if (coverAgainst(battle.store, leader.x, leader.y, leader.z, Math.round(cx), Math.round(cy), cz) === COVER.NONE) continue;
@@ -309,4 +326,25 @@ export function formationIntents(battle, side) {
         if (!battle.validate(intent)) return [...intents, intent];
     }
     return intents;
+}
+
+/** Alerted enemy pods with a lead on the squad (intel, nobody in sight) advance in a wedge toward it. */
+function enemyWedges(battle) {
+    const out = [], used = new Set();
+    const units = battle.unitsOf('enemy').filter(u => !u.formationId && u.ap >= 2 && u.alerted && !WALKERS[u.type]);
+    for (const leader of units) {
+        if (used.has(leader.id)) continue;
+        const lead = nearest(leader, enemyThreats(battle, leader));
+        if (!lead) continue;
+        const mates = units.filter(o => o !== leader && !used.has(o.id) && (o.group ?? 0) === (leader.group ?? 0) && Math.max(Math.abs(o.x - leader.x), Math.abs(o.y - leader.y)) <= 3).slice(0, 3);
+        if (!mates.length) continue;
+        const dx = lead.x - leader.x, dy = lead.y - leader.y;
+        const facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : (dy > 0 ? 's' : 'n');
+        const intent = { type: 'formation', template: 'wedge', unitId: leader.id, leaderId: leader.id, memberIds: [leader.id, ...mates.map(m => m.id)], facing };
+        if (battle.validate(intent)) continue;
+        out.push(intent);
+        for (const id of intent.memberIds) used.add(id);
+        break;                                                 // one new formation per phase (the side's cap re-checks next phase)
+    }
+    return out;
 }

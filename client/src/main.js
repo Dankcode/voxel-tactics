@@ -58,7 +58,7 @@ async function showMenu(opts = {}) {
         <label class="check"><input id="m-debug" type="checkbox" ${(opts.desc?.debug??!!params.get('debug')) ? 'checked' : ''}> Debug mode (F1 in battle: spawn, teleport, destroy, elements, overlays, AI stepping, operation generator)</label>
         <label class="check"><input id="m-arsenal" type="checkbox" ${opts.desc?.test?'checked':''}> Full arsenal for testing · all weapons and grenades, ammo and spare containers on the selected map</label>
         <label class="check"><input id="m-intel" type="checkbox" ${(opts.desc?.intel??!!params.get('intel')) ? 'checked' : ''}> Intel co-op rules (experimental) · sensing roles, drones, quiet cuts, precision shots, independent turns</label>
-        <label id="m-support-row" ${params.get('intel') ? '' : 'hidden'}>Match support <select id="m-support"><option value="carpet_bomb">Carpet Bomb · circular craters</option><option value="orbital_laser">Orbital Laser · line cut</option></select></label>
+        <label id="m-support-row" ${params.get('intel') ? '' : 'hidden'}>Match support <select id="m-support"><option value="carpet_bomb">Airstrike · wide bombing corridor</option><option value="orbital_laser">Orbital Laser · long line cut</option></select></label>
         <section id="m-inventory"></section>
         <div class="row buttons">
           <button id="m-local" class="primary">Play vs AI</button>

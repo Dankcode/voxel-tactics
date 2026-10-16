@@ -9,6 +9,7 @@ import colyseus from 'colyseus';
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import { StagingRoom } from './StagingRoom.js';
 import { MissionRoom } from './MissionRoom.js';
+import { aiCacheRoutes } from './AiCache.js';
 
 const { Server, matchMaker } = colyseus;
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -19,6 +20,7 @@ const app = express();
 app.use(express.json());
 app.get('/health', (_, res) => res.json({ ok: true }));
 app.get('/rooms', async (_, res) => res.json(await matchMaker.query({ name: 'mission' })));
+aiCacheRoutes(app);   // PLAN-09: GET/POST /api/ai-cache -> server/data/ai-cache.json
 const dist = path.join(ROOT, 'client/dist');
 if (development) {
     // One origin for the live UI, authored map packages, and multiplayer rules.

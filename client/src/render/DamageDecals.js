@@ -3,7 +3,8 @@
 //   cracks   voxels at ≤ 66 % HP get a cracked overlay on their exposed faces, ≤ 33 % a heavy one
 //   scars    a surviving voxel next to a shot-out / blown-out cell (store.scars) shows broken material on the face
 //            toward the hole, and a frayed, chipped band along the edge of its faces nearest the hole
-//   scorch   cells in store.scorch get soot: a burn mark on an exposed top, a soot gradient on exposed sides
+//   scorch   cells in store.scorch get soot: a burn mark on an exposed top, a soot gradient on exposed sides, and
+//            (PLAN-09) chipped, broken edges on those side faces like XCOM's blast-worn walls
 //
 // Decals are quads laid on the voxel's real collision footprint (thin walls and bands included), batched as one
 // InstancedMesh per decal kind per render chunk, so a chunk rebuild replaces its decals with its geometry.
@@ -116,6 +117,33 @@ export function sootTexture() {
     return texture(c);
 }
 
+/**
+ * XCOM-style blast wear on a side face: a jagged, chipped border on all four edges (broken material showing through,
+ * deeper chips at the corners, hairline cracks running in). Transparent in the middle so the brick/plaster shows.
+ */
+export function edgeTexture() {
+    const c = canvas(), r = rng(31), n = c.n;
+    // A random-walk depth (px) per edge position, per side: bottom, top, left, right.
+    const walk = () => { const a = []; let d = 5; for (let i = 0; i < n; i++) { d = Math.max(2, Math.min(13, d + (r() - 0.5) * 3.2 + (r() < 0.03 ? 6 : 0) - (d > 9 ? 0.8 : 0))); a.push(d); } return a; };
+    const sides = [walk(), walk(), walk(), walk()];
+    const corner = (x, y) => Math.max(0, 16 - Math.min(Math.hypot(x, y), Math.hypot(n - x, y), Math.hypot(x, n - y), Math.hypot(n - x, n - y))) * 0.9;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+        const depths = [[y, sides[0][x]], [n - 1 - y, sides[1][x]], [x, sides[2][y]], [n - 1 - x, sides[3][y]]];
+        let k = -Infinity;
+        for (const [dist, depth] of depths) k = Math.max(k, (depth + corner(x, y)) - dist);
+        if (k <= -1.5) continue;
+        if (k < 0) { plot(c, x, y, [22, 19, 17], Math.round(150 * (1 + k / 1.5))); continue; }   // dark lip of the break
+        const v = 118 + r() * 70 - Math.min(40, k * 3);
+        plot(c, x, y, [v, v * 0.96, v * 0.9], 225);
+    }
+    for (let k = 0; k < 10; k++) {
+        const side = Math.floor(r() * 4), t = 8 + r() * (n - 16);
+        const [x, y, a] = side === 0 ? [t, 4, Math.PI / 2] : side === 1 ? [t, n - 5, -Math.PI / 2] : side === 2 ? [4, t, 0] : [n - 5, t, Math.PI];
+        crackLine(c, r, x, y, 10 + r() * 22, a + (r() - 0.5) * 0.8, 0, [28, 25, 22], 190);
+    }
+    return texture(c);
+}
+
 // ---------------------------------------------------------------------------------------------- decals
 function footBox(store, x, y, z) {
     const poly = collisionFootprint(store, x, y, z);
@@ -129,7 +157,7 @@ const open = (store, x, y, z) => { const m = materialById(store.get(x, y, z)); r
 export class DamageDecals {
     constructor({ clipping = [] } = {}) {
         this.clipping = clipping;
-        this.tex = { crack: crackTexture(false), heavy: crackTexture(true), rubble: rubbleTexture(), fray: frayTexture(), scorch: scorchTexture(), soot: sootTexture() };
+        this.tex = { crack: crackTexture(false), heavy: crackTexture(true), rubble: rubbleTexture(), fray: frayTexture(), scorch: scorchTexture(), soot: sootTexture(), edge: edgeTexture() };
         this.materials = new Map();
         this.geometry = new THREE.PlaneGeometry(1, 1);
         this.stats = { decals: 0 };
@@ -167,6 +195,8 @@ export class DamageDecals {
                 if (lvl) out.push({ kind: lvl === 2 ? 'heavy' : 'crack', tint: 0xffffff, opacity: 1, matrix: faceMatrix(box, z, d) });
                 if (soot) out.push(dz > 0 ? { kind: 'scorch', tint: 0xffffff, opacity: [0, 0.55, 0.8, 1][soot], matrix: faceMatrix(box, z, d, { scale: 1.08, spin: hashSpin(x, y, z) }) }
                     : { kind: 'soot', tint: 0xffffff, opacity: [0, 0.45, 0.7, 0.9][soot], matrix: faceMatrix(box, z, d) });
+                // The blast-facing side of a burned voxel is chipped along its edges (XCOM-style wear), heavier with more soot.
+                if (soot && dz === 0) out.push({ kind: 'edge', tint, opacity: [0, 0.55, 0.8, 1][soot], matrix: faceMatrix(box, z, d, { inset: -0.002 }) });
                 if (nearScar) {
                     const toward = DIRS.find(([ax, ay, az]) => scars.has(`${x + ax},${y + ay},${z + az}`) && !store.isSolid(x + ax, y + ay, z + az) && (ax !== dx || ay !== dy || az !== dz) && (ax !== -dx || ay !== -dy || az !== -dz));
                     // The face that looks into the hole shows broken material end-on.

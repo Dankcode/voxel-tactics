@@ -206,7 +206,7 @@ export function traceProjectile(battle, o, d, maxDist, { ignore = null, energy =
     const voxT = stop ? stop.t : maxDist;
     let best = null;
     for (const u of battle.units) {
-        if (!alive(u) || u.id === ignore) continue;
+        if (!alive(u) || (Array.isArray(ignore) ? ignore.includes(u.id) : u.id === ignore)) continue;
         const h = rayUnit(o, d, u, voxT, store);
         if (h && h.t < (best?.t ?? Infinity)) best = { unit: u, part: h.part, t: h.t };
     }

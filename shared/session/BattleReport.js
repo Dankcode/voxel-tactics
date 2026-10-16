@@ -4,6 +4,7 @@
 import { ABILITIES, displayName } from '../content/units.js';
 import { WEAPONS, THROWABLES } from '../content/weapons.js';
 import { objectiveStatus } from '../battle/Objectives.js';
+import { playstyleFromBattle, mergeProfile, TRAITS } from './Playstyle.js';
 
 export const REPORT_VERSION = 1;
 const pct = (a, b) => (b ? Math.round((a / b) * 1000) / 10 : null);
@@ -122,6 +123,11 @@ export function battleReport(battle, desc = {}, extra = {}) {
     }
     for (const s of [...squad, ...hostiles]) for (const k of ['accuracy']) s[k] = pct(s.shotsHit, s.shots);
     const o = b.objective, outcome = b.outcome || { winner: 'none', reason: 'abandoned', round: b.round };
+    // PLAN-09: what this match says about the squad's playstyle, and how the AI will adapt next time (the client and
+    // server cache the merged profile; `adaptation` previews it from the profile this battle was played against).
+    const style = playstyleFromBattle(b);
+    const next = mergeProfile(desc.aiProfile || null, style, { outcome: outcome.winner, scenario: desc.scenario || m.id });
+    const npcShots = b.log.filter(e => e.t === 'shot' && e.chance != null);
     return {
         version: REPORT_VERSION,
         run: { ...extra },
@@ -144,6 +150,11 @@ export function battleReport(battle, desc = {}, extra = {}) {
             voxelsDestroyed: b.stats.voxelsDestroyed, fires: b.stats.fires, breaches: b.stats.breaches, reactionShots: b.stats.reactions,
             doorsKicked, collapses, drops: b.stats.drops || 0, undergroundSteps: b.stats.undergroundSteps || 0, flankSteps: b.stats.flankSteps || 0
         },
+        playstyle: { ...style, faced: desc.aiProfile ? { matches: desc.aiProfile.matches || 0, traits: desc.aiProfile.traits } : null,
+            tuning: b.aiTuning || null, nextTuning: next.tuning, adaptation: next.adaptation,
+            hitChance: { shots: npcShots.length, avg: npcShots.length ? Math.round(npcShots.reduce((s, e) => s + e.chance, 0) / npcShots.length) : null,
+                hits: npcShots.reduce((s, e) => s + (e.rolls || []).filter(x => x.hit).length, 0), rolls: npcShots.reduce((s, e) => s + (e.rolls || []).length, 0),
+                crits: npcShots.reduce((s, e) => s + (e.rolls || []).filter(x => x.crit).length, 0) } },
         timeline
     };
 }
@@ -170,6 +181,12 @@ export function reportText(r) {
     }
     lines.push('', 'Hostiles by type:');
     for (const t of r.enemyTypes) lines.push(`  ${t.name} ×${t.count} — ${t.killed} down, ${t.survived} standing · dealt ${t.damageDealt}`);
+    if (r.playstyle) {
+        const ps = r.playstyle;
+        lines.push('', `Playstyle: ${ps.headline?.length ? ps.headline.join(', ') : 'balanced'} · ${Object.keys(TRAITS).map(k => `${k} ${Math.round(ps.traits[k] * 100)}`).join(' · ')}`);
+        if (ps.hitChance?.shots) lines.push(`Rolled shots (NPC + overwatch): ${ps.hitChance.shots} · average chance ${ps.hitChance.avg}% · ${ps.hitChance.hits}/${ps.hitChance.rolls} rolls hit · ${ps.hitChance.crits} crits`);
+        for (const a of ps.adaptation || []) lines.push(`  AI next time: ${a}`);
+    }
     const env = r.environment;
     lines.push('', `Environment: ${env.voxelsDestroyed} voxels destroyed · ${plural(env.fires, 'fire')} · ${env.breaches} breach${env.breaches === 1 ? '' : 'es'} · ${plural(env.doorsKicked, 'door')} kicked · ${plural(env.collapses, 'collapse')} · ${plural(env.drops, 'drop')} · flank steps ${env.flankSteps}`);
     return lines.join('\n');

@@ -19,5 +19,5 @@ export default defineConfig(({ command }) => ({
     root: path.resolve(__dirname),
     define: { __HAS_KIT_ART__: JSON.stringify(fs.existsSync(path.resolve(__dirname,'public/assets/kit/tileset-art.glb'))), __BUILD__: JSON.stringify(buildStamp(command)) },
     server: { fs: { allow: [path.resolve(__dirname, '..')] } },
-    build: { rollupOptions: { input: { battle: path.resolve(__dirname, 'index.html'), staging: path.resolve(__dirname, 'staging.html'), campaign: path.resolve(__dirname, 'campaign.html') } }, outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 4000 }
+    build: { rollupOptions: { input: { battle: path.resolve(__dirname, 'index.html'), staging: path.resolve(__dirname, 'staging.html'), campaign: path.resolve(__dirname, 'campaign.html'), sprites: path.resolve(__dirname, 'sprite-lab.html') } }, outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 4000 }
 }));

@@ -39,6 +39,8 @@ export const WEAPONS = Object.freeze(Object.fromEntries(Object.entries({
     firelance: { name: 'Flamethrower', kind: 'ballistic', ap: 2, projectiles: 5, damage: 4, pierce: 0, shred: 0,
         spread: 4.2, range: 8, maxRange: 12, ammo: 3, perShot: 1, reloadAp: 1, voxel: 1, noise: 10, element: 'pyro', cutIn: 'heavy' },
     sword: { name: 'Combat Knife', kind: 'melee', ap: 1, damage: 10, pierce: 2, shred: 0, reach: 1.5, voxel: 1, noise: 4, cutIn: 'melee' },
+    // Walker monster: rakes anything next to its legs; the blow throws soldiers back.
+    strider_claws: { name: 'Strider Claws', kind: 'melee', ap: 1, damage: 16, pierce: 4, shred: 1, reach: 2, voxel: 20, knockback: 2, noise: 12, cutIn: 'melee' },
     maul: { name: 'Sledgehammer', kind: 'melee', ap: 2, damage: 16, pierce: 3, shred: 1, reach: 1.5, voxel: 4, knockback: 2, noise: 8, cutIn: 'melee' }
 }).map(([id, w]) => [id, Object.freeze({...withCaliber({ id, ...w }),critRange:5,...CONFIG[id],...(CONFIG[id]?.ammoType?{farDamage:CONFIG[id].ammoType==='high'?10:5}: {})})])));
 

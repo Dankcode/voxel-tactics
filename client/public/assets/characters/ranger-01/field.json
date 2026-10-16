@@ -1,0 +1,102 @@
+{
+  "version": 2,
+  "character": "ranger-01",
+  "placeholder": false,
+  "image": "field.png",
+  "normal": "field-normal.png",
+  "lightingMask": "field-lighting.png",
+  "frameWidth": 192,
+  "frameHeight": 256,
+  "columns": 24,
+  "rows": 8,
+  "facings": [
+    "s",
+    "sw",
+    "w",
+    "nw",
+    "n",
+    "ne",
+    "e",
+    "se"
+  ],
+  "anchor": [
+    0.5,
+    0.03125
+  ],
+  "worldHeight": 2.4,
+  "clips": {
+    "idle": {
+      "column": 0,
+      "frames": 2,
+      "fps": 2,
+      "loop": true
+    },
+    "run": {
+      "column": 2,
+      "frames": 4,
+      "fps": 12,
+      "loop": true
+    },
+    "aim": {
+      "column": 6,
+      "frames": 1,
+      "fps": 1,
+      "loop": true
+    },
+    "fire": {
+      "column": 7,
+      "frames": 2,
+      "fps": 12,
+      "loop": false
+    },
+    "throw": {
+      "column": 9,
+      "frames": 2,
+      "fps": 6,
+      "loop": false
+    },
+    "hit": {
+      "column": 11,
+      "frames": 1,
+      "fps": 1,
+      "loop": false
+    },
+    "down": {
+      "column": 12,
+      "frames": 4,
+      "fps": 8,
+      "loop": false
+    },
+    "stacked": {
+      "column": 16,
+      "frames": 1,
+      "fps": 1,
+      "loop": true
+    },
+    "hunker": {
+      "column": 17,
+      "frames": 1,
+      "fps": 1,
+      "loop": true
+    },
+    "vault": {
+      "column": 18,
+      "frames": 3,
+      "fps": 7,
+      "loop": false
+    },
+    "climb": {
+      "column": 21,
+      "frames": 3,
+      "fps": 6,
+      "loop": true
+    }
+  },
+  "events": {
+    "fire": {
+      "frame": 0,
+      "event": "muzzle"
+    }
+  },
+  "notes": "One 2D anime identity; 8 illustrated facing sheets; neutral local colour + separate tangent normals and magenta light-response mask. No 3D character."
+}

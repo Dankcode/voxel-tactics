@@ -4,6 +4,8 @@ import { createBattle, squadFor } from '../../../shared/session/Scenarios.js';
 
 import { generateDebugMap } from '../../../shared/mapgen/DebugGenerator.js';
 import { Battle } from '../../../shared/battle/Battle.js';
+import { profileForDesc } from '../../../shared/session/Playstyle.js';
+import { loadAiProfile } from './AiCache.js';
 
 export class LocalSession {
     static async create(desc) {
@@ -12,10 +14,12 @@ export class LocalSession {
             const mission = generateDebugMap({ ...desc.debugMap, seed: desc.seed ?? 1 });
             return new LocalSession(desc, new Battle({ mission, squad: squadFor(desc), seed: desc.seed ?? 1, debug: true }));
         }
+        // PLAN-09: the AI adapts to the squad's cached playstyle (server cache, else this browser's copy).
+        if (desc.aiProfile === undefined) desc = { ...desc, aiProfile: profileForDesc(await loadAiProfile().catch(() => null)) };
         return new LocalSession(desc, createBattle(desc));
     }
     constructor(desc, battle) { this.desc = desc; this.battle = battle; this.local = true; this.playerId = '*'; }
     async submit(intent) { return this.battle.apply(this.battle.asyncCoop && intent.type==='endTurn' && intent.side==='player' ? {type:'personalEnd',owner:'player',by:'*'} : { ...intent, by: '*' }); }
-    restart() { return LocalSession.create(this.desc); }
+    restart() { const { aiProfile, ...desc } = this.desc; void aiProfile; return LocalSession.create(desc); }   // re-read the latest profile
     canAct() { return true; }
 }

@@ -1,3 +1,4 @@
+import { FORMATIONS } from '../../shared/content/formations.js';
 import { TacticalMarks } from './render/TacticalMarks.js';
 import { updateReticle } from './ui/AimReticle.js';
 import { AimController, aimTau, swayDegrees } from './ui/AimController.js';
@@ -8,6 +9,7 @@ import { footprint } from '../../shared/battle/IntelOps.js';
 import { InteriorVisibility } from './render/InteriorVisibility.js';
 import { battleReport } from '../../shared/session/BattleReport.js';
 import { saveReport } from './ui/TestGroundStore.js';
+import { recordLocalMatch } from './net/AiCache.js';
 import { watchWeapon, watchSector } from '../../shared/battle/WatchSector.js';
 import { weaponBuild } from '../../shared/battle/FireControl.js';
 // Client controller: owns the scene, the battle (through a session), input modes, overlays, the event
@@ -41,7 +43,7 @@ import { MAT, AIR, materialById } from '../../shared/voxel/Materials.js';
 import { nodeKey, pathTo } from '../../shared/world/PathSearch.js';
 import { estimateShot, partCentre, chooseMuzzle, occupiedBy } from '../../shared/battle/Ballistics.js';
 import { coverAgainst, COVER } from '../../shared/voxel/Cover.js';
-import { decide, formationIntents } from '../../shared/battle/Ai.js';
+import { decide, formationIntents, aiOrder } from '../../shared/battle/Ai.js';
 import { alive } from '../../shared/battle/Units.js';
 import { WEAPONS, THROWABLES } from '../../shared/content/weapons.js';
 import { ABILITIES } from '../../shared/content/units.js';
@@ -184,7 +186,7 @@ export class Game {
         this.stepAim(dt);
         this.cameraDirector.update(dt);
         this.scene.rig.rotationSpeed=this.options.rotateSpeed;
-        this.tacticalMarks.update(this.battle,this.cutLevel,this.time);
+        this.tacticalMarks.update(this.battle,this.cutLevel,this.time,this.selected);
         if(this.battle)updateReticle(this);
         const cine = this.cameraDirector.active;
         for (const v of this.views.values()) {
@@ -408,7 +410,19 @@ export class Game {
         if (id === 'suppress') { this.setMode({ kind: 'shoot', weaponId: this.selectedUnit()?.weapons.find(w => WEAPONS[w].kind === 'ballistic'), suppress: true }); return; }
         this.intent({ type: 'ability', abilityId: id }).then(r => r.ok && this.hud.log(`${a.name}: ${a.text}`));
     }
-    declareFormation(template) {const u=this.selectedUnit();if(!u)return;this.intent({type:'formation_plan',template,facing:this.hoverFacing(u)});}
+    declareFormation(template) {const u=this.selectedUnit();if(!u)return;const f=this.battle.formations.of(u);
+        if(f){this.intent({type:'formation_switch',template,facing:this.hoverFacing(u)});return;}   // reshape an existing formation, free
+        this.intent({type:'formation_plan',template,facing:this.hoverFacing(u)});}
+    /** Formation spot under the cursor for the selected member: its slot index, or -1. Clicking it trades places (free). */
+    formationSlotAt(u, c) {
+        const f = c && this.battle.formations.of(u);
+        if (!f || !FORMATIONS[f.template]?.slots) return -1;
+        const asg = this.battle.formations.assignmentsOf(f);
+        const i = this.battle.formations.slotTiles(f).findIndex(p => p.x === c.x && p.y === c.y && Math.abs(p.z - c.z) <= 1);
+        if (i < 0) return -1;
+        const holder = Object.keys(asg).find(id => asg[id] === i), hu = holder && this.battle.unit(holder);
+        return i === asg[u.id] ? -1 : i >= Math.min(FORMATIONS[f.template].slots.length, FORMATIONS[f.template].max) ? -1 : (hu || !this.battle.occupant(c.x, c.y, c.z)) ? i : -1;
+    }
     hoverFacing(u) {
         const h = this.hoverCell;
         let dx, dy;
@@ -467,11 +481,11 @@ export class Game {
                 const side = this.battle.activeSide;
                 const aiSide = (side === 'enemy' && !this.debug.manualEnemy) || (side === 'player' && this.autoPlayer);
                 if (!aiSide) break;
-                if (side === 'player') for (const intent of formationIntents(this.battle, side)) {
+                for (const intent of formationIntents(this.battle, side)) {     // squad autopilot and enemy pods (PLAN-09)
                     const r = await this.session.submit(intent);
                     if (r.ok) { this.player.enqueue(r.events); await this.player.whenIdle(); }
                 }
-                for (const u of this.battle.unitsOf(side)) {
+                for (const u of aiOrder(this.battle, side)) {
                     let looked = false;
                     for (let k = 0; k < 6 && alive(u) && !this.battle.outcome; k++) {
                         if (this.debug.paused) await this.debug.waitStep();
@@ -527,6 +541,9 @@ export class Game {
         });
         this.lastReport = report;
         this.hud.showReport(report, { saved: saveReport(report), canEdit: !!this.session?.local });
+        // PLAN-09: cache what this match says about the squad's playstyle (online rooms record it on the server).
+        if (this.session?.local && !this.autoPlayer && report.playstyle && !this.session.desc?.debugMap)
+            recordLocalMatch(report.playstyle, { outcome: report.outcome.winner, scenario: report.scenario.id }).catch(err => console.warn('AI cache:', err.message));
     }
     async onSpawn(e) { const u = this.battle.unit(e.unitId); if (u) { await this.addView(u); this.updateEnemyVisibility(); } }
     log(t) { this.hud.log(t); }
@@ -706,7 +723,7 @@ export class Game {
                 const a = ABILITIES[this.mode.abilityId];
                 const intent = {type:'ability', unitId:u.id, abilityId:a.id, to:this.hoverCell, targetId:unit?.id, by:'*'};
                 const reason = this.battle.validate(intent);
-                if(a.support && this.hoverCell)this.overlays.showSupportArea(footprint(this.battle,a.id,this.hoverCell),!reason);
+                if((a.support||a.commander) && this.hoverCell)this.overlays.showSupportArea(footprint(this.battle,a.id,this.hoverCell,u),!reason);   // the whole strike path
                 else this.overlays.showAbilityTile(a.targeting === 'ally' ? unit : this.hoverCell, !reason);
                 this.hud.cursorTip(e.clientX,e.clientY, reason ? `${a.name} · ${reasonText(reason)}` : `${a.name} · click to cast · ${a.ap} AP / ${a.wp} WP`);
                 break;
@@ -765,7 +782,7 @@ export class Game {
         if(!st||st.unitId!==u.id||Math.hypot(p.x-st.at.x,p.y-st.at.y,p.h-st.at.h)>0.25){
             const m=this.aimMuzzle(u,p);
             if(!st||st.unitId!==u.id||aimStanceKey(m)!==st.key)this.frameAim(u,p,m);
-            else {Object.assign(st,{at:{...p},muzzle:m,side:m.side||'right',blocked:shotBlocked(this.battle.store,m,p)});this.cutins.beginAim(u,{shoulder:st.side});}
+            else {Object.assign(st,{at:{...p},muzzle:m,side:m.side||'right',blocked:shotBlocked(this.battle.store,m,p)});this.cutins.beginAim(u,{shoulder:st.side,weaponId:this.mode.weaponId});}
         }
         this.views.get(u.id)?.face(p.x-origin.x,p.y-origin.y);
         if(this.cameraDirector.phase==='prepare')this.cameraDirector.track(new THREE.Vector3(p.x,p.h,p.y),dt);
@@ -781,7 +798,7 @@ export class Game {
     frameAim(u,p,m=this.aimMuzzle(u,p)){
         const side=m.side||'right',o=m.step?new THREE.Vector3(m.step.x+.5,u.z+1,m.step.y+.5):new THREE.Vector3(u.x+.5,u.z+1,u.y+.5);
         this.aimStance={unitId:u.id,key:aimStanceKey(m),side,muzzle:m,at:{...p},blocked:shotBlocked(this.battle.store,m,p)};
-        this.cutins.beginAim(u,{shoulder:side});
+        this.cutins.beginAim(u,{shoulder:side,weaponId:this.mode.weaponId});
         this.cameraDirector.prepareAim(o,new THREE.Vector3(p.x,p.h,p.y));
     }
     updateFreeAim(x,y,pick=null){
@@ -802,12 +819,17 @@ export class Game {
         const p = this.pick(e.clientX, e.clientY);
         if (this.debug.tool) { this.debug.click(p, unit, e); return; }
         const u = this.selectedUnit();
+        if (u && unit && unit !== u && e.shiftKey && this.mode.kind === 'move' && this.battle.formations.of(u) && this.battle.formations.of(u) === this.battle.formations.of(unit)) {
+            const asg = this.battle.formations.assignmentsOf(this.battle.formations.of(u));   // Shift+click a squadmate in your formation: trade places
+            this.intent({ type: 'formation_swap', slot: asg[unit.id] }); return;
+        }
         if (unit && (unit.side === 'player' || this.controllable(unit)) && alive(unit) && unit.side === (u?.side ?? unit.side) && (this.mode.kind === 'move' || !u)) { this.select(unit.id); return; }
         if (!u || !this.canAct() || !this.controllable(u)) return;
         switch (this.mode.kind) {
             case 'move': {
                 const c = p?.cell;
                 if (unit && unit.side !== u.side && this.isVisible(unit)) { this.targetById(unit.id); break; }
+                { const slot = this.formationSlotAt(u, c); if (slot >= 0) { this.intent({ type: 'formation_swap', slot }); break; } }
                 if(c&&this.zones?.has(nodeKey(c))){const key=nodeKey(c);if(this.options.confirmMoves&&this.moveConfirmation!==key){this.moveConfirmation=key;this.hud.toast('Click the destination again to move');break;}const f=this.battle.formations.of(u);this.intent({type:'move',to:c,group:!!f&&!f.assembling&&f.leaderId===u.id});}
                 break;
             }

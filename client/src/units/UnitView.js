@@ -2,7 +2,7 @@ import {installBillboardDepth,billboardDepthSlope} from './BillboardDepth.js';
 import { WalkerModel } from './WalkerModel.js';
 import { WALKERS } from '../../../shared/battle/Walker.js';
 // A 2D character standing in the voxel world: a camera-facing quad (depth-tested against voxels),
-// a ground ring, an HP/AP bar, and a SpriteAnimator driving the placeholder atlas.
+// a ground ring, an HP/AP bar, and a SpriteAnimator driving the illustrated, relightable atlas.
 import * as THREE from 'three';
 import { dropAt } from '../render/Ground.js';
 import { SpriteAnimator } from '../anim/SpriteAnimator.js';
@@ -11,15 +11,16 @@ import { FACING_VEC } from '../../../shared/battle/Units.js';
 const loader = new THREE.TextureLoader();
 const atlasCache = new Map();
 export async function loadCharacterArt(art) {
-    art = 'test-soldier'; // One cached atlas for the shared test appearance.
+    art = 'ranger-01'; // One illustrated identity shared by every human character.
     if (atlasCache.has(art)) return atlasCache.get(art);
     const p = (async () => {
-        const base = '/assets/characters/test-soldier/';
+        const base = '/assets/characters/ranger-01/';
         const [field, cutin] = await Promise.all([fetch(base + 'field.json').then(r => r.json()), fetch(base + 'cutin.json').then(r => r.json())]);
         const image = await new Promise((res, rej) => loader.load(base + field.image, res, undefined, rej));
         image.colorSpace = THREE.SRGBColorSpace;
         image.magFilter = THREE.LinearFilter; image.minFilter = THREE.LinearMipmapLinearFilter; image.generateMipmaps = true; image.anisotropy = 4;
-        return { field, cutin, image, base };
+        const [normal, lighting] = await Promise.all([loader.loadAsync(base + field.normal), loader.loadAsync(base + field.lightingMask)]);
+        return { field, cutin, image, normal, lighting, base };
     })();
     atlasCache.set(art, p);
     return p;
@@ -35,13 +36,27 @@ export class UnitView {
         geo.translate(0, h / 2 - m.anchor[1] * h, 0);
         this.texture = art.image.clone();
         this.texture.needsUpdate = true;
-        this.material = new THREE.MeshBasicMaterial({ map: this.texture, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide, clippingPlanes: scene.clipping });
+        this.normal = art.normal.clone(); this.normal.needsUpdate = true;
+        this.lighting = art.lighting.clone(); this.lighting.needsUpdate = true;
+        this.material = new THREE.MeshStandardMaterial({ map: this.texture, normalMap: this.normal, normalScale: new THREE.Vector2(.65, .65), roughness: .95, metalness: 0, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide, clippingPlanes: scene.clipping });
         this.depthSlope=installBillboardDepth(this.material);
+        const depthCompile = this.material.onBeforeCompile;
+        this.material.onBeforeCompile = shader => {
+            depthCompile(shader);
+            shader.uniforms.spriteResponse = { value: this.lighting };
+            shader.fragmentShader = 'uniform sampler2D spriteResponse;\n' + shader.fragmentShader;
+            shader.fragmentShader = shader.fragmentShader.replace('vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;', `
+                vec3 response = texture2D(spriteResponse, vMapUv).rgb;
+                vec3 outgoingLight = (reflectedLight.directDiffuse + reflectedLight.directSpecular) * response.r
+                    + (reflectedLight.indirectDiffuse + reflectedLight.indirectSpecular) * response.b
+                    + totalEmissiveRadiance + diffuseColor.rgb * response.g;`);
+        };
+        this.material.customProgramCacheKey = () => 'ranger-lit-billboard-v2';
         this.sprite = new THREE.Mesh(geo, this.material);
         this.spriteHeight=h;this.billboardUp=new THREE.Vector3();
         this.sprite.userData.unitId = unit.id;
         // The billboard casts a sun shadow through its alpha (same animated texture as the colour pass).
-        this.sprite.castShadow = true;
+        this.sprite.castShadow = true; this.sprite.receiveShadow = true;
         this.sprite.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: this.texture, alphaTest: 0.5, side: THREE.DoubleSide });
         this.group.add(this.sprite);
         if(WALKERS[unit.type]){this.group.remove(this.sprite);this.sprite.geometry.dispose();this.sprite.customDepthMaterial.dispose();this.model=new WalkerModel(unit,store,scene.clipping);this.sprite=this.model.root;this.spriteHeight=WALKERS[unit.type].height+.5;this.group.add(this.sprite);}
@@ -101,6 +116,7 @@ export class UnitView {
         } else this.sprite.rotation.y=yaw;
         this.animator.setScreenAngle(Math.atan2(this.facingVec[0], this.facingVec[1]) - yaw);
         this.animator.update(dt);
+        for (const map of [this.normal, this.lighting]) { map.repeat.copy(this.texture.repeat); map.offset.copy(this.texture.offset); }
         this.bar.visible = !this.unit.dead;
     }
     /** groundY: height of the lowest walkable surface under the unit. */
@@ -117,7 +133,7 @@ export class UnitView {
     setSelected(on) { this.selRing.visible = on; }
     setVisible(on) { this.group.visible = on; }
     dispose() {
-        this.model?.dispose();this.sprite.customDepthMaterial?.dispose(); this.scene.scene.remove(this.group); this.texture.dispose(); this.material.dispose(); this.barTex.dispose(); }
+        this.model?.dispose();this.sprite.customDepthMaterial?.dispose(); this.scene.scene.remove(this.group); this.texture.dispose(); this.normal.dispose(); this.lighting.dispose(); this.material.dispose(); this.barTex.dispose(); }
 }
 
 let blobTex = null;

@@ -35,7 +35,7 @@ test('panic, freezing and suppression last through the affected own turn', () =>
     const b = arena(), u = b.unit('p0');
     addStatus(u, 'panicked'); addStatus(u, 'frozen'); addStatus(u, 'suppressed');
     b.startSide('player');
-    assert.equal(u.ap, 2); assert.equal(b.mobility(u), 0);
+    assert.equal(u.ap, 1); assert.equal(b.mobility(u), 0);   // frozen -2 AP, then panic halves (PLAN-09)
     assert.equal(b.apply({ type: 'ability', unitId: u.id, abilityId: 'demolish' }).reason, 'no_will');
     assert.ok(hasStatus(u, 'suppressed'));
     b.endTurn('player');

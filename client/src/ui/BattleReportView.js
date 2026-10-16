@@ -6,7 +6,22 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '
 const pct = v => (v == null ? '–' : `${v}%`);
 const REASONS = { recovered: 'Package recovered', held: 'Zone held', extracted: 'Squad extracted', eliminated: 'All hostiles down', timer: 'Deadline passed', 'squad lost': 'The squad was lost', abandoned: 'Battle abandoned' };
 const STATUS = { unhurt: 'Unhurt', wounded: 'Wounded', down: 'Down', killed: 'KIA', extracted: 'Extracted' };
-const TABS = [['squad', 'Squad'], ['hostiles', 'Hostiles'], ['weapons', 'Weapons'], ['field', 'Field & objective'], ['timeline', 'Timeline']];
+const TABS = [['squad', 'Squad'], ['hostiles', 'Hostiles'], ['weapons', 'Weapons'], ['playstyle', 'Playstyle & AI'], ['field', 'Field & objective'], ['timeline', 'Timeline']];
+const TRAIT_LABEL = { aggression: 'Aggression', flanking: 'Flanking', overwatch: 'Overwatch', explosives: 'Explosives', elements: 'Elements', stealth: 'Stealth & intel', range: 'Range', cover: 'Cover discipline', breach: 'Breaching', melee: 'Melee' };
+
+/** PLAN-09: the playstyle tab - this match's traits, the profile the AI played against, and how it adapts next. */
+function playstyleMarkup(ps) {
+    if (!ps) return '<p class="rnone">No playstyle data in this report.</p>';
+    const bar = (v, was) => `<span class="rtrait"><i style="width:${Math.round(v * 100)}%"></i>${was != null ? `<em style="left:${Math.round(was * 100)}%" title="profile the AI played against"></em>` : ''}</span><span class="num">${Math.round(v * 100)}</span>`;
+    const rows = Object.keys(TRAIT_LABEL).map(k => `<tr><td><b>${TRAIT_LABEL[k]}</b></td><td>${bar(ps.traits[k] ?? 0.5, ps.faced?.traits?.[k])}</td></tr>`).join('');
+    const hc = ps.hitChance || {};
+    const tun = ps.nextTuning ? Object.entries(ps.nextTuning).map(([k, v]) => `<span class="rtune ${v > 1.05 ? 'up' : v < 0.95 ? 'down' : ''}">${esc(k)} ×${v}</span>`).join(' ') : '';
+    return `<p class="rsub">${ps.headline?.length ? `This match read as: <b>${esc(ps.headline.join(' · '))}</b>` : 'This match read as a balanced playstyle.'}${ps.faced ? ` · the AI had studied ${ps.faced.matches} earlier match${ps.faced.matches === 1 ? '' : 'es'} (marker = what it expected)` : ' · the AI had no profile of you yet'}</p>
+      <div class="rtable"><table><tbody>${rows}</tbody></table></div>
+      ${hc.shots ? `<div class="rgrid"><div><b>${hc.shots}</b><span>rolled shots</span></div><div><b>${hc.avg}%</b><span>avg chance to hit</span></div><div><b>${hc.hits}/${hc.rolls}</b><span>rolls hit</span></div><div><b>${hc.crits}</b><span>crits</span></div></div>` : ''}
+      <h4>How the AI adapts next match</h4><ul class="radapt">${(ps.adaptation || []).map(a => `<li>${esc(a)}</li>`).join('')}</ul>
+      ${tun ? `<p class="rtunes">${tun}</p>` : ''}`;
+}
 
 function title(r) {
     if (r.outcome.winner === 'player') return 'MISSION COMPLETE';
@@ -62,6 +77,7 @@ export function reportMarkup(r, { saved = true, canEdit = true, tab = 'squad' } 
       ${section('hostiles', `<div class="rtable"><table><thead><tr><th>Type</th><th>Count</th><th>Down</th><th>Standing</th><th>Dealt</th><th>Taken</th></tr></thead><tbody>${typeRows}</tbody></table></div>
         <details class="rdetails"><summary>Every hostile (${r.hostiles.length})</summary><div class="rtable"><table><thead><tr><th>Unit</th><th>Status</th><th>Shots hit</th><th>Dealt</th><th>Down in round</th></tr></thead><tbody>${hostileRows}</tbody></table></div></details>`)}
       ${section('weapons', r.weapons.length ? `<div class="rtable"><table><thead><tr><th>Side</th><th>Weapon</th><th>Shots</th><th>Hit</th><th>Projectiles hit</th><th>Damage</th><th>Kills</th></tr></thead><tbody>${weaponRows}</tbody></table></div>` : '<p class="rnone">No shots fired.</p>')}
+      ${section('playstyle', playstyleMarkup(r.playstyle))}
       ${section('field', `<div class="rgrid">${field.map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join('')}</div>
         <dl class="rdl"><dt>Objective</dt><dd>${esc(r.objective.kind)} — ${esc(r.objective.status)}${r.objective.deadline ? ` · deadline round ${r.objective.deadline}` : ''}</dd>
         <dt>Setup</dt><dd>${esc(testSummary(sc.test))}</dd><dt>Rules</dt><dd>${sc.rules === 'intel' ? `Intel co-op (experimental)${sc.intel?.asyncCoop ? ' · independent turns' : ''} · support ${esc(sc.intel?.support || '')}` : 'Classic'}</dd><dt>Squad</dt><dd>${esc(r.squad.map(s => s.typeName).join(', '))}</dd>

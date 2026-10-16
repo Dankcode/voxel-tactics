@@ -114,7 +114,7 @@ export class TestGroundPanel {
             <label class="check"><input type="checkbox" data-tg-field="autopilot" ${c.autopilot ? 'checked' : ''}> Autopilot squad (AI plays both sides; watch and read the report)</label>
             <label class="check"><input type="checkbox" data-tg-field="debug" ${c.debug ? 'checked' : ''}> Debug tools in battle (F1)</label>
             <label class="check"><input type="checkbox" data-tg-field="intel" ${c.intel ? 'checked' : ''}> Intel co-op rules (experimental): sensing roles, drones, quiet cuts, precision shots, independent turns</label>
-            ${c.intel ? `<div class="row"><label>Match support <select data-tg-field="support"><option value="carpet_bomb" ${c.support !== 'orbital_laser' ? 'selected' : ''}>Carpet Bomb · circular craters</option><option value="orbital_laser" ${c.support === 'orbital_laser' ? 'selected' : ''}>Orbital Laser · line cut</option></select></label></div>` : ''}
+            ${c.intel ? `<div class="row"><label>Match support <select data-tg-field="support"><option value="carpet_bomb" ${c.support !== 'orbital_laser' ? 'selected' : ''}>Airstrike · wide bombing corridor</option><option value="orbital_laser" ${c.support === 'orbital_laser' ? 'selected' : ''}>Orbital Laser · long line cut</option></select></label></div>` : ''}
           </div>
           <div class="tg-col">
             <h4>Hostiles <span>${c.useMapHostiles ? 'map pods' : `${total} / ${TEST_LIMITS.total}`}</span></h4>

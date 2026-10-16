@@ -180,8 +180,11 @@ export class Hud {
         for (const a of [...u.abilities.filter(id=>!ABILITIES[id].intel||b.intelMode), ...(b.intelMode?[b.supportChoices[u.owner]||'carpet_bomb']:[])]) { const ab = ABILITIES[a]; s.push({group:ab.support||a==='rally'?'commander':['brace','demolish','suppress'].includes(a)?'equipment':'augmentation', act: 'ability', arg: a, icon: ICONS[a] || ICONS.ability, name: ab.name, on: mode.abilityId === a || (a === 'suppress' && !!mode.suppress), cost: `${ab.ap || 0}`, sub: `${ab.wp} WP`, disabled: (ab.support && (!b.detected || (b.personalTurns[u.owner]||0)<(b.supportReady[u.owner]||0))) || u.will < ab.wp || ap < (ab.ap || 0) || u.statuses.some(s => s.id === 'panicked') || (a === 'suppress' && (u.ammo.repeater ?? 0) < (WEAPONS.repeater.perShot || 1)), tip: `<b>${ab.name}</b> · ${ab.wp} Will${ab.ap ? ` · ${ab.ap} AP` : ''}<br>${esc(ab.text)}` }); }
         if(!b.intelMode){const wait=Math.max(0,(b.strikeReadyAt??1)-b.round);s.push({act:'ability',arg:'killstreak_strike',group:'commander',icon:ICONS.ability,name:'Strike',cost:wait?`IN ${wait}`:'READY',disabled:wait>0,tip:wait?`Commander strike · recharging, ready in ${wait} round${wait>1?'s':''}`:'Commander strike · ready · recharges 10 rounds after use'});}
         const f = b.formations.of(u);
-        s.push(f ? { group:'commander',act: 'formBreak', arg: f.id, icon: ICONS.formation, name: `Break ${FORMATIONS[f.template].name}`, cost: '0', tip: 'Dissolve the formation' }
-            : { group:'commander',act: 'formation', icon: ICONS.formation, name: 'Formation', cost: '0', tip: '<b>Formation</b> (F) · plan slots, then assemble your squad' });
+        if (f) s.push({ group:'commander',act: 'formBreak', arg: f.id, icon: ICONS.formation, name: `Break ${FORMATIONS[f.template].name}`, cost: '0', tip: 'Dissolve the formation' });
+        s.push(f && f.template !== 'crossfire'
+            ? { group:'commander',act: 'formation', icon: ICONS.formation, name: 'Switch', cost: '0', tip: '<b>Switch formation</b> (F) · same members, new shape (no AP). Click a highlighted spot to trade places for free.' }
+            : !f ? { group:'commander',act: 'formation', icon: ICONS.formation, name: 'Formation', cost: '0', tip: '<b>Formation</b> (F) · plan slots, then assemble your squad' } : null);
+        if (!s.at(-1)) s.pop();
         if (b.breachPoints(u).length) s.push({ act: 'breach', icon: ICONS.breach, name: 'Breach', cost: '1', tip: '<b>Breach</b> (B) · stack up and storm the room; one free shot each' });
         const o = b.objective;
         if (o?.kind === 'recover' && !o.item.carrier && !o.item.secured && Math.max(Math.abs(o.item.x - u.x), Math.abs(o.item.y - u.y)) <= 1 && Math.abs(o.item.z - u.z) <= 1)
@@ -260,7 +263,8 @@ export class Hud {
     showGearPanel(){const u=this.game.selectedUnit(),p=this.el('.panel');p.classList.remove('hidden');p.innerHTML=`<h3>Equipment <button data-act="closePanel">✕</button></h3><div class="gear-quick">${Object.entries(u.items).filter(([id,n])=>n>0&&THROWABLES[id]).map(([id,n])=>`<button data-act="item" data-arg="${id}">${ICONS.grenade}<b>${esc(THROWABLES[id].name)}</b><small>${n} carried · ${THROWABLES[id].ap} AP</small></button>`).join('')}</div>`;}
     showFormationPanel() {
         const p=this.el('.panel');p.classList.toggle('hidden');if(p.classList.contains('hidden'))return;
-        p.innerHTML=`<h3>Formation <button data-act="closePanel">✕</button></h3><p>Choose a formation, then move at least one teammate onto a highlighted slot. Group movement uses the lowest remaining movement budget.</p>${Object.values(FORMATIONS).filter(f=>f.slots).map(f=>`<button data-act="formTpl" data-arg="${f.id}" class="wide"><b>${f.name}</b><small>${esc(f.text)}</small></button>`).join('')}`;
+        const cur=this.game.battle?.formations.of(this.game.selectedUnit());
+        p.innerHTML=`<h3>Formation <button data-act="closePanel">✕</button></h3><p>${cur?`Switch the ${esc(FORMATIONS[cur.template].name)} to another shape (no AP, same members). Wide shapes cannot enter narrow spaces; switch to a file or break the formation there. Select a member and click a highlighted spot to trade places for free.`:'Choose a formation, then move at least one teammate onto a highlighted slot. Group movement uses the lowest remaining movement budget. Select a member and click a highlighted spot to trade places for free.'}</p>${Object.values(FORMATIONS).filter(f=>f.slots&&f.id!==cur?.template).map(f=>`<button data-act="formTpl" data-arg="${f.id}" class="wide"><b>${f.name}</b><small>${esc(f.text)}</small></button>`).join('')}`;
     }
     showBreachPanel() {
         const g = this.game, u = g.selectedUnit(); if (!u) return;

@@ -23,6 +23,41 @@ export const BALANCE = {
     crushDamage: { value: 5, min: 0, max: 12 },                   // rubble lands on a unit
     impactDamage: { value: 2, min: 0, max: 6 },                   // knocked back into a wall or a unit
     clusteredRadiusBonus: { value: 1, min: 0, max: 2 },
-    clusteredDamageMult: { value: 1.25, min: 1, max: 2 }
+    clusteredDamageMult: { value: 1.25, min: 1, max: 2 },
+    // XCOM 2-style hit chance (overwatch both sides, every NPC shot): percent points. shared/battle/HitChance.js
+    aimScale: { value: 80, min: 50, max: 110 },                    // unit accuracy 1.0 -> 80 aim
+    armWoundAim: { value: 15, min: 0, max: 30 },                   // per disabled arm
+    headWoundAim: { value: 10, min: 0, max: 30 },
+    suppressedAim: { value: 30, min: 0, max: 50 },
+    staggeredAim: { value: 15, min: 0, max: 40 },
+    burningAim: { value: 15, min: 0, max: 40 },
+    panickedAim: { value: 25, min: 0, max: 50 },
+    stressedAim: { value: 10, min: 0, max: 30 },
+    deadeyeAim: { value: 25, min: 0, max: 40 },
+    breachAim: { value: 10, min: 0, max: 30 },
+    scopeAim: { value: 10, min: 0, max: 25 },
+    closeRangeAim: { value: 10, min: 0, max: 30 },                 // within 3 tiles (a penalty for snipers)
+    rangeAimPenalty: { value: 40, min: 10, max: 80 },              // per effective range past `range` (capped at 60)
+    highGroundAim: { value: 20, min: 0, max: 30 },
+    targetAboveAim: { value: 10, min: 0, max: 30 },
+    softCoverFactor: { value: 0.5, min: 0, max: 1 },               // cover the round goes through counts this much
+    fullCoverDefense: { value: 40, min: 20, max: 60 },
+    halfCoverDefense: { value: 20, min: 10, max: 40 },
+    smokeDefense: { value: 20, min: 0, max: 40 },
+    darkDefense: { value: 15, min: 0, max: 40 },
+    frozenTargetAim: { value: 20, min: 0, max: 50 },
+    stunnedTargetAim: { value: 10, min: 0, max: 30 },
+    bracedDefense: { value: 10, min: 0, max: 30 },
+    formationDefense: { value: 10, min: 0, max: 30 },
+    overwatchAimMult: { value: 0.7, min: 0.4, max: 1 },            // reaction shots: chance x this
+    hitChanceMin: { value: 1, min: 0, max: 10 },
+    hitChanceMax: { value: 100, min: 90, max: 100 },
+    flankCrit: { value: 40, min: 0, max: 60 },                     // crit chance on a flanked target
+    sniperCrit: { value: 10, min: 0, max: 30 },
+    critDamageMult: { value: 1.5, min: 1, max: 2.5 },
+    // Chilled (cryo on a dry unit): fraction of movement per AP lost per stack (frozen needs the unit wet).
+    chillMobility: { value: 0.3, min: 0.1, max: 0.6 },
+    // Walker monsters
+    smashVoxelDamage: { value: 40, min: 10, max: 80 }
 };
 export const B = new Proxy({}, { get: (_, k) => BALANCE[k]?.value });

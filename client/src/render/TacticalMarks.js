@@ -2,9 +2,14 @@ import * as THREE from 'three';
 import { MARK_COLORS } from '../../../shared/battle/Markers.js';
 export class TacticalMarks{
     constructor(scene){this.scene=scene;this.group=new THREE.Group();scene.scene.add(this.group);this.items=new Map();this.sequence=null;}
-    update(battle,cut,time){
+    update(battle,cut,time,selected=null){
         if(!battle){this.group.visible=false;return;}this.group.visible=true;
-        if(this.sequence!==battle.seq){this.sequence=battle.seq;const formations=[...battle.formations.list.values()].filter(f=>f.open).flatMap(f=>battle.formations.plannedSlots(f).map((p,i)=>({id:`formation-${f.id}-${i}`,source:'formation',color:Object.values(f.assignments).includes(i)?'green':'blue',...p})));const marks=[...battle.markers,...formations];const keep=new Set(marks.map(m=>m.id));for(const [id,g]of this.items)if(!keep.has(id)){this.group.remove(g);g.traverse(o=>{o.geometry?.dispose();o.material?.map?.dispose();o.material?.dispose();});this.items.delete(id);}
+        // Formation spots: always while a formation assembles; once formed, when one of its members is selected (click a
+        // spot to trade places for free). Your own spot is green, squadmates' blue, empty spots red.
+        const key=`${battle.seq}:${selected}`;
+        if(this.sequence!==key){this.sequence=key;const sel=battle.unit(selected),mine=sel&&battle.formations.of(sel);
+            const formations=[...battle.formations.list.values()].filter(f=>f.side==='player'&&(f.assembling||f===mine)&&battle.formations.plannedSlots(f).length).flatMap(f=>{const asg=battle.formations.assignmentsOf(f),held=new Set(Object.values(asg));
+                return battle.formations.plannedSlots(f).map((p,i)=>({id:`formation-${f.id}-${i}`,source:'formation',color:f===mine&&asg[sel.id]===i?'green':held.has(i)?'blue':'red',...p}));});const marks=[...battle.markers,...formations];const keep=new Set(marks.map(m=>m.id));for(const [id,g]of this.items)if(!keep.has(id)){this.group.remove(g);g.traverse(o=>{o.geometry?.dispose();o.material?.map?.dispose();o.material?.dispose();});this.items.delete(id);}
             for(const mark of marks){let g=this.items.get(mark.id);if(!g){g=this.make(mark);this.items.set(mark.id,g);this.group.add(g);}else if(g.userData.mark?.color!==mark.color)g.traverse(o=>o.material?.color?.setHex(MARK_COLORS[mark.color]));g.position.set(mark.x+.5,mark.z+1.02,mark.y+.5);g.userData.mark=mark;}
         }
         for(const g of this.items.values()){g.visible=g.userData.mark.z<cut;g.userData.sign.position.y=(g.userData.mark.source==='sensor'?.55:1.05)+Math.sin(time*3)*.05;}

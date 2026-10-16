@@ -274,3 +274,10 @@ For every living unit (friend or foe) with its chest point at 3D distance d (Δh
   voxel lies between the centre and the chest).
 - Applied to the torso with pierce = ceil(torso armour ÷ 2) (braced armour included) and the item's shred.
 - Element statuses apply even when the damage rounds to 0; knockback, if any, pushes away from the centre.
+
+## PLAN-09: rolled hit chance for overwatch and NPC shots
+
+Overwatch reactions (both sides) and every NPC shot now roll an XCOM 2-style percent chance per round
+(`shared/battle/HitChance.js:hitChance`): aim (accuracy × 80) + range + height − cover/smoke/darkness ± statuses,
+× 0.7 on overwatch, crits on flanked targets (×1.5 damage). Player shots keep free aim. Table and rules:
+[../PLAN-09-intel-ai-hit-chance-monsters.md](../PLAN-09-intel-ai-hit-chance-monsters.md) §1.

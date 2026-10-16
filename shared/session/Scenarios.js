@@ -11,6 +11,7 @@ import { SQUADS, CALLSIGNS, CLASSES } from '../content/units.js';
 import { Battle } from '../battle/Battle.js';
 import { generateOperation, operationOptions } from '../mapgen/Generator.js';
 import { compileV3Map } from '../mapgen/ExteriorCompiler.js';
+import { profileForDesc } from './Playstyle.js';
 import { sanitizeTest, applyTestGround } from './TestGround.js';
 
 export const SCENARIOS = MAPS.map(({ id, name, theme, text }) => ({ id, name, theme, text }));
@@ -34,6 +35,9 @@ export function sanitizeDesc(d = {}) {
     }
     const test = sanitizeTest(d.test);
     if (test) out.test = test;
+    // PLAN-09: the player's cached playstyle; the AI tunes itself from it (same numbers on every peer).
+    const aiProfile = profileForDesc(d.aiProfile);
+    if (aiProfile) out.aiProfile = aiProfile;
     squadFor(out); // Validate unit types before any expensive generation.
     return out;
 }
@@ -70,5 +74,5 @@ export function createBattle(desc, mission = null) {
     mission.spawns.player=spreadInsertion(mission.store,mission.spawns.player);
     // The test ground applies to the compiled mission on every peer (and the server) alike.
     const enemies = desc.test ? applyTestGround(mission, sanitizeTest(desc.test), desc.seed ?? 1) : null;
-    return new Battle({ mission, squad, seed: desc.seed ?? 1, debug: !!desc.debug, enemies, intel: !!desc.intel, asyncCoop: !!desc.asyncCoop, support: desc.support, testArsenal:!!desc.test });
+    return new Battle({ mission, squad, seed: desc.seed ?? 1, debug: !!desc.debug, enemies, intel: !!desc.intel, asyncCoop: !!desc.asyncCoop, support: desc.support, testArsenal:!!desc.test, aiProfile: desc.aiProfile || null });
 }

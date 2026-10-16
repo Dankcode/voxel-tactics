@@ -3,13 +3,14 @@
 // lower left (layered, with parallax), the action name and hit chance show, then it cuts back.
 // Presentation only — the battle has already resolved; this never blocks the server.
 //
-// Layers come from client/public/assets/characters/<art>/cutin.json (placeholders today).
+// Layers come from client/public/assets/characters/ranger-01/cutin.json.
 //
 // The back shot is used on every switch to the shoulder camera: while aiming (a persistent, unobtrusive back shot
 // that follows the crosshair) and when an action is committed (the full cut-in). The art is placed so its barrel tip
 // (cutin.json `muzzle`, fractions of the art) sits on the crosshair; the figure fills the lower left of the screen
 // and the rest stays clear.
 import * as THREE from 'three';
+import { SpriteWeapon } from './SpriteWeapon.js';
 import { PRESETS } from './CutInTimeline.js';
 import { loadCharacterArt } from '../units/UnitView.js';
 
@@ -34,12 +35,7 @@ export function backshotPlacement(cutin, aim, view, { bars = BAR_SHARE, scale = 
     const width = height * aspect;
     return { left: aim.x - u * width, top: aim.y - v * height, width, height, origin: `${(u * 100).toFixed(1)}% ${(v * 100).toFixed(1)}%` };
 }
-/**
- * The back shot art for a shot taken from the left side (lean or step-out to the left). The figure never flips and
- * never moves: it is always the same bottom-left back shot. Only when the art has its own left-side aiming sprite
- * (cutin.json `variants.left`: `layers`, `width`, `height`, `muzzle`, `screenHeight`) is that sprite shown instead, in
- * the same place. Returns the cutin to draw.
- */
+/** The firing pose for the chosen shoulder. New ranger art mirrors the complete rig for left targets. */
 export function sideCutin(cutin, shoulder = 'right') {
     const v = shoulder === 'left' ? cutin.variants?.left : null;
     return v ? { ...cutin, ...v, variants: undefined } : cutin;
@@ -54,7 +50,8 @@ export const AIM_SHOT = Object.freeze({ heightShare: 0.46, maxWidthShare: 0.42, 
 export function aimBackshotLayout(cutin, view, railRight = 0) {
     const aspect = (cutin.width || 512) / (cutin.height || 768);
     let height = view.height * AIM_SHOT.heightShare, width = height * aspect;
-    if (width > view.width * AIM_SHOT.maxWidthShare) { width = view.width * AIM_SHOT.maxWidthShare; height = width / aspect; }
+    const maxWidthShare = cutin.maxWidthShare || AIM_SHOT.maxWidthShare;
+    if (width > view.width * maxWidthShare) { width = view.width * maxWidthShare; height = width / aspect; }
     const left = Math.max(0, railRight + AIM_SHOT.gap);
     return { left, top: view.height - height, width, height };
 }
@@ -85,6 +82,20 @@ export function followStep(state, target, dt, tau = AIM_SHOT.followTau) {
     }
     return state;
 }
+export function readyCutin(cutin, shoulder = 'right') {
+    return cutin.ready?.[shoulder] || sideCutin(cutin, shoulder);
+}
+function paintFigure(fig, art) {
+    const content = document.createElement('div'); content.className = 'sprite-content';
+    if (art.cutin.mirror) content.classList.add('sprite-mirrored');
+    for (const layer of art.cutin.layers) {
+        if (!layer.image || layer.blend) continue;
+        const img = document.createElement('img'); img.src = art.base + layer.image; img.draggable = false;
+        if (layer.bone) img.dataset.bone = layer.bone;
+        content.appendChild(img);
+    }
+    fig.appendChild(content); return content;
+}
 const viewport = () => ({ width: globalThis.innerWidth || 1280, height: globalThis.innerHeight || 720 });
 
 export class CutInDirector {
@@ -102,30 +113,27 @@ export class CutInDirector {
      * the mouse. It stands still in the bottom-left corner; `placeAim(screenAim)` (every frame, crosshair CSS position)
      * makes it lean toward the crosshair with a slight delay and bend with the crosshair's motion.
      */
-    async beginAim(unit, { shoulder = 'right' } = {}) {
+    async beginAim(unit, { shoulder = 'right', weaponId = unit.weapon } = {}) {
         const cur = this.aiming;
         if (cur?.unitId === unit.id) {
-            if (cur.shoulder === shoulder) return;
+            if (cur.shoulder === shoulder && cur.weaponId === weaponId) return;
             // Same sprite on both sides unless the art has a left-side aiming sprite: nothing to rebuild.
             if (!cur.art || !cur.hasLeft) { cur.shoulder = shoulder; return; }
         }
         const last = this.aiming?.unitId === unit.id ? this.aiming.last : null;
         this.endAim();
-        const token = this.aiming = { unitId: unit.id, shoulder, el: null, art: null, last };
+        const token = this.aiming = { unitId: unit.id, weaponId, shoulder, el: null, art: null, last };
         const loaded = await loadCharacterArt(unit.art);
         if (this.aiming !== token) return;
         token.hasLeft = !!loaded.cutin.variants?.left;
-        const art = { ...loaded, cutin: sideCutin(loaded.cutin, token.shoulder) };
+        const art = { ...loaded, cutin: readyCutin(loaded.cutin, token.shoulder) };
         const el = document.createElement('div');
         el.className = 'cutin cutin-aim'; el.style.pointerEvents = 'none';
         el.innerHTML = '<div class="figures aligned"><div class="figure" data-aligned="1"></div></div>';
         const fig = el.querySelector('.figure');
         fig.style.aspectRatio = `${art.cutin.width} / ${art.cutin.height}`;
-        for (const layer of art.cutin.layers) {
-            if (layer.blend) continue;                     // muzzle-flash layers only belong to the shot
-            const img = document.createElement('img'); img.src = art.base + layer.image; img.draggable = false;
-            fig.appendChild(img);
-        }
+        const content = paintFigure(fig, art);
+        token.weapon = new SpriteWeapon(content, art.cutin, unit, weaponId, this.cameraDirector.scene, art.base);
         // Under the HUD (buttons and portraits stay on top), above the 3D view.
         this.aimLayer().appendChild(el);
         token.el = el; token.art = art;
@@ -151,11 +159,15 @@ export class CutInDirector {
         const layout = aimBackshotLayout(a.art.cutin, view, rail);
         followStep(a.follow ||= {}, screenAim, dt);
         const pose = aimBackshotPose(a.art.cutin, layout, a.follow.pos, a.follow.vel, { x: view.width / 2, y: view.height / 2 });
+        const mirror = a.art.cutin.mirror ? -1 : 1;
+        a.weapon?.update({ yaw: mirror * ((a.follow.pos.x / view.width - .5) * .3 - a.follow.vel.x * .00004),
+            pitch: (a.follow.pos.y / view.height - .5) * .18 + a.follow.vel.y * .00003 });
         Object.assign(a.el.querySelector('.figure').style, { left: `${layout.left}px`, top: `${layout.top}px`, width: `${layout.width}px`, height: `${layout.height}px`,
             transformOrigin: '50% 100%', transform: `rotate(${pose.lean.toFixed(2)}deg) skewX(${pose.bend.toFixed(2)}deg)` });
     }
     endAim() {
         if (!this.aiming) return;
+        this.aiming.weapon?.dispose();
         this.aiming.el?.remove();
         this.aiming = null;
         if (!this.current) this.cameraDirector.hidden = new Set();
@@ -184,7 +196,7 @@ export class CutInDirector {
         el.querySelector('.title').textContent = o.title || '';
         el.querySelector('.sub').textContent = o.subtitle || '';
         const figures = el.querySelector('.figures');
-        const layerEls = [];
+        const layerEls = [], weapons = [];
         const aligned = arts.length === 1 && !!aimWorld && this.cameraDirector.active;
         if (aligned) figures.classList.add('aligned');
         arts.forEach((art, i) => {
@@ -194,14 +206,13 @@ export class CutInDirector {
             fig.style.setProperty('--i', i);
             fig.style.height = `${Math.round((art.cutin.screenHeight || 0.6) * 100 * (o.units.length > 1 ? 0.8 : 1))}vh`;
             fig.style.aspectRatio = `${art.cutin.width} / ${art.cutin.height}`;
-            for (const layer of art.cutin.layers) {
-                const img = document.createElement('img');
-                img.src = art.base + layer.image; img.draggable = false;
-                if (aligned) img.style.transformOrigin = backshotPlacement(art.cutin, { x: 0, y: 0 }, viewport()).origin;
-                if (layer.blend) img.style.mixBlendMode = layer.blend;
-                fig.appendChild(img);
-                layerEls.push({ img, parallax: layer.parallax ?? 1, i });
-            }
+            const content = paintFigure(fig, art);
+            const weapon = new SpriteWeapon(content, art.cutin, o.units[i], o.weaponId || o.units[i].weapon, this.cameraDirector.scene, art.base);
+            weapons.push(weapon);
+            // Animate the complete rig together so gloves never drift off the gun.
+            const presentation = document.createElement('div'); presentation.className = 'sprite-presentation';
+            fig.appendChild(presentation); presentation.appendChild(content);
+            layerEls.push({ img: presentation, parallax: 1, i });
             figures.appendChild(fig);
         });
         this.root.appendChild(el);
@@ -211,7 +222,10 @@ export class CutInDirector {
         const place = () => {
             if (!aligned) return;
             const view = viewport(), aim = projectToScreen(this.cameraDirector.cam, aimWorld, view);
-            const pl = backshotPlacement(arts[0].cutin, aim, view), fig = figures.firstChild;
+            const cutin = arts[0].cutin, liveMuzzle = weapons[0]?.targets?.muzzle;
+            const muzzle = liveMuzzle ? [cutin.mirror ? 1 - liveMuzzle[0] : liveMuzzle[0], liveMuzzle[1]] : cutin.muzzle;
+            const pl = backshotPlacement({ ...cutin, muzzle }, aim, view), fig = figures.firstChild;
+            layerEls[0].img.style.transformOrigin = `${muzzle[0]*100}% ${muzzle[1]*100}%`;
             Object.assign(fig.style, { left: `${pl.left}px`, top: `${pl.top}px`, width: `${pl.width}px`, height: `${pl.height}px` });
             const ch = el.querySelector('.cutin-crosshair'); ch.style.left = `${aim.x}px`; ch.style.top = `${aim.y}px`; ch.style.display = aim.behind ? 'none' : 'block';
         };
@@ -231,6 +245,7 @@ export class CutInDirector {
                     l.img.style.transform = `translateX(${x}%) scale(${scale})`;
                 }
                 if (this.cameraDirector.active) this.cameraDirector.apply(s.dolly ?? 0);
+                for (const weapon of weapons) weapon.update({ recoil: (s.flash || 0) * .012 });
                 place();
                 if (cur.t >= timeline.duration) { resolve(); return; }
                 requestAnimationFrame(step);
@@ -240,6 +255,7 @@ export class CutInDirector {
         // Keep the action camera through tracer/skill playback; EventPlayer returns to tactics when the queue drains.
         this.cameraDirector.hidden = new Set();
         document.body.classList.remove('cutin-active');
+        weapons.forEach(w => w.dispose());
         el.remove();
         if (this.current === cur) this.current = null;
     }

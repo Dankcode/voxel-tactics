@@ -71,6 +71,8 @@ export function mobilityPerAp(u, formationPenalty = 0) {
     let m = (u.mobility + formationPenalty)*(1-loadPenalty(u));
     if (u.parts.legs.disabled) m *= 0.5;
     if (hasStatus(u, 'frozen')) return 0;
+    const chill = u.statuses?.find(s => s.id === 'chilled');
+    if (chill) m *= Math.max(0.2, 1 - B.chillMobility * (chill.stacks || 1));   // cold, dry: slowed, not frozen
     return Math.max(0.5, m);
 }
 export function partArmor(u, part) { return u.parts[part].armor + (hasStatus(u, 'braced') ? STATUS_DEFS.braced.armorBonus : 0); }

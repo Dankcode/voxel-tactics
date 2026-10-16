@@ -1,0 +1,2502 @@
+{
+  "character": "ranger-01",
+  "frames": [
+    {
+      "facing": "s",
+      "column": 0,
+      "clip": "idle",
+      "frame": 0,
+      "source": "field-s.png",
+      "sourceRect": [
+        0,
+        0,
+        179,
+        467
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 1,
+      "clip": "idle",
+      "frame": 1,
+      "source": "field-s.png",
+      "sourceRect": [
+        179,
+        0,
+        358,
+        467
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 2,
+      "clip": "run",
+      "frame": 0,
+      "source": "run-down-s.png",
+      "sourceRect": [
+        0,
+        0,
+        384,
+        602
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 3,
+      "clip": "run",
+      "frame": 1,
+      "source": "run-down-s.png",
+      "sourceRect": [
+        384,
+        0,
+        768,
+        602
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 4,
+      "clip": "run",
+      "frame": 2,
+      "source": "run-down-s.png",
+      "sourceRect": [
+        768,
+        0,
+        1152,
+        602
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 5,
+      "clip": "run",
+      "frame": 3,
+      "source": "run-down-s.png",
+      "sourceRect": [
+        1152,
+        0,
+        1536,
+        602
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 6,
+      "clip": "aim",
+      "frame": 0,
+      "source": "field-s.png",
+      "sourceRect": [
+        1075,
+        0,
+        1254,
+        467
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 7,
+      "clip": "fire",
+      "frame": 0,
+      "source": "field-s.png",
+      "sourceRect": [
+        0,
+        467,
+        179,
+        850
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 8,
+      "clip": "fire",
+      "frame": 1,
+      "source": "field-s.png",
+      "sourceRect": [
+        179,
+        467,
+        358,
+        850
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 9,
+      "clip": "throw",
+      "frame": 0,
+      "source": "field-s.png",
+      "sourceRect": [
+        358,
+        467,
+        537,
+        850
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 10,
+      "clip": "throw",
+      "frame": 1,
+      "source": "field-s.png",
+      "sourceRect": [
+        537,
+        467,
+        717,
+        850
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 11,
+      "clip": "hit",
+      "frame": 0,
+      "source": "field-s.png",
+      "sourceRect": [
+        717,
+        467,
+        896,
+        850
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 12,
+      "clip": "down",
+      "frame": 0,
+      "source": "run-down-s.png",
+      "sourceRect": [
+        0,
+        602,
+        384,
+        1024
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 13,
+      "clip": "down",
+      "frame": 1,
+      "source": "run-down-s.png",
+      "sourceRect": [
+        384,
+        602,
+        768,
+        1024
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 14,
+      "clip": "down",
+      "frame": 2,
+      "source": "run-down-s.png",
+      "sourceRect": [
+        768,
+        602,
+        1152,
+        1024
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 15,
+      "clip": "down",
+      "frame": 3,
+      "source": "run-down-s.png",
+      "sourceRect": [
+        1152,
+        602,
+        1536,
+        1024
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 16,
+      "clip": "stacked",
+      "frame": 0,
+      "source": "field-s.png",
+      "sourceRect": [
+        1075,
+        467,
+        1254,
+        850
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 17,
+      "clip": "hunker",
+      "frame": 0,
+      "source": "field-s.png",
+      "sourceRect": [
+        0,
+        850,
+        179,
+        1254
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 18,
+      "clip": "vault",
+      "frame": 0,
+      "source": "field-s.png",
+      "sourceRect": [
+        179,
+        850,
+        358,
+        1254
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 19,
+      "clip": "vault",
+      "frame": 1,
+      "source": "field-s.png",
+      "sourceRect": [
+        358,
+        850,
+        537,
+        1254
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 20,
+      "clip": "vault",
+      "frame": 2,
+      "source": "field-s.png",
+      "sourceRect": [
+        537,
+        850,
+        717,
+        1254
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 21,
+      "clip": "climb",
+      "frame": 0,
+      "source": "field-s.png",
+      "sourceRect": [
+        717,
+        850,
+        896,
+        1254
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 22,
+      "clip": "climb",
+      "frame": 1,
+      "source": "field-s.png",
+      "sourceRect": [
+        896,
+        850,
+        1075,
+        1254
+      ]
+    },
+    {
+      "facing": "s",
+      "column": 23,
+      "clip": "climb",
+      "frame": 2,
+      "source": "field-s.png",
+      "sourceRect": [
+        1075,
+        850,
+        1254,
+        1254
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 0,
+      "clip": "idle",
+      "frame": 0,
+      "source": "field-sw.png",
+      "sourceRect": [
+        0,
+        0,
+        179,
+        454
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 1,
+      "clip": "idle",
+      "frame": 1,
+      "source": "field-sw.png",
+      "sourceRect": [
+        179,
+        0,
+        358,
+        454
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 2,
+      "clip": "run",
+      "frame": 0,
+      "source": "run-down-sw.png",
+      "sourceRect": [
+        0,
+        0,
+        444,
+        518
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 3,
+      "clip": "run",
+      "frame": 1,
+      "source": "run-down-sw.png",
+      "sourceRect": [
+        444,
+        0,
+        887,
+        518
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 4,
+      "clip": "run",
+      "frame": 2,
+      "source": "run-down-sw.png",
+      "sourceRect": [
+        887,
+        0,
+        1330,
+        518
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 5,
+      "clip": "run",
+      "frame": 3,
+      "source": "run-down-sw.png",
+      "sourceRect": [
+        1330,
+        0,
+        1774,
+        518
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 6,
+      "clip": "aim",
+      "frame": 0,
+      "source": "field-sw.png",
+      "sourceRect": [
+        1075,
+        0,
+        1254,
+        454
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 7,
+      "clip": "fire",
+      "frame": 0,
+      "source": "field-sw.png",
+      "sourceRect": [
+        0,
+        454,
+        179,
+        834
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 8,
+      "clip": "fire",
+      "frame": 1,
+      "source": "field-sw.png",
+      "sourceRect": [
+        179,
+        454,
+        358,
+        834
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 9,
+      "clip": "throw",
+      "frame": 0,
+      "source": "field-sw.png",
+      "sourceRect": [
+        358,
+        454,
+        537,
+        834
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 10,
+      "clip": "throw",
+      "frame": 1,
+      "source": "field-sw.png",
+      "sourceRect": [
+        537,
+        454,
+        717,
+        834
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 11,
+      "clip": "hit",
+      "frame": 0,
+      "source": "field-sw.png",
+      "sourceRect": [
+        717,
+        454,
+        896,
+        834
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 12,
+      "clip": "down",
+      "frame": 0,
+      "source": "run-down-sw.png",
+      "sourceRect": [
+        0,
+        518,
+        444,
+        887
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 13,
+      "clip": "down",
+      "frame": 1,
+      "source": "run-down-sw.png",
+      "sourceRect": [
+        444,
+        518,
+        887,
+        887
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 14,
+      "clip": "down",
+      "frame": 2,
+      "source": "run-down-sw.png",
+      "sourceRect": [
+        887,
+        518,
+        1330,
+        887
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 15,
+      "clip": "down",
+      "frame": 3,
+      "source": "run-down-sw.png",
+      "sourceRect": [
+        1330,
+        518,
+        1774,
+        887
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 16,
+      "clip": "stacked",
+      "frame": 0,
+      "source": "field-sw.png",
+      "sourceRect": [
+        1075,
+        454,
+        1254,
+        834
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 17,
+      "clip": "hunker",
+      "frame": 0,
+      "source": "field-sw.png",
+      "sourceRect": [
+        0,
+        834,
+        179,
+        1254
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 18,
+      "clip": "vault",
+      "frame": 0,
+      "source": "field-sw.png",
+      "sourceRect": [
+        179,
+        834,
+        358,
+        1254
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 19,
+      "clip": "vault",
+      "frame": 1,
+      "source": "field-sw.png",
+      "sourceRect": [
+        358,
+        834,
+        537,
+        1254
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 20,
+      "clip": "vault",
+      "frame": 2,
+      "source": "field-sw.png",
+      "sourceRect": [
+        537,
+        834,
+        717,
+        1254
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 21,
+      "clip": "climb",
+      "frame": 0,
+      "source": "field-sw.png",
+      "sourceRect": [
+        717,
+        834,
+        896,
+        1254
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 22,
+      "clip": "climb",
+      "frame": 1,
+      "source": "field-sw.png",
+      "sourceRect": [
+        896,
+        834,
+        1075,
+        1254
+      ]
+    },
+    {
+      "facing": "sw",
+      "column": 23,
+      "clip": "climb",
+      "frame": 2,
+      "source": "field-sw.png",
+      "sourceRect": [
+        1075,
+        834,
+        1254,
+        1254
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 0,
+      "clip": "idle",
+      "frame": 0,
+      "source": "field-w.png",
+      "sourceRect": [
+        0,
+        0,
+        179,
+        434
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 1,
+      "clip": "idle",
+      "frame": 1,
+      "source": "field-w.png",
+      "sourceRect": [
+        179,
+        0,
+        358,
+        434
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 2,
+      "clip": "run",
+      "frame": 0,
+      "source": "run-down-w.png",
+      "sourceRect": [
+        0,
+        0,
+        444,
+        518
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 3,
+      "clip": "run",
+      "frame": 1,
+      "source": "run-down-w.png",
+      "sourceRect": [
+        444,
+        0,
+        887,
+        518
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 4,
+      "clip": "run",
+      "frame": 2,
+      "source": "run-down-w.png",
+      "sourceRect": [
+        887,
+        0,
+        1330,
+        518
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 5,
+      "clip": "run",
+      "frame": 3,
+      "source": "run-down-w.png",
+      "sourceRect": [
+        1330,
+        0,
+        1774,
+        518
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 6,
+      "clip": "aim",
+      "frame": 0,
+      "source": "field-w.png",
+      "sourceRect": [
+        1075,
+        0,
+        1254,
+        434
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 7,
+      "clip": "fire",
+      "frame": 0,
+      "source": "field-w.png",
+      "sourceRect": [
+        0,
+        434,
+        179,
+        806
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 8,
+      "clip": "fire",
+      "frame": 1,
+      "source": "field-w.png",
+      "sourceRect": [
+        179,
+        434,
+        358,
+        806
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 9,
+      "clip": "throw",
+      "frame": 0,
+      "source": "field-w.png",
+      "sourceRect": [
+        358,
+        434,
+        537,
+        806
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 10,
+      "clip": "throw",
+      "frame": 1,
+      "source": "field-w.png",
+      "sourceRect": [
+        537,
+        434,
+        717,
+        806
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 11,
+      "clip": "hit",
+      "frame": 0,
+      "source": "field-w.png",
+      "sourceRect": [
+        717,
+        434,
+        896,
+        806
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 12,
+      "clip": "down",
+      "frame": 0,
+      "source": "run-down-w.png",
+      "sourceRect": [
+        0,
+        518,
+        444,
+        887
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 13,
+      "clip": "down",
+      "frame": 1,
+      "source": "run-down-w.png",
+      "sourceRect": [
+        444,
+        518,
+        887,
+        887
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 14,
+      "clip": "down",
+      "frame": 2,
+      "source": "run-down-w.png",
+      "sourceRect": [
+        887,
+        518,
+        1330,
+        887
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 15,
+      "clip": "down",
+      "frame": 3,
+      "source": "run-down-w.png",
+      "sourceRect": [
+        1330,
+        518,
+        1774,
+        887
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 16,
+      "clip": "stacked",
+      "frame": 0,
+      "source": "field-w.png",
+      "sourceRect": [
+        1075,
+        434,
+        1254,
+        806
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 17,
+      "clip": "hunker",
+      "frame": 0,
+      "source": "field-w.png",
+      "sourceRect": [
+        0,
+        806,
+        179,
+        1254
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 18,
+      "clip": "vault",
+      "frame": 0,
+      "source": "field-w.png",
+      "sourceRect": [
+        179,
+        806,
+        358,
+        1254
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 19,
+      "clip": "vault",
+      "frame": 1,
+      "source": "field-w.png",
+      "sourceRect": [
+        358,
+        806,
+        537,
+        1254
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 20,
+      "clip": "vault",
+      "frame": 2,
+      "source": "field-w.png",
+      "sourceRect": [
+        537,
+        806,
+        717,
+        1254
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 21,
+      "clip": "climb",
+      "frame": 0,
+      "source": "field-w.png",
+      "sourceRect": [
+        717,
+        806,
+        896,
+        1254
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 22,
+      "clip": "climb",
+      "frame": 1,
+      "source": "field-w.png",
+      "sourceRect": [
+        896,
+        806,
+        1075,
+        1254
+      ]
+    },
+    {
+      "facing": "w",
+      "column": 23,
+      "clip": "climb",
+      "frame": 2,
+      "source": "field-w.png",
+      "sourceRect": [
+        1075,
+        806,
+        1254,
+        1254
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 0,
+      "clip": "idle",
+      "frame": 0,
+      "source": "field-nw.png",
+      "sourceRect": [
+        0,
+        0,
+        179,
+        434
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 1,
+      "clip": "idle",
+      "frame": 1,
+      "source": "field-nw.png",
+      "sourceRect": [
+        179,
+        0,
+        358,
+        434
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 2,
+      "clip": "run",
+      "frame": 0,
+      "source": "run-down-nw.png",
+      "sourceRect": [
+        0,
+        0,
+        384,
+        584
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 3,
+      "clip": "run",
+      "frame": 1,
+      "source": "run-down-nw.png",
+      "sourceRect": [
+        384,
+        0,
+        768,
+        584
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 4,
+      "clip": "run",
+      "frame": 2,
+      "source": "run-down-nw.png",
+      "sourceRect": [
+        768,
+        0,
+        1152,
+        584
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 5,
+      "clip": "run",
+      "frame": 3,
+      "source": "run-down-nw.png",
+      "sourceRect": [
+        1152,
+        0,
+        1536,
+        584
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 6,
+      "clip": "aim",
+      "frame": 0,
+      "source": "field-nw.png",
+      "sourceRect": [
+        1075,
+        0,
+        1254,
+        434
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 7,
+      "clip": "fire",
+      "frame": 0,
+      "source": "field-nw.png",
+      "sourceRect": [
+        0,
+        434,
+        179,
+        820
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 8,
+      "clip": "fire",
+      "frame": 1,
+      "source": "field-nw.png",
+      "sourceRect": [
+        179,
+        434,
+        358,
+        820
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 9,
+      "clip": "throw",
+      "frame": 0,
+      "source": "field-nw.png",
+      "sourceRect": [
+        358,
+        434,
+        537,
+        820
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 10,
+      "clip": "throw",
+      "frame": 1,
+      "source": "field-nw.png",
+      "sourceRect": [
+        537,
+        434,
+        717,
+        820
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 11,
+      "clip": "hit",
+      "frame": 0,
+      "source": "field-nw.png",
+      "sourceRect": [
+        717,
+        434,
+        896,
+        820
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 12,
+      "clip": "down",
+      "frame": 0,
+      "source": "run-down-nw.png",
+      "sourceRect": [
+        0,
+        584,
+        384,
+        1024
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 13,
+      "clip": "down",
+      "frame": 1,
+      "source": "run-down-nw.png",
+      "sourceRect": [
+        384,
+        584,
+        768,
+        1024
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 14,
+      "clip": "down",
+      "frame": 2,
+      "source": "run-down-nw.png",
+      "sourceRect": [
+        768,
+        584,
+        1152,
+        1024
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 15,
+      "clip": "down",
+      "frame": 3,
+      "source": "run-down-nw.png",
+      "sourceRect": [
+        1152,
+        584,
+        1536,
+        1024
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 16,
+      "clip": "stacked",
+      "frame": 0,
+      "source": "field-nw.png",
+      "sourceRect": [
+        1075,
+        434,
+        1254,
+        820
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 17,
+      "clip": "hunker",
+      "frame": 0,
+      "source": "field-nw.png",
+      "sourceRect": [
+        0,
+        820,
+        179,
+        1254
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 18,
+      "clip": "vault",
+      "frame": 0,
+      "source": "field-nw.png",
+      "sourceRect": [
+        179,
+        820,
+        358,
+        1254
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 19,
+      "clip": "vault",
+      "frame": 1,
+      "source": "field-nw.png",
+      "sourceRect": [
+        358,
+        820,
+        537,
+        1254
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 20,
+      "clip": "vault",
+      "frame": 2,
+      "source": "field-nw.png",
+      "sourceRect": [
+        537,
+        820,
+        717,
+        1254
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 21,
+      "clip": "climb",
+      "frame": 0,
+      "source": "field-nw.png",
+      "sourceRect": [
+        717,
+        820,
+        896,
+        1254
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 22,
+      "clip": "climb",
+      "frame": 1,
+      "source": "field-nw.png",
+      "sourceRect": [
+        896,
+        820,
+        1075,
+        1254
+      ]
+    },
+    {
+      "facing": "nw",
+      "column": 23,
+      "clip": "climb",
+      "frame": 2,
+      "source": "field-nw.png",
+      "sourceRect": [
+        1075,
+        820,
+        1254,
+        1254
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 0,
+      "clip": "idle",
+      "frame": 0,
+      "source": "field-n.png",
+      "sourceRect": [
+        0,
+        0,
+        179,
+        430
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 1,
+      "clip": "idle",
+      "frame": 1,
+      "source": "field-n.png",
+      "sourceRect": [
+        179,
+        0,
+        358,
+        430
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 2,
+      "clip": "run",
+      "frame": 0,
+      "source": "run-down-n.png",
+      "sourceRect": [
+        0,
+        0,
+        444,
+        514
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 3,
+      "clip": "run",
+      "frame": 1,
+      "source": "run-down-n.png",
+      "sourceRect": [
+        444,
+        0,
+        887,
+        514
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 4,
+      "clip": "run",
+      "frame": 2,
+      "source": "run-down-n.png",
+      "sourceRect": [
+        887,
+        0,
+        1330,
+        514
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 5,
+      "clip": "run",
+      "frame": 3,
+      "source": "run-down-n.png",
+      "sourceRect": [
+        1330,
+        0,
+        1774,
+        514
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 6,
+      "clip": "aim",
+      "frame": 0,
+      "source": "field-n.png",
+      "sourceRect": [
+        1075,
+        0,
+        1254,
+        430
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 7,
+      "clip": "fire",
+      "frame": 0,
+      "source": "field-n.png",
+      "sourceRect": [
+        0,
+        430,
+        179,
+        836
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 8,
+      "clip": "fire",
+      "frame": 1,
+      "source": "field-n.png",
+      "sourceRect": [
+        179,
+        430,
+        358,
+        836
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 9,
+      "clip": "throw",
+      "frame": 0,
+      "source": "field-n.png",
+      "sourceRect": [
+        358,
+        430,
+        537,
+        836
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 10,
+      "clip": "throw",
+      "frame": 1,
+      "source": "field-n.png",
+      "sourceRect": [
+        537,
+        430,
+        717,
+        836
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 11,
+      "clip": "hit",
+      "frame": 0,
+      "source": "field-n.png",
+      "sourceRect": [
+        717,
+        430,
+        896,
+        836
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 12,
+      "clip": "down",
+      "frame": 0,
+      "source": "run-down-n.png",
+      "sourceRect": [
+        0,
+        514,
+        444,
+        887
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 13,
+      "clip": "down",
+      "frame": 1,
+      "source": "run-down-n.png",
+      "sourceRect": [
+        444,
+        514,
+        887,
+        887
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 14,
+      "clip": "down",
+      "frame": 2,
+      "source": "run-down-n.png",
+      "sourceRect": [
+        887,
+        514,
+        1330,
+        887
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 15,
+      "clip": "down",
+      "frame": 3,
+      "source": "run-down-n.png",
+      "sourceRect": [
+        1330,
+        514,
+        1774,
+        887
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 16,
+      "clip": "stacked",
+      "frame": 0,
+      "source": "field-n.png",
+      "sourceRect": [
+        1075,
+        430,
+        1254,
+        836
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 17,
+      "clip": "hunker",
+      "frame": 0,
+      "source": "field-n.png",
+      "sourceRect": [
+        0,
+        836,
+        179,
+        1254
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 18,
+      "clip": "vault",
+      "frame": 0,
+      "source": "field-n.png",
+      "sourceRect": [
+        179,
+        836,
+        358,
+        1254
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 19,
+      "clip": "vault",
+      "frame": 1,
+      "source": "field-n.png",
+      "sourceRect": [
+        358,
+        836,
+        537,
+        1254
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 20,
+      "clip": "vault",
+      "frame": 2,
+      "source": "field-n.png",
+      "sourceRect": [
+        537,
+        836,
+        717,
+        1254
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 21,
+      "clip": "climb",
+      "frame": 0,
+      "source": "field-n.png",
+      "sourceRect": [
+        717,
+        836,
+        896,
+        1254
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 22,
+      "clip": "climb",
+      "frame": 1,
+      "source": "field-n.png",
+      "sourceRect": [
+        896,
+        836,
+        1075,
+        1254
+      ]
+    },
+    {
+      "facing": "n",
+      "column": 23,
+      "clip": "climb",
+      "frame": 2,
+      "source": "field-n.png",
+      "sourceRect": [
+        1075,
+        836,
+        1254,
+        1254
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 0,
+      "clip": "idle",
+      "frame": 0,
+      "source": "field-ne.png",
+      "sourceRect": [
+        0,
+        0,
+        179,
+        444
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 1,
+      "clip": "idle",
+      "frame": 1,
+      "source": "field-ne.png",
+      "sourceRect": [
+        179,
+        0,
+        358,
+        444
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 2,
+      "clip": "run",
+      "frame": 0,
+      "source": "run-down-ne.png",
+      "sourceRect": [
+        0,
+        0,
+        444,
+        518
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 3,
+      "clip": "run",
+      "frame": 1,
+      "source": "run-down-ne.png",
+      "sourceRect": [
+        444,
+        0,
+        887,
+        518
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 4,
+      "clip": "run",
+      "frame": 2,
+      "source": "run-down-ne.png",
+      "sourceRect": [
+        887,
+        0,
+        1330,
+        518
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 5,
+      "clip": "run",
+      "frame": 3,
+      "source": "run-down-ne.png",
+      "sourceRect": [
+        1330,
+        0,
+        1774,
+        518
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 6,
+      "clip": "aim",
+      "frame": 0,
+      "source": "field-ne.png",
+      "sourceRect": [
+        1075,
+        0,
+        1254,
+        444
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 7,
+      "clip": "fire",
+      "frame": 0,
+      "source": "field-ne.png",
+      "sourceRect": [
+        0,
+        444,
+        179,
+        828
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 8,
+      "clip": "fire",
+      "frame": 1,
+      "source": "field-ne.png",
+      "sourceRect": [
+        179,
+        444,
+        358,
+        828
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 9,
+      "clip": "throw",
+      "frame": 0,
+      "source": "field-ne.png",
+      "sourceRect": [
+        358,
+        444,
+        537,
+        828
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 10,
+      "clip": "throw",
+      "frame": 1,
+      "source": "field-ne.png",
+      "sourceRect": [
+        537,
+        444,
+        717,
+        828
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 11,
+      "clip": "hit",
+      "frame": 0,
+      "source": "field-ne.png",
+      "sourceRect": [
+        717,
+        444,
+        896,
+        828
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 12,
+      "clip": "down",
+      "frame": 0,
+      "source": "run-down-ne.png",
+      "sourceRect": [
+        0,
+        518,
+        444,
+        887
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 13,
+      "clip": "down",
+      "frame": 1,
+      "source": "run-down-ne.png",
+      "sourceRect": [
+        444,
+        518,
+        887,
+        887
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 14,
+      "clip": "down",
+      "frame": 2,
+      "source": "run-down-ne.png",
+      "sourceRect": [
+        887,
+        518,
+        1330,
+        887
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 15,
+      "clip": "down",
+      "frame": 3,
+      "source": "run-down-ne.png",
+      "sourceRect": [
+        1330,
+        518,
+        1774,
+        887
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 16,
+      "clip": "stacked",
+      "frame": 0,
+      "source": "field-ne.png",
+      "sourceRect": [
+        1075,
+        444,
+        1254,
+        828
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 17,
+      "clip": "hunker",
+      "frame": 0,
+      "source": "field-ne.png",
+      "sourceRect": [
+        0,
+        828,
+        179,
+        1254
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 18,
+      "clip": "vault",
+      "frame": 0,
+      "source": "field-ne.png",
+      "sourceRect": [
+        179,
+        828,
+        358,
+        1254
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 19,
+      "clip": "vault",
+      "frame": 1,
+      "source": "field-ne.png",
+      "sourceRect": [
+        358,
+        828,
+        537,
+        1254
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 20,
+      "clip": "vault",
+      "frame": 2,
+      "source": "field-ne.png",
+      "sourceRect": [
+        537,
+        828,
+        717,
+        1254
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 21,
+      "clip": "climb",
+      "frame": 0,
+      "source": "field-ne.png",
+      "sourceRect": [
+        717,
+        828,
+        896,
+        1254
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 22,
+      "clip": "climb",
+      "frame": 1,
+      "source": "field-ne.png",
+      "sourceRect": [
+        896,
+        828,
+        1075,
+        1254
+      ]
+    },
+    {
+      "facing": "ne",
+      "column": 23,
+      "clip": "climb",
+      "frame": 2,
+      "source": "field-ne.png",
+      "sourceRect": [
+        1075,
+        828,
+        1254,
+        1254
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 0,
+      "clip": "idle",
+      "frame": 0,
+      "source": "field-e.png",
+      "sourceRect": [
+        0,
+        0,
+        179,
+        451
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 1,
+      "clip": "idle",
+      "frame": 1,
+      "source": "field-e.png",
+      "sourceRect": [
+        179,
+        0,
+        358,
+        451
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 2,
+      "clip": "run",
+      "frame": 0,
+      "source": "run-down-e.png",
+      "sourceRect": [
+        0,
+        0,
+        444,
+        522
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 3,
+      "clip": "run",
+      "frame": 1,
+      "source": "run-down-e.png",
+      "sourceRect": [
+        444,
+        0,
+        887,
+        522
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 4,
+      "clip": "run",
+      "frame": 2,
+      "source": "run-down-e.png",
+      "sourceRect": [
+        887,
+        0,
+        1330,
+        522
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 5,
+      "clip": "run",
+      "frame": 3,
+      "source": "run-down-e.png",
+      "sourceRect": [
+        1330,
+        0,
+        1774,
+        522
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 6,
+      "clip": "aim",
+      "frame": 0,
+      "source": "field-e.png",
+      "sourceRect": [
+        1075,
+        0,
+        1254,
+        451
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 7,
+      "clip": "fire",
+      "frame": 0,
+      "source": "field-e.png",
+      "sourceRect": [
+        0,
+        451,
+        179,
+        819
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 8,
+      "clip": "fire",
+      "frame": 1,
+      "source": "field-e.png",
+      "sourceRect": [
+        179,
+        451,
+        358,
+        819
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 9,
+      "clip": "throw",
+      "frame": 0,
+      "source": "field-e.png",
+      "sourceRect": [
+        358,
+        451,
+        537,
+        819
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 10,
+      "clip": "throw",
+      "frame": 1,
+      "source": "field-e.png",
+      "sourceRect": [
+        537,
+        451,
+        717,
+        819
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 11,
+      "clip": "hit",
+      "frame": 0,
+      "source": "field-e.png",
+      "sourceRect": [
+        717,
+        451,
+        896,
+        819
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 12,
+      "clip": "down",
+      "frame": 0,
+      "source": "run-down-e.png",
+      "sourceRect": [
+        0,
+        522,
+        444,
+        887
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 13,
+      "clip": "down",
+      "frame": 1,
+      "source": "run-down-e.png",
+      "sourceRect": [
+        444,
+        522,
+        887,
+        887
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 14,
+      "clip": "down",
+      "frame": 2,
+      "source": "run-down-e.png",
+      "sourceRect": [
+        887,
+        522,
+        1330,
+        887
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 15,
+      "clip": "down",
+      "frame": 3,
+      "source": "run-down-e.png",
+      "sourceRect": [
+        1330,
+        522,
+        1774,
+        887
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 16,
+      "clip": "stacked",
+      "frame": 0,
+      "source": "field-e.png",
+      "sourceRect": [
+        1075,
+        451,
+        1254,
+        819
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 17,
+      "clip": "hunker",
+      "frame": 0,
+      "source": "field-e.png",
+      "sourceRect": [
+        0,
+        819,
+        179,
+        1254
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 18,
+      "clip": "vault",
+      "frame": 0,
+      "source": "field-e.png",
+      "sourceRect": [
+        179,
+        819,
+        358,
+        1254
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 19,
+      "clip": "vault",
+      "frame": 1,
+      "source": "field-e.png",
+      "sourceRect": [
+        358,
+        819,
+        537,
+        1254
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 20,
+      "clip": "vault",
+      "frame": 2,
+      "source": "field-e.png",
+      "sourceRect": [
+        537,
+        819,
+        717,
+        1254
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 21,
+      "clip": "climb",
+      "frame": 0,
+      "source": "field-e.png",
+      "sourceRect": [
+        717,
+        819,
+        896,
+        1254
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 22,
+      "clip": "climb",
+      "frame": 1,
+      "source": "field-e.png",
+      "sourceRect": [
+        896,
+        819,
+        1075,
+        1254
+      ]
+    },
+    {
+      "facing": "e",
+      "column": 23,
+      "clip": "climb",
+      "frame": 2,
+      "source": "field-e.png",
+      "sourceRect": [
+        1075,
+        819,
+        1254,
+        1254
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 0,
+      "clip": "idle",
+      "frame": 0,
+      "source": "field-se.png",
+      "sourceRect": [
+        0,
+        0,
+        179,
+        463
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 1,
+      "clip": "idle",
+      "frame": 1,
+      "source": "field-se.png",
+      "sourceRect": [
+        179,
+        0,
+        358,
+        463
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 2,
+      "clip": "run",
+      "frame": 0,
+      "source": "run-down-se.png",
+      "sourceRect": [
+        0,
+        0,
+        384,
+        589
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 3,
+      "clip": "run",
+      "frame": 1,
+      "source": "run-down-se.png",
+      "sourceRect": [
+        384,
+        0,
+        768,
+        589
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 4,
+      "clip": "run",
+      "frame": 2,
+      "source": "run-down-se.png",
+      "sourceRect": [
+        768,
+        0,
+        1152,
+        589
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 5,
+      "clip": "run",
+      "frame": 3,
+      "source": "run-down-se.png",
+      "sourceRect": [
+        1152,
+        0,
+        1536,
+        589
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 6,
+      "clip": "aim",
+      "frame": 0,
+      "source": "field-se.png",
+      "sourceRect": [
+        1075,
+        0,
+        1254,
+        463
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 7,
+      "clip": "fire",
+      "frame": 0,
+      "source": "field-se.png",
+      "sourceRect": [
+        0,
+        463,
+        179,
+        848
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 8,
+      "clip": "fire",
+      "frame": 1,
+      "source": "field-se.png",
+      "sourceRect": [
+        179,
+        463,
+        358,
+        848
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 9,
+      "clip": "throw",
+      "frame": 0,
+      "source": "field-se.png",
+      "sourceRect": [
+        358,
+        463,
+        537,
+        848
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 10,
+      "clip": "throw",
+      "frame": 1,
+      "source": "field-se.png",
+      "sourceRect": [
+        537,
+        463,
+        717,
+        848
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 11,
+      "clip": "hit",
+      "frame": 0,
+      "source": "field-se.png",
+      "sourceRect": [
+        717,
+        463,
+        896,
+        848
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 12,
+      "clip": "down",
+      "frame": 0,
+      "source": "run-down-se.png",
+      "sourceRect": [
+        0,
+        589,
+        384,
+        1024
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 13,
+      "clip": "down",
+      "frame": 1,
+      "source": "run-down-se.png",
+      "sourceRect": [
+        384,
+        589,
+        768,
+        1024
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 14,
+      "clip": "down",
+      "frame": 2,
+      "source": "run-down-se.png",
+      "sourceRect": [
+        768,
+        589,
+        1152,
+        1024
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 15,
+      "clip": "down",
+      "frame": 3,
+      "source": "run-down-se.png",
+      "sourceRect": [
+        1152,
+        589,
+        1536,
+        1024
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 16,
+      "clip": "stacked",
+      "frame": 0,
+      "source": "field-se.png",
+      "sourceRect": [
+        1075,
+        463,
+        1254,
+        848
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 17,
+      "clip": "hunker",
+      "frame": 0,
+      "source": "field-se.png",
+      "sourceRect": [
+        0,
+        848,
+        179,
+        1254
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 18,
+      "clip": "vault",
+      "frame": 0,
+      "source": "field-se.png",
+      "sourceRect": [
+        179,
+        848,
+        358,
+        1254
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 19,
+      "clip": "vault",
+      "frame": 1,
+      "source": "field-se.png",
+      "sourceRect": [
+        358,
+        848,
+        537,
+        1254
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 20,
+      "clip": "vault",
+      "frame": 2,
+      "source": "field-se.png",
+      "sourceRect": [
+        537,
+        848,
+        717,
+        1254
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 21,
+      "clip": "climb",
+      "frame": 0,
+      "source": "field-se.png",
+      "sourceRect": [
+        717,
+        848,
+        896,
+        1254
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 22,
+      "clip": "climb",
+      "frame": 1,
+      "source": "field-se.png",
+      "sourceRect": [
+        896,
+        848,
+        1075,
+        1254
+      ]
+    },
+    {
+      "facing": "se",
+      "column": 23,
+      "clip": "climb",
+      "frame": 2,
+      "source": "field-se.png",
+      "sourceRect": [
+        1075,
+        848,
+        1254,
+        1254
+      ]
+    }
+  ],
+  "formula": "tools/art/sprite_formula.py"
+}

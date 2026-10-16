@@ -597,19 +597,68 @@ def make_stucco(name='stucco', base=(230, 228, 220), seed=441):
 
 
 def make_brick(name='brick', seed=451):
-    rows = 16
+    """Red brick, running bond, 18 courses x 6 stretchers per tile (two voxels): per-brick colour and firing
+    variation, speckle, worn rounded arrises, chipped corners, recessed sandy mortar and a little grime."""
+    rows, per_row, joint = 18, 6, 1.9
+    r = np.random.default_rng(seed)
     yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
-    bh = N / rows; bw = N / 4
-    row = np.floor(yy / bh)
-    xo = np.mod(xx + (row % 2) * bw / 2, N)
-    dx = np.minimum(np.mod(xo, bw), bw - np.mod(xo, bw)); dy = np.minimum(np.mod(yy, bh), bh - np.mod(yy, bh))
+    # Slightly wobbly joints so bricks are not ruler-straight.
+    wy = yy + (spectral(2.8, seed + 2) - 0.5) * 2.2
+    wx = xx + (spectral(2.8, seed + 3) - 0.5) * 2.2
+    bh, bw = N / rows, N / per_row
+    row = np.mod(np.floor(wy / bh), rows)
+    xo = np.mod(wx + (row % 2) * bw / 2, N)
+    col_i = np.mod(np.floor(xo / bw), per_row)
+    lx, ly = np.mod(xo, bw), np.mod(wy, bh)
+    dx = np.minimum(lx, bw - lx); dy = np.minimum(ly, bh - ly)
+    ids = (row * per_row + col_i).astype(np.int64)
+    nb = rows * per_row
+    # Palette: mostly reds, some darker purple-browns, a few orange and the odd near-black clinker.
+    pal = np.array([rgb(150, 74, 56), rgb(136, 64, 50), rgb(162, 88, 64), rgb(120, 60, 50), rgb(170, 100, 72), rgb(102, 52, 46), rgb(146, 82, 66)])
+    pick = r.choice(len(pal), nb, p=[0.24, 0.2, 0.16, 0.14, 0.1, 0.08, 0.08])
+    base = pal[pick]
+    clinker = r.random(nb) < 0.025
+    base[clinker] = rgb(70, 42, 38)
+    base *= (0.88 + 0.24 * r.random(nb))[:, None]
+    col = base[ids]
+    # Firing variation inside a brick: one end darker, mottled face, fine sand speckle.
+    grad = r.random(nb)[ids] - 0.5
+    col *= (1 + grad * (lx / bw - 0.5) * 0.25)[..., None]
+    mott = spectral(1.6, seed); fine = spectral(0.6, seed + 4)
+    col *= (0.86 + 0.22 * mott + 0.12 * (fine - 0.5))[..., None]
+    speck = blur(r.random((N, N)), 0.6)
+    speck = (speck - speck.mean()) / (speck.std() + 1e-9)
+    col *= (1 + np.clip(speck, -3, 3) * 0.035)[..., None]
+    pits = np.clip((band(40, 90, seed + 9) - 0.78) * 6, 0, 1)        # small pits and air holes in the face
+    col *= (1 - 0.35 * pits)[..., None]
+    # Edge profile: rounded, worn arrises; chips knocked out of some corners and edges.
     d = np.minimum(dx, dy)
-    ids = (row * 8 + np.floor(xo / bw)).astype(np.int64)
-    mott = spectral(1.8, seed)
-    col = colorize(rgb(150, 82, 62), 0.6 * cell_values(ids, seed) + 0.4 * mott, cell_values(ids, seed + 1), 0.22)
-    mortar = np.clip(d / 2.6, 0, 1)
-    col = mix(col, np.ones((N, N, 3)) * rgb(176, 168, 152) * (0.9 + 0.2 * mott[..., None]), 1 - mortar)
-    return save(name, col, mortar * 0.7 + mott * 0.2, 5.0)
+    wear = (band(6, 20, seed + 10) - 0.5) * 2.4                    # worn, uneven arrises
+    face = np.clip((d - joint - np.maximum(0, wear)) / 2.6, 0, 1)
+    face = face * face * (3 - 2 * face)
+    chips = np.zeros((N, N))
+    for _ in range(110):
+        b = r.integers(nb); rr, cc = divmod(b, per_row)
+        cx = (cc * bw - (rr % 2) * bw / 2 + (r.integers(2) * bw if r.random() < 0.6 else r.random() * bw)) % N
+        cy = (rr * bh + (r.integers(2) * bh)) % N
+        rad = 2.0 + r.random() * 5.5
+        ddx = np.minimum(np.abs(xx - cx), N - np.abs(xx - cx)); ddy = np.minimum(np.abs(yy - cy), N - np.abs(yy - cy))
+        chips = np.maximum(chips, np.clip(1 - np.hypot(ddx, ddy * 1.2) / rad, 0, 1))
+    chip = np.clip(chips * 2.2, 0, 1) * (face > 0.02)
+    col = mix(col, col * 0.62 + rgb(38, 26, 20), chip * 0.85)
+    col *= (0.72 + 0.28 * face)[..., None]                     # darker, rounded edges
+    # Mortar: light grey-buff, sandy, slightly recessed and dirty.
+    msand = spectral(0.4, seed + 5); mdirt = spectral(2.2, seed + 6)
+    mortar_col = np.ones((N, N, 3)) * rgb(170, 162, 146) * (0.82 + 0.18 * msand[..., None]) * (0.85 + 0.15 * mdirt[..., None])
+    mortar = 1 - np.clip((d - joint + 0.4 - 0.8 * chip) / 1.2, 0, 1)
+    col = mix(col, mortar_col, mortar)
+    # Grime: faint vertical rain streaks and patchy weathering over the whole wall.
+    streak = spectral(2.0, seed + 7, aniso=(1.0, 0.06))
+    patch = spectral(2.6, seed + 8)
+    col *= (0.9 + 0.12 * patch - 0.08 * np.clip((streak - 0.55) * 3, 0, 1))[..., None]
+    height = 0.25 + 0.75 * face - 0.45 * chip - 0.12 * pits + 0.06 * (fine - 0.5) + 0.05 * mott
+    height = np.where(mortar > 0.5, 0.12 + 0.05 * msand, height)
+    return save(name, col, height, 7.0)
 
 
 def make_board_concrete(name='concrete_wall', seed=461):
