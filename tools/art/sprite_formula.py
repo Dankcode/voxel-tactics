@@ -43,7 +43,19 @@ def cleaned_albedo(a):
     out[:,:,3]=np.where(out[:,:,3]<.04,0,out[:,:,3])
     return out
 
-def lighting_passes(albedo,volumes=()):
+def edge_response(alpha,width=6):
+    # Distance bands inside the silhouette, never around painted folds/colour changes.
+    # Pad instead of rolling so opposite atlas edges cannot illuminate one another.
+    inside=alpha>.04;remaining=inside.copy();rim=np.zeros_like(alpha)
+    for step in range(width):
+        padded=np.pad(remaining,1);eroded=remaining.copy()
+        for dy,dx in [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]:
+            eroded &= padded[1+dy:1+dy+alpha.shape[0],1+dx:1+dx+alpha.shape[1]]
+        t=1-step/width;rim[remaining&~eroded]=t*t*(3-2*t)
+        remaining=eroded
+    return rim
+
+def lighting_passes(albedo,volumes=(),edge_width=6):
     alpha=albedo[:,:,3];h,w=alpha.shape;blur=alpha.copy()
     for i in range(8):blur=(blur*4+np.roll(blur,1,0)+np.roll(blur,-1,0)+np.roll(blur,1,1)+np.roll(blur,-1,1))/8
     height=blur*.15
@@ -54,8 +66,10 @@ def lighting_passes(albedo,volumes=()):
     gy,gx=np.gradient(height);n=np.stack([-gx*70,gy*70,np.ones_like(alpha)],axis=2)
     n/=np.maximum(np.linalg.norm(n,axis=2,keepdims=True),1e-5)
     normal=np.concatenate([n*.5+.5,alpha[:,:,None]],axis=2)
-    # Saturated magenta is metadata, never a visible painted highlight. R=direct light, B=ambient, G=emission.
-    mask=np.zeros_like(albedo);mask[:,:,0]=1;mask[:,:,2]=1;mask[:,:,3]=alpha
+    # G preserves the painted base. World light adds only a narrow, soft silhouette rim.
+    # The interior is exactly R=0, G=1, B=0; colour differences never produce new lighting.
+    rim=edge_response(alpha,edge_width)
+    mask=np.zeros_like(albedo);mask[:,:,0]=rim*.35;mask[:,:,1]=1;mask[:,:,2]=rim*.08;mask[:,:,3]=alpha
     return normal,mask
 
 def bounds(a):
@@ -120,10 +134,10 @@ def bake_field():
             sources.append({'facing':facing,'column':col,'clip':kind,'frame':frame,'source':('run-down-' if count==4 else 'field-')+facing+'.png','sourceRect':[x0,y0,x1,y1]})
     preview=np.concatenate([atlas[:256,2*192:6*192],atlas[:256,12*192:16*192],atlas[2*256:3*256,2*192:6*192],atlas[2*256:3*256,12*192:16*192]],axis=0)
     write_png(os.path.join(os.path.dirname(CONFIG),'run-downed-preview.png'),preview)
-    write_png(os.path.join(OUT,'field.png'),atlas);normal,mask=lighting_passes(atlas,[( (c+.5)/columns,(r+.45)/8,.32/columns,.40/8,.22) for r in range(8) for c in range(columns)])
+    write_png(os.path.join(OUT,'field.png'),atlas);normal,mask=lighting_passes(atlas,[( (c+.5)/columns,(r+.45)/8,.32/columns,.40/8,.22) for r in range(8) for c in range(columns)],edge_width=2)
     write_png(os.path.join(OUT,'field-normal.png'),normal);write_png(os.path.join(OUT,'field-lighting.png'),mask)
     manifest={'version':2,'character':'ranger-01','placeholder':False,'image':'field.png','normal':'field-normal.png','lightingMask':'field-lighting.png','frameWidth':fw,'frameHeight':fh,'columns':columns,'rows':8,'facings':FACINGS,'anchor':[.5,8/fh],'worldHeight':2.4,
-        'clips':{k:dict(column=v[0],frames=v[1],fps=v[2],loop=v[3]) for k,v in CLIPS.items()},'events':{'fire':{'frame':0,'event':'muzzle'}},'notes':'One 2D anime identity; 8 illustrated facing sheets; cleaned source colours and line art + separate tangent normals and magenta light-response mask. No 3D character.'}
+        'clips':{k:dict(column=v[0],frames=v[1],fps=v[2],loop=v[3]) for k,v in CLIPS.items()},'events':{'fire':{'frame':0,'event':'muzzle'}},'notes':'One 2D anime identity; 8 illustrated facing sheets; cleaned source colours and line art + separate tangent normals and edge-only light-response mask. No 3D character.'}
     with open(os.path.join(OUT,'field.json'),'w') as f:json.dump(manifest,f,indent=2)
     with open(os.path.join(OUT,'sprite-list.json'),'w') as f:json.dump({'character':'ranger-01','frames':sources,'formula':'tools/art/sprite_formula.py'},f,indent=2)
     # Matching UI head: the first front-facing illustrated frame, never an unrelated character.

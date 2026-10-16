@@ -58,7 +58,7 @@ function loadTexture(url, colour = false) {
     return textures.get(url);
 }
 function paintedMaterial(map, normal, mask) {
-    return new THREE.ShaderMaterial({ transparent: true, depthTest: false, depthWrite: false,
+    return new THREE.ShaderMaterial({ transparent: true, depthTest: false, depthWrite: false, toneMapped: false,
         uniforms: { map: { value: map }, normalMap: { value: normal }, response: { value: mask },
             sun: { value: new THREE.Vector3(.3, .8, .6) }, sunColour: { value: new THREE.Color() },
             sky: { value: new THREE.Color() }, ground: { value: new THREE.Color() },
@@ -75,7 +75,7 @@ function paintedMaterial(map, normal, mask) {
                 vec3 ambient=mix(ground,sky,clamp(n.y*.5+.5,0.,1.));
                 vec3 direct=sunColour*max(0.,dot(n,sun))+fill*max(0.,dot(n,fillDir))+localLight*max(0.,dot(n,localDir));
                 gl_FragColor=vec4(albedo.rgb*(ambient*m.b+direct*m.r)+albedo.rgb*m.g,albedo.a);
-                #include <tonemapping_fragment>
+                // Keep the painted interior independent of scene exposure; only the mask's rim responds.
                 #include <colorspace_fragment>
             }` });
 }

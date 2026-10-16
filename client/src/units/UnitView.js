@@ -38,7 +38,7 @@ export class UnitView {
         this.texture.needsUpdate = true;
         this.normal = art.normal.clone(); this.normal.needsUpdate = true;
         this.lighting = art.lighting.clone(); this.lighting.needsUpdate = true;
-        this.material = new THREE.MeshStandardMaterial({ map: this.texture, normalMap: this.normal, normalScale: new THREE.Vector2(.65, .65), roughness: .95, metalness: 0, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide, clippingPlanes: scene.clipping });
+        this.material = new THREE.MeshStandardMaterial({ map: this.texture, normalMap: this.normal, normalScale: new THREE.Vector2(.65, .65), roughness: .95, metalness: 0, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide, clippingPlanes: scene.clipping, toneMapped: false });
         this.depthSlope=installBillboardDepth(this.material);
         const depthCompile = this.material.onBeforeCompile;
         this.material.onBeforeCompile = shader => {
@@ -51,7 +51,7 @@ export class UnitView {
                     + (reflectedLight.indirectDiffuse + reflectedLight.indirectSpecular) * response.b
                     + totalEmissiveRadiance + diffuseColor.rgb * response.g;`);
         };
-        this.material.customProgramCacheKey = () => 'ranger-lit-billboard-v2';
+        this.material.customProgramCacheKey = () => 'ranger-edge-lit-billboard-v3';
         this.sprite = new THREE.Mesh(geo, this.material);
         this.spriteHeight=h;this.billboardUp=new THREE.Vector3();
         this.sprite.userData.unitId = unit.id;

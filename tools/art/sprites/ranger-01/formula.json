@@ -3,9 +3,9 @@
   "character": "ranger-01",
   "coordinateSystem": "untrimmed UV; x right/y down",
   "lightingChannels": {
-    "R": "direct",
-    "G": "emission",
-    "B": "ambient",
+    "R": "direct silhouette rim",
+    "G": "unchanged painted base",
+    "B": "ambient silhouette rim",
     "A": "coverage"
   },
   "poses": {
