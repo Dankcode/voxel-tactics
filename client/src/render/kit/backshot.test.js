@@ -58,6 +58,20 @@ test('there is no cut-in mode that skips the back shot', () => {
     assert.deepEqual(CUTIN_MODES, ['always']);
 });
 
+test('cropped ranger torso meets the viewport edge in aiming and firing on either shoulder',()=>{
+    const ranger=art('ranger-01');
+    for(const viewport of [{width:1280,height:720},{width:600,height:800}])for(const shoulder of ['right','left']){
+        const c=sideCutin(ranger,shoulder);
+        const placements=[aimBackshotLayout(c,viewport,100),backshotPlacement(c,{x:viewport.width/2,y:viewport.height/2},viewport)];
+        for(const p of placements){
+            assert.equal(c.mirror?p.left+p.width:p.left,c.mirror?viewport.width:0,'no hard torso cut inside the scene');
+            assert.ok(p.top>=0,'helmet stays inside viewport');
+        }
+        assert.equal(placements[0].top+placements[0].height,viewport.height);
+        assert.equal(placements[1].top+placements[1].height,viewport.height*(1-BAR_SHARE));
+    }
+});
+
 test('left side: the back shot never flips or moves; only a future variants.left sprite replaces it, in the same place', () => {
     const c = art('test-soldier');
     assert.equal(sideCutin(c, 'right'), c);

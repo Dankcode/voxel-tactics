@@ -16,8 +16,16 @@ export function merge(list) {
     m.computeBoundingBox(); m.computeBoundingSphere();
     return m;
 }
-/** Rounded box: a box whose corners are pulled in (cheap bevel) — used for bags, bales, crates. */
+// Sharp mode: while a piece is built for an old building (KitLibrary `<id>@sharp`), bevels collapse to straight edges.
+let SHARP = 0, SOFTENED = 0;
+/** Build with every softBox / profile bevel made straight. Returns { value, softened } (softened = bevels removed). */
+export function withSharpEdges(build) {
+    SHARP++; const before = SOFTENED;
+    try { return { value: build(), softened: SOFTENED - before }; } finally { SHARP--; }
+}
+/** Rounded box: a box whose corners are pulled in (cheap bevel) — used for bags, bales, crates. Straight when sharp. */
 export function softBox(w, h, d, r, seg = 2) {
+    if (SHARP && r > 0) { SOFTENED++; r = 0; }
     const g = new THREE.BoxGeometry(w, h, d, seg + 2, seg + 2, seg + 2);
     const p = g.attributes.position, v = new THREE.Vector3();
     const hw = w / 2 - r, hh = h / 2 - r, hd = d / 2 - r;
@@ -54,6 +62,7 @@ export const cyl = (rTop, rBot, h, seg = 12, x = 0, y = 0, z = 0) => new THREE.C
 export const disc = (r, w, seg = 16, x = 0, y = 0, z = 0) => new THREE.CylinderGeometry(r, r, w, seg).rotateX(Math.PI / 2).translate(x, y, z);
 /** A side profile (points [x, y] in the XY plane) extruded along Z by `depth`, centred on z = 0. */
 export function profileX(points, depth, bevel = 0) {
+    if (SHARP && bevel > 0) { SOFTENED++; bevel = 0; }
     const shape = new THREE.Shape(points.map(([x, y]) => new THREE.Vector2(x, y)));
     const g = new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: bevel > 0, bevelSize: bevel, bevelThickness: bevel, bevelSegments: 2, curveSegments: 4 });
     return g.translate(0, 0, -depth / 2);

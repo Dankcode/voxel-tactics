@@ -49,6 +49,31 @@ exactly on the adjoining tile runs. Wall meshes, caps, curved panes, projectile 
 footprint, following the same tangent-corner principle as rounded terrain. Movement still reserves the wall tile;
 rounding the visual corner does not allow diagonal movement through an occupied wall cell.
 
+## Building era: rounded (modern) vs straight (old) edges
+
+Every building has an era (`shared/mission/BuildingEra.js`, `building.era`):
+
+| Era | Edges | What it covers |
+|---|---|---|
+| `modern` | rounded | curved outside L corners, softened wall ends, filleted slab and floor edges, soft-edged furniture |
+| `old` | straight | square wall corners, ends and junctions (outer walls **and** interior partitions), sharp slab and floor edges, straight-edged furniture |
+
+- **Where it comes from.** A spec's `era` wins; the older `rounded` flag still works (`rounded: false` → old,
+  `true` → modern). Present-day builders (`buildModern`, `compileBuilding`) default to modern; the classic
+  stone/plaster/timber `buildBuilding` defaults to old. District mixes keep their authored choices (offices, depots,
+  garages, motels are `rounded: false` → old; the showroom is modern), the rest are mixed by seed, and the Test Ground
+  remix's **Building era** control can force modern or old for every building (the share-link key is still `corners`).
+- **Per cell, so merges keep both looks.** An old building marks its whole footprint in `VoxelStore.squareCorners`
+  (the name predates eras; snapshots and the battle hash carry it). When an old and a modern parcel merge, the old
+  footprint draws straight and the modern one rounded. A cell both footprints share (the party wall) belongs to the
+  old building.
+- **Same rule for rendering and gameplay.** Walls in straight cells use the `square_wall` / `square_cap` pieces, whose
+  silhouette (`wallFootprint(mask, false)`, no fillet) is also the collision, ray and cover shape. The chunk mesher
+  skips the rounded-mass path for straight cells, and `KitView` asks for `<piece>@sharp` there: `KitLibrary` rebuilds
+  the piece with `softBox` and profile bevels made straight (`withSharpEdges` in `Geo.js`), sharing the ordinary
+  geometry when a piece has no bevel.
+- Tests: `shared/mission/building-era.test.js`, `client/src/render/kit/building-era.test.js`.
+
 ## Playable test map
 
 Open `http://localhost:2567/?play=architecture-yard` or choose **Architecture Yard** from the map list.

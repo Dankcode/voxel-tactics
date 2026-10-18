@@ -30,6 +30,7 @@ GUIDES=ROOT/'gun-guides.json'
 
 def fingertip(alpha,spec):
  """The painted index fingertip: the opaque pixel of this hand farthest along wrist -> grip."""
+ if 'fingertip' in spec:return np.array(spec['fingertip'],float)
  x0,y0,x1,y1=spec['rect'];w=np.array(spec['wrist'],float);u=np.array(spec['socket'],float)-w;u/=np.linalg.norm(u)
  ys,xs=np.nonzero(alpha[y0:y1,x0:x1]);pts=np.stack([xs+x0,ys+y0],1);return pts[np.argmax((pts-w)@u)].astype(float)
 
@@ -79,11 +80,13 @@ def set_rest_wrist(arm,wrist,socket,axis,fs,W,H):
  arm['elbow']=[e[0]/W,e[1]/H];arm['wrist']=[w[0]/W,w[1]/H]
 
 def pack():
- path=ROOT/'formula.json';formula=json.loads(path.read_text());master=Image.open(OUT/'anatomy-painted.png').convert('RGBA');audit=[]
+ path=ROOT/'formula.json';formula=json.loads(path.read_text());art=formula.get('gloveSource',{})
+ master=Image.open(ROOT/art.get('image','source/gloves-cleaned/anatomy-painted.png')).convert('RGBA');audit=[]
+ hands_by_family=art.get('landmarks',HANDS)
  guides=json.loads(GUIDES.read_text());alpha=np.asarray(master)[:,:,3]>250
  for pname,pose in formula['poses'].items():
   W,H=pose.get('canvasWidth',768),768
-  for family,hands in HANDS.items():
+  for family,hands in hands_by_family.items():
    for side,spec in hands.items():
     arm=pose['rig']['arms'][side];socket=[arm['palm'][0]*W,arm['palm'][1]*H]
     # Register on the grip wrist (before any foreshortening) so re-running the packer is idempotent.
@@ -124,7 +127,7 @@ def pack():
       if part['id']==side+'-hand':part['start']=[arm['wrist'][0]*W,arm['wrist'][1]*H]
     audit.append(dict(pose=pname,family=family,hand='right' if side=='trigger' else 'left',wrist=wrist,socket=socket,sourceWrist=spec['wrist'],sourceSocket=spec['socket'],occlusion='main near / thumb far' if side=='trigger' else 'palm and thumb far / fingers near'))
  for pose in formula['poses'].values():pose['rig']['triggerContact']=TRIGGER_CONTACT
- formula['gloveArt']=dict(source='source/gloves-cleaned/anatomy-painted.png',packing='tools/art/pack_glove_paintings.py',skeleton='anatomical wrist and grip registration; no mocap capture supplied',handsPerPose={'left':1,'right':1},rule='near/far fragments are disjoint pixels of one hand, never additional hands')
+ formula['gloveArt']=dict(source=art.get('image','source/gloves-cleaned/anatomy-painted.png'),packing='tools/art/pack_glove_paintings.py',skeleton='anatomical wrist and grip registration; no mocap capture supplied',handsPerPose={'left':1,'right':1},rule='near/far fragments are disjoint pixels of one hand, never additional hands')
  path.write_text(json.dumps(formula,indent=2)+'\n');(ROOT/'glove-cleanup-audit.json').write_text(json.dumps(audit,indent=2)+'\n')
  return dict(poses=len(formula['poses']),handsPerPose=2,weaponFamilies=3,fragmentsPerHand=2)
 if __name__=='__main__':print(pack())

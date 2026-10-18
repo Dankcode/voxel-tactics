@@ -5,25 +5,51 @@ import * as THREE from 'three';
 import { SpriteAnimator } from '../../anim/SpriteAnimator.js';
 import { EVENT_TO_CLIP } from '../../anim/AnimationClips.js';
 import { solveArm, boneMatrix, armTransforms, armRigPose, constrainGunPose } from '../../anim/SpriteArmRig.js';
-import { fitGunPose, gunPoint, spriteGunParts, gunPivotMatrix } from '../../anim/SpriteWeapon.js';
-import { sideCutin } from '../../anim/CutInDirector.js';
+import { fitGunPose, gunPoint, spriteGunParts, gunPoseSample, sortedSpriteLayers } from '../../anim/SpriteWeapon.js';
+import { sideCutin, CutInDirector } from '../../anim/CutInDirector.js';
 const json = name => JSON.parse(readFileSync(new URL(`../../../public/assets/characters/ranger-01/${name}`,import.meta.url)));
 const field=json('field.json'), cutin=json('cutin.json');
 const near=(a,b,epsilon=1e-5)=>assert.ok(Math.abs(a-b)<epsilon,`${a} != ${b}`);
 const apply=(m,p)=>({x:m[0]*p.x+m[2]*p.y+m[4],y:m[1]*p.x+m[3]*p.y+m[5]});
 
+test('flat and composited parts share the same anatomical occlusion order',()=>{
+ const layers=sortedSpriteLayers(cutin.layers.filter(l=>l.image));
+ assert.deepEqual(layers.map(l=>l.id),['support-upper','body','support-hand','trigger-fingers','trigger-hand','support-fingers','support-forearm','trigger-upper','trigger-forearm']);
+ assert.equal(layers.slice(0,4).every(l=>l.stage==='back'),true);
+ assert.equal(layers.slice(4).every(l=>l.stage==='front'),true);
+ const z=id=>cutin.layers.find(l=>l.id===id).zIndex;
+ assert.ok(z('support-upper')<z('body') && z('body')<z('support-forearm'),'far shoulder is hidden but its raised forearm clears the torso');
+ assert.ok(z('support-hand')<z('gun') && z('gun')<z('support-fingers'),'one support hand wraps both sides of the gun');
+ assert.ok(z('trigger-fingers')<z('gun') && z('gun')<z('trigger-hand'),'thumb behind grip, knuckles in front');
+ for(const side of ['trigger','support'])for(const hand of [`${side}-hand`,`${side}-fingers`])
+  assert.ok(z(hand)<z(`${side}-forearm`),'sleeve cuff covers its hand fragments');
+ assert.ok(z('trigger-hand')<z('trigger-upper'),'near sleeve overlaps the gripping hand');
+});
+
+test('aiming passes real lag to the arm rig and leaves the torso unskewed on both shoulders',t=>{
+ const original=globalThis.document;t.after(()=>{globalThis.document=original;});
+ globalThis.document={querySelectorAll:()=>[]};
+ for(const shoulder of ['right','left']){
+  let input;const style={},art=sideCutin(cutin,shoulder);
+  const director={aiming:{art:{cutin:art},el:{querySelector:()=>({style})},weapon:{update:p=>input=p}}};
+  CutInDirector.prototype.placeAim.call(director,{x:640,y:360},{yaw:.08,pitch:-.04});
+  assert.equal(input.yaw,shoulder==='left'?-.08:.08);assert.equal(input.pitch,-.04);
+  assert.equal(style.transform,'none','articulated parts move without skewing the body');
+ }
+});
+
 test('movement uses only running; downed plays every frame once and holds the settled pose',()=>{
  assert.equal(EVENT_TO_CLIP.move,'run');assert.equal(field.clips.walk,undefined);
- const a=new SpriteAnimator(field,new THREE.Texture());a.play('run');a.update(1/12);assert.equal(a.frame,1);
- a.update(3/12);assert.equal(a.frame,0);
+ const a=new SpriteAnimator(field,new THREE.Texture());a.play('run');a.update(1/6);assert.equal(a.frame,1);
+ a.update(1/6);assert.equal(a.frame,0);
  let ends=0;a.play('down',{onEnd:()=>ends++});
  for(let i=0;i<3;i++){a.update(1/8);assert.equal(a.frame,i+1);}
  a.update(1);assert.equal(a.frame,3);assert.equal(a.clip,'down');assert.equal(ends,1);
  a.update(5);assert.equal(a.frame,3);assert.equal(ends,1);
 });
-test('the new atlas covers all clips, eight facings, and 192 named frames',()=>{
- assert.equal(field.columns,24);assert.equal(field.rows,8);assert.equal(field.placeholder,false);
- const list=json('sprite-list.json').frames;assert.equal(list.length,192);
+test('the new atlas covers all clips, eight facings, and 160 named frames',()=>{
+ assert.equal(field.columns,20);assert.equal(field.rows,8);assert.equal(field.placeholder,false);
+ const list=json('sprite-list.json').frames;assert.equal(list.length,160);
  for(const f of field.facings)for(const [clip,c] of Object.entries(field.clips)){
   assert.equal(list.filter(l=>l.facing===f&&l.clip===clip).length,c.frames);
  }
@@ -67,20 +93,43 @@ test('source assemblies retain physical scale and gloves follow their actual 3D 
 
 test('missing sidearm and melee assets do not masquerade as an unrelated rifle',()=>{for(const id of ['handcannon','firelance','sword','maul'])assert.equal(spriteGunParts(id),null);});
 
+test('remade shooting arms bend below the wrists throughout the live inertia range',()=>{
+ const guns=JSON.parse(readFileSync(new URL('../../../public/assets/weapons/ranger-preview/gun-kit.json',import.meta.url)));
+ for(const gun of Object.values(guns.assemblies)){
+  const camera=new THREE.OrthographicCamera();fitGunPose(camera,cutin.rig,gunPoint(gun.stock),1);
+  const sample=input=>gunPoseSample(cutin,gun,camera,input).targets;
+  for(const yaw of [-.12,0,.12])for(const pitch of [-.09,0,.09])for(const recoil of [0,.025]){
+   const pose=constrainGunPose(sample,{yaw,pitch,recoil},cutin.rig,768,768);
+   for(const j of Object.values(pose.arms.joints)){
+    assert.ok(j.elbow.y>Math.max(j.shoulder.y,j.wrist.y)+50,'elbow stays below the shoulder and hand instead of folding across the neck');
+    assert.ok(j.wrist.y>j.palm.y,'wrist enters the glove from below');
+   }
+  }
+ }
+});
+
 // Exercise the actual stock-fixed projection and workspace constraint, not only palm pinning.
 test('full aiming range and recoil preserve both wrists, every bone length, stock contact and mirroring',()=>{
  const guns=JSON.parse(readFileSync(new URL('../../../public/assets/weapons/ranger-preview/gun-kit.json',import.meta.url)));
  let samples=0;
  for(const art of [cutin,sideCutin(cutin,'left')])for(const gun of Object.values(guns.assemblies)){
   const camera=new THREE.OrthographicCamera(),stock=gunPoint(gun.stock);fitGunPose(camera,art.rig,stock,art.width/art.height);
-  const sample=input=>{
-   const m=gunPivotMatrix(stock,input),uv=point=>{point=point.clone().applyMatrix4(m).project(camera);return[(point.x+1)/2,(1-point.y)/2];};
-   return{stock:uv(stock),grip:uv(new THREE.Vector3()),support:uv(gunPoint(gun.support)),muzzle:uv(gunPoint(gun.muzzle))};
-  };
+  const sample=input=>gunPoseSample(art,gun,camera,input).targets;
+  const rest=sample({});
+  const original=gunPoseSample(art,gun,camera,{},0).targets;
+  rest.muzzle.forEach((v,i)=>near(v,original.muzzle[i]));
+  assert.ok(rest.stock[1]<original.stock[1],'butt raises while muzzle is fixed');
+  for(let degrees=0;degrees<=10;degrees+=.5){
+   const targets=gunPoseSample(art,gun,camera,{},degrees).targets;
+   targets.muzzle.forEach((v,i)=>near(v,original.muzzle[i]));
+   const pose=armRigPose(art.rig,targets,art.width,art.height);
+   assert.ok(pose.maxGap<.01,'angle control keeps both wrists connected');
+   assert.ok(pose.joints.trigger.elbow.x>pose.joints.trigger.shoulder.x,'near elbow stays outside the torso');
+  }
   for(let yi=-6;yi<=6;yi++)for(let pi=-4;pi<=4;pi++)for(const recoil of [0,.025]){
    const solved=constrainGunPose(sample,{yaw:yi*.05,pitch:pi*.05,recoil},art.rig,art.width,art.height);samples++;
    assert.ok(solved.arms.maxGap<.01,`wrist gap ${solved.arms.maxGap}`);
-   solved.targets.stock.forEach((v,i)=>near(v,art.rig.stock[i]));
+   solved.targets.stock.forEach((v,i)=>near(v,rest.stock[i]));
    for(const[side,j]of Object.entries(solved.arms.joints)){
     near(j.wrist.x,j.handWrist.x,.01);near(j.wrist.y,j.handWrist.y,.01);
     const anchor=solved.targets[side==='trigger'?'grip':'support'];near(j.palm.x,anchor[0]*art.width);near(j.palm.y,anchor[1]*art.height);
@@ -193,7 +242,7 @@ test('the trigger finger rests on top of the trigger guard and its contact point
   // contact is checked.)
   let worst=0;const sway=[[0,0]];
   for(const [yaw,pitch] of sway){
-   const sample=input=>{const m=gunPivotMatrix(stock,input),uv=p=>{p=p.clone().applyMatrix4(m).project(camera);return[(p.x+1)/2,(1-p.y)/2];};
+   const sample=input=>{const m=gunPoseSample(art,gun,camera,input).matrix,uv=p=>{p=p.clone().applyMatrix4(m).project(camera);return[(p.x+1)/2,(1-p.y)/2];};
     return{stock:uv(stock),grip:uv(new THREE.Vector3()),support:uv(gunPoint(gun.support)),muzzle:uv(gunPoint(gun.muzzle)),trigger:uv(gunPoint(contact.rifle))};};
    const solved=constrainGunPose(sample,{yaw,pitch},art.rig,art.width,art.height);
    const finger=apply(solved.arms.transforms['trigger-hand'],{x:tip[0]*art.width,y:tip[1]*art.height});

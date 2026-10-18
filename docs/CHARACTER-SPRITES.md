@@ -2,36 +2,38 @@
 
 The active human character is `ranger-01`. Field units, UI heads and the shooting pose use one original olive/tan ranger identity. The character is painted 2D artwork on flat cards; only the gun is a 3D model. Mechanical walkers retain their existing separate renderer.
 
-Open the shared game at http://localhost:2567/?play=burger-district&seed=1 or the editable rig preview at http://localhost:2567/sprite-lab.html. Both use the same modules and asset files.
+Open the shared game at http://localhost:2567/?play=burger-district&seed=1. The standalone Ranger sprite studio has been removed; the layered shooting pose is used directly in the game.
 
 ## Sprite contract
 
-`client/public/assets/characters/ranger-01/field.json` describes a 4608×2048 atlas: 24 columns of 192×256 frames across eight facings. `sprite-list.json` enumerates all 192 frames with their source crop rectangles.
+`client/public/assets/characters/ranger-01/field.json` describes a 3840×2048 atlas: 20 columns of 192×256 frames across eight facings. `sprite-list.json` enumerates all 160 frames with their source crop rectangles.
 
 | Clip | Frames | FPS | Playback |
 | --- | ---: | ---: | --- |
 | idle | 2 | 2 | loop |
-| run | 4 | 12 | loop |
+| run | 2 | 6 | loop |
 | aim | 1 | 1 | hold |
 | fire | 2 | 12 | return to aim |
 | throw | 2 | 6 | return to idle |
 | hit | 1 | 1 | return to idle |
 | down | 4 | 8 | stumble → knee → side fall → settled; hold final |
 | stacked / hunker | 1 each | 1 | hold |
-| vault | 3 | 7 | return to run |
-| climb | 3 | 6 | loop |
+| vault | 2 | 4⅔ | return to run |
+| climb | 2 | 4 | loop |
+
+Running, vaulting and climbing retain source frames 0 and 2; rates preserve their original cycle durations. The full source cells still determine scale and palette before packing, so reducing frame count does not change character size or colours.
 
 There is no exported walking clip. Rules/path edges still use the existing internal `walk` movement kind; presentation plays `run`. Downed playback never loops or returns to idle.
 
 ## Lighting and arm rig
 
-Albedo PNGs preserve the cleaned source illustrations' colours, cel shading and thin line work. The exporter only cleans near-transparent alpha; it does not quantize colours or apply a majority filter, which previously muted the palette and erased outlines. The shooting pose uses independent `source/*-body-modular.png` and `source/*-arm-sections.png` paintings, styled after the retained `aim-flat.png` and `ready-flat.png` references. Field frames and portraits likewise retain their source colours. Directional illumination is confined to silhouette edges through separate normal and response maps: R = direct rim, G = unchanged painted base, B = ambient rim, A = coverage. A smooth inner band is six source pixels wide for shoulder cards and two pixels for field frames. Interior pixels have exactly R=0, G=1, B=0, preserving the painted colours and cel shadows. The mask follows alpha contours, not internal painted folds.
+Albedo PNGs preserve the cleaned source illustrations' colours, cel shading and thin line work. The exporter only cleans near-transparent alpha; it does not quantize colours or apply a majority filter, which previously muted the palette and erased outlines. The shooting pose uses independent `source/aim-torso-only.png` and `source/aim-remake-parts.png` paintings, styled after the retained `aim-flat.png` and `ready-flat.png` references. Field frames and portraits likewise retain their source colours. Directional illumination is confined to silhouette edges through separate normal and response maps: R = direct rim, G = unchanged painted base, B = ambient rim, A = coverage. A smooth inner band is six source pixels wide for shoulder cards and two pixels for field frames. Interior pixels have exactly R=0, G=1, B=0, preserving the painted colours and cel shadows. The mask follows alpha contours, not internal painted folds.
 
 World lighting and received shadows affect only the edge bands. Shoulder rims use the live sun, hemisphere, back light, nearby point lights and camera orientation. Character materials bypass exposure/tone mapping so changing day/dusk/night cannot wash or darken their painted interiors. The 3D guns retain their normal full-surface lighting and exposure response.
 
-Each pose now has a complete independently painted torso, two upper sleeves, two forearm sleeves, two gloves and an extra support-finger overlay. The torso is never produced by subtracting arm silhouettes: the chest, harness and side panels continue beneath the arms. `source/*-body-modular.png` contains the complete body; `source/*-arm-sections.png` contains separate complete parts with overlapping ends. The formula records each section's source rectangle and two joint anchors. The exporter places these sections without borrowing pixels from the torso or filling joints with capsule shapes.
+Each pose now has a complete independently painted torso, two upper sleeves, two forearm sleeves, two gloves and an extra support-finger overlay. The torso is never produced by subtracting arm silhouettes: the chest, harness and side panels continue beneath the arms. `source/aim-torso-only.png` contains the complete body; `source/aim-remake-parts.png` contains separate complete parts with overlapping ends. The formula records each section's source rectangle and two joint anchors. The exporter places these sections without borrowing pixels from the torso or filling joints with capsule shapes.
 
-Shoulders, elbows, wrists and gun sockets use full-frame UV pivots in `tools/art/sprites/ranger-01/formula.json`. Two-bone IK preserves segment lengths; glove sockets follow the actual projected gun grips. Hand rotation follows the projected stock-to-muzzle axis, so the lower pistol grip cannot twist the support hand. Its cuff stays below the barrel, with the palm behind the gun and curled fingers in front. A socket may be transparent because the gun occupies it; the exported cuff must remain opaque. Each section has its own normal and light-response maps. Gun sway is constrained to the joint workspace and recoil rotates around the seated stock. The rig regression sweeps 2,808 combinations of poses, supplied guns, mirrored sides, yaw, pitch and recoil; wrist seams stay below 0.01 source pixels, with no bone scaling.
+Shoulders, elbows, wrists and gun sockets use full-frame UV pivots in `tools/art/sprites/ranger-01/formula.json`. Two-bone IK preserves segment lengths; glove sockets follow the actual projected gun grips. Hand rotation follows the projected stock-to-muzzle axis, so the lower pistol grip cannot twist the support hand. Its cuff stays below the barrel, with the palm behind the gun and curled fingers in front. A socket may be transparent because the gun occupies it; the exported cuff must remain opaque. Each section has its own normal and light-response maps. Gun sway is constrained to the joint workspace and recoil rotates around the seated stock. The rig regression sweeps 1,404 combinations of poses, supplied guns, mirrored sides, yaw, pitch and recoil; wrist seams stay below 0.01 source pixels, with no bone scaling.
 
 **One sprite for aiming and firing.** The separate readying (side-on, gun-across-the-body) sprite was removed on 2026-10-16. The shooting pose, at the supplied rear-shoulder reference angle, is used both for the persistent aiming back shot and for the committed cut-in. The right shoulder is authored once; the left shoulder (`cutin.variants.left`, `sideCutin(cutin, 'left')`) mirrors the entire assembled sprite and gun, with light direction and pointer yaw corrected. The ready source paintings stay under `tools/art/sprites/ranger-01/source/` but are no longer baked (`formula.json` has only the `aim` pose; `cutin.json` has no `ready` key).
 
@@ -47,7 +49,7 @@ Shoulders, elbows, wrists and gun sockets use full-frame UV pivots in `tools/art
 
 The colour-coded `gun-reference.png` and editable `gun-reference.blend` show equal-scale side views and numbered anchors: 1 stock/armpit, 2 trigger grip, 3 support grip, 4 muzzle. The carbine’s separate pieces are labelled A–G. Sniper and shotgun retain their source mesh grouping; the labels do not imply invented component meshes.
 
-The runtime uses one camera scale per pose for all three guns, instead of resizing each gun to arbitrary painted hand spacing. The stock is the rotation pivot and remains seated at the armpit during aim movement. The painted arms follow the gun. Longer native barrels remain longer. The supplied sources do not include native pistol, AK, suppressor or alternate scope/barrel attachments; compatible long-gun game variants currently reuse the base family assembly. Sidearm, melee and flamethrower poses do not substitute an unrelated 3D gun.
+The runtime uses one camera scale per pose for all three guns, instead of resizing each gun to arbitrary painted hand spacing. An authored 8° rotation first raises the stock around the fixed muzzle (point 4), without translating the muzzle or scaling any gun part. Aim and recoil then rotate around that raised stock. The formula connects points 4 and 1 with an axis and midpoint 5; the configured stock lift is 8°. The near trigger upper arm and forearm use 210/170 px rest lengths and a downward elbow preference so all three grips remain reachable. The support arm uses 190/200 px rest lengths, avoiding the previous overlong forearm. The painted arms follow the gun. Longer native barrels remain longer. The supplied sources do not include native pistol, AK, suppressor or alternate scope/barrel attachments; compatible long-gun game variants currently reuse the base family assembly. Sidearm, melee and flamethrower poses do not substitute an unrelated 3D gun.
 
 ## Editable formula and rebuild
 
@@ -71,7 +73,7 @@ For a long bake, schedule the calls with `bpy.app.timers.register` so the MCP re
 
 Gun rebuilds need the supplied originals in the ignored `output/reference/` directory; the generated GLB is self-contained. Sources are `m5-scw.blend`, `l118a1.usdz`, and `shotgun/shotgun.obj`.
 
-The sprite studio tests all three provided guns, the shooting pose on both shoulders, lighting, inertia, recoil and all field clips/facings. The Sections selector isolates the complete torso or the arm/glove layers to review overlaps. The game uses the active ranger pack; previous character folders remain legacy fixtures for unrelated tests.
+The game uses the active layered ranger pack; previous character folders remain legacy fixtures for unrelated tests. Rig regression tests cover all three provided guns, both shoulders, inertia and recoil. Each arm has its own upper-arm, forearm and hand PNG, with hand fragments sharing the same hand transform. No procedural joint patches are loaded or drawn.
 
 ## Art references
 
@@ -79,7 +81,7 @@ The original ranger uses simplified anime line work and flat material blocks inf
 
 ## Gloves that hold the gun (2026-10-16)
 
-The active gloves now come from `source/gloves-cleaned/anatomy-painted.png`, drawn using real human grip references. `tools/art/paint_gloves.py` remains the earlier editable geometric contact guide; its segmented fingers are no longer the displayed artwork. `pack_glove_paintings.py` registers each complete painting with two anatomical landmarks (wrist and weapon socket), using uniform scale and rotation. It splits disjoint near/far pixels from that same hand, rather than building additional fingers on both sides of the gun.
+The active gloves come from the newly illustrated `source/aim-remake-hands.png`, with upright wrists and compact gripping silhouettes. The older `source/gloves-cleaned/anatomy-painted.png` is retained only as an authoring reference. `tools/art/paint_gloves.py` remains the earlier editable geometric contact guide; its segmented fingers are no longer the displayed artwork. `pack_glove_paintings.py` registers each complete painting with two anatomical landmarks (wrist and weapon socket), using uniform scale and rotation. It splits disjoint near/far pixels from that same hand, rather than building additional fingers on both sides of the gun.
 
 - **Trigger hand (2)** wraps the grip: back of the hand and knuckle pads toward the camera, finger roots round the grip front, index finger along the trigger guard with its tip on the trigger. Thumb and fingertips are a separate `trigger-fingers` layer drawn behind the gun.
 - **Support hand (3)** cradles the handguard from below: palm and thumb (`support-hand`) behind the gun, the four fingers (`support-fingers`) curled up the camera side in front of it.
@@ -87,13 +89,20 @@ The active gloves now come from `source/gloves-cleaned/anatomy-painted.png`, dra
 - Each pose has exactly one anatomical left upper arm, forearm and hand, and one anatomical right upper arm, forearm and hand. `cutin.json.anatomy` identifies them; near/far hand layers carry `fragmentOf` and share the same hand bone. The aiming wrist/elbow and sleeve width were adjusted for the new compact grip. Runtime IK preserves the revised lengths throughout the 1,404-sample sweep (both shoulders, three guns, full sway and recoil).
 - Real anatomy references: [PIG Alpha glove grip photograph](https://skdtac.com/pig-alpha-gloves/), [Swiss defence over-shoulder handguard photograph](https://www.vbs.admin.ch/fr/acquisition-materiel-armee-2023), and [Mechanix M-Pact grip photographs](https://www.mechanix.com/us-en/tactical-and-military-gloves/MPSD-55-010.html). These informed proportions and occlusion; photos are not shipped in the game. No human mocap capture was supplied. `anatomy-glove-prompts.json` records the built-in image-generation prompt and references.
 
-**Trigger finger contact.** The index finger lies along the frame on top of the trigger guard (trigger discipline). Each gun family has a gun-space contact point (`TRIGGER_CONTACT` in `pack_glove_paintings.py`, copied to `rig.triggerContact`): carbine `[0.019, 0.065, 0.028]`, sniper `[0.018, 0.070, 0.035]`, shotgun `[0.020, 0.065, 0.030]` m from the grip socket. The packer finds the painted index fingertip automatically and registers the trigger glove so that fingertip lands on the projected contact (carbine: grip socket + fingertip pinned, the rest wrist follows the painted cuff and the elbow is re-solved; sniper/shotgun: cuff + fingertip pinned). `rig.arms.trigger.fingertip` stores the rest contact; the studio shows it as marker 5 and `SpriteWeapon` reports it as the `trigger` target. A test checks the rest contact (the gripping hand sits under the upper arm in the shoulder view).
+**Trigger finger contact.** The index finger lies along the frame on top of the trigger guard (trigger discipline). Each gun family has a gun-space contact point (`TRIGGER_CONTACT` in `pack_glove_paintings.py`, copied to `rig.triggerContact`): carbine `[0.019, 0.065, 0.028]`, sniper `[0.018, 0.070, 0.035]`, shotgun `[0.020, 0.065, 0.030]` m from the grip socket. The packer uses the explicitly authored index fingertip landmark (falling back to silhouette detection for legacy sheets) and registers the trigger glove so that fingertip lands on the projected contact (carbine: grip socket + fingertip pinned, the rest wrist follows the painted cuff and the elbow is re-solved; sniper/shotgun: cuff + fingertip pinned). `rig.arms.trigger.fingertip` stores the rest contact; `SpriteWeapon` reports it as the `trigger` target. A test checks the rest contact (the gripping hand sits under the upper arm in the shoulder view).
 
-**Shooting pose layering.** Seen from behind, the right upper arm is nearest the camera, so the trigger forearm (order 0.4) and the gripping hand (0.5) draw under the shoulder and upper arm (1) in the aim pose.
+**Shooting pose layering.** `formula.json.poses.aim.layerZ` explicitly orders the full composition. CSS fallback images, the Three.js compositor and the flat Blender scene use the same `zIndex` values: far upper arm 10 → torso 20 → support palm 30 → trigger thumb 35 → gun 40 → trigger hand 50 → support fingers 55 → support forearm 60 → near upper arm 70 → near forearm 80. The far shoulder goes behind the torso. Both forearm cuffs cover their hand fragments, including the near fingers, while palms and fingers retain their wrapping order around the gun. The near upper sleeve also overlaps the trigger hand. Hand fragments share their corresponding hand bone.
+
+**Complete arm remake.** `source/aim-remake-parts.png` contains four independent tapered sections with overlapping shoulder, elbow and cuff ends. Upper sleeves now use a 146 px maximum placement width and forearms 101 px in the 768 px source frame. The shoulder pivots are rebuilt at UV [0.45, 0.54] and [0.46, 0.54], with elbows bending down below the wrists. The gun camera uses stock [0.55, 0.52] and reference muzzle [0.79, 0.46] for a more level shoulder view. Gun meshes retain physical scale. `gloveSource` records the new hand sheet and explicit wrist, grip, fingertip and near/far split landmarks. Regenerate guides from the formula before packing gloves; the old exported manifest is no longer the authoring input. `remake-prompts.json` records the new artwork specifications.
+
+**Torso and cropping.** `source/aim-torso-only.png` replaces the old body painting that still contained a hanging arm. The helmet, backpack and harness retain their original placement; the arm underneath is replaced by a complete vest side and shoulder socket. `cropEdges: ["left", "bottom"]` anchors these authored cut edges to the viewport (opposite edge when mirrored) and to the letterbox bottom during firing. Aiming no longer displays the torso’s straight crop beside the squad rail.
+
+**Field head visibility.** Building cutaway planes no longer clip character-card pixels. `UnitView` hides a whole character when its occupied floor is above the cut, preserving fog/extraction visibility. Characters on visible floors retain their complete helmets, while normal depth testing still lets walls occlude them.
 
 Rebuild the active anatomical glove layers:
 
 ```sh
+node tools/art/gun_guides.mjs
 python3 tools/art/pack_glove_paintings.py
 python3 -c "import runpy; runpy.run_path('tools/art/sprite_formula.py')['bake_heroes']()"
 ```
@@ -112,7 +121,7 @@ python3 -c "import runpy; runpy.run_path('tools/art/sprite_formula.py')['bake_he
 
 The Blender exporter keeps the original metre-space stock, grip, support and muzzle sockets before simplifying geometry. Planar dissolution and selective decimation reduce the active kit from **29,290 to 11,703 triangles** (60% fewer): carbine 8,722, sniper 2,625, shotgun 356. Part names, roles and assembly scale remain intact. The self-contained GLB is about 1.02 MB rather than 1.86 MB; original source files remain available for future LODs.
 
-`SpriteGunMaterial.js` supplies Three.js `MeshToonMaterial`, a nearest-filtered three-band ramp and a thin back-face ink shell. The shell shares the reduced geometry and adds a second draw pass; triangle counts shown in the studio describe the mesh, excluding that outline pass. Scene light and exposure still affect the gun. Character interior colours remain fixed, with world lighting applied only at the sprite edges. Each cut-in owns and disposes its cel materials and ramp; cached GLTF geometry is shared.
+`SpriteGunMaterial.js` supplies Three.js `MeshToonMaterial`, a nearest-filtered three-band ramp and a thin back-face ink shell. The shell shares the reduced geometry and adds a second draw pass; the reported triangle counts describe the mesh, excluding that outline pass. Scene light and exposure still affect the gun. Character interior colours remain fixed, with world lighting applied only at the sprite edges. Each cut-in owns and disposes its cel materials and ramp; cached GLTF geometry is shared.
 
 ## Field atlas scale
 
@@ -120,6 +129,8 @@ The Blender exporter keeps the original metre-space stock, grip, support and muz
 
 ## Aiming feel (shoulder view)
 
+- **Mouse capture.** Entering Shoot or selecting a target requests pointer lock from that gesture. Locked input uses `movementX/Y`; clicking fires the current lagged reticle. Escape releases the mouse so target portraits and body-part buttons are accessible. An unlocked scene click only captures the mouse, never fires. Mode exit, menu, mission outcome and window blur release capture. Browsers that refuse pointer lock offer explicit drag/arrow-key aiming and Space to fire; they cannot confine the OS cursor.
+- **Target framing.** Target portraits or Tab select an available enemy and frame its body part. The shoulder camera zooms smoothly according to distance (14–38° field of view); wheel adjusts 14–60° without changing tactical floors. With no target, Shoot starts in free aim. The reticle shows magnification and actual ballistic spread.
 - **Reticle sensitivity.** In the shoulder camera the cursor moves the aim *relatively* (`aimDelta` in `client/src/ui/AimController.js`): one pixel of cursor motion turns the aim by `fov / screen height × sensitivity` radians, keeping the aim distance and clamping pitch to ±70°. The camera turns toward the aim, so the old absolute cursor ray kept running away from the hand. Settings → *Aim sensitivity* offers 0.25× / 0.5× (default) / 0.75× / 1×. Clicking a target re-anchors the aim on that body part.
-- **Back-shot follow** (`AIM_SHOT` in `CutInDirector.js`) is calmer: a slower follow spring (τ 0.32 s), lean 0.3°/° capped at 5°, bend capped at 3.5°, and the 3D gun swings about half as far with the crosshair (yaw 0.16 rad per screen width, pitch 0.1 per screen height).
+- **Articulated aim inertia.** `aimSpriteInertia` reads the angular difference between the ballistic spring and requested aim direction. The gun trails turns by up to 0.12 rad yaw / 0.09 rad pitch and settles back with the weapon-weight spring. Upper arms pivot at fixed shoulders, forearms bend at the elbows, and hands follow the grip sockets. The torso stays fixed rather than skewing the whole illustration. Camera tracking and zoom do not erase this motion; disabling Aim inertia also disables the sprite lag.
 - **The shooter stays hidden.** The shooter's world sprite is hidden from the moment the aiming back shot starts, and `CameraDirector.begin` no longer clears the hidden set, so the shoulder camera re-anchoring past its ±35° yaw, or re-framing to a step-out tile while the reticle moves, cannot reveal the shooter in the shot. `end()` shows them again.

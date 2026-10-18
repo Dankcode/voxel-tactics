@@ -6,9 +6,13 @@
   "height": 768,
   "screenHeight": 0.72,
   "maxWidthShare": 0.42,
+  "cropEdges": [
+    "left",
+    "bottom"
+  ],
   "muzzle": [
-    0.7453179793504562,
-    0.34452924706357957
+    0.8021961919430607,
+    0.4335766798176433
   ],
   "layers": [
     {
@@ -17,11 +21,13 @@
       "normal": "aim-body-normal.png",
       "lightingMask": "aim-body-lighting.png",
       "stage": "back",
-      "order": 5
+      "order": 5,
+      "zIndex": 20
     },
     {
       "id": "gun",
-      "gun": true
+      "gun": true,
+      "zIndex": 40
     },
     {
       "id": "trigger-upper",
@@ -30,7 +36,9 @@
       "lightingMask": "aim-trigger-upper-lighting.png",
       "stage": "front",
       "bone": "trigger-upper",
-      "anatomicalSide": "right"
+      "anatomicalSide": "right",
+      "order": 1,
+      "zIndex": 70
     },
     {
       "id": "support-upper",
@@ -39,7 +47,9 @@
       "lightingMask": "aim-support-upper-lighting.png",
       "stage": "back",
       "bone": "support-upper",
-      "anatomicalSide": "left"
+      "anatomicalSide": "left",
+      "order": 1,
+      "zIndex": 10
     },
     {
       "id": "trigger-forearm",
@@ -49,16 +59,19 @@
       "stage": "front",
       "bone": "trigger-forearm",
       "anatomicalSide": "right",
-      "order": 0.4
+      "order": 2,
+      "zIndex": 80
     },
     {
       "id": "support-forearm",
       "image": "aim-support-forearm.png",
       "normal": "aim-support-forearm-normal.png",
       "lightingMask": "aim-support-forearm-lighting.png",
-      "stage": "back",
+      "stage": "front",
       "bone": "support-forearm",
-      "anatomicalSide": "left"
+      "anatomicalSide": "left",
+      "order": 2,
+      "zIndex": 60
     },
     {
       "id": "trigger-hand",
@@ -68,7 +81,8 @@
       "stage": "front",
       "bone": "trigger-hand",
       "anatomicalSide": "right",
-      "order": 0.5,
+      "order": 3,
+      "zIndex": 50,
       "variants": {
         "sniper": {
           "image": "aim-trigger-hand-sniper.png",
@@ -92,6 +106,7 @@
       "anatomicalSide": "right",
       "fragmentOf": "trigger-hand",
       "order": 11,
+      "zIndex": 35,
       "variants": {
         "sniper": {
           "image": "aim-trigger-fingers-sniper.png",
@@ -114,6 +129,7 @@
       "bone": "support-hand",
       "anatomicalSide": "left",
       "order": 10,
+      "zIndex": 30,
       "variants": {
         "sniper": {
           "image": "aim-support-hand-sniper.png",
@@ -137,6 +153,7 @@
       "anatomicalSide": "left",
       "fragmentOf": "support-hand",
       "order": 0,
+      "zIndex": 55,
       "variants": {
         "sniper": {
           "image": "aim-support-fingers-sniper.png",
@@ -153,16 +170,16 @@
   ],
   "rig": {
     "stock": [
-      0.54,
-      0.6
+      0.55,
+      0.52
     ],
     "grip": [
-      0.6067680946493947,
-      0.6227561841728148
+      0.5860178617941012,
+      0.5646634672248291
     ],
     "support": [
-      0.6937967383569779,
-      0.43369315518149143
+      0.7280217050941389,
+      0.4724920383945229
     ],
     "cameraPosition": [
       0.32,
@@ -172,32 +189,36 @@
     "arms": {
       "trigger": {
         "shoulder": [
-          0.49,
-          0.59
+          0.45,
+          0.54
         ],
         "elbow": [
-          0.6680272519607117,
-          0.7183788826543299
+          0.4867774479989126,
+          0.8109529216025124
         ],
         "wrist": [
-          0.55599497801893,
-          0.6598287965238635
+          0.5591500779069006,
+          0.6017643235841313
         ],
         "palm": [
-          0.6067680946493947,
-          0.6227561841728148
+          0.5860178617941012,
+          0.5646634672248291
         ],
         "gripWrist": [
-          0.5768229166666666,
-          0.7044270833333334
+          0.5510178617941012,
+          0.6196634672248291
         ],
         "fingertip": [
-          0.643291576816666,
-          0.5697353200297635
+          0.6341728045442538,
+          0.544080948561329
         ],
         "cuffWrist": [
-          0.55599497801893,
-          0.6598287965238635
+          0.5591500779069006,
+          0.6017643235841313
+        ],
+        "elbowDirection": [
+          0.15,
+          1
         ]
       },
       "support": {
@@ -206,20 +227,24 @@
           0.54
         ],
         "elbow": [
-          0.5611277168097836,
-          0.7863192743023579
+          0.5712805566271267,
+          0.7609555069860249
         ],
         "wrist": [
-          0.6861979166666666,
-          0.4947916666666667
+          0.7130217050941389,
+          0.5424920383945229
         ],
         "palm": [
-          0.6937967383569779,
-          0.43369315518149143
+          0.7280217050941389,
+          0.4724920383945229
         ],
         "gripWrist": [
-          0.6861979166666666,
-          0.4947916666666667
+          0.7130217050941389,
+          0.5424920383945229
+        ],
+        "elbowDirection": [
+          0.15,
+          1
         ]
       }
     },
@@ -230,30 +255,30 @@
         5
       ],
       "referenceMuzzle": [
-        0.75,
-        0.38
+        0.79,
+        0.46
       ],
       "referenceLengthMetres": 0.705
     },
     "jointRadii": {},
     "limbRadii": {
       "upper": [
-        0.1,
-        0.08
+        0.095,
+        0.065
       ],
       "forearm": [
-        0.065,
-        0.048
+        0.066,
+        0.045
       ]
     },
     "handAxis": [
       [
-        0.5399999999999999,
-        0.6
+        0.55,
+        0.52
       ],
       [
-        0.7453179793504562,
-        0.34452924706357957
+        0.8021961919430607,
+        0.4335766798176433
       ]
     ],
     "triggerContact": {
@@ -272,6 +297,13 @@
         0.065,
         0.03
       ]
+    },
+    "buttRaiseDegrees": 8,
+    "gunAxis": {
+      "from": "muzzle",
+      "to": "stock",
+      "control": "barrel-butt-midpoint",
+      "pivot": "muzzle"
     }
   },
   "anatomy": {
@@ -304,9 +336,13 @@
       "height": 768,
       "screenHeight": 0.72,
       "maxWidthShare": 0.42,
+      "cropEdges": [
+        "left",
+        "bottom"
+      ],
       "muzzle": [
-        0.7453179793504562,
-        0.34452924706357957
+        0.8021961919430607,
+        0.4335766798176433
       ],
       "layers": [
         {
@@ -315,11 +351,13 @@
           "normal": "aim-body-normal.png",
           "lightingMask": "aim-body-lighting.png",
           "stage": "back",
-          "order": 5
+          "order": 5,
+          "zIndex": 20
         },
         {
           "id": "gun",
-          "gun": true
+          "gun": true,
+          "zIndex": 40
         },
         {
           "id": "trigger-upper",
@@ -328,7 +366,9 @@
           "lightingMask": "aim-trigger-upper-lighting.png",
           "stage": "front",
           "bone": "trigger-upper",
-          "anatomicalSide": "right"
+          "anatomicalSide": "right",
+          "order": 1,
+          "zIndex": 70
         },
         {
           "id": "support-upper",
@@ -337,7 +377,9 @@
           "lightingMask": "aim-support-upper-lighting.png",
           "stage": "back",
           "bone": "support-upper",
-          "anatomicalSide": "left"
+          "anatomicalSide": "left",
+          "order": 1,
+          "zIndex": 10
         },
         {
           "id": "trigger-forearm",
@@ -347,16 +389,19 @@
           "stage": "front",
           "bone": "trigger-forearm",
           "anatomicalSide": "right",
-          "order": 0.4
+          "order": 2,
+          "zIndex": 80
         },
         {
           "id": "support-forearm",
           "image": "aim-support-forearm.png",
           "normal": "aim-support-forearm-normal.png",
           "lightingMask": "aim-support-forearm-lighting.png",
-          "stage": "back",
+          "stage": "front",
           "bone": "support-forearm",
-          "anatomicalSide": "left"
+          "anatomicalSide": "left",
+          "order": 2,
+          "zIndex": 60
         },
         {
           "id": "trigger-hand",
@@ -366,7 +411,8 @@
           "stage": "front",
           "bone": "trigger-hand",
           "anatomicalSide": "right",
-          "order": 0.5,
+          "order": 3,
+          "zIndex": 50,
           "variants": {
             "sniper": {
               "image": "aim-trigger-hand-sniper.png",
@@ -390,6 +436,7 @@
           "anatomicalSide": "right",
           "fragmentOf": "trigger-hand",
           "order": 11,
+          "zIndex": 35,
           "variants": {
             "sniper": {
               "image": "aim-trigger-fingers-sniper.png",
@@ -412,6 +459,7 @@
           "bone": "support-hand",
           "anatomicalSide": "left",
           "order": 10,
+          "zIndex": 30,
           "variants": {
             "sniper": {
               "image": "aim-support-hand-sniper.png",
@@ -435,6 +483,7 @@
           "anatomicalSide": "left",
           "fragmentOf": "support-hand",
           "order": 0,
+          "zIndex": 55,
           "variants": {
             "sniper": {
               "image": "aim-support-fingers-sniper.png",
@@ -451,16 +500,16 @@
       ],
       "rig": {
         "stock": [
-          0.54,
-          0.6
+          0.55,
+          0.52
         ],
         "grip": [
-          0.6067680946493947,
-          0.6227561841728148
+          0.5860178617941012,
+          0.5646634672248291
         ],
         "support": [
-          0.6937967383569779,
-          0.43369315518149143
+          0.7280217050941389,
+          0.4724920383945229
         ],
         "cameraPosition": [
           0.32,
@@ -470,32 +519,36 @@
         "arms": {
           "trigger": {
             "shoulder": [
-              0.49,
-              0.59
+              0.45,
+              0.54
             ],
             "elbow": [
-              0.6680272519607117,
-              0.7183788826543299
+              0.4867774479989126,
+              0.8109529216025124
             ],
             "wrist": [
-              0.55599497801893,
-              0.6598287965238635
+              0.5591500779069006,
+              0.6017643235841313
             ],
             "palm": [
-              0.6067680946493947,
-              0.6227561841728148
+              0.5860178617941012,
+              0.5646634672248291
             ],
             "gripWrist": [
-              0.5768229166666666,
-              0.7044270833333334
+              0.5510178617941012,
+              0.6196634672248291
             ],
             "fingertip": [
-              0.643291576816666,
-              0.5697353200297635
+              0.6341728045442538,
+              0.544080948561329
             ],
             "cuffWrist": [
-              0.55599497801893,
-              0.6598287965238635
+              0.5591500779069006,
+              0.6017643235841313
+            ],
+            "elbowDirection": [
+              0.15,
+              1
             ]
           },
           "support": {
@@ -504,20 +557,24 @@
               0.54
             ],
             "elbow": [
-              0.5611277168097836,
-              0.7863192743023579
+              0.5712805566271267,
+              0.7609555069860249
             ],
             "wrist": [
-              0.6861979166666666,
-              0.4947916666666667
+              0.7130217050941389,
+              0.5424920383945229
             ],
             "palm": [
-              0.6937967383569779,
-              0.43369315518149143
+              0.7280217050941389,
+              0.4724920383945229
             ],
             "gripWrist": [
-              0.6861979166666666,
-              0.4947916666666667
+              0.7130217050941389,
+              0.5424920383945229
+            ],
+            "elbowDirection": [
+              0.15,
+              1
             ]
           }
         },
@@ -528,30 +585,30 @@
             5
           ],
           "referenceMuzzle": [
-            0.75,
-            0.38
+            0.79,
+            0.46
           ],
           "referenceLengthMetres": 0.705
         },
         "jointRadii": {},
         "limbRadii": {
           "upper": [
-            0.1,
-            0.08
+            0.095,
+            0.065
           ],
           "forearm": [
-            0.065,
-            0.048
+            0.066,
+            0.045
           ]
         },
         "handAxis": [
           [
-            0.5399999999999999,
-            0.6
+            0.55,
+            0.52
           ],
           [
-            0.7453179793504562,
-            0.34452924706357957
+            0.8021961919430607,
+            0.4335766798176433
           ]
         ],
         "triggerContact": {
@@ -570,6 +627,13 @@
             0.065,
             0.03
           ]
+        },
+        "buttRaiseDegrees": 8,
+        "gunAxis": {
+          "from": "muzzle",
+          "to": "stock",
+          "control": "barrel-butt-midpoint",
+          "pivot": "muzzle"
         }
       },
       "anatomy": {

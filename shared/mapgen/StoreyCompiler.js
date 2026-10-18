@@ -7,6 +7,7 @@ import { furnish } from '../mission/modern/ModernBuilder.js';
 import { createRng, hashString } from '../util/Rng.js';
 import { placeFireEscape, placeRoofLadder, compileFireEscape, validateAccessModule, facadeOrigin, roofLadderTemplate, reserveFireEscape, SIDE_FRAME } from './AccessModules.js';
 import { STOREY } from './KitMetric.js';
+import { buildingEra, markBuildingEdges } from '../mission/BuildingEra.js';
 import { furnishBuilding } from './FurnishSolver.js';
 const key=(x,y)=>`${x},${y}`;
 const WALLS=new Set(['stucco','brick','concrete_wall','siding']);
@@ -19,7 +20,8 @@ export function compileBuilding(m,b,{roomById=id=>m.ctx.rooms.find(r=>r.id===id)
     const {store,ctx}=m,{x0,y0,w,d,storeys}=b,top=m.G+STOREY*storeys;
     if(storeys<1||storeys>4||b.floors.length!==storeys)throw Error('compile.storeys: requires all 1–4 floor layouts');
     const wallKey=WALLS.has(b.wall)?b.wall:'stucco',WALL=MAT[wallKey];
-    const out={id:b.id,name:b.id,program:b.program,role:b.program,x0,y0,w,d,baseZ:m.G,top,storeys,front:b.front,wall:wallKey,district:b.district||null,rooms:[],doors:[],windows:[],stairs:[],escapes:[],approach:[],exits:[],access:[]};
+    const out={id:b.id,name:b.id,program:b.program,role:b.program,x0,y0,w,d,baseZ:m.G,top,storeys,front:b.front,wall:wallKey,district:b.district||null,era:buildingEra(b),rooms:[],doors:[],windows:[],stairs:[],escapes:[],approach:[],exits:[],access:[]};
+    out.rounded=out.era==='modern';markBuildingEdges(store,out,out.era);
     const world=([x,y])=>[x+x0,y+y0];
     for(let y=y0;y<y0+d;y++)for(let x=x0;x<x0+w;x++) {
         for(let z=m.G;z<=top+2;z++)store.set(x,y,z,AIR);

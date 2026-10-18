@@ -13,7 +13,9 @@ ROOT=os.path.abspath(os.path.join(os.path.dirname(__file__),'../..'))
 OUT=os.path.join(ROOT,'client/public/assets/characters/ranger-01')
 CONFIG=os.path.join(ROOT,'tools/art/sprites/ranger-01/formula.json')
 SRC=os.path.join(os.path.dirname(CONFIG),'source')
-CLIPS={'idle':(0,2,2,True),'run':(2,4,12,True),'aim':(6,1,1,True),'fire':(7,2,12,False),'throw':(9,2,6,False),'hit':(11,1,1,False),'down':(12,4,8,False),'stacked':(16,1,1,True),'hunker':(17,1,1,True),'vault':(18,3,7,False),'climb':(21,3,6,True)}
+SOURCE_CLIPS={'idle':(0,2,2,True),'run':(2,4,12,True),'aim':(6,1,1,True),'fire':(7,2,12,False),'throw':(9,2,6,False),'hit':(11,1,1,False),'down':(12,4,8,False),'stacked':(16,1,1,True),'hunker':(17,1,1,True),'vault':(18,3,7,False),'climb':(21,3,6,True)}
+CLIPS={'idle':(0,2,2,True),'run':(2,2,6,True),'aim':(4,1,1,True),'fire':(5,2,12,False),'throw':(7,2,6,False),'hit':(9,1,1,False),'down':(10,4,8,False),'stacked':(14,1,1,True),'hunker':(15,1,1,True),'vault':(16,2,14/3,False),'climb':(18,2,4,True)}
+MOVEMENT_FRAMES={'run':[0,2],'vault':[0,2],'climb':[0,2]}
 FACINGS=['s','sw','w','nw','n','ne','e','se']
 S=None
 
@@ -132,7 +134,7 @@ def body_centre(cell,kind):
 
 def bake_field():
     fw,fh,columns=192,256,24;atlas=np.zeros((fh*8,fw*columns,4),dtype=np.float32);sources=[]
-    names={col+i:(clip,i) for clip,(col,n,fps,loop) in CLIPS.items() for i in range(n)}
+    names={col+i:(clip,i) for clip,(col,n,fps,loop) in SOURCE_CLIPS.items() for i in range(n)}
     old={'idle':0,'aim':6,'fire':7,'throw':9,'hit':11,'stacked':13,'hunker':14,'vault':15,'climb':18}
     report={}
     for row,facing in enumerate(FACINGS):
@@ -170,8 +172,20 @@ def bake_field():
             atlas[row*fh+py:row*fh+py+th,col*fw+px:col*fw+px+tw]=cell
             sources.append({'facing':facing,'column':col,'clip':kind,'frame':frame,'source':('run-down-' if count==4 else 'field-')+facing+'.png','sourceRect':rect})
         report[facing]={'scales':{k:round(v,4) for k,v in sheet_scale.items()},'shrunkToFit':shrunk}
-    sources.sort(key=lambda s:(FACINGS.index(s['facing']),s['column']))
-    preview=np.concatenate([atlas[:256,2*192:6*192],atlas[:256,12*192:16*192],atlas[2*256:3*256,2*192:6*192],atlas[2*256:3*256,12*192:16*192]],axis=0)
+    # Bake original cells first: compacting must not change scale, colour matching or source artwork.
+    keep=[];compacted=[]
+    for clip,(column,n,fps,loop) in CLIPS.items():
+        for frame,source_frame in enumerate(MOVEMENT_FRAMES.get(clip,range(n))):
+            old_col=SOURCE_CLIPS[clip][0]+source_frame;keep.append(old_col)
+            for row,facing in enumerate(FACINGS):
+                entry=next(x for x in sources if x['facing']==facing and x['column']==old_col)
+                compacted.append({**entry,'column':column+frame,'frame':frame})
+    atlas=np.concatenate([atlas[:,col*fw:(col+1)*fw] for col in keep],axis=1)
+    columns=len(keep);sources=sorted(compacted,key=lambda s:(FACINGS.index(s['facing']),s['column']))
+    def preview_clip(row,clip):
+        col,n,_,_=CLIPS[clip];a=atlas[row*fh:(row+1)*fh,col*fw:(col+n)*fw]
+        return np.pad(a,((0,0),(0,(4-n)*fw),(0,0)))
+    preview=np.concatenate([preview_clip(row,clip) for row in [0,2] for clip in ['run','down']],axis=0)
     write_png(os.path.join(os.path.dirname(CONFIG),'run-downed-preview.png'),preview)
     write_png(os.path.join(OUT,'field.png'),atlas);normal,mask=lighting_passes(atlas,[( (c+.5)/columns,(r+.45)/8,.32/columns,.40/8,.22) for r in range(8) for c in range(columns)],edge_width=2)
     write_png(os.path.join(OUT,'field-normal.png'),normal);write_png(os.path.join(OUT,'field-lighting.png'),mask)
@@ -202,7 +216,7 @@ def stage_2d(layers,pose='aim'):
     sc.render.image_settings.file_format='PNG';sc.render.image_settings.color_mode='RGBA';sc.view_settings.view_transform='Standard'
     world=bpy.data.worlds.new('2D transparent stage');sc.world=world
     cam=bpy.data.objects.new('2D orthographic camera',bpy.data.cameras.new('2D orthographic camera'));sc.collection.objects.link(cam);cam.location=(aspect/2,.5,10);cam.data.type='ORTHO';cam.data.ortho_scale=aspect;sc.camera=cam
-    order=lambda l:(l.get('stage')!='back',l.get('order',1 if l['id'].endswith('upper') else 2 if l['id'].endswith('forearm') else 3))
+    order=lambda l:l.get('zIndex',(0 if l.get('stage')=='back' else 100)+l.get('order',1 if l['id'].endswith('upper') else 2 if l['id'].endswith('forearm') else 3))
     layers=sorted(layers,key=order)
     for i,layer in enumerate(layers):
         im=bpy.data.images.load(os.path.join(OUT,layer['image']),check_existing=True);im.reload()
@@ -211,7 +225,7 @@ def stage_2d(layers,pose='aim'):
         mat.surface_render_method='DITHERED'
         me=bpy.data.meshes.new('Flat image rectangle');me.from_pydata([(0,0,0),(aspect,0,0),(aspect,1,0),(0,1,0)],[],[(0,1,2,3)]);uv=me.uv_layers.new()
         for loop,co in zip(uv.data,[(0,0),(1,0),(1,1),(0,1)]):loop.uv=co
-        ob=bpy.data.objects.new(layer['id'],me);sc.collection.objects.link(ob);ob.location.z=i*.001;ob.data.materials.append(mat);ob['sprite_layer']=True;ob['bone']=layer.get('bone','body')
+        ob=bpy.data.objects.new(layer['id'],me);sc.collection.objects.link(ob);ob.location.z=i*.001;ob.data.materials.append(mat);ob['sprite_layer']=True;ob['bone']=layer.get('bone','body');ob['zIndex']=order(layer)
     rig=json.load(open(CONFIG))['poses'][pose]['rig'];pivots={}
     for side,arm in rig['arms'].items():
         parent=None
@@ -277,7 +291,9 @@ def bake_heroes():
             if bone:
                 side=bone.split('-')[0];layer['anatomicalSide']='right' if side=='trigger' else 'left'
                 if id.endswith('fingers'):layer['fragmentOf']=side+'-hand'
-            if order is not None:layer['order']=order
+            # Explicit stage-local draw order travels with the PNGs, including into future sprite packs.
+            layer['order']=order if order is not None else (1 if id.endswith('upper') else 2 if id.endswith('forearm') else 3)
+            if id in p.get('layerZ',{}):layer['zIndex']=p['layerZ'][id]
             layers.append(layer);images[id]=a
             return layer
         emit('body',body,'back',order=5)
@@ -329,10 +345,10 @@ def bake_heroes():
         normal,mask=lighting_passes(body,p.get('normalVolumes',[]))
         write_png(os.path.join(OUT,name+'-normal.png'),normal);write_png(os.path.join(OUT,name+'-lighting.png'),mask)
         preview=np.zeros_like(body)
-        for layer in sorted(layers,key=lambda l:(l['stage']!='back',l.get('order',1 if l['id'].endswith('upper') else 2 if l['id'].endswith('forearm') else 3))):preview=over(preview,images[layer['id']])
+        for layer in sorted(layers,key=lambda l:l.get('zIndex',(0 if l['stage']=='back' else 100)+l['order'])):preview=over(preview,images[layer['id']])
         write_png(os.path.join(OUT,name+'-albedo.png'),preview)
-        layers.insert(1,{'id':'gun','gun':True})
-        poses[name]={'character':'ranger-01','version':3,'placeholder':False,'width':w,'height':h,'screenHeight':.72,'maxWidthShare':p.get('maxWidthShare',.42),'muzzle':p['muzzle'],'layers':layers,'rig':p['rig'],'anatomy':p.get('anatomy'),'lighting':'albedo-normal-response-mask','gun':True,'sections':'complete-independent-paintings'}
+        layers.insert(1,{'id':'gun','gun':True,'zIndex':p.get('layerZ',{}).get('gun',100)})
+        poses[name]={'character':'ranger-01','version':3,'placeholder':False,'width':w,'height':h,'screenHeight':.72,'maxWidthShare':p.get('maxWidthShare',.42),'cropEdges':p.get('cropEdges',[]),'muzzle':p['muzzle'],'layers':layers,'rig':p['rig'],'anatomy':p.get('anatomy'),'lighting':'albedo-normal-response-mask','gun':True,'sections':'complete-independent-paintings'}
     with open(os.path.join(os.path.dirname(CONFIG),'rig-image-audit.json'),'w') as f:json.dump(contact_audit,f,indent=2)
     base=poses['aim'];base['variants']={'left':{**dict(base),'mirror':True,'mirrorGun':True,'pose':'aim-left'}}
     with open(os.path.join(OUT,'cutin.json'),'w') as f:json.dump(base,f,indent=2)

@@ -15,6 +15,7 @@ import { solveDressing } from '../../mapgen/DressingSolver.js';
 // in (XCOM breaching). Open-plan pairs (living ↔ kitchen) get a 2-wide opening instead of a door. Furniture is
 // placed with a connectivity guard: every floor cell stays reachable from the entry.
 import { MAT, AIR } from '../../voxel/Materials.js';
+import { buildingEra, markBuildingEdges } from '../BuildingEra.js';
 import { createStairRun } from '../../world/StairRun.js';
 
 export const STOREY = 3;
@@ -181,8 +182,10 @@ export function buildModern(store, spec, ctx) {
     const rng = ctx.rng;
     const hints = ctx.hints || (ctx.hints = {}), decor = ctx.decor || (ctx.decor = []);
     const result = { id: spec.id, name: spec.name || spec.id, role: spec.program, program: spec.program, x0, y0, w, d, baseZ, storeys, top, front, wall: wallKey,
-        rounded:spec.rounded!==false,rooms: [], doors: [], windows: [], stairs: [], approach: [] };
-    if(spec.rounded===false)for(const x of [x0,x0+w-1])for(const y of [y0,y0+d-1])store.squareCorners.add(`${x},${y}`);
+        era: buildingEra(spec), rooms: [], doors: [], windows: [], stairs: [], approach: [] };
+    // Modern: rounded edges everywhere. Old: straight edges for the whole footprint, interior included.
+    result.rounded = result.era === 'modern';
+    markBuildingEdges(store, result, result.era);
 
     // Frame: local (u along the front, v from front to back) → world.
     const W = front === 'n' || front === 's' ? w : d, D = front === 'n' || front === 's' ? d : w;

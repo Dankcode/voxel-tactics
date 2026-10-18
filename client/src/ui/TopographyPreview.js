@@ -7,7 +7,7 @@ export function topologyModel(mission) {
   cells.push({x,y,height:z,material:z<0?'void':materialById(s.get(x,y,z)).key,surfaces:s.surfaces(x,y).map(p=>({z:p.z,headroom:p.headroom}))});
  }
  return {name:mission.name,seed:mission.meta?.seed,dimensions:[s.width,s.depth,s.height],version:mission.meta?.generatorVersion||'authored-parcels',
-  cells,buildings:(mission.buildings||[]).map(b=>({id:b.id,x:b.x0,y:b.y0,w:b.w,d:b.d,storeys:b.storeys,program:b.program||b.role,rounded:b.rounded!==false})),
+  cells,buildings:(mission.buildings||[]).map(b=>({id:b.id,x:b.x0,y:b.y0,w:b.w,d:b.d,storeys:b.storeys,program:b.program||b.role,rounded:b.era?b.era==='modern':b.rounded!==false})),
   connectors:mission.meta?.connectionParcels||mission.meta?.underground?.connectionParcels||[],assignments:mission.meta?.parcelAssignments||[],
   routes:mission.meta?.lineOfPlay||{main:mission.meta?.lowerStreet?.map(p=>[p.x,p.y])||[],flanks:[]},metrics:{...(mission.metrics||{}),gates:{...(mission.metrics?.gates||{}),...Object.fromEntries(Object.entries(mission.meta?.districtGates?.gates||{}).map(([k,v])=>[`district.${k}`,v]))}},districtGates:mission.meta?.districtGates||null,decisions:mission.meta?.designDecisions||[],parcelGraph:mission.meta?.parcelGraph||[],algorithm:mission.meta||{},repairs:mission.meta?.repairs||mission.meta?.district?.repairs||[],spawns:mission.spawns.player};
 }
@@ -51,7 +51,7 @@ export class TopographyPreview {
    for(let x=0;x<W;x+=8){ctx.beginPath();ctx.moveTo(x*q,0);ctx.lineTo(x*q,D*q);ctx.stroke();}
    for(let y=0;y<D;y+=8){ctx.beginPath();ctx.moveTo(0,y*q);ctx.lineTo(W*q,y*q);ctx.stroke();}
    ctx.font=`${Math.max(11,q*.8)}px monospace`;
-   for(const b of this.model.buildings){ctx.strokeStyle=b.rounded?'#77dfcd':'#f4c37c';ctx.lineWidth=2;ctx.strokeRect(b.x*q,b.y*q,b.w*q,b.d*q);ctx.fillStyle=ctx.strokeStyle;ctx.fillText(`${b.program||b.id} · ${b.rounded?'round':'square'}`,b.x*q+3,b.y*q+14);}
+   for(const b of this.model.buildings){ctx.strokeStyle=b.rounded?'#77dfcd':'#f4c37c';ctx.lineWidth=2;ctx.strokeRect(b.x*q,b.y*q,b.w*q,b.d*q);ctx.fillStyle=ctx.strokeStyle;ctx.fillText(`${b.program||b.id} · ${b.rounded?'modern · rounded':'old · straight'}`,b.x*q+3,b.y*q+14);}
   }
   if(this.root.querySelector('[data-topo="routes"]').checked) {
    for(const [points,color] of [[this.model.routes.main,'#f6da81'],...(this.model.routes.flanks||[]).map(f=>[f.path,'#84aefa'])]){if(!points?.length)continue;ctx.strokeStyle=color;ctx.lineWidth=3;ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo((x+.5)*q,(y+.5)*q):ctx.moveTo((x+.5)*q,(y+.5)*q));ctx.stroke();}

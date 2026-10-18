@@ -1,7 +1,7 @@
 // Two-bone IK for flat painted cutouts. All coordinates are in the untrimmed sprite frame.
 const distance = (a, b) => Math.hypot(b.x - a.x, b.y - a.y);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-export function solveArm(shoulder, restElbow, restWrist, target) {
+export function solveArm(shoulder, restElbow, restWrist, target, elbowDirection = null) {
     const a = distance(shoulder, restElbow), b = distance(restElbow, restWrist);
     const dx = target.x - shoulder.x, dy = target.y - shoulder.y;
     // Screen-space limits avoid a singular straight or completely folded elbow. These are projected angles.
@@ -10,7 +10,13 @@ export function solveArm(shoulder, restElbow, restWrist, target) {
     const angle = Math.atan2(dy, dx);
     const side = Math.sign((restWrist.x-shoulder.x)*(restElbow.y-shoulder.y)-(restWrist.y-shoulder.y)*(restElbow.x-shoulder.x)) || 1;
     const bend = Math.acos(clamp((a*a+d*d-b*b)/(2*a*d),-1,1));
-    return { elbow: { x: shoulder.x+Math.cos(angle+side*bend)*a, y: shoulder.y+Math.sin(angle+side*bend)*a },
+    let elbowAngle=angle+side*bend;
+    // The near shooting elbow stays outside the torso even when a longer gun lifts the grip above the shoulder.
+    if(elbowDirection){
+        const score=t=>Math.cos(t)*elbowDirection[0]+Math.sin(t)*elbowDirection[1];
+        elbowAngle=score(angle+bend)>score(angle-bend)?angle+bend:angle-bend;
+    }
+    return { elbow: { x: shoulder.x+Math.cos(elbowAngle)*a, y: shoulder.y+Math.sin(elbowAngle)*a },
         wrist: { x: shoulder.x+Math.cos(angle)*d, y: shoulder.y+Math.sin(angle)*d } };
 }
 export function boneMatrix(start, end, posedStart, posedEnd) {
@@ -34,7 +40,7 @@ export function armRigPose(rig, targets, width, height) {
         const shoulder=point(arm.shoulder),elbow=point(arm.elbow),wrist=point(arm.wrist),palm=point(arm.palm);
         const target=point(side==='trigger'?targets.grip:targets.support),offset={x:wrist.x-palm.x,y:wrist.y-palm.y};
         const wanted={x:target.x+offset.x*co-offset.y*si,y:target.y+offset.x*si+offset.y*co};
-        const pose=solveArm(shoulder,elbow,wrist,wanted),gap=distance(pose.wrist,wanted);
+        const pose=solveArm(shoulder,elbow,wrist,wanted,arm.elbowDirection),gap=distance(pose.wrist,wanted);
         result.maxGap=Math.max(result.maxGap,gap);
         result.joints[side]={shoulder,...pose,palm:target,handWrist:wanted,gap};
         const transforms={upper:boneMatrix(shoulder,elbow,shoulder,pose.elbow),forearm:boneMatrix(elbow,wrist,pose.elbow,pose.wrist),

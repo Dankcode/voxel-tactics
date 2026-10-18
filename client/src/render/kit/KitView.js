@@ -1,4 +1,5 @@
 import { ladderAttachment } from '../../../../shared/world/LadderAttachment.js';
+import { straightCells } from '../../../../shared/mission/BuildingEra.js';
 // Autotiles structure and cover voxels into tile-set pieces, chunk by chunk, as instanced meshes.
 //
 // The voxel grid stays the gameplay truth. This only decides what each voxel looks like, from its material, its
@@ -106,8 +107,11 @@ export class KitView {
         const cut = opts.cutZ ?? Infinity;
         const inst = new Map();          // `${piece}|${part}|${selfKey}` → { part, selfKey, mats: [], cols: [] }
         const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(1, 1, 1), p = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+        const straight = straightCells(store);
         const add = (piece, x, y, z, yaw = 0, selfKey = 'stone', { scale = 1, sx = 1, sz = 1, dx = 0, dy = 0, dz = 0, tint = null, tintSlots = null } = {}) => {
             if (opts.hidden?.(x,y,z)) return false;
+            // Old buildings: furniture and fittings come with straight edges too (same piece, bevels removed).
+            if (straight(Math.round(x + dx), Math.round(y + dy)) && !piece.startsWith('square_')) piece = `${piece}@sharp`;
             const parts = this.kit.piece(piece); if (!parts) return false;
             q.setFromAxisAngle(up, yaw); s.set(scale * sx, scale, scale * sz); p.set(x + 0.5 + dx, z + dz, y + 0.5 + dy);
             m4.compose(p, q, s);

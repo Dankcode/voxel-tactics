@@ -21,6 +21,8 @@ export class VoxelStore {
         this.profileSurfaceCache = new Map();     // agent profile → (x + y·W → admissible surfaces), TraversalRules
         this.dirtyChunks = new Set();
         this.version = 0;
+        // "x,y" cells drawn with straight edges: the whole footprint of every old building (BuildingEra.js). The name
+        // predates eras, when only outside corners could be square; snapshots and the battle hash keep it.
         this.squareCorners = new Set();
         this.windowOpenings = new Map(); // half-window sill cells → crossing axis; survives shattered glazing
         // PLAN-07 visible damage (gameplay-neutral, shared so every peer and snapshot shows the same marks):

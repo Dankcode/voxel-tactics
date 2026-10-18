@@ -6,6 +6,7 @@ import { emitConnectedWater } from './ConnectedWater.js';
 import { MATERIALS, AIR } from '../../../shared/voxel/Materials.js';
 import { CHUNK } from '../../../shared/voxel/VoxelStore.js';
 import { renderFor, KIND_GROUP } from './RenderTable.js';
+import { straightCells } from '../../../shared/mission/BuildingEra.js';
 
 // faces: normal, 4 corners (offsets in voxel space x,y,z), uv axes (indices into [x, y, z])
 const FACES = [
@@ -52,7 +53,8 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
     const kit = options.kit || (() => null);      // voxels the tile set draws (thin walls, props …) are skipped
     const opaque = (x, y, z) => z < cut && !options.hidden?.(x,y,z) && opaqueAt(store, x, y, z);
     const hides = (x, y, z) => opaque(x, y, z) && !kit(store, x, y, z);   // only full cubes hide a neighbour's face
-    const apron = !!options.apron;               // the map edge continues as an apron: no boundary side faces
+    const apron = !!options.apron;
+    const straight = straightCells(store);       // old buildings: straight edges (BuildingEra.js)               // the map edge continues as an apron: no boundary side faces
     const W = store.width, D = store.depth;
     const inMap = (x, y) => x >= 0 && y >= 0 && x < W && y < D;
     const aoCorner = (f, x, y, z, dx, dy, dz) => {
@@ -280,7 +282,7 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
                     emitConnectedWater(store,x,y,z,m.key,bufFor(key,renderFor(key)),quad,t,cut);
                     continue;
                 }
-                if (g === 0 && options.rounded !== false) { emitRounded(x, y, z, m, base, jitter * macro, t); continue; }
+                if (g === 0 && options.rounded !== false && !straight(x, y)) { emitRounded(x, y, z, m, base, jitter * macro, t); continue; }
                 for (let f = 0; f < 6; f++) {
                     const face = FACES[f];
                     const nx = x + face.n[0], ny = y + face.n[1], nz = z + face.n[2];

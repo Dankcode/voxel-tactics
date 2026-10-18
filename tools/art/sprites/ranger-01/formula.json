@@ -12,8 +12,8 @@
     "aim": {
       "source": "aim-flat.png",
       "muzzle": [
-        0.7453179793504562,
-        0.34452924706357957
+        0.8021961919430607,
+        0.4335766798176433
       ],
       "normalVolumes": [
         [
@@ -40,16 +40,16 @@
       ],
       "rig": {
         "stock": [
-          0.54,
-          0.6
+          0.55,
+          0.52
         ],
         "grip": [
-          0.6067680946493947,
-          0.6227561841728148
+          0.5860178617941012,
+          0.5646634672248291
         ],
         "support": [
-          0.6937967383569779,
-          0.43369315518149143
+          0.7280217050941389,
+          0.4724920383945229
         ],
         "cameraPosition": [
           0.32,
@@ -59,32 +59,36 @@
         "arms": {
           "trigger": {
             "shoulder": [
-              0.49,
-              0.59
+              0.45,
+              0.54
             ],
             "elbow": [
-              0.6680272519607117,
-              0.7183788826543299
+              0.4867774479989126,
+              0.8109529216025124
             ],
             "wrist": [
-              0.55599497801893,
-              0.6598287965238635
+              0.5591500779069006,
+              0.6017643235841313
             ],
             "palm": [
-              0.6067680946493947,
-              0.6227561841728148
+              0.5860178617941012,
+              0.5646634672248291
             ],
             "gripWrist": [
-              0.5768229166666666,
-              0.7044270833333334
+              0.5510178617941012,
+              0.6196634672248291
             ],
             "fingertip": [
-              0.643291576816666,
-              0.5697353200297635
+              0.6341728045442538,
+              0.544080948561329
             ],
             "cuffWrist": [
-              0.55599497801893,
-              0.6598287965238635
+              0.5591500779069006,
+              0.6017643235841313
+            ],
+            "elbowDirection": [
+              0.15,
+              1
             ]
           },
           "support": {
@@ -93,20 +97,24 @@
               0.54
             ],
             "elbow": [
-              0.5611277168097836,
-              0.7863192743023579
+              0.5712805566271267,
+              0.7609555069860249
             ],
             "wrist": [
-              0.6861979166666666,
-              0.4947916666666667
+              0.7130217050941389,
+              0.5424920383945229
             ],
             "palm": [
-              0.6937967383569779,
-              0.43369315518149143
+              0.7280217050941389,
+              0.4724920383945229
             ],
             "gripWrist": [
-              0.6861979166666666,
-              0.4947916666666667
+              0.7130217050941389,
+              0.5424920383945229
+            ],
+            "elbowDirection": [
+              0.15,
+              1
             ]
           }
         },
@@ -117,30 +125,30 @@
             5
           ],
           "referenceMuzzle": [
-            0.75,
-            0.38
+            0.79,
+            0.46
           ],
           "referenceLengthMetres": 0.705
         },
         "jointRadii": {},
         "limbRadii": {
           "upper": [
-            0.1,
-            0.08
+            0.095,
+            0.065
           ],
           "forearm": [
-            0.065,
-            0.048
+            0.066,
+            0.045
           ]
         },
         "handAxis": [
           [
-            0.5399999999999999,
-            0.6
+            0.55,
+            0.52
           ],
           [
-            0.7453179793504562,
-            0.34452924706357957
+            0.8021961919430607,
+            0.4335766798176433
           ]
         ],
         "triggerContact": {
@@ -159,6 +167,13 @@
             0.065,
             0.03
           ]
+        },
+        "buttRaiseDegrees": 8,
+        "gunAxis": {
+          "from": "muzzle",
+          "to": "stock",
+          "control": "barrel-butt-midpoint",
+          "pivot": "muzzle"
         }
       },
       "parts": [
@@ -168,17 +183,17 @@
             0,
             0,
             512,
-            560
+            565
           ],
           "start": [
-            250,
-            140
+            330,
+            125
           ],
           "end": [
-            370,
-            480
+            260,
+            450
           ],
-          "sourceWidth": 310,
+          "sourceWidth": 285,
           "stage": "front",
           "anatomicalSide": "right"
         },
@@ -188,17 +203,17 @@
             512,
             0,
             1024,
-            560
+            565
           ],
           "start": [
-            790,
-            135
+            700,
+            125
           ],
           "end": [
-            770,
-            480
+            750,
+            450
           ],
-          "sourceWidth": 300,
+          "sourceWidth": 285,
           "stage": "back",
           "anatomicalSide": "left"
         },
@@ -206,41 +221,41 @@
           "id": "trigger-forearm",
           "rect": [
             0,
-            560,
+            565,
             512,
-            1090
+            1100
           ],
           "start": [
-            270,
-            655
+            280,
+            650
           ],
           "end": [
-            270,
-            1025
+            375,
+            1010
           ],
-          "sourceWidth": 260,
+          "sourceWidth": 230,
           "stage": "front",
           "anatomicalSide": "right",
-          "order": 0.4
+          "order": 2
         },
         {
           "id": "support-forearm",
           "rect": [
             512,
-            560,
+            565,
             1024,
-            1090
+            1100
           ],
           "start": [
-            785,
-            655
+            745,
+            650
           ],
           "end": [
-            775,
-            1025
+            670,
+            1010
           ],
-          "sourceWidth": 250,
-          "stage": "back",
+          "sourceWidth": 230,
+          "stage": "front",
           "anatomicalSide": "left"
         },
         {
@@ -252,12 +267,12 @@
             768
           ],
           "start": [
-            427.0041431185383,
-            506.7485157303272
+            429.42725983249966,
+            462.1550005126129
           ],
           "end": [
-            465.99789669073516,
-            478.27674944472176
+            450.0617178578697,
+            433.66154282866876
           ],
           "sourceWidth": 0,
           "stage": "front",
@@ -276,7 +291,7 @@
             }
           },
           "anatomicalSide": "right",
-          "order": 0.5
+          "order": 3
         },
         {
           "id": "support-hand",
@@ -287,12 +302,12 @@
             768
           ],
           "start": [
-            527.0,
-            380.0
+            547.6006695122986,
+            416.63388548699356
           ],
           "end": [
-            532.8358950581589,
-            333.0763431793854
+            559.1206695122987,
+            362.8738854869936
           ],
           "sourceWidth": 0,
           "stage": "back",
@@ -314,8 +329,8 @@
           "anatomicalSide": "left"
         }
       ],
-      "bodySource": "aim-body-modular.png",
-      "sectionsSource": "aim-arm-sections.png",
+      "bodySource": "aim-torso-only.png",
+      "sectionsSource": "aim-remake-parts.png",
       "anatomy": {
         "left": {
           "upper": "support-upper",
@@ -333,12 +348,28 @@
             "trigger-fingers"
           ]
         }
+      },
+      "cropEdges": [
+        "left",
+        "bottom"
+      ],
+      "layerZ": {
+        "support-upper": 10,
+        "body": 20,
+        "support-hand": 30,
+        "trigger-fingers": 35,
+        "gun": 40,
+        "trigger-hand": 50,
+        "support-fingers": 55,
+        "support-forearm": 60,
+        "trigger-upper": 70,
+        "trigger-forearm": 80
       }
     }
   },
   "sectionPolicy": "Independent complete torso and limb paintings; never subtract arm masks from torso",
   "gloveArt": {
-    "source": "source/gloves-cleaned/anatomy-painted.png",
+    "source": "source/aim-remake-hands.png",
     "packing": "tools/art/pack_glove_paintings.py",
     "skeleton": "anatomical wrist and grip registration; no mocap capture supplied",
     "handsPerPose": {
@@ -346,5 +377,280 @@
       "right": 1
     },
     "rule": "near/far fragments are disjoint pixels of one hand, never additional hands"
+  },
+  "gloveSource": {
+    "image": "source/aim-remake-hands.png",
+    "landmarks": {
+      "rifle": {
+        "trigger": {
+          "rect": [
+            0,
+            0,
+            890,
+            886
+          ],
+          "wrist": [
+            500,
+            730
+          ],
+          "socket": [
+            570,
+            430
+          ],
+          "fingertip": [
+            815,
+            177
+          ],
+          "fragment": [
+            [
+              267,
+              403
+            ],
+            [
+              275,
+              340
+            ],
+            [
+              361,
+              240
+            ],
+            [
+              438,
+              234
+            ],
+            [
+              449,
+              278
+            ],
+            [
+              386,
+              382
+            ],
+            [
+              335,
+              510
+            ]
+          ]
+        },
+        "support": {
+          "rect": [
+            890,
+            0,
+            1774,
+            886
+          ],
+          "wrist": [
+            1275,
+            735
+          ],
+          "socket": [
+            1300,
+            385
+          ],
+          "fragment": [
+            [
+              1150,
+              150
+            ],
+            [
+              1640,
+              150
+            ],
+            [
+              1640,
+              450
+            ],
+            [
+              1400,
+              455
+            ],
+            [
+              1140,
+              395
+            ]
+          ]
+        }
+      },
+      "sniper": {
+        "trigger": {
+          "rect": [
+            0,
+            0,
+            890,
+            886
+          ],
+          "wrist": [
+            500,
+            730
+          ],
+          "socket": [
+            570,
+            430
+          ],
+          "fingertip": [
+            815,
+            177
+          ],
+          "fragment": [
+            [
+              267,
+              403
+            ],
+            [
+              275,
+              340
+            ],
+            [
+              361,
+              240
+            ],
+            [
+              438,
+              234
+            ],
+            [
+              449,
+              278
+            ],
+            [
+              386,
+              382
+            ],
+            [
+              335,
+              510
+            ]
+          ]
+        },
+        "support": {
+          "rect": [
+            890,
+            0,
+            1774,
+            886
+          ],
+          "wrist": [
+            1275,
+            735
+          ],
+          "socket": [
+            1300,
+            385
+          ],
+          "fragment": [
+            [
+              1150,
+              150
+            ],
+            [
+              1640,
+              150
+            ],
+            [
+              1640,
+              450
+            ],
+            [
+              1400,
+              455
+            ],
+            [
+              1140,
+              395
+            ]
+          ]
+        }
+      },
+      "shotgun": {
+        "trigger": {
+          "rect": [
+            0,
+            0,
+            890,
+            886
+          ],
+          "wrist": [
+            500,
+            730
+          ],
+          "socket": [
+            570,
+            430
+          ],
+          "fingertip": [
+            815,
+            177
+          ],
+          "fragment": [
+            [
+              267,
+              403
+            ],
+            [
+              275,
+              340
+            ],
+            [
+              361,
+              240
+            ],
+            [
+              438,
+              234
+            ],
+            [
+              449,
+              278
+            ],
+            [
+              386,
+              382
+            ],
+            [
+              335,
+              510
+            ]
+          ]
+        },
+        "support": {
+          "rect": [
+            890,
+            0,
+            1774,
+            886
+          ],
+          "wrist": [
+            1275,
+            735
+          ],
+          "socket": [
+            1300,
+            385
+          ],
+          "fragment": [
+            [
+              1150,
+              150
+            ],
+            [
+              1640,
+              150
+            ],
+            [
+              1640,
+              450
+            ],
+            [
+              1400,
+              455
+            ],
+            [
+              1140,
+              395
+            ]
+          ]
+        }
+      }
+    }
   }
 }

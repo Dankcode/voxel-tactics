@@ -43,7 +43,8 @@ export function curvedCornerFootprint(mask, thickness=WALL_THICKNESS, steps=12) 
     const poly=points.map(([x,y])=>{for(let i=0;i<turns;i++)[x,y]=[1-y,x];return [Math.max(0,Math.min(1,x)),Math.max(0,Math.min(1,y))];});
     curveCache.set(key,poly);return poly;
 }
-export function wallFootprint(mask,rounded=true) { return (rounded?curvedCornerFootprint(mask):null)||bandFootprint(mask, WALL_THICKNESS, 0.12); }
+/** Wall silhouette for a connection mask. rounded (modern): curved L corners and softened ends; false (old): square. */
+export function wallFootprint(mask,rounded=true) { return rounded?curvedCornerFootprint(mask)||bandFootprint(mask, WALL_THICKNESS, 0.12):bandFootprint(mask, WALL_THICKNESS, 0); }
 
 /**
  * Grouped cover (hedges, planters, sandbags, barriers, field walls, fences) uses the same post-and-arm silhouette as

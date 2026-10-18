@@ -47,41 +47,15 @@
       "frame": 1,
       "source": "run-down-s.png",
       "sourceRect": [
-        384,
-        0,
         768,
+        0,
+        1152,
         602
       ]
     },
     {
       "facing": "s",
       "column": 4,
-      "clip": "run",
-      "frame": 2,
-      "source": "run-down-s.png",
-      "sourceRect": [
-        768,
-        0,
-        1152,
-        602
-      ]
-    },
-    {
-      "facing": "s",
-      "column": 5,
-      "clip": "run",
-      "frame": 3,
-      "source": "run-down-s.png",
-      "sourceRect": [
-        1152,
-        0,
-        1536,
-        602
-      ]
-    },
-    {
-      "facing": "s",
-      "column": 6,
       "clip": "aim",
       "frame": 0,
       "source": "field-s.png",
@@ -94,7 +68,7 @@
     },
     {
       "facing": "s",
-      "column": 7,
+      "column": 5,
       "clip": "fire",
       "frame": 0,
       "source": "field-s.png",
@@ -107,7 +81,7 @@
     },
     {
       "facing": "s",
-      "column": 8,
+      "column": 6,
       "clip": "fire",
       "frame": 1,
       "source": "field-s.png",
@@ -120,7 +94,7 @@
     },
     {
       "facing": "s",
-      "column": 9,
+      "column": 7,
       "clip": "throw",
       "frame": 0,
       "source": "field-s.png",
@@ -133,7 +107,7 @@
     },
     {
       "facing": "s",
-      "column": 10,
+      "column": 8,
       "clip": "throw",
       "frame": 1,
       "source": "field-s.png",
@@ -146,7 +120,7 @@
     },
     {
       "facing": "s",
-      "column": 11,
+      "column": 9,
       "clip": "hit",
       "frame": 0,
       "source": "field-s.png",
@@ -159,7 +133,7 @@
     },
     {
       "facing": "s",
-      "column": 12,
+      "column": 10,
       "clip": "down",
       "frame": 0,
       "source": "run-down-s.png",
@@ -172,7 +146,7 @@
     },
     {
       "facing": "s",
-      "column": 13,
+      "column": 11,
       "clip": "down",
       "frame": 1,
       "source": "run-down-s.png",
@@ -185,7 +159,7 @@
     },
     {
       "facing": "s",
-      "column": 14,
+      "column": 12,
       "clip": "down",
       "frame": 2,
       "source": "run-down-s.png",
@@ -198,7 +172,7 @@
     },
     {
       "facing": "s",
-      "column": 15,
+      "column": 13,
       "clip": "down",
       "frame": 3,
       "source": "run-down-s.png",
@@ -211,7 +185,7 @@
     },
     {
       "facing": "s",
-      "column": 16,
+      "column": 14,
       "clip": "stacked",
       "frame": 0,
       "source": "field-s.png",
@@ -224,7 +198,7 @@
     },
     {
       "facing": "s",
-      "column": 17,
+      "column": 15,
       "clip": "hunker",
       "frame": 0,
       "source": "field-s.png",
@@ -237,7 +211,7 @@
     },
     {
       "facing": "s",
-      "column": 18,
+      "column": 16,
       "clip": "vault",
       "frame": 0,
       "source": "field-s.png",
@@ -250,22 +224,9 @@
     },
     {
       "facing": "s",
-      "column": 19,
+      "column": 17,
       "clip": "vault",
       "frame": 1,
-      "source": "field-s.png",
-      "sourceRect": [
-        358,
-        850,
-        537,
-        1254
-      ]
-    },
-    {
-      "facing": "s",
-      "column": 20,
-      "clip": "vault",
-      "frame": 2,
       "source": "field-s.png",
       "sourceRect": [
         537,
@@ -276,7 +237,7 @@
     },
     {
       "facing": "s",
-      "column": 21,
+      "column": 18,
       "clip": "climb",
       "frame": 0,
       "source": "field-s.png",
@@ -289,22 +250,9 @@
     },
     {
       "facing": "s",
-      "column": 22,
+      "column": 19,
       "clip": "climb",
       "frame": 1,
-      "source": "field-s.png",
-      "sourceRect": [
-        896,
-        850,
-        1075,
-        1254
-      ]
-    },
-    {
-      "facing": "s",
-      "column": 23,
-      "clip": "climb",
-      "frame": 2,
       "source": "field-s.png",
       "sourceRect": [
         1075,
@@ -359,41 +307,15 @@
       "frame": 1,
       "source": "run-down-sw.png",
       "sourceRect": [
-        444,
-        0,
         887,
+        0,
+        1330,
         518
       ]
     },
     {
       "facing": "sw",
       "column": 4,
-      "clip": "run",
-      "frame": 2,
-      "source": "run-down-sw.png",
-      "sourceRect": [
-        887,
-        0,
-        1330,
-        518
-      ]
-    },
-    {
-      "facing": "sw",
-      "column": 5,
-      "clip": "run",
-      "frame": 3,
-      "source": "run-down-sw.png",
-      "sourceRect": [
-        1330,
-        0,
-        1774,
-        518
-      ]
-    },
-    {
-      "facing": "sw",
-      "column": 6,
       "clip": "aim",
       "frame": 0,
       "source": "field-sw.png",
@@ -406,7 +328,7 @@
     },
     {
       "facing": "sw",
-      "column": 7,
+      "column": 5,
       "clip": "fire",
       "frame": 0,
       "source": "field-sw.png",
@@ -419,7 +341,7 @@
     },
     {
       "facing": "sw",
-      "column": 8,
+      "column": 6,
       "clip": "fire",
       "frame": 1,
       "source": "field-sw.png",
@@ -432,7 +354,7 @@
     },
     {
       "facing": "sw",
-      "column": 9,
+      "column": 7,
       "clip": "throw",
       "frame": 0,
       "source": "field-sw.png",
@@ -445,7 +367,7 @@
     },
     {
       "facing": "sw",
-      "column": 10,
+      "column": 8,
       "clip": "throw",
       "frame": 1,
       "source": "field-sw.png",
@@ -458,7 +380,7 @@
     },
     {
       "facing": "sw",
-      "column": 11,
+      "column": 9,
       "clip": "hit",
       "frame": 0,
       "source": "field-sw.png",
@@ -471,7 +393,7 @@
     },
     {
       "facing": "sw",
-      "column": 12,
+      "column": 10,
       "clip": "down",
       "frame": 0,
       "source": "run-down-sw.png",
@@ -484,7 +406,7 @@
     },
     {
       "facing": "sw",
-      "column": 13,
+      "column": 11,
       "clip": "down",
       "frame": 1,
       "source": "run-down-sw.png",
@@ -497,7 +419,7 @@
     },
     {
       "facing": "sw",
-      "column": 14,
+      "column": 12,
       "clip": "down",
       "frame": 2,
       "source": "run-down-sw.png",
@@ -510,7 +432,7 @@
     },
     {
       "facing": "sw",
-      "column": 15,
+      "column": 13,
       "clip": "down",
       "frame": 3,
       "source": "run-down-sw.png",
@@ -523,7 +445,7 @@
     },
     {
       "facing": "sw",
-      "column": 16,
+      "column": 14,
       "clip": "stacked",
       "frame": 0,
       "source": "field-sw.png",
@@ -536,7 +458,7 @@
     },
     {
       "facing": "sw",
-      "column": 17,
+      "column": 15,
       "clip": "hunker",
       "frame": 0,
       "source": "field-sw.png",
@@ -549,7 +471,7 @@
     },
     {
       "facing": "sw",
-      "column": 18,
+      "column": 16,
       "clip": "vault",
       "frame": 0,
       "source": "field-sw.png",
@@ -562,22 +484,9 @@
     },
     {
       "facing": "sw",
-      "column": 19,
+      "column": 17,
       "clip": "vault",
       "frame": 1,
-      "source": "field-sw.png",
-      "sourceRect": [
-        358,
-        834,
-        537,
-        1254
-      ]
-    },
-    {
-      "facing": "sw",
-      "column": 20,
-      "clip": "vault",
-      "frame": 2,
       "source": "field-sw.png",
       "sourceRect": [
         537,
@@ -588,7 +497,7 @@
     },
     {
       "facing": "sw",
-      "column": 21,
+      "column": 18,
       "clip": "climb",
       "frame": 0,
       "source": "field-sw.png",
@@ -601,22 +510,9 @@
     },
     {
       "facing": "sw",
-      "column": 22,
+      "column": 19,
       "clip": "climb",
       "frame": 1,
-      "source": "field-sw.png",
-      "sourceRect": [
-        896,
-        834,
-        1075,
-        1254
-      ]
-    },
-    {
-      "facing": "sw",
-      "column": 23,
-      "clip": "climb",
-      "frame": 2,
       "source": "field-sw.png",
       "sourceRect": [
         1075,
@@ -671,41 +567,15 @@
       "frame": 1,
       "source": "run-down-w.png",
       "sourceRect": [
-        444,
-        0,
         887,
+        0,
+        1330,
         518
       ]
     },
     {
       "facing": "w",
       "column": 4,
-      "clip": "run",
-      "frame": 2,
-      "source": "run-down-w.png",
-      "sourceRect": [
-        887,
-        0,
-        1330,
-        518
-      ]
-    },
-    {
-      "facing": "w",
-      "column": 5,
-      "clip": "run",
-      "frame": 3,
-      "source": "run-down-w.png",
-      "sourceRect": [
-        1330,
-        0,
-        1774,
-        518
-      ]
-    },
-    {
-      "facing": "w",
-      "column": 6,
       "clip": "aim",
       "frame": 0,
       "source": "field-w.png",
@@ -718,7 +588,7 @@
     },
     {
       "facing": "w",
-      "column": 7,
+      "column": 5,
       "clip": "fire",
       "frame": 0,
       "source": "field-w.png",
@@ -731,7 +601,7 @@
     },
     {
       "facing": "w",
-      "column": 8,
+      "column": 6,
       "clip": "fire",
       "frame": 1,
       "source": "field-w.png",
@@ -744,7 +614,7 @@
     },
     {
       "facing": "w",
-      "column": 9,
+      "column": 7,
       "clip": "throw",
       "frame": 0,
       "source": "field-w.png",
@@ -757,7 +627,7 @@
     },
     {
       "facing": "w",
-      "column": 10,
+      "column": 8,
       "clip": "throw",
       "frame": 1,
       "source": "field-w.png",
@@ -770,7 +640,7 @@
     },
     {
       "facing": "w",
-      "column": 11,
+      "column": 9,
       "clip": "hit",
       "frame": 0,
       "source": "field-w.png",
@@ -783,7 +653,7 @@
     },
     {
       "facing": "w",
-      "column": 12,
+      "column": 10,
       "clip": "down",
       "frame": 0,
       "source": "run-down-w.png",
@@ -796,7 +666,7 @@
     },
     {
       "facing": "w",
-      "column": 13,
+      "column": 11,
       "clip": "down",
       "frame": 1,
       "source": "run-down-w.png",
@@ -809,7 +679,7 @@
     },
     {
       "facing": "w",
-      "column": 14,
+      "column": 12,
       "clip": "down",
       "frame": 2,
       "source": "run-down-w.png",
@@ -822,7 +692,7 @@
     },
     {
       "facing": "w",
-      "column": 15,
+      "column": 13,
       "clip": "down",
       "frame": 3,
       "source": "run-down-w.png",
@@ -835,7 +705,7 @@
     },
     {
       "facing": "w",
-      "column": 16,
+      "column": 14,
       "clip": "stacked",
       "frame": 0,
       "source": "field-w.png",
@@ -848,7 +718,7 @@
     },
     {
       "facing": "w",
-      "column": 17,
+      "column": 15,
       "clip": "hunker",
       "frame": 0,
       "source": "field-w.png",
@@ -861,7 +731,7 @@
     },
     {
       "facing": "w",
-      "column": 18,
+      "column": 16,
       "clip": "vault",
       "frame": 0,
       "source": "field-w.png",
@@ -874,22 +744,9 @@
     },
     {
       "facing": "w",
-      "column": 19,
+      "column": 17,
       "clip": "vault",
       "frame": 1,
-      "source": "field-w.png",
-      "sourceRect": [
-        358,
-        806,
-        537,
-        1254
-      ]
-    },
-    {
-      "facing": "w",
-      "column": 20,
-      "clip": "vault",
-      "frame": 2,
       "source": "field-w.png",
       "sourceRect": [
         537,
@@ -900,7 +757,7 @@
     },
     {
       "facing": "w",
-      "column": 21,
+      "column": 18,
       "clip": "climb",
       "frame": 0,
       "source": "field-w.png",
@@ -913,22 +770,9 @@
     },
     {
       "facing": "w",
-      "column": 22,
+      "column": 19,
       "clip": "climb",
       "frame": 1,
-      "source": "field-w.png",
-      "sourceRect": [
-        896,
-        806,
-        1075,
-        1254
-      ]
-    },
-    {
-      "facing": "w",
-      "column": 23,
-      "clip": "climb",
-      "frame": 2,
       "source": "field-w.png",
       "sourceRect": [
         1075,
@@ -983,41 +827,15 @@
       "frame": 1,
       "source": "run-down-nw.png",
       "sourceRect": [
-        384,
-        0,
         768,
+        0,
+        1152,
         584
       ]
     },
     {
       "facing": "nw",
       "column": 4,
-      "clip": "run",
-      "frame": 2,
-      "source": "run-down-nw.png",
-      "sourceRect": [
-        768,
-        0,
-        1152,
-        584
-      ]
-    },
-    {
-      "facing": "nw",
-      "column": 5,
-      "clip": "run",
-      "frame": 3,
-      "source": "run-down-nw.png",
-      "sourceRect": [
-        1152,
-        0,
-        1536,
-        584
-      ]
-    },
-    {
-      "facing": "nw",
-      "column": 6,
       "clip": "aim",
       "frame": 0,
       "source": "field-nw.png",
@@ -1030,7 +848,7 @@
     },
     {
       "facing": "nw",
-      "column": 7,
+      "column": 5,
       "clip": "fire",
       "frame": 0,
       "source": "field-nw.png",
@@ -1043,7 +861,7 @@
     },
     {
       "facing": "nw",
-      "column": 8,
+      "column": 6,
       "clip": "fire",
       "frame": 1,
       "source": "field-nw.png",
@@ -1056,7 +874,7 @@
     },
     {
       "facing": "nw",
-      "column": 9,
+      "column": 7,
       "clip": "throw",
       "frame": 0,
       "source": "field-nw.png",
@@ -1069,7 +887,7 @@
     },
     {
       "facing": "nw",
-      "column": 10,
+      "column": 8,
       "clip": "throw",
       "frame": 1,
       "source": "field-nw.png",
@@ -1082,7 +900,7 @@
     },
     {
       "facing": "nw",
-      "column": 11,
+      "column": 9,
       "clip": "hit",
       "frame": 0,
       "source": "field-nw.png",
@@ -1095,7 +913,7 @@
     },
     {
       "facing": "nw",
-      "column": 12,
+      "column": 10,
       "clip": "down",
       "frame": 0,
       "source": "run-down-nw.png",
@@ -1108,7 +926,7 @@
     },
     {
       "facing": "nw",
-      "column": 13,
+      "column": 11,
       "clip": "down",
       "frame": 1,
       "source": "run-down-nw.png",
@@ -1121,7 +939,7 @@
     },
     {
       "facing": "nw",
-      "column": 14,
+      "column": 12,
       "clip": "down",
       "frame": 2,
       "source": "run-down-nw.png",
@@ -1134,7 +952,7 @@
     },
     {
       "facing": "nw",
-      "column": 15,
+      "column": 13,
       "clip": "down",
       "frame": 3,
       "source": "run-down-nw.png",
@@ -1147,7 +965,7 @@
     },
     {
       "facing": "nw",
-      "column": 16,
+      "column": 14,
       "clip": "stacked",
       "frame": 0,
       "source": "field-nw.png",
@@ -1160,7 +978,7 @@
     },
     {
       "facing": "nw",
-      "column": 17,
+      "column": 15,
       "clip": "hunker",
       "frame": 0,
       "source": "field-nw.png",
@@ -1173,7 +991,7 @@
     },
     {
       "facing": "nw",
-      "column": 18,
+      "column": 16,
       "clip": "vault",
       "frame": 0,
       "source": "field-nw.png",
@@ -1186,22 +1004,9 @@
     },
     {
       "facing": "nw",
-      "column": 19,
+      "column": 17,
       "clip": "vault",
       "frame": 1,
-      "source": "field-nw.png",
-      "sourceRect": [
-        358,
-        820,
-        537,
-        1254
-      ]
-    },
-    {
-      "facing": "nw",
-      "column": 20,
-      "clip": "vault",
-      "frame": 2,
       "source": "field-nw.png",
       "sourceRect": [
         537,
@@ -1212,7 +1017,7 @@
     },
     {
       "facing": "nw",
-      "column": 21,
+      "column": 18,
       "clip": "climb",
       "frame": 0,
       "source": "field-nw.png",
@@ -1225,22 +1030,9 @@
     },
     {
       "facing": "nw",
-      "column": 22,
+      "column": 19,
       "clip": "climb",
       "frame": 1,
-      "source": "field-nw.png",
-      "sourceRect": [
-        896,
-        820,
-        1075,
-        1254
-      ]
-    },
-    {
-      "facing": "nw",
-      "column": 23,
-      "clip": "climb",
-      "frame": 2,
       "source": "field-nw.png",
       "sourceRect": [
         1075,
@@ -1295,41 +1087,15 @@
       "frame": 1,
       "source": "run-down-n.png",
       "sourceRect": [
-        444,
-        0,
         887,
+        0,
+        1330,
         514
       ]
     },
     {
       "facing": "n",
       "column": 4,
-      "clip": "run",
-      "frame": 2,
-      "source": "run-down-n.png",
-      "sourceRect": [
-        887,
-        0,
-        1330,
-        514
-      ]
-    },
-    {
-      "facing": "n",
-      "column": 5,
-      "clip": "run",
-      "frame": 3,
-      "source": "run-down-n.png",
-      "sourceRect": [
-        1330,
-        0,
-        1774,
-        514
-      ]
-    },
-    {
-      "facing": "n",
-      "column": 6,
       "clip": "aim",
       "frame": 0,
       "source": "field-n.png",
@@ -1342,7 +1108,7 @@
     },
     {
       "facing": "n",
-      "column": 7,
+      "column": 5,
       "clip": "fire",
       "frame": 0,
       "source": "field-n.png",
@@ -1355,7 +1121,7 @@
     },
     {
       "facing": "n",
-      "column": 8,
+      "column": 6,
       "clip": "fire",
       "frame": 1,
       "source": "field-n.png",
@@ -1368,7 +1134,7 @@
     },
     {
       "facing": "n",
-      "column": 9,
+      "column": 7,
       "clip": "throw",
       "frame": 0,
       "source": "field-n.png",
@@ -1381,7 +1147,7 @@
     },
     {
       "facing": "n",
-      "column": 10,
+      "column": 8,
       "clip": "throw",
       "frame": 1,
       "source": "field-n.png",
@@ -1394,7 +1160,7 @@
     },
     {
       "facing": "n",
-      "column": 11,
+      "column": 9,
       "clip": "hit",
       "frame": 0,
       "source": "field-n.png",
@@ -1407,7 +1173,7 @@
     },
     {
       "facing": "n",
-      "column": 12,
+      "column": 10,
       "clip": "down",
       "frame": 0,
       "source": "run-down-n.png",
@@ -1420,7 +1186,7 @@
     },
     {
       "facing": "n",
-      "column": 13,
+      "column": 11,
       "clip": "down",
       "frame": 1,
       "source": "run-down-n.png",
@@ -1433,7 +1199,7 @@
     },
     {
       "facing": "n",
-      "column": 14,
+      "column": 12,
       "clip": "down",
       "frame": 2,
       "source": "run-down-n.png",
@@ -1446,7 +1212,7 @@
     },
     {
       "facing": "n",
-      "column": 15,
+      "column": 13,
       "clip": "down",
       "frame": 3,
       "source": "run-down-n.png",
@@ -1459,7 +1225,7 @@
     },
     {
       "facing": "n",
-      "column": 16,
+      "column": 14,
       "clip": "stacked",
       "frame": 0,
       "source": "field-n.png",
@@ -1472,7 +1238,7 @@
     },
     {
       "facing": "n",
-      "column": 17,
+      "column": 15,
       "clip": "hunker",
       "frame": 0,
       "source": "field-n.png",
@@ -1485,7 +1251,7 @@
     },
     {
       "facing": "n",
-      "column": 18,
+      "column": 16,
       "clip": "vault",
       "frame": 0,
       "source": "field-n.png",
@@ -1498,22 +1264,9 @@
     },
     {
       "facing": "n",
-      "column": 19,
+      "column": 17,
       "clip": "vault",
       "frame": 1,
-      "source": "field-n.png",
-      "sourceRect": [
-        358,
-        836,
-        537,
-        1254
-      ]
-    },
-    {
-      "facing": "n",
-      "column": 20,
-      "clip": "vault",
-      "frame": 2,
       "source": "field-n.png",
       "sourceRect": [
         537,
@@ -1524,7 +1277,7 @@
     },
     {
       "facing": "n",
-      "column": 21,
+      "column": 18,
       "clip": "climb",
       "frame": 0,
       "source": "field-n.png",
@@ -1537,22 +1290,9 @@
     },
     {
       "facing": "n",
-      "column": 22,
+      "column": 19,
       "clip": "climb",
       "frame": 1,
-      "source": "field-n.png",
-      "sourceRect": [
-        896,
-        836,
-        1075,
-        1254
-      ]
-    },
-    {
-      "facing": "n",
-      "column": 23,
-      "clip": "climb",
-      "frame": 2,
       "source": "field-n.png",
       "sourceRect": [
         1075,
@@ -1607,41 +1347,15 @@
       "frame": 1,
       "source": "run-down-ne.png",
       "sourceRect": [
-        444,
-        0,
         887,
+        0,
+        1330,
         518
       ]
     },
     {
       "facing": "ne",
       "column": 4,
-      "clip": "run",
-      "frame": 2,
-      "source": "run-down-ne.png",
-      "sourceRect": [
-        887,
-        0,
-        1330,
-        518
-      ]
-    },
-    {
-      "facing": "ne",
-      "column": 5,
-      "clip": "run",
-      "frame": 3,
-      "source": "run-down-ne.png",
-      "sourceRect": [
-        1330,
-        0,
-        1774,
-        518
-      ]
-    },
-    {
-      "facing": "ne",
-      "column": 6,
       "clip": "aim",
       "frame": 0,
       "source": "field-ne.png",
@@ -1654,7 +1368,7 @@
     },
     {
       "facing": "ne",
-      "column": 7,
+      "column": 5,
       "clip": "fire",
       "frame": 0,
       "source": "field-ne.png",
@@ -1667,7 +1381,7 @@
     },
     {
       "facing": "ne",
-      "column": 8,
+      "column": 6,
       "clip": "fire",
       "frame": 1,
       "source": "field-ne.png",
@@ -1680,7 +1394,7 @@
     },
     {
       "facing": "ne",
-      "column": 9,
+      "column": 7,
       "clip": "throw",
       "frame": 0,
       "source": "field-ne.png",
@@ -1693,7 +1407,7 @@
     },
     {
       "facing": "ne",
-      "column": 10,
+      "column": 8,
       "clip": "throw",
       "frame": 1,
       "source": "field-ne.png",
@@ -1706,7 +1420,7 @@
     },
     {
       "facing": "ne",
-      "column": 11,
+      "column": 9,
       "clip": "hit",
       "frame": 0,
       "source": "field-ne.png",
@@ -1719,7 +1433,7 @@
     },
     {
       "facing": "ne",
-      "column": 12,
+      "column": 10,
       "clip": "down",
       "frame": 0,
       "source": "run-down-ne.png",
@@ -1732,7 +1446,7 @@
     },
     {
       "facing": "ne",
-      "column": 13,
+      "column": 11,
       "clip": "down",
       "frame": 1,
       "source": "run-down-ne.png",
@@ -1745,7 +1459,7 @@
     },
     {
       "facing": "ne",
-      "column": 14,
+      "column": 12,
       "clip": "down",
       "frame": 2,
       "source": "run-down-ne.png",
@@ -1758,7 +1472,7 @@
     },
     {
       "facing": "ne",
-      "column": 15,
+      "column": 13,
       "clip": "down",
       "frame": 3,
       "source": "run-down-ne.png",
@@ -1771,7 +1485,7 @@
     },
     {
       "facing": "ne",
-      "column": 16,
+      "column": 14,
       "clip": "stacked",
       "frame": 0,
       "source": "field-ne.png",
@@ -1784,7 +1498,7 @@
     },
     {
       "facing": "ne",
-      "column": 17,
+      "column": 15,
       "clip": "hunker",
       "frame": 0,
       "source": "field-ne.png",
@@ -1797,7 +1511,7 @@
     },
     {
       "facing": "ne",
-      "column": 18,
+      "column": 16,
       "clip": "vault",
       "frame": 0,
       "source": "field-ne.png",
@@ -1810,22 +1524,9 @@
     },
     {
       "facing": "ne",
-      "column": 19,
+      "column": 17,
       "clip": "vault",
       "frame": 1,
-      "source": "field-ne.png",
-      "sourceRect": [
-        358,
-        828,
-        537,
-        1254
-      ]
-    },
-    {
-      "facing": "ne",
-      "column": 20,
-      "clip": "vault",
-      "frame": 2,
       "source": "field-ne.png",
       "sourceRect": [
         537,
@@ -1836,7 +1537,7 @@
     },
     {
       "facing": "ne",
-      "column": 21,
+      "column": 18,
       "clip": "climb",
       "frame": 0,
       "source": "field-ne.png",
@@ -1849,22 +1550,9 @@
     },
     {
       "facing": "ne",
-      "column": 22,
+      "column": 19,
       "clip": "climb",
       "frame": 1,
-      "source": "field-ne.png",
-      "sourceRect": [
-        896,
-        828,
-        1075,
-        1254
-      ]
-    },
-    {
-      "facing": "ne",
-      "column": 23,
-      "clip": "climb",
-      "frame": 2,
       "source": "field-ne.png",
       "sourceRect": [
         1075,
@@ -1919,41 +1607,15 @@
       "frame": 1,
       "source": "run-down-e.png",
       "sourceRect": [
-        444,
-        0,
         887,
+        0,
+        1330,
         522
       ]
     },
     {
       "facing": "e",
       "column": 4,
-      "clip": "run",
-      "frame": 2,
-      "source": "run-down-e.png",
-      "sourceRect": [
-        887,
-        0,
-        1330,
-        522
-      ]
-    },
-    {
-      "facing": "e",
-      "column": 5,
-      "clip": "run",
-      "frame": 3,
-      "source": "run-down-e.png",
-      "sourceRect": [
-        1330,
-        0,
-        1774,
-        522
-      ]
-    },
-    {
-      "facing": "e",
-      "column": 6,
       "clip": "aim",
       "frame": 0,
       "source": "field-e.png",
@@ -1966,7 +1628,7 @@
     },
     {
       "facing": "e",
-      "column": 7,
+      "column": 5,
       "clip": "fire",
       "frame": 0,
       "source": "field-e.png",
@@ -1979,7 +1641,7 @@
     },
     {
       "facing": "e",
-      "column": 8,
+      "column": 6,
       "clip": "fire",
       "frame": 1,
       "source": "field-e.png",
@@ -1992,7 +1654,7 @@
     },
     {
       "facing": "e",
-      "column": 9,
+      "column": 7,
       "clip": "throw",
       "frame": 0,
       "source": "field-e.png",
@@ -2005,7 +1667,7 @@
     },
     {
       "facing": "e",
-      "column": 10,
+      "column": 8,
       "clip": "throw",
       "frame": 1,
       "source": "field-e.png",
@@ -2018,7 +1680,7 @@
     },
     {
       "facing": "e",
-      "column": 11,
+      "column": 9,
       "clip": "hit",
       "frame": 0,
       "source": "field-e.png",
@@ -2031,7 +1693,7 @@
     },
     {
       "facing": "e",
-      "column": 12,
+      "column": 10,
       "clip": "down",
       "frame": 0,
       "source": "run-down-e.png",
@@ -2044,7 +1706,7 @@
     },
     {
       "facing": "e",
-      "column": 13,
+      "column": 11,
       "clip": "down",
       "frame": 1,
       "source": "run-down-e.png",
@@ -2057,7 +1719,7 @@
     },
     {
       "facing": "e",
-      "column": 14,
+      "column": 12,
       "clip": "down",
       "frame": 2,
       "source": "run-down-e.png",
@@ -2070,7 +1732,7 @@
     },
     {
       "facing": "e",
-      "column": 15,
+      "column": 13,
       "clip": "down",
       "frame": 3,
       "source": "run-down-e.png",
@@ -2083,7 +1745,7 @@
     },
     {
       "facing": "e",
-      "column": 16,
+      "column": 14,
       "clip": "stacked",
       "frame": 0,
       "source": "field-e.png",
@@ -2096,7 +1758,7 @@
     },
     {
       "facing": "e",
-      "column": 17,
+      "column": 15,
       "clip": "hunker",
       "frame": 0,
       "source": "field-e.png",
@@ -2109,7 +1771,7 @@
     },
     {
       "facing": "e",
-      "column": 18,
+      "column": 16,
       "clip": "vault",
       "frame": 0,
       "source": "field-e.png",
@@ -2122,22 +1784,9 @@
     },
     {
       "facing": "e",
-      "column": 19,
+      "column": 17,
       "clip": "vault",
       "frame": 1,
-      "source": "field-e.png",
-      "sourceRect": [
-        358,
-        819,
-        537,
-        1254
-      ]
-    },
-    {
-      "facing": "e",
-      "column": 20,
-      "clip": "vault",
-      "frame": 2,
       "source": "field-e.png",
       "sourceRect": [
         537,
@@ -2148,7 +1797,7 @@
     },
     {
       "facing": "e",
-      "column": 21,
+      "column": 18,
       "clip": "climb",
       "frame": 0,
       "source": "field-e.png",
@@ -2161,22 +1810,9 @@
     },
     {
       "facing": "e",
-      "column": 22,
+      "column": 19,
       "clip": "climb",
       "frame": 1,
-      "source": "field-e.png",
-      "sourceRect": [
-        896,
-        819,
-        1075,
-        1254
-      ]
-    },
-    {
-      "facing": "e",
-      "column": 23,
-      "clip": "climb",
-      "frame": 2,
       "source": "field-e.png",
       "sourceRect": [
         1075,
@@ -2231,41 +1867,15 @@
       "frame": 1,
       "source": "run-down-se.png",
       "sourceRect": [
-        384,
-        0,
         768,
+        0,
+        1152,
         589
       ]
     },
     {
       "facing": "se",
       "column": 4,
-      "clip": "run",
-      "frame": 2,
-      "source": "run-down-se.png",
-      "sourceRect": [
-        768,
-        0,
-        1152,
-        589
-      ]
-    },
-    {
-      "facing": "se",
-      "column": 5,
-      "clip": "run",
-      "frame": 3,
-      "source": "run-down-se.png",
-      "sourceRect": [
-        1152,
-        0,
-        1536,
-        589
-      ]
-    },
-    {
-      "facing": "se",
-      "column": 6,
       "clip": "aim",
       "frame": 0,
       "source": "field-se.png",
@@ -2278,7 +1888,7 @@
     },
     {
       "facing": "se",
-      "column": 7,
+      "column": 5,
       "clip": "fire",
       "frame": 0,
       "source": "field-se.png",
@@ -2291,7 +1901,7 @@
     },
     {
       "facing": "se",
-      "column": 8,
+      "column": 6,
       "clip": "fire",
       "frame": 1,
       "source": "field-se.png",
@@ -2304,7 +1914,7 @@
     },
     {
       "facing": "se",
-      "column": 9,
+      "column": 7,
       "clip": "throw",
       "frame": 0,
       "source": "field-se.png",
@@ -2317,7 +1927,7 @@
     },
     {
       "facing": "se",
-      "column": 10,
+      "column": 8,
       "clip": "throw",
       "frame": 1,
       "source": "field-se.png",
@@ -2330,7 +1940,7 @@
     },
     {
       "facing": "se",
-      "column": 11,
+      "column": 9,
       "clip": "hit",
       "frame": 0,
       "source": "field-se.png",
@@ -2343,7 +1953,7 @@
     },
     {
       "facing": "se",
-      "column": 12,
+      "column": 10,
       "clip": "down",
       "frame": 0,
       "source": "run-down-se.png",
@@ -2356,7 +1966,7 @@
     },
     {
       "facing": "se",
-      "column": 13,
+      "column": 11,
       "clip": "down",
       "frame": 1,
       "source": "run-down-se.png",
@@ -2369,7 +1979,7 @@
     },
     {
       "facing": "se",
-      "column": 14,
+      "column": 12,
       "clip": "down",
       "frame": 2,
       "source": "run-down-se.png",
@@ -2382,7 +1992,7 @@
     },
     {
       "facing": "se",
-      "column": 15,
+      "column": 13,
       "clip": "down",
       "frame": 3,
       "source": "run-down-se.png",
@@ -2395,7 +2005,7 @@
     },
     {
       "facing": "se",
-      "column": 16,
+      "column": 14,
       "clip": "stacked",
       "frame": 0,
       "source": "field-se.png",
@@ -2408,7 +2018,7 @@
     },
     {
       "facing": "se",
-      "column": 17,
+      "column": 15,
       "clip": "hunker",
       "frame": 0,
       "source": "field-se.png",
@@ -2421,7 +2031,7 @@
     },
     {
       "facing": "se",
-      "column": 18,
+      "column": 16,
       "clip": "vault",
       "frame": 0,
       "source": "field-se.png",
@@ -2434,22 +2044,9 @@
     },
     {
       "facing": "se",
-      "column": 19,
+      "column": 17,
       "clip": "vault",
       "frame": 1,
-      "source": "field-se.png",
-      "sourceRect": [
-        358,
-        848,
-        537,
-        1254
-      ]
-    },
-    {
-      "facing": "se",
-      "column": 20,
-      "clip": "vault",
-      "frame": 2,
       "source": "field-se.png",
       "sourceRect": [
         537,
@@ -2460,7 +2057,7 @@
     },
     {
       "facing": "se",
-      "column": 21,
+      "column": 18,
       "clip": "climb",
       "frame": 0,
       "source": "field-se.png",
@@ -2473,22 +2070,9 @@
     },
     {
       "facing": "se",
-      "column": 22,
+      "column": 19,
       "clip": "climb",
       "frame": 1,
-      "source": "field-se.png",
-      "sourceRect": [
-        896,
-        848,
-        1075,
-        1254
-      ]
-    },
-    {
-      "facing": "se",
-      "column": 23,
-      "clip": "climb",
-      "frame": 2,
       "source": "field-se.png",
       "sourceRect": [
         1075,

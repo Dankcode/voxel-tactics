@@ -42,6 +42,23 @@ export function aimDelta(focus, origin, dx, dy, { fov = 38, height = 720, sensit
     return { x: origin.x + Math.cos(yaw) * flat, y: origin.y + Math.sin(yaw) * flat, h: origin.h + Math.sin(pitch) * dist };
 }
 
+/** Arm/gun lag in radians, independent of camera tracking, zoom and reticle screen position.
+ * The heavy weapon trails a turn and returns to its authored pose as the same ballistic spring settles.
+ * Only the articulated arms move; the torso and stock contact remain anchored.
+ */
+export function aimSpriteInertia(current, target, origin) {
+    if (!current || !target || !origin) return { yaw: 0, pitch: 0 };
+    const angles = p => {
+        const x=p.x-origin.x,y=p.y-origin.y,h=p.h-origin.h;
+        return Math.hypot(x,y,h)<1e-6 ? null : { yaw:Math.atan2(y,x), pitch:Math.atan2(h,Math.hypot(x,y)) };
+    };
+    const c=angles(current),t=angles(target);
+    if (!c || !t) return { yaw: 0, pitch: 0 };
+    const delta=c.yaw-t.yaw,wrap=Math.atan2(Math.sin(delta),Math.cos(delta));
+    const clamp=(v,max)=>Math.max(-max,Math.min(max,v));
+    return { yaw:clamp(wrap,.12), pitch:clamp(t.pitch-c.pitch,.09) };
+}
+
 export class AimController {
     constructor() { this.target = null; this.current = null; this.vel = [0, 0, 0]; this.t = 0; }
     /** Jump straight to a point (entering aim mode, or with inertia turned off). */

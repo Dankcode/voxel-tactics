@@ -7,6 +7,7 @@
 // furniture placed with interior-v2's connectivity guard, and voxel roofs.
 import { planModernInterior } from './ModernInterior.js';
 import { MAT, AIR } from '../voxel/Materials.js';
+import { buildingEra, markBuildingEdges } from './BuildingEra.js';
 import { createStairRun } from '../world/StairRun.js';
 
 export const STOREY = 3;
@@ -78,6 +79,9 @@ export function buildBuilding(store, spec, ctx) {
     const top = baseZ + STOREY * storeys;
     const rng = ctx.rng;
     const result = { id: spec.id, name: spec.name || spec.id, role: spec.role, x0, y0, w, d, baseZ, storeys, rooms: [], doors: [], windows: [], stairs: [], top };
+    // Classic stone / plaster / timber buildings are old (straight edges) unless the spec says modern.
+    result.era = buildingEra(spec, spec.modern ? 'modern' : 'old'); result.rounded = result.era === 'modern';
+    markBuildingEdges(store, result, result.era);
 
     // 1. Clear the volume, give it a foundation, lay slabs and the outer wall.
     for (let y = y0; y < y0 + d; y++) for (let x = x0; x < x0 + w; x++) {

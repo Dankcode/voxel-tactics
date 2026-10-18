@@ -1,7 +1,7 @@
 // Flat painted character cards + a 3D gun. There is no character volume or character model.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { constrainGunPose, armRigPose } from './SpriteArmRig.js';
+import { constrainGunPose } from './SpriteArmRig.js';
 import { gunCelRamp, gunCelMaterial, gunInkMaterial } from './SpriteGunMaterial.js';
 
 export function spriteGunParts(weaponId) {
@@ -11,6 +11,9 @@ export function spriteGunParts(weaponId) {
     return null;
 }
 export const gunPoint = p => new THREE.Vector3(p[0], p[2], -p[1]);
+/** Shared global paint order for the flat fallback and the character/gun compositor. */
+export const spriteLayerOrder = l => l.zIndex ?? ((l.stage === 'back' ? 0 : 100) + (l.order ?? (l.id === 'body' ? 5 : l.id === 'support-hand' ? 10 : l.id.endsWith('upper') ? 1 : l.id.endsWith('forearm') ? 2 : 3)));
+export const sortedSpriteLayers = layers => [...layers].sort((a,b) => spriteLayerOrder(a) - spriteLayerOrder(b));
 
 /** Seat the stock at the painted armpit and fit the actual foregrip to the support palm. */
 export function fitSpriteGunCamera(camera, spec, stock, support, aspect) {
@@ -59,11 +62,6 @@ export function gunPoseSample(art, assembly, camera, input={}, degrees=art.rig.b
     const matrix=gunPivotMatrix(seatedStock,input).multiply(rest);
     const uv=p=>{const q=gunPoint(p).applyMatrix4(matrix).project(camera);return[(q.x+1)/2,(1-q.y)/2];};
     return {matrix,targets:{stock:uv(assembly.stock),grip:uv(assembly.grip),support:uv(assembly.support),muzzle:uv(assembly.muzzle)}};
-}
-
-/** Ready cut-ins use authored snapshots; only firing sprites accept inertia and solve IK every frame. */
-export function spriteMotion(art,input={}) {
-    return art.motion==='static'?{yaw:0,pitch:0,recoil:0}:input;
 }
 
 let kit;
@@ -120,9 +118,8 @@ export class SpriteWeapon {
         const [gltf, anchors] = await loadKit();
         // Gloves come per gun family (pistol grip, pump-gun stock wrist, sniper forend): use the variant for this gun.
         const pick = l => ({ ...l, ...(l.variants?.[this.config.family] || {}) });
-        const layers = await Promise.all(this.art.layers.filter(l => l.image).map(pick).sort((a,b) => { const order=l=>l.id==='body'?0:l.id.endsWith('upper')?1:l.id.endsWith('forearm')?2:3; return order(a)-order(b); }).map(async l => ({ ...l,
+        const layers = await Promise.all(sortedSpriteLayers(this.art.layers.filter(l => l.image).map(pick)).map(async l => ({ ...l,
             maps: await Promise.all([loadTexture(this.base + l.image, true), loadTexture(this.base + l.normal), loadTexture(this.base + l.lightingMask)]) })));
-        const jointMaps = await Promise.all([loadTexture(this.base+'joint.png',true),loadTexture(this.base+'joint-normal.png'),loadTexture(this.base+'joint-lighting.png')]);
         if (this.disposed) return;
         this.anchors = anchors;
         this.assembly = anchors.assemblies[this.config.family];
@@ -154,23 +151,16 @@ export class SpriteWeapon {
         this.camera = new THREE.OrthographicCamera();
         fitGunPose(this.camera, this.art.rig, this.stock, this.art.width / this.art.height);
         this.buttRaise=this.art.rig.buttRaiseDegrees??8;
-        this.staticPose=this.art.staticPoses?.[this.config.family];
         this.flatCamera = new THREE.OrthographicCamera(0, this.art.width, 0, -this.art.height, .01, 20);
         this.flatCamera.position.z = 10;
+        const gunZ=this.art.layers.find(l=>l.gun)?.zIndex ?? 100;
         for (const layer of layers) {
             const geometry = new THREE.PlaneGeometry(this.art.width, this.art.height);
             geometry.translate(this.art.width / 2, -this.art.height / 2, 0);
             const material = paintedMaterial(...layer.maps), mesh = new THREE.Mesh(geometry, material);
-            mesh.matrixAutoUpdate = false; mesh.renderOrder = layer.order ?? (layer.id === 'body' ? 5 : layer.id === 'support-hand' ? 0 : layer.id.endsWith('upper') ? 1 : layer.id.endsWith('forearm') ? 2 : 3);
-            (layer.stage === 'back' ? this.backScene : this.frontScene).add(mesh);
+            mesh.matrixAutoUpdate = false; mesh.renderOrder = spriteLayerOrder(layer);
+            (spriteLayerOrder(layer) < gunZ ? this.backScene : this.frontScene).add(mesh);
             this.cards.push({ mesh, layer }); this.resources.push(geometry, material);
-        }
-        for (const [side] of Object.entries(this.art.rig.arms)) for (const [joint, radius] of Object.entries(this.art.rig.jointRadii || {})) {
-            const geometry = new THREE.PlaneGeometry(radius*this.art.height*2,radius*this.art.height*2);
-            const material = paintedMaterial(...jointMaps), mesh = new THREE.Mesh(geometry,material);
-            mesh.matrixAutoUpdate = false; mesh.renderOrder = -1;
-            (side === 'support' ? this.backScene : this.frontScene).add(mesh);
-            this.cards.push({mesh,layer:{joint,side}});this.resources.push(geometry,material);
         }
         this.hemi = new THREE.HemisphereLight(); this.sun = new THREE.DirectionalLight(); this.fill = new THREE.DirectionalLight();
         this.scene.add(this.hemi, this.sun, this.sun.target, this.fill, this.fill.target);
@@ -217,16 +207,7 @@ export class SpriteWeapon {
         this.fill.color.copy(fill); this.fill.intensity = 2; this.fill.position.copy(fillDir).applyQuaternion(this.camera.quaternion).multiplyScalar(5);
         this.renderer.toneMappingExposure = w?.renderer?.toneMappingExposure ?? 1;
     }
-    setButtRaise(degrees) {
-        this.buttRaise=degrees;
-        // Manual studio editing makes one new snapshot. Pointer aiming never changes a ready pose.
-        if(this.art.motion==='static'){
-            const {targets}=gunPoseSample(this.art,this.assembly,this.camera,{},degrees);
-            this.staticPose={targets,arms:armRigPose(this.art.rig,targets,this.art.width,this.art.height)};
-        }
-    }
-    update(input = {}) {
-        const {yaw=0,pitch=0,recoil=0}=spriteMotion(this.art,input);
+    update({yaw=0,pitch=0,recoil=0} = {}) {
         this.last = { yaw, pitch, recoil };
         if (!this.ready || this.disposed) return null;
         const sample = ({yaw: y, pitch: p, recoil: r}) => {
@@ -237,21 +218,10 @@ export class SpriteWeapon {
                 ...(this.triggerContact?{trigger:this.project(this.triggerContact)}:{})}
                 : {stock:this.art.rig.stock,grip:this.art.rig.grip,support:this.art.rig.support,muzzle:this.art.muzzle};
         };
-        let solved;
-        if(this.art.motion==='static'){
-            sample({});
-            if(!this.staticPose)throw Error('Missing authored ready pose for '+this.config.family);
-            solved={...this.staticPose,input:{yaw:0,pitch:0,recoil:0},scale:0};
-        }else solved=constrainGunPose(sample,{yaw,pitch,recoil},this.art.rig,this.art.width,this.art.height);
+        const solved=constrainGunPose(sample,{yaw,pitch,recoil},this.art.rig,this.art.width,this.art.height);
         const targets=solved.targets,transforms=solved.arms.transforms;
         this.rigPose=solved;
         for (const { mesh, layer } of this.cards) {
-            if (layer.joint) {
-                const arm=this.art.rig.arms[layer.side], p=arm[layer.joint], bone=layer.joint==='wrist'?'forearm':'upper';
-                const [a,b,c,d,x,y]=transforms[layer.side+'-'+bone];
-                const px=p[0]*this.art.width,py=p[1]*this.art.height;
-                mesh.matrix.makeTranslation(a*px+c*py+x,-(b*px+d*py+y),0); continue;
-            }
             const m = transforms[layer.bone] || [1, 0, 0, 1, 0, 0], [a, b, c, d, x, y] = m;
             mesh.matrix.set(a, -c, 0, x, -b, d, 0, -y, 0, 0, 1, 0, 0, 0, 0, 1);
             const n = Math.max(.00001, Math.hypot(a, b)); mesh.material.uniforms.boneRotation.value.set(a / n, -b / n);

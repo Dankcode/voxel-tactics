@@ -2,7 +2,9 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { fitGunPose, gunPoint } from '../../client/src/anim/SpriteWeapon.js';
-const cutin=JSON.parse(readFileSync('client/public/assets/characters/ranger-01/cutin.json'));
+// Read authoring coordinates directly: guides must precede (not depend on) a new sprite bake.
+const formula=JSON.parse(readFileSync('tools/art/sprites/ranger-01/formula.json'));
+const cutin={...formula.poses.aim,width:formula.poses.aim.canvasWidth||768,height:768};
 const guns=JSON.parse(readFileSync('client/public/assets/weapons/ranger-preview/gun-kit.json'));
 const out={};
 for (const [pname,art] of [['aim',cutin]]) {

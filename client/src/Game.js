@@ -2,6 +2,7 @@ import { FORMATIONS } from '../../shared/content/formations.js';
 import { TacticalMarks } from './render/TacticalMarks.js';
 import { updateReticle } from './ui/AimReticle.js';
 import { AimController, aimTau, swayDegrees, aimDelta } from './ui/AimController.js';
+import { AimPointer } from './ui/AimPointer.js';
 import { floorCutLevels, zoomCutLevel } from './render/FloorCutaway.js';
 import { BuildingView, BUILDING_VIEWS } from './render/BuildingView.js';
 import { pickVisibleTile, pickReachableAlongRay } from './render/TilePicking.js';
@@ -174,7 +175,7 @@ export class Game {
         return v;
     }
     restart() { this.session.restart?.().then(s => this.start(s)).then(() => { if (this.autoPlayer) this.maybeRunAi(); }); }
-    exitToMenu(opts) { this.audio.active = false; this.audio.stopAll(); this.onExit?.(opts); }
+    exitToMenu(opts) { this.aimPointer.setEnabled(false);this.audio.active = false; this.audio.stopAll(); this.onExit?.(opts); }
 
     loop(now) {
         // rAF timestamps can predate the constructor (negative first dt), which used to fling the camera shake.
@@ -277,7 +278,8 @@ export class Game {
     setMode(m) {
         if (m.kind === 'shoot' && m.weaponId === 'handcannon' && (this.mode.kind !== 'shoot' || this.mode.weaponId !== m.weaponId)) this.audio.play('handgunClick', { volume: 0.5 });
         if (this.cameraDirector.phase === 'prepare') this.cameraDirector.end();
-        this.mode = m; this.targetInfo = null;this.freeAim=null;this.freeAimManual=false;this.moveConfirmation=null;this.aim.clear();this.aimStance=null;
+        this.mode = m;this.aimDrag=null; this.targetInfo = null;this.freeAim=null;this.freeAimManual=false;this.moveConfirmation=null;this.aim.clear();this.aimStance=null;
+        this.aimPointer.setEnabled(m.kind==='shoot');
         this.overlays.clearAim();
         this.overlays.clearPath();
         this.overlays.showCover(this.battle?.store, null);
@@ -354,17 +356,21 @@ export class Game {
         const keep = this.targets.find(t => t.id === this.lastTargetId) || this.targets[0];
         if (keep) this.aimAt(u, keep, 'torso', { frame: true });
         else {this.freeAim={x:u.x+.5,y:u.y-8,h:u.z+2.1};this.aim.snap(this.freeAim);this.freeAimManual=true;this.frameAim(u,this.freeAim);}
+        if(navigator.userActivation?.isActive&&!this.aimPointer.unavailable)this.aimPointer.request();
     }
     cycleTarget(d = 1) {
-        const u = this.selectedUnit(); if (!u || !this.targets?.length) return;
+        const u = this.selectedUnit(); if (!u) return;
+        this.targets=this.targetsFor(u,this.mode.weaponId);if(!this.targets.length)return;
         const i = this.targets.findIndex(t => t.id === this.targetInfo?.target.id);
         this.aimAt(u, this.targets[(i + d + this.targets.length) % this.targets.length], this.targetInfo?.part || 'torso', { frame: true });
     }
     targetById(id) {
         const u = this.selectedUnit(), t = this.battle.unit(id);
-        if (!u || !t) return;
+        if (!u || !t || !this.targetsFor(u,this.mode.weaponId||watchWeapon(u)).some(target=>target.id===id)) return;
         if (this.mode.kind !== 'shoot') { const w = watchWeapon(u); if (!w) return; this.mode = { kind: 'shoot', weaponId: w }; this.targets = this.targetsFor(u, w); }
         this.aimAt(u, t, this.targetInfo?.part || 'torso', { frame: true });
+        this.aimPointer.setEnabled(true);
+        if(navigator.userActivation?.isActive&&!this.aimPointer.unavailable)this.aimPointer.request();
         this.hud.refresh();
     }
     confirmFire() {if(this.mode.kind!=='shoot')return;if(this.mode.suppress&&this.targetInfo)return this.fire(this.targetInfo.target,'torso');if(this.freeAim)this.intent({type:'shoot',weaponId:this.mode.weaponId,aim:{point:{...this.freeAim}}});}
@@ -533,6 +539,7 @@ export class Game {
         this.hud.log(e.side === 'player' ? `Round ${e.round}` : 'Enemy activity…');
     }
     onOutcome(e) {
+        this.aimPointer.setEnabled(false);
         this.hud.log(e.winner === 'player' ? 'Mission complete.' : 'Squad lost.');
         // After-action report for every battle; kept in this browser's recent reports (Test ground).
         const report = battleReport(this.battle, this.session?.desc || {}, {
@@ -550,23 +557,37 @@ export class Game {
 
     // ------------------------------------------------------------------ input
     bindInput(canvas) {
+        this.aimPointer=new AimPointer(canvas,{
+            changed:()=>this.hud.renderTarget(),
+            failed:()=>{this.hud.renderTarget();this.hud.toast('Browser refused mouse capture. Drag or use arrow keys to aim; Space fires.','warn');}
+        });
+        canvas.addEventListener('pointerdown',e=>{
+            if(e.button===0&&this.mode.kind==='shoot'&&this.aimPointer.unavailable&&!this.aimPointer.locked){
+                this.aimDrag={x:e.clientX,y:e.clientY,id:e.pointerId};canvas.setPointerCapture(e.pointerId);
+            }
+        });
+        const endAimDrag=()=>{this.aimDrag=null;};
+        canvas.addEventListener('pointerup',endAimDrag);canvas.addEventListener('pointercancel',endAimDrag);
+        canvas.addEventListener('lostpointercapture',endAimDrag);
         canvas.addEventListener('contextmenu', e => e.preventDefault());
         canvas.addEventListener('mousemove', e => this.onHover(e));
         // Camera: right-drag grabs the ground and pans, middle-drag orbits (yaw + clamped tilt), wheel zooms (eased).
         canvas.addEventListener('mousedown', e => {
+            if(this.mode.kind==='shoot')return;
             if (e.button !== 2 && e.button !== 1) return;
             if (e.button === 1) e.preventDefault();                                  // no browser autoscroll
             const grab = e.button === 2 ? this.scene.rig.groundPoint(this.scene.rayAt(e.clientX, e.clientY)) : null;
             this.dragging = { button: e.button, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, grab };
         });
         window.addEventListener('mouseup', e => {
-            if (e.button === 2) { if (this.dragging && !this.dragging.moved) this.cancel(); this.dragging = null; }
+            if (e.button === 2) { if(this.mode.kind==='shoot')this.cancel();else if (this.dragging && !this.dragging.moved) this.cancel(); this.dragging = null; }
             if (e.button === 1) this.dragging = null;
         });
         canvas.addEventListener('click', e => this.onClick(e));
         canvas.addEventListener('wheel', e => {
             e.preventDefault();
             const px = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+            if(this.mode.kind==='shoot'&&this.cameraDirector.phase==='prepare'){this.cameraDirector.zoomAim(Math.exp(Math.max(-1,Math.min(1,px*.0015))));return;}
             this.scene.zoom(Math.exp(Math.max(-1, Math.min(1, px * 0.0015))));
             if(!this.levelLocked)this.applyZoomCut();
         }, { passive: false });
@@ -575,9 +596,11 @@ export class Game {
         // Screen-edge scrolling: remember where the pointer is (not over HUD controls) and whether it left the window.
         window.addEventListener('mousemove', e => { this.edgePtr = { x: e.clientX, y: e.clientY, ui: !!e.target?.closest?.('button, input, select, textarea, .options, .panel, .target') }; });
         document.addEventListener('mouseleave', () => { this.edgePtr = null; });
-        window.addEventListener('blur', () => { this.edgePtr = null; this.keys.clear(); });
+        window.addEventListener('blur', () => { this.edgePtr = null;this.aimDrag=null;this.keys.clear();this.aimPointer.release(); });
     }
     cancel() {
+        this.aimDrag=null;
+        if(this.aimPointer.locked){this.aimPointer.release();return;}
         if(this.hud.equipment.open){this.hud.equipment.toggle();return;}
         if (this.debug.tool) { this.debug.setTool(null); return; }
         if (this.mode.kind !== 'move') this.setMode({ kind: 'move' });
@@ -588,6 +611,11 @@ export class Game {
         const k = this.keys;
         let x = (k.has('d') || k.has('arrowright') ? 1 : 0) - (k.has('a') || k.has('arrowleft') ? 1 : 0);
         let y = (k.has('w') || k.has('arrowup') ? 1 : 0) - (k.has('s') || k.has('arrowdown') ? 1 : 0);
+        if(this.mode.kind==='shoot'){
+            this.scene.rig.setPanIntent(0,0);
+            if(this.canAct()&&!this.hud.equipment.open)this.moveAim(x*400*dt,-y*400*dt);
+            return;
+        }
         const p = this.edgePtr, M = 12;
         if (p && !p.ui && this.options.edgeScroll && !this.dragging && !this.cameraDirector.active && document.hasFocus()) {
             const W = window.innerWidth, H = window.innerHeight;
@@ -619,7 +647,7 @@ export class Game {
             case 'enter': case ' ': e.preventDefault(); if (this.mode.kind === 'shoot') this.confirmFire(); else if (key === 'enter') this.endTurn(); break;
             case 'backspace': case 'escape': this.cancel(); break;
             case 'h': case 'home': e.preventDefault(); this.focusUnit(u); break;
-            case 'i': this.hud.equipment.toggle(); break;
+            case 'i': this.aimPointer.release();this.hud.equipment.toggle(); break;
             case 'v': this.scene.toggleProjection(); this.hud.toast(this.scene.projection === 'ortho' ? 'Camera: isometric' : 'Camera: perspective'); break;
             case 'o': this.setMode({ kind: 'overwatch' }); break;
             case 'r': if(this.hud.equipment.open&&this.hud.equipment.selected){this.hud.equipment.rotate();}else this.intent({ type: 'reload' }); break;
@@ -657,6 +685,13 @@ export class Game {
         return hit ? this.battle.unit(hit.object.userData.unitId) : null;
     }
     onHover(e) {
+        if(this.mode.kind==='shoot'){
+            if(this.canAct()&&!this.hud.equipment.open){
+                if(this.aimPointer.locked)this.moveAim(e.movementX,e.movementY);
+                else if(this.aimDrag){const p=this.aimDrag;this.moveAim(e.clientX-p.x,e.clientY-p.y);p.x=e.clientX;p.y=e.clientY;}
+            }
+            this.hud.cursorTip(null);return;
+        }
         if (this.dragging) {
             const d = this.dragging, dx = e.clientX - d.x, dy = e.clientY - d.y;
             if (!d.moved && Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) <= 3) return;
@@ -708,7 +743,6 @@ export class Game {
                 break;
             }
             case 'mark':this.hud.cursorTip(e.clientX,e.clientY,`Click a block to mark ${this.mode.color} · click the same marker to clear`);break;
-            case 'shoot': {this.updateFreeAim(e.clientX,e.clientY,p);this.hud.cursorTip(null);break;}
             case 'throw': {
                 const c = this.hoverCell; if (!c) break;
                 const t = THROWABLES[this.mode.itemId];
@@ -755,11 +789,11 @@ export class Game {
             const cover = coverAgainst(this.battle.store, target.x, target.y, target.z, u.x, u.y, u.z);
             this.targetInfo = { key, target, part, byPart, anyHit: any, blocked, friendly, spread, mods, muzzle, lean, distance, cover, flanked: cover === COVER.NONE, ap: this.mode.suppress ? ABILITIES.suppress.ap : this.battle.shotAp(u, w), inRange: distance <= weaponBuild(u,w).maxRange };
         }
-        // PLAN-07: the aim swings onto the new anchor through the aim spring; the camera only re-frames when it
-        // was not already in the shoulder view.
-        const anchor=partCentre(target,part);this.freeAimManual=false;this.aimCursor=null;
-        if(!this.aim.current||this.cameraDirector.phase!=='prepare'){this.aim.snap(anchor);this.freeAim={...anchor};this.frameAim(u,anchor);}
+        // Target selection re-frames and zooms; body-part changes and free aim retain the aim spring.
+        const anchor=partCentre(target,part);this.freeAimManual=false;this.lastTargetId=target.id;
+        if(frame||!this.aim.current||this.cameraDirector.phase!=='prepare'){this.aim.snap(anchor);this.freeAim={...anchor};this.frameAim(u,anchor);}
         else this.aim.setTarget(anchor);
+        if(frame)this.cameraDirector.focusTarget(new THREE.Vector3(anchor.x,anchor.h,anchor.y));
         this.targetInfo.part = part;
         this.overlays.showCone(this.targetInfo.muzzle, partCentre(target, part), this.targetInfo.spread);
         if (frame && this.options.followCamera) this.scene.glideTo(new THREE.Vector3((u.x + target.x) / 2 + 0.5, (u.z + target.z) / 2 + 1, (u.y + target.y) / 2 + 0.5), 4);
@@ -799,30 +833,23 @@ export class Game {
         const side=m.side||'right',o=m.step?new THREE.Vector3(m.step.x+.5,u.z+1,m.step.y+.5):new THREE.Vector3(u.x+.5,u.z+1,u.y+.5);
         this.aimStance={unitId:u.id,key:aimStanceKey(m),side,muzzle:m,at:{...p},blocked:shotBlocked(this.battle.store,m,p)};
         this.cutins.beginAim(u,{shoulder:side,weaponId:this.mode.weaponId});
-        this.cameraDirector.prepareAim(o,new THREE.Vector3(p.x,p.h,p.y));
+        this.cameraDirector.prepareAim(o,new THREE.Vector3(p.x,p.h,p.y),{side});
     }
-    updateFreeAim(x,y,pick=null){
-        const u=this.selectedUnit();if(!u)return;const ray=this.scene.rayAt(x,y).ray;
-        if(this.cameraDirector.phase==='prepare'){
-            const focus=this.aim.target||(this.targetInfo?partCentre(this.targetInfo.target,this.targetInfo.part):this.freeAim);
-            const last=this.aimCursor;this.aimCursor={x,y,unitId:u.id,mode:this.mode};
-            if(focus&&last&&last.unitId===u.id&&last.mode===this.mode){
-                // The shoulder camera turns toward the aim, so an absolute cursor ray runs away from the hand; move the aim
-                // by the cursor's motion instead, scaled by the sensitivity setting (1 = one screen pixel per pixel).
-                const step=aimDelta(focus,{x:u.x+.5,y:u.y+.5,h:u.z+2.35},x-last.x,y-last.y,{fov:this.cameraDirector.cam.fov,height:this.scene.renderer.domElement.clientHeight||innerHeight,sensitivity:this.options.aimSensitivity??.5});
-                if(step)this.aim.setTarget(step);
-            }else if(!focus){
-                const base=new THREE.Vector3(u.x+.5,u.z+2.1,u.y-8);
-                const plane=new THREE.Plane().setFromNormalAndCoplanarPoint(this.scene.camera.getWorldDirection(new THREE.Vector3()),base);
-                const point=ray.intersectPlane(plane,new THREE.Vector3());if(point)this.aim.setTarget({x:point.x,y:point.z,h:point.y});
-            }
-        }else if(pick?.point)this.aim.setTarget({...pick.point});
-        else {const point=ray.at(15,new THREE.Vector3());this.aim.setTarget({x:point.x,y:point.z,h:point.y});}
-        if(!this.freeAim)this.freeAim={...this.aim.current};
-        this.freeAimManual=true;
+    /** Pointer-lock deltas never stop at the browser edge or feed back through the moving camera. */
+    moveAim(dx,dy){
+        const u=this.selectedUnit();if(!u||(!dx&&!dy))return;
+        const focus=this.aim.target||this.freeAim;if(!focus)return;
+        const step=aimDelta(focus,{x:u.x+.5,y:u.y+.5,h:u.z+2.35},dx,dy,{fov:this.cameraDirector.cam.fov,height:this.scene.renderer.domElement.clientHeight||innerHeight,sensitivity:this.options.aimSensitivity??.5});
+        if(step){this.aim.setTarget(step);this.freeAimManual=true;}
     }
+    captureAim(){if(this.mode.kind==='shoot'&&!this.hud.equipment.open)this.aimPointer.request();}
     onClick(e) {
         if (!this.battle || this.dragging?.moved || this.hud.equipment.open) return;
+        if(this.mode.kind==='shoot'&&!this.debug.tool){
+            if(!this.canAct()||!this.controllable(this.selectedUnit()))return;
+            if(!this.aimPointer.locked){if(!this.aimPointer.unavailable)this.captureAim();return;}
+            this.confirmFire();return;
+        }
         const unit = this.unitAt(e.clientX, e.clientY);
         const p = this.pick(e.clientX, e.clientY);
         if (this.debug.tool) { this.debug.click(p, unit, e); return; }
@@ -842,7 +869,6 @@ export class Game {
                 break;
             }
             case 'mark':if(p?.voxel)this.intent({type:'mark',color:this.mode.color,at:p.voxel});break;
-            case 'shoot':this.updateFreeAim(e.clientX,e.clientY,p);this.confirmFire();break;
             case 'melee': if (unit && unit.side !== u.side) this.intent({ type: 'melee', weaponId: this.mode.weaponId, targetId: unit.id, part: 'torso' }); break;
             case 'throw': if (p?.cell) this.intent({ type: 'throw', itemId: this.mode.itemId, cargo:this.mode.cargo, to: p.cell }); break;
             case 'gadget': this.intent({type:'gadget',itemId:this.mode.itemId,cargo:this.mode.cargo,targetId:unit?.id});break;

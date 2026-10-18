@@ -2,43 +2,43 @@
   "aim": {
     "trigger": {
       "palmCoverage": 1.0,
-      "palmDistancePixels": 0.27675743723279655,
+      "palmDistancePixels": 0.34403829845756045,
       "wristCoverage": 1.0,
-      "wristDistancePixels": 0.2515183955977864,
+      "wristDistancePixels": 0.45450646131589567,
       "socketIsOpen": true,
       "families": {
         "rifle": {
           "wristCoverage": 1.0,
-          "wristDistancePixels": 0.25151839559778644
+          "wristDistancePixels": 0.45450646131589567
         },
         "sniper": {
           "wristCoverage": 1.0,
-          "wristDistancePixels": 0.25151839559778644
+          "wristDistancePixels": 0.45450646131589567
         },
         "shotgun": {
           "wristCoverage": 1.0,
-          "wristDistancePixels": 0.25151839559778644
+          "wristDistancePixels": 0.45450646131589567
         }
       }
     },
     "support": {
       "palmCoverage": 0.0,
-      "palmDistancePixels": 2.6591288475870303,
+      "palmDistancePixels": 7.213695877168422,
       "wristCoverage": 1.0,
-      "wristDistancePixels": 0.0,
+      "wristDistancePixels": 0.5417607175144393,
       "socketIsOpen": true,
       "families": {
         "rifle": {
           "wristCoverage": 1.0,
-          "wristDistancePixels": 0.0
+          "wristDistancePixels": 0.5417607175144393
         },
         "sniper": {
           "wristCoverage": 1.0,
-          "wristDistancePixels": 0.0
+          "wristDistancePixels": 0.5417607175144393
         },
         "shotgun": {
           "wristCoverage": 1.0,
-          "wristDistancePixels": 0.0
+          "wristDistancePixels": 0.5417607175144393
         }
       }
     }

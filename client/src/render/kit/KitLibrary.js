@@ -10,6 +10,7 @@ import { materialByKey } from '../../../../shared/voxel/Materials.js';
 import { CONTINUOUS_SURFACES, surfaceFinish } from '../SurfaceFinish.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { buildAllPieces,PIECES } from './KitPieces.js';
+import { withSharpEdges } from './Geo.js';
 import { RENDER, FALLBACK } from '../RenderTable.js';
 
 /** slot → { tex (or 'self' = the voxel's own), uv: 'world' | 'mesh', scale, color, rough, metal, emissive, … } */
@@ -104,7 +105,20 @@ export class KitLibrary {
         for (const parts of this.pieces.values()) for (const p of parts) { p.geometry.computeBoundingSphere(); }
         return this;
     }
-    piece(id) { if(!this.pieces.has(id)&&MODERN_PIECES[id])this.pieces.set(id,MODERN_PIECES[id].build()); if(id.startsWith('square_')&&!this.pieces.has(id)&&CONNECTED_PIECES[id])this.pieces.set(id,CONNECTED_PIECES[id].build());return this.pieces.get(id) || this.pieces.get(`${id}#0`) || null; }
+    /**
+     * `<id>@sharp`: the same piece built with straight edges for old buildings (BuildingEra.js). Pieces without any
+     * bevel share the ordinary geometry.
+     */
+    sharpPiece(id) {
+        const key = `${id}@sharp`;
+        if (!this.pieces.has(key)) {
+            const def = MODERN_PIECES[id] || PIECES[id];
+            const built = def ? withSharpEdges(() => def.build()) : null;
+            this.pieces.set(key, built?.softened ? built.value : null);
+        }
+        return this.pieces.get(key) || this.piece(id);
+    }
+    piece(id) { if(id.endsWith('@sharp'))return this.sharpPiece(id.slice(0,-6)); if(!this.pieces.has(id)&&MODERN_PIECES[id])this.pieces.set(id,MODERN_PIECES[id].build()); if(id.startsWith('square_')&&!this.pieces.has(id)&&CONNECTED_PIECES[id])this.pieces.set(id,CONNECTED_PIECES[id].build());return this.pieces.get(id) || this.pieces.get(`${id}#0`) || null; }
     /** Material for a slot; `selfKey` is the voxel material that 'self' (and barrels) resolve to. */
     material(slot, selfKey, clipping) {
         const def = SLOTS[slot] || SLOTS.self;

@@ -2,9 +2,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { AimController, aimTau, aimClass, swayDegrees, AIM_TAU, aimDelta, AIM_PITCH_LIMIT } from '../../ui/AimController.js';
+import { AimController, aimTau, aimClass, swayDegrees, AIM_TAU, aimDelta, AIM_PITCH_LIMIT, aimSpriteInertia } from '../../ui/AimController.js';
 import { reticleRadius } from '../../ui/AimReticle.js';
-import { CameraDirector, MAX_YAW } from '../../anim/CameraDirector.js';
+import { CameraDirector, MAX_YAW, targetAimFov } from '../../anim/CameraDirector.js';
+import { AimPointer } from '../../ui/AimPointer.js';
 import { WEAPONS } from '../../../../shared/content/weapons.js';
 
 test('the aim spring lags the cursor, settles without overshoot, and heavier guns are slower', () => {
@@ -17,6 +18,23 @@ test('the aim spring lags the cursor, settles without overshoot, and heavier gun
     assert.deepEqual(run(AIM_TAU.rifle), rifle, 'deterministic');
     const off = new AimController(); off.snap({ x: 0, y: 0, h: 0 }); off.setTarget({ x: 5, y: 0, h: 0 });
     assert.equal(off.step(1 / 60, { inertia: false }).x, 5, 'inertia off snaps');
+});
+
+test('sprite arms trail the world-space aiming spring, settle and respect inertia off', () => {
+    const origin={x:0,y:0,h:2},a=new AimController();a.snap({x:10,y:0,h:2});
+    a.setTarget(aimDelta(a.current,origin,200,-100));
+    const first=aimSpriteInertia(a.current,a.target,origin);
+    assert.ok(first.yaw<0 && first.pitch>0,'weapon trails a right/up turn');
+    assert.ok(Math.abs(first.yaw)<=.12 && first.pitch<=.09);
+    for(let i=0;i<120;i++)a.step(1/60);
+    const settled=aimSpriteInertia(a.current,a.target,origin);
+    assert.ok(Math.abs(settled.yaw)<1e-6 && Math.abs(settled.pitch)<1e-6);
+    a.setTarget({x:0,y:10,h:3});a.step(1/60,{inertia:false});
+    assert.deepEqual(aimSpriteInertia(a.current,a.target,origin),{yaw:0,pitch:0});
+    const edge=angle=>({x:Math.cos(angle)*10,y:Math.sin(angle)*10,h:2});
+    const wrapped=aimSpriteInertia(edge(Math.PI-.01),edge(-Math.PI+.01),origin);
+    assert.ok(Math.abs(wrapped.yaw+.02)<1e-9,'crossing ±180° does not snap to maximum sway');
+    assert.deepEqual(aimSpriteInertia(origin,a.target,origin),{yaw:0,pitch:0});
 });
 
 test('weapon weight classes, wounded arms and sway', () => {
@@ -76,4 +94,31 @@ test('relative aim: cursor motion turns the aim by a damped angle and never runs
     const down = aimDelta(focus, origin, 0, 50, opts); assert.ok(down.h < 2, 'moving down lowers the aim');
     let p = focus; for (let i = 0; i < 50; i++) p = aimDelta(p, origin, 0, -400, opts);
     assert.ok(Math.atan2(p.h - 2, Math.hypot(p.x, p.y)) <= AIM_PITCH_LIMIT + 1e-9, 'pitch is clamped');
+});
+
+test('selecting a distant target zooms smoothly; wheel zoom survives camera re-anchoring and resets on exit',()=>{
+    assert.ok(targetAimFov(30)<targetAimFov(10));
+    const cd=new CameraDirector({aspect:1}),shooter=new THREE.Vector3(0,1,0),target=new THREE.Vector3(0,2,-30);
+    cd.prepareAim(shooter,target,{side:'left'});cd.focusTarget(target);cd.update(.1);
+    assert.ok(cd.cam.fov<38&&cd.cam.fov>cd.aimFov,'eases into target framing');
+    cd.zoomAim(.8);const zoom=cd.aimFov;cd.track(new THREE.Vector3(30,2,0),.2);
+    assert.equal(cd.aimFov,zoom);assert.equal(cd.side,'left');
+    cd.zoomAim(.001);assert.equal(cd.aimFov,14);cd.zoomAim(100);assert.equal(cd.aimFov,60);
+    cd.end();cd.prepareAim(shooter,target);assert.equal(cd.cam.fov,38,'free aim starts wide');
+});
+
+test('mouse capture releases on mode exit, rejects late lock requests and recovers from denial',async()=>{
+    const doc=new EventTarget();let requests=0,releases=0,errors=0;
+    doc.exitPointerLock=()=>{releases++;doc.pointerLockElement=null;doc.dispatchEvent(new Event('pointerlockchange'));};
+    const canvas={ownerDocument:doc,requestPointerLock:()=>{requests++;return Promise.resolve();}};
+    const pointer=new AimPointer(canvas,{failed:()=>errors++});
+    pointer.request();assert.equal(requests,0);
+    pointer.setEnabled(true);pointer.request();pointer.request();assert.equal(requests,1,'only one pending request');
+    pointer.setEnabled(false);doc.pointerLockElement=canvas;doc.dispatchEvent(new Event('pointerlockchange'));
+    assert.equal(pointer.locked,false,'late request cannot trap the mouse after leaving aim');assert.equal(releases,1);
+    pointer.setEnabled(true);canvas.requestPointerLock=()=>Promise.reject(Error('denied'));
+    pointer.request();await Promise.resolve();assert.equal(errors,1);assert.equal(pointer.pending,false);
+    canvas.requestPointerLock=()=>{doc.pointerLockElement=canvas;doc.dispatchEvent(new Event('pointerlockchange'));};
+    pointer.request();assert.equal(pointer.locked,true);pointer.release();assert.equal(pointer.locked,false);
+    pointer.dispose();
 });

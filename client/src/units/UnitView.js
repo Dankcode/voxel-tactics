@@ -10,6 +10,12 @@ import { FACING_VEC } from '../../../shared/battle/Units.js';
 
 const loader = new THREE.TextureLoader();
 const atlasCache = new Map();
+/** Floor cutaways select complete characters by their occupied cell, never by head pixels. */
+export const unitBelowCut = (z, cut = Infinity) => z < cut;
+export function unitSpriteMaterial(texture, normal) {
+    return new THREE.MeshStandardMaterial({ map:texture, normalMap:normal, normalScale:new THREE.Vector2(.65,.65),
+        roughness:.95, metalness:0, transparent:true, alphaTest:.35, side:THREE.DoubleSide, toneMapped:false });
+}
 export async function loadCharacterArt(art) {
     art = 'ranger-01'; // One illustrated identity shared by every human character.
     if (atlasCache.has(art)) return atlasCache.get(art);
@@ -38,7 +44,7 @@ export class UnitView {
         this.texture.needsUpdate = true;
         this.normal = art.normal.clone(); this.normal.needsUpdate = true;
         this.lighting = art.lighting.clone(); this.lighting.needsUpdate = true;
-        this.material = new THREE.MeshStandardMaterial({ map: this.texture, normalMap: this.normal, normalScale: new THREE.Vector2(.65, .65), roughness: .95, metalness: 0, transparent: true, alphaTest: 0.35, side: THREE.DoubleSide, clippingPlanes: scene.clipping, toneMapped: false });
+        this.material = unitSpriteMaterial(this.texture, this.normal);
         this.depthSlope=installBillboardDepth(this.material);
         const depthCompile = this.material.onBeforeCompile;
         this.material.onBeforeCompile = shader => {
@@ -103,6 +109,7 @@ export class UnitView {
         this.barTex.needsUpdate = true;
     }
     update(dt, yaw, camera = this.scene.camera) {
+        this.group.visible = this.visibilityRequested !== false && unitBelowCut(this.unit.z, this.scene.cutLevel);
         this.breathTime=(this.breathTime||0)+dt;
         // Screen-facing art retains its drawn proportions; the transparent foot baseline stays at local zero.
         // Only the sprite tilts. Ground rings, collision position and elevation cues stay on the world grid.
@@ -131,7 +138,7 @@ export class UnitView {
         this.dropRing.position.y = -h + 0.03;
     }
     setSelected(on) { this.selRing.visible = on; }
-    setVisible(on) { this.group.visible = on; }
+    setVisible(on) { this.visibilityRequested = on; this.group.visible = on && unitBelowCut(this.unit.z, this.scene.cutLevel); }
     dispose() {
         this.model?.dispose();this.sprite.customDepthMaterial?.dispose(); this.scene.scene.remove(this.group); this.texture.dispose(); this.normal.dispose(); this.lighting.dispose(); this.material.dispose(); this.barTex.dispose(); }
 }

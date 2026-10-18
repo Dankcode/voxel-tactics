@@ -103,6 +103,8 @@ export class Hud {
             case 'target': g.targetById(arg); break;
             case 'part': g.setAimPart(arg); break;
             case 'fire': g.confirmFire(); break;
+            case 'captureAim': g.captureAim(); break;
+            case 'nextTarget': g.cycleTarget(1); break;
             case 'cancel': g.cancel(); break;
             case 'formTpl': g.declareFormation(arg); this.hidePanel(); break;
             case 'doBreach': { const [i, entry] = arg.split(':'); g.doBreach(+i, entry); this.hidePanel(); break; }
@@ -129,7 +131,7 @@ export class Hud {
         const g = this.game, o = g.options, el = this.el('.options');
         if (el.classList.contains('hidden')) return;
         const row = (k, label) => `<button data-act="opt" data-arg="${k}" class="${o[k] ? 'on' : ''}">${o[k] ? '☑' : '☐'} ${label}</button>`;
-        el.innerHTML = `<h3>Settings <button data-act="options">✕</button></h3><h4>Gameplay</h4><label>Turn / animation speed<select data-setting="turnSpeed">${[.5,1,1.5,2,3].map(n=>`<option value="${n}" ${Number(o.turnSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label><label>Camera rotation<select data-setting="rotateSpeed">${[.5,1,1.5,2].map(n=>`<option value="${n}" ${Number(o.rotateSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('confirmMoves','Confirm movement destinations')}${row('showEnemyBars','Show enemy health')}<label>Aim sensitivity<select data-setting="aimSensitivity">${[.25,.5,.75,1].map(n=>`<option value="${n}" ${Number(o.aimSensitivity??.5)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('aimSway','Reticle breathing / sprite inertia')}${row('aimInertia','Aim inertia (heavier guns swing slower)')}<button data-act="debug">Test / debug tools (F1)</button><button data-act="inventory">Equipment and body status (I)</button><button data-act="menu">Return to menu</button>${row('autoEndTurn', 'Auto end turn when the squad is spent')}${row('autoNext', 'Auto-select the next ready soldier')}${row('followCamera', 'Camera follows actions')}
+        el.innerHTML = `<h3>Settings <button data-act="options">✕</button></h3><h4>Gameplay</h4><label>Turn / animation speed<select data-setting="turnSpeed">${[.5,1,1.5,2,3].map(n=>`<option value="${n}" ${Number(o.turnSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label><label>Camera rotation<select data-setting="rotateSpeed">${[.5,1,1.5,2].map(n=>`<option value="${n}" ${Number(o.rotateSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('confirmMoves','Confirm movement destinations')}${row('showEnemyBars','Show enemy health')}<label>Aim sensitivity<select data-setting="aimSensitivity">${[.25,.5,.75,1].map(n=>`<option value="${n}" ${Number(o.aimSensitivity??.5)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('aimSway','Reticle breathing')}${row('aimInertia','Aim inertia (heavier guns swing slower)')}<button data-act="debug">Test / debug tools (F1)</button><button data-act="inventory">Equipment and body status (I)</button><button data-act="menu">Return to menu</button>${row('autoEndTurn', 'Auto end turn when the squad is spent')}${row('autoNext', 'Auto-select the next ready soldier')}${row('followCamera', 'Camera follows actions')}
             <h4>Audio</h4><label>Sound effects volume<input type="range" data-setting="soundVolume" min="0" max="1" step="0.05" value="${o.soundVolume ?? 0.65}" aria-label="Sound effects volume"></label>
             <h4>Camera</h4>${row('edgeScroll', 'Screen-edge scrolling')}<button data-act="proj" class="${g.scene.projection === 'ortho' ? 'on' : ''}">${g.scene.projection === 'ortho' ? '☑' : '☐'} Isometric (orthographic) view (V)</button>
             <div class="camhint" style="font-size:11px;opacity:.7;line-height:1.5;margin:4px 0 2px">WASD / arrows / screen edge pan · right-drag grab · middle-drag orbit · wheel zoom · Q/E rotate · H / Home centre on soldier · V isometric</div>
@@ -259,7 +261,18 @@ export class Hud {
             return `<button class="tgt ${cur === t.id ? 'on' : ''}" data-act="target" data-arg="${t.id}" title="${esc(t.name)}"><img src="${portraitSrc(t)}" alt="${esc(t.name)}"></button>`;
         }).join('');
     }
-    renderTarget(){const g=this.game,t=g.targetInfo,el=this.el('.target');if(g.mode.kind!=='shoot'||!t){el.classList.add('hidden');return;}el.classList.remove('hidden');const u=t.target,w=WEAPONS[g.mode.weaponId];el.innerHTML=`<header><b>${esc(u.name)}</b><span>${u.hp}/${u.maxHp} HP · ${t.distance.toFixed(1)} M</span></header><div class="parts">${PARTS.map(([k,label,key])=>`<button data-act="part" data-arg="${k}" class="${t.part===k?'on':''}"><b>${label}</b><small>${u.parts[k].hp}/${u.parts[k].max} · ARM ${u.parts[k].armor}</small></button>`).join('')}</div><p>${t.blocked>.5?'Cover intercepts this angle':'Aim freely at a body part or the environment'}</p><div class="tbtns"><button data-act="cancel">Back</button><button data-act="fire">Fire · ${t.ap} AP <kbd>Space</kbd></button></div>`;}
+    renderTarget(){
+        const g=this.game,t=g.targetInfo,el=this.el('.target');
+        if(g.mode.kind!=='shoot'){el.classList.add('hidden');return;}
+        el.classList.remove('hidden');
+        const u=g.selectedUnit(),w=WEAPONS[g.mode.weaponId],locked=g.aimPointer?.locked;
+        const cost=t?.ap??(u&&w?g.battle.shotAp(u,w):0);
+        el.innerHTML=`<header><b>${t?esc(t.target.name):'Free aim'}</b><span>${t?`${t.target.hp}/${t.target.maxHp} HP · ${t.distance.toFixed(1)} M`:'No target in range'}</span></header>
+            ${t?`<div class="parts">${PARTS.map(([k,label,key])=>`<button data-act="part" data-arg="${k}" class="${t.part===k?'on':''}"><b>${label} <kbd>${key}</kbd></b><small>${t.target.parts[k].hp}/${t.target.parts[k].max} · ARM ${t.target.parts[k].armor}</small></button>`).join('')}</div>`:''}
+            <p>${t?.blocked>.5?'Cover intercepts this angle. ':''}${locked?'Mouse captured · move to aim · click / Space to fire · wheel to zoom · Esc releases mouse':g.aimPointer?.unavailable?'Mouse capture is unavailable here. Drag in the scene or use arrow keys to aim; Space fires; wheel zooms.':'Select a target portrait to focus, or capture the mouse to aim freely.'}</p>
+            <div class="tbtns">${g.targets?.length?'<button data-act="nextTarget">Next target <kbd>Tab</kbd></button>':''}${!locked?'<button data-act="captureAim">Aim with mouse</button>':''}</div>
+            <div class="tbtns"><button data-act="cancel">${locked?'Release mouse':'Back'}</button><button data-act="fire">Fire · ${cost} AP <kbd>Space</kbd></button></div>`;
+    }
     showGearPanel(){const u=this.game.selectedUnit(),p=this.el('.panel');p.classList.remove('hidden');p.innerHTML=`<h3>Equipment <button data-act="closePanel">✕</button></h3><div class="gear-quick">${Object.entries(u.items).filter(([id,n])=>n>0&&THROWABLES[id]).map(([id,n])=>`<button data-act="item" data-arg="${id}">${ICONS.grenade}<b>${esc(THROWABLES[id].name)}</b><small>${n} carried · ${THROWABLES[id].ap} AP</small></button>`).join('')}</div>`;}
     showFormationPanel() {
         const p=this.el('.panel');p.classList.toggle('hidden');if(p.classList.contains('hidden'))return;

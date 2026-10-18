@@ -2,6 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {billboardDepthSlope,installBillboardDepth} from '../../units/BillboardDepth.js';
+import {unitBelowCut,unitSpriteMaterial} from '../../units/UnitView.js';
+test('floor cutaways hide whole units and cannot slice the heads off visible sprite cards',()=>{
+ const mat=unitSpriteMaterial(new THREE.Texture(),new THREE.Texture());
+ assert.ok(!mat.clippingPlanes?.length,'building clipping planes do not apply to character pixels');
+ assert.equal(mat.depthTest,true,'walls still occlude the character normally');
+ assert.equal(unitBelowCut(2,3),true,'feet on visible floor: head is allowed above the cut');
+ assert.equal(unitBelowCut(3,3),false,'next floor hidden as a whole');
+ assert.equal(unitBelowCut(20,Infinity),true);
+ mat.dispose();
+});
 test('billboard depth follows a vertical character while preserving terrain and wall depth tests',()=>{
  const camera=new THREE.OrthographicCamera(-5,5,5,-5,.1,100);
  camera.position.set(0,10,10);camera.lookAt(0,0,0);camera.updateMatrixWorld();

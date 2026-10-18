@@ -13,7 +13,8 @@ import { KitView, kitHandler } from './KitView.js';
 import { buildRoofGeometry, roofColumn } from './RoofBuilder.js';
 
 const pieces = buildAllPieces();
-const fakeKit = { piece: id => pieces.get(id) || pieces.get(`${id}#0`), material: () => new THREE.MeshBasicMaterial() };
+// Old buildings ask for `<id>@sharp` (straight-edged) variants; the real KitLibrary builds them, the fake reuses the base.
+const fakeKit = { piece: id => { id = id.replace(/@sharp$/, ''); return pieces.get(id) || pieces.get(`${id}#0`); }, material: () => new THREE.MeshBasicMaterial() };
 const mission = buildProvingGrounds({ seed: 1 });
 const store = mission.store;
 

@@ -2,6 +2,10 @@
 import * as THREE from 'three';
 import { castRay, blocksSight } from '../../../shared/voxel/Raycast.js';
 export const MAX_YAW = 35 * Math.PI / 180;
+/** Frame a human-size target at roughly a third of the viewport, without moving through cover. */
+export function targetAimFov(distance) {
+    return THREE.MathUtils.clamp(THREE.MathUtils.radToDeg(2*Math.atan(2.4/(Math.max(1,distance)*.7))),14,38);
+}
 export class CameraDirector {
     constructor(scene) {
         this.scene=scene; this.cam=new THREE.PerspectiveCamera(38,1,0.08,300);
@@ -21,6 +25,8 @@ export class CameraDirector {
         return !castRay(s,a,{x:a.x+(b.x-a.x)*k,y:a.y+(b.y-a.y)*k,h:a.h+(b.h-a.h)*k},{blocks:blocksSight}).hit;
     }
     prepareAim(shooter,target,{side='right'}={}){this.side=side;if(!this.begin(shooter,target.clone().add(new THREE.Vector3(0,-1.1,0)),'prepare',{side}))return;this.look.copy(target);this.shooter=shooter.clone();this.aimDir=this.flatDir(shooter,target);this.apply(0);}
+    focusTarget(point) { this.aimFov=targetAimFov(this.cam.position.distanceTo(point)); }
+    zoomAim(factor) { this.aimFov=THREE.MathUtils.clamp((this.aimFov??38)*factor,14,60); }
     flatDir(a,b){const d=b.clone().sub(a);d.y=0;return d.lengthSq()<1e-6?new THREE.Vector3(0,0,1):d.normalize();}
     /**
      * PLAN-07: in the prepare phase the shoulder camera looks where the aim currently is (damped), and swings round
@@ -59,15 +65,15 @@ export class CameraDirector {
         this.from.copy(safe);this.to.copy(safe).lerp(shooter.clone().add(new THREE.Vector3(0,up,0)),0.12);
         if(!this.clear(this.to)||!this.sees(this.to,look))this.to.copy(this.from);
         this.look.copy(target).add(new THREE.Vector3(0,1.1,0));
-        this.cam.fov=phase==='prepare'?38:44;this.cam.aspect=this.scene.aspect || 1;this.cam.updateProjectionMatrix();
+        this.cam.fov=phase==='prepare'?(this.aimFov??38):44;this.cam.aspect=this.scene.aspect || 1;this.cam.updateProjectionMatrix();
         // Keep whoever is hidden (the aiming shooter): re-framing while the reticle moves must not reveal them.
         this.active=true;this.scene.actionCamera=this.cam;this.hidden||=new Set();this.apply(0);return true;
     }
-    update(dt) {if(this.active&&this.phase==='prepare'){this.elapsed+=dt;this.apply(Math.min(1,this.elapsed/0.65));}}
+    update(dt) {if(this.active&&this.phase==='prepare'){this.elapsed+=dt;this.cam.fov+=( (this.aimFov??38)-this.cam.fov)*(1-Math.exp(-dt/.15));this.apply(Math.min(1,this.elapsed/0.65));}}
     apply(k) {
         this.cam.position.lerpVectors(this.from,this.to,THREE.MathUtils.clamp(k,0,1));
         if(!this.clear(this.cam.position))this.cam.position.copy(this.from);
         this.cam.aspect=this.scene.aspect || 1;this.cam.updateProjectionMatrix();this.cam.lookAt(this.look);this.cam.updateMatrixWorld();
     }
-    end() {const was=this.active;this.shooter=null;this.active=false;this.phase=null;if(was)this.onEnd?.();this.scene.actionCamera=null;this.hidden=new Set();}
+    end() {const was=this.active;this.aimFov=38;this.shooter=null;this.active=false;this.phase=null;if(was)this.onEnd?.();this.scene.actionCamera=null;this.hidden=new Set();}
 }

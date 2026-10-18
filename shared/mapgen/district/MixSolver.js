@@ -285,7 +285,9 @@ export function layoutLeaves(m, leaves, assignment, { seed, family, remix, hostI
                 if (remix.maxStoreys > remix.minStoreys && storeys === remix.maxStoreys && tall.some(t => Math.hypot(t[0] - cx, t[1] - cy) < 22)) storeys = Math.max(remix.minStoreys, storeys - 1);
                 const wall = remix.wall !== 'mixed' ? remix.wall : spec.wall || WALLS[spec.program] || ['brick', 'stucco', 'brick', 'siding'][ctx.rng.int(0, 3)];
                 const b = m.building({ id: `${l.id}-${spec.part}`, program: spec.program, x0: r.x0, y0: r.y0, w: r.w, d: r.d, baseZ: bz, storeys, front: spec.front || F.front, wall,
+                    // Era → edges (BuildingEra.js): modern rounded, old straight. The remix can force one for every building.
                     rounded: remix.corners !== 'mixed' ? remix.corners === 'rounded' : spec.rounded ?? ctx.rng.next() > 0.45,
+                    ...(remix.corners === 'mixed' && spec.era ? { era: spec.era } : {}),
                     furnish: spec.furnish === false ? false : remix.furnish, ...(spec.foundation === false ? { foundation: false } : {}), ...(glaze ? { glaze } : {}) });
                 built++; ctx.siblings.push(b);
                 if (storeys === remix.maxStoreys) tall.push([cx, cy]);
