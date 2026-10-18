@@ -6,6 +6,7 @@ import { AGENT_PROFILES } from '../world/TraversalRules.js';
 import { settleUnsupported } from '../voxel/Destruction.js';
 import { footprintIoU } from './SiteSolver.js';
 import { checkAccess } from './AccessModules.js';
+import { BAY_PIECES, CLUTTER_BASES } from './LotCatalogue.js';
 
 /** Throwing form, used when a package is installed or a battle starts: every gate must pass. */
 export function checkGeneratedGates(mission,ctx) {
@@ -42,12 +43,44 @@ export function evaluateGeneratedGates(mission,{site,layout,design}) {
         heightBudget:mission.store.height<=18&&mission.store.width<=(site.maxDimension??64)&&mission.store.depth<=(site.maxDimension??64),
         enemiesReachable:mission.spawns.enemy.length===design.encounters.reduce((n,e)=>n+e.types.length,0)+(mission.meta.underground?1:0)&&mission.spawns.enemy.every(e=>search.costs.has(nodeKey(e.pos)))
     };
+    // PLAN-10 interior gates apply to generated maps; saved picture packages are fixtures built from fixed data.
+    if(site?.generated)Object.assign(checks,checkInteriorGates(mission,search));
+    // PLAN-11 cover chain: no open dash longer than ~two moves along the main line of advance (generated maps).
+    if(site?.generated)checks.advanceCover=(mission.metrics.advanceExposure??0)<=7;
     if(mission.meta.underground)Object.assign(checks,checkLayerGates(mission));
     if(layout?.version===3)Object.assign(checks,checkV3Gates(mission,layout));
     mission.metrics.hallEscapes=Object.fromEntries(mission.rooms.filter(r=>r.kind==='hall').map(r=>[`${r.buildingId}:${r.storey}`,!!reaches(r,escapes)]));
     mission.metrics.gates={...mission.metrics.gates,...checks};
     mission.metrics.pass=Object.values(mission.metrics.gates).every(Boolean);
     return {...mission.metrics.gates};
+}
+
+/**
+ * PLAN-10 interior gates. Every room (halls aside) has a door or opening and can be reached; every room on an outside
+ * wall has a window in it; no room is a windowless dead end (one way in and no window); every door joins two
+ * standable floors. Locked doors count as ways in (they are breached).
+ */
+export function checkInteriorGates(mission,search) {
+    const s=mission.store,DOORS=new Set([MAT.door,MAT.door_open,MAT.door_locked].filter(v=>v!==undefined));
+    let sealed=0,unreached=0,blind=0,dead=0;
+    for(const r of mission.rooms||[]) {
+        if(r.kind==='hall'||!r.cells?.length)continue;
+        const b=mission.buildings.find(q=>q.id===r.buildingId),own=new Set(r.cells.map(([x,y])=>`${x},${y}`)),z=r.floorZ;
+        let ways=0,windows=0,outside=false;
+        for(const [x,y] of r.cells)for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+            const nx=x+dx,ny=y+dy;if(own.has(`${nx},${ny}`))continue;
+            if(b&&(nx===b.x0||ny===b.y0||nx===b.x0+b.w-1||ny===b.y0+b.d-1))outside=true;
+            const a=s.get(nx,ny,z+1),h=s.get(nx,ny,z+2);
+            if(DOORS.has(a)||DOORS.has(h))ways++;
+            else if(a===MAT.glass||h===MAT.glass)windows++;
+            else if(!s.isSolid(nx,ny,z+1)&&!s.isSolid(nx,ny,z+2))ways++;
+        }
+        if(!ways)sealed++;
+        if(!r.cells.some(([x,y])=>search.costs.has(nodeKey({x,y,z})))&&r.gameplay!==false)unreached++;
+        if(outside&&!windows)blind++;
+        if(ways<=1&&!windows)dead++;
+    }
+    return {noSealedRooms:sealed===0,roomsReachable:unreached===0,roomWindows:blind===0,noDeadEnds:dead===0};
 }
 
 /**
@@ -62,7 +95,9 @@ export function checkV3Gates(mission,layout) {
     const search=reachable(store,mission.spawns.player[0],Infinity,AGENT_PROFILES.player);
     const flanks=(layout.lineOfPlay?.flanks||[]).filter(f=>f.path.length);
     const walkable=f=>f.path.filter(([x,y])=>search.costs.has(nodeKey({x,y,z:G}))).length/f.path.length;
-    return {worldEdges:border===0||open/border<=0.02,pockets:(layout.pockets||[]).length>=2,flanksWalkable:flanks.length>=1&&flanks.every(f=>walkable(f)>=0.95)};
+    // PLAN-10: no random clutter outdoors (crates, pallets, drums).
+    const noClutter=!(layout.pieces||[]).some(p=>CLUTTER_BASES.includes(BAY_PIECES[p.id]?.base));
+    return {worldEdges:border===0||open/border<=0.02,pockets:(layout.pockets||[]).length>=2,flanksWalkable:flanks.length>=1&&flanks.every(f=>walkable(f)>=0.95),noClutter};
 }
 
 export function checkLayerGates(mission) {

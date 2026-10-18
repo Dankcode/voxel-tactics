@@ -8,7 +8,7 @@ import { slateSvg } from '../mapgen/DesignSlate.js';
 import { MAT } from '../voxel/Materials.js';
 import { planRows, PROGRAMS } from './modern/ModernBuilder.js';
 
-test('image study preserves combat flow while locking non-gameplay rooms', () => {
+test('PLAN-10: image study preserves combat flow and seals no room (service rooms get real doors)', () => {
     const m=buildImageMap(CEDAR_IMAGE_SITE,{seed:4});
     const search=reachable(m.store,m.spawns.player[0],Infinity);
     const slate=m.visual.slate;
@@ -16,12 +16,9 @@ test('image study preserves combat flow while locking non-gameplay rooms', () =>
     assert.deepEqual(slate.matrix,Array.from(m.store.mat));
     for(const layer of slate.layers) for(let y=0;y<slate.depth;y++) for(let x=0;x<slate.width;x++) assert.equal(layer.tiles[y][x],m.store.get(x,y,layer.z));
     assert.ok(m.metrics.pass,JSON.stringify(m.metrics));
-    const closed=m.rooms.filter(r=>!r.gameplay);assert.equal(closed.length,4);
-    for(const room of closed) assert.ok(room.cells.every(([x,y])=>!search.costs.has(nodeKey({x,y,z:room.floorZ}))));
-    for(const b of m.buildings) for(const d of b.doors.filter(d=>d.locked)) {
-        assert.equal(m.store.get(d.x,d.y,d.z+1),MAT.door_locked);
-        assert.equal(m.store.isSolid(d.x,d.y,d.z+1),true);
-    }
+    assert.equal(m.rooms.filter(r=>!r.gameplay).length,0,'no locked-off rooms');
+    for(const room of m.rooms) assert.ok(room.cells.some(([x,y])=>search.costs.has(nodeKey({x,y,z:room.floorZ}))),`${room.buildingId}:${room.kind} is reachable`);
+    for(const b of m.buildings) assert.equal(b.doors.filter(d=>d.locked).length,0);
     for(const e of m.spawns.enemy) assert.notEqual(m.rooms[m.store.roomAt(e.pos.x,e.pos.y,e.pos.z+1)]?.gameplay,false);
 });
 

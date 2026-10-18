@@ -76,11 +76,11 @@ export class UnitView {
         this.selRing = new THREE.Mesh(new THREE.RingGeometry(0.47, 0.55, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, side: THREE.DoubleSide, depthWrite: false, toneMapped: false }));
         this.selRing.rotation.x = -Math.PI / 2; this.selRing.position.y = 0.04; this.selRing.visible = false;
         this.group.add(this.selRing);
-        this.barCanvas = document.createElement('canvas'); this.barCanvas.width = 128; this.barCanvas.height = 26;
+        this.barCanvas = document.createElement('canvas'); this.barCanvas.width = 256; this.barCanvas.height = 96;
         this.barTex = new THREE.CanvasTexture(this.barCanvas);
         this.barTex.colorSpace = THREE.SRGBColorSpace;
         this.bar = new THREE.Sprite(new THREE.SpriteMaterial({ map: this.barTex, depthTest: false, transparent: true, toneMapped: false }));
-        this.bar.scale.set(1.15, 0.234, 1); this.bar.position.y = h + 0.25; this.bar.renderOrder = 10;
+        this.bar.scale.set(1.3, 0.4875, 1); this.bar.position.y = h + 0.25; this.bar.renderOrder = 10;
         this.group.add(this.bar);
         // Height cue (PLAN 22 D7): a drop line and a ring on the ground below a unit standing on a roof or an upper
         // floor, so its elevation reads at a glance.
@@ -104,22 +104,42 @@ export class UnitView {
     setWorld(x, y, h) { this.pos.set(x, h, y); this.group.position.copy(this.pos); }
     face(dx, dy) { if (dx || dy) this.facingVec = [dx, dy]; }
     worldPosition() { return this.pos.clone(); }
+    /**
+     * PLAN-11 status tag. Normally a slim segmented health bar only (unobtrusive); for a moment after selecting the
+     * soldier, reloading or picking a gadget (`flashStatus`) it opens into a small card: HP, AP, the weapon's rounds and
+     * spare magazines, and grenade / gadget counts.
+     */
     drawBar() {
-        const u=this.unit,c=this.barCanvas.getContext('2d'),W=this.barCanvas.width,H=this.barCanvas.height;c.clearRect(0,0,W,H);c.textAlign='center';c.font='600 17px sans-serif';c.fillStyle=u.side==='player'?'#e5e5e9':'#ff7777';c.shadowColor='#000';c.shadowBlur=5;c.fillText(`${u.hp}/${u.maxHp}  ·  ${u.ap} AP`,W/2,18);
+        const u=this.unit,c=this.barCanvas.getContext('2d'),W=this.barCanvas.width,H=this.barCanvas.height;c.clearRect(0,0,W,H);
+        const frac=Math.max(0,Math.min(1,u.hp/Math.max(1,u.maxHp))),hpColor=u.side!=='player'?'#ff6a5c':frac>0.6?'#7ee08a':frac>0.3?'#ffcf5a':'#ff6a5c';
+        const segs=Math.max(1,Math.round(u.maxHp/5)),bw=150,bx=(W-bw)/2,by=H-16,sw=bw/segs;
+        c.fillStyle='rgba(8,10,14,0.72)';c.fillRect(bx-3,by-3,bw+6,12);
+        for(let i=0;i<segs;i++){const filled=(i+1)/segs<=frac+1e-6||(i/segs<frac);c.fillStyle=filled?hpColor:'rgba(255,255,255,0.12)';c.fillRect(bx+i*sw+1,by,sw-2,6);}
+        if(this.detailUntil&&performance.now()<this.detailUntil&&u.side==='player'){
+            const info=this.statusLines?.(u)||[];
+            c.fillStyle='rgba(8,10,14,0.78)';c.fillRect(bx-3,by-62,bw+6,58);
+            c.textAlign='left';c.shadowColor='#000';c.shadowBlur=3;c.font='700 17px sans-serif';c.fillStyle=hpColor;c.fillText(`${u.hp}/${u.maxHp} HP`,bx+4,by-44);
+            c.textAlign='right';c.fillStyle='#e5e5e9';c.fillText(`${u.ap} AP`,bx+bw-4,by-44);
+            c.textAlign='left';c.font='600 14px sans-serif';c.fillStyle='#cfd6dc';
+            info.slice(0,2).forEach((line,i)=>c.fillText(line,bx+4,by-24+i*16));
+            c.shadowBlur=0;
+        }
         this.barTex.needsUpdate = true;
     }
+    /** Open the status card for a moment (selection, reload, gadget choice). */
+    flashStatus(ms=1800){this.detailUntil=performance.now()+ms;this.drawBar();clearTimeout(this.detailTimer);this.detailTimer=setTimeout(()=>this.drawBar(),ms+30);}
     update(dt, yaw, camera = this.scene.camera) {
         this.group.visible = this.visibilityRequested !== false && unitBelowCut(this.unit.z, this.scene.cutLevel);
         this.breathTime=(this.breathTime||0)+dt;
         // Screen-facing art retains its drawn proportions; the transparent foot baseline stays at local zero.
         // Only the sprite tilts. Ground rings, collision position and elevation cues stay on the world grid.
-        if(this.model){this.model.update(this.pos,dt);this.bar.position.set(0,this.spriteHeight+.25,0);}
+        if(this.model){this.model.update(this.pos,dt);this.bar.position.set(0,this.spriteHeight+.47,0);}
         else if(camera) {
             this.sprite.quaternion.copy(camera.quaternion);
-            if(this.swayEnabled!==false){this.sprite.rotateZ(Math.sin(this.breathTime*1.7+this.id.length)*.004);this.sprite.position.x=Math.sin(this.breathTime*1.3)*.008;}else this.sprite.position.x=0;
+            this.sprite.position.x=0;   // PLAN-11: no idle breathing sway on the field sprites (it read as jitter)
             this.depthSlope.value=billboardDepthSlope(camera);
             this.billboardUp.set(0,1,0).applyQuaternion(camera.quaternion);
-            this.bar.position.copy(this.billboardUp).multiplyScalar(this.spriteHeight+.18);
+            this.bar.position.copy(this.billboardUp).multiplyScalar(this.spriteHeight+.4);
         } else this.sprite.rotation.y=yaw;
         this.animator.setScreenAngle(Math.atan2(this.facingVec[0], this.facingVec[1]) - yaw);
         this.animator.update(dt);

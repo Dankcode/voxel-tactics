@@ -1,12 +1,14 @@
 import { FORMATIONS } from '../../shared/content/formations.js';
 import { TacticalMarks } from './render/TacticalMarks.js';
+import { SightingMarks } from './render/SightingMarks.js';
 import { updateReticle } from './ui/AimReticle.js';
 import { AimController, aimTau, swayDegrees, aimDelta } from './ui/AimController.js';
 import { AimPointer } from './ui/AimPointer.js';
-import { floorCutLevels, zoomCutLevel } from './render/FloorCutaway.js';
+import { floorCutLevels, zoomCutLevel, unitCutLevel } from './render/FloorCutaway.js';
 import { BuildingView, BUILDING_VIEWS } from './render/BuildingView.js';
 import { pickVisibleTile, pickReachableAlongRay } from './render/TilePicking.js';
 import { footprint } from '../../shared/battle/IntelOps.js';
+import { drapeFootprint } from '../../shared/battle/Strikes.js';
 import { InteriorVisibility } from './render/InteriorVisibility.js';
 import { battleReport } from '../../shared/session/BattleReport.js';
 import { saveReport } from './ui/TestGroundStore.js';
@@ -42,11 +44,12 @@ import { reasonText } from './ui/Reasons.js';
 import { castRay } from '../../shared/voxel/Raycast.js';
 import { MAT, AIR, materialById } from '../../shared/voxel/Materials.js';
 import { nodeKey, pathTo } from '../../shared/world/PathSearch.js';
-import { estimateShot, partCentre, chooseMuzzle, occupiedBy } from '../../shared/battle/Ballistics.js';
+import { estimateShot, partCentre, chooseMuzzle, occupiedBy, resolveAimPoint, aimedUnit, stickyAim } from '../../shared/battle/Ballistics.js';
 import { coverAgainst, COVER } from '../../shared/voxel/Cover.js';
 import { decide, formationIntents, aiOrder } from '../../shared/battle/Ai.js';
 import { alive } from '../../shared/battle/Units.js';
 import { WEAPONS, THROWABLES } from '../../shared/content/weapons.js';
+import { reserveAmmo } from '../../shared/inventory/Equipment.js';
 import { ABILITIES } from '../../shared/content/units.js';
 
 const PART_KEYS = { z: 'head', x: 'torso', c: 'armL', v: 'armR', g: 'legs' };
@@ -72,7 +75,7 @@ export function wearTint(mission) {
 export class Game {
     constructor({ canvas, hudRoot, cutinRoot, floatRoot, onExit, options = {} }) {
         let savedOptions={};try{savedOptions=JSON.parse(localStorage.getItem('tactics-settings')||'{}');}catch{}
-        this.options = { soundVolume:0.65,turnSpeed:1,rotateSpeed:1,aimSensitivity:0.5,aimSway:true,aimInertia:true,showEnemyBars:true,confirmMoves:false,autoEndTurn: false, autoNext: true, followCamera: true, edgeScroll: true, buildingView:'auto', ...savedOptions, ...options };
+        this.options = { soundVolume:0.65,turnSpeed:1,rotateSpeed:1,aimSensitivity:0.5,aimSway:true,showEnemyBars:true,confirmMoves:false,autoEndTurn: false, autoNext: true, followCamera: true, edgeScroll: true, buildingView:'auto', ...savedOptions, ...options };
         this.audio = new SoundPlayer({ volume: this.options.soundVolume });
         this.scene = new Scene(canvas);
         this.library = new MaterialLibrary(this.scene.renderer, this.scene.clipping);
@@ -80,13 +83,16 @@ export class Game {
         this.libraryReady = this.library.load().then(() => this.kit.load());
         this.overlays = new Overlays(this.scene);
         this.tacticalMarks=new TacticalMarks(this.scene);
+        this.sightings=new SightingMarks(this.scene);   // PLAN-11: spotted flashes and last-seen markers
         this.lanterns = new LanternLights(this.scene);
         this.fx = new Fx(this.scene, floatRoot);
         this.cameraDirector = new CameraDirector(this.scene);
         this.aim = new AimController();
         this.cutins = new CutInDirector(cutinRoot, this.cameraDirector);
-        // Leaving the shoulder view takes the aiming back shot with it.
+        this.cutins.unitView = id => this.views.get(id);
+        // Leaving aim mode restores the ordinary field sprite.
         this.cameraDirector.onEnd = () => this.cutins.endAim();
+        this.cameraDirector.xray = cells => this.voxelView?.setXray(cells);   // PLAN-10 interior aim cutaway
         this.player = new EventPlayer(this);this.player.speed=this.options.turnSpeed;
         this.hud = new Hud(hudRoot, this);
         this.debug = new DebugTools(this, hudRoot);
@@ -110,7 +116,7 @@ export class Game {
         this.session = session;
         this.startedAt = performance.now();
         this.battle = session.battle;
-        this.voxelView?.dispose();this.tacticalMarks.clear();
+        this.voxelView?.dispose();this.tacticalMarks.clear();this.sightings.clear();
         for (const v of this.views.values()) v.dispose();
         this.views.clear();
         this.overlays.clearRange(); this.overlays.clearPath(); this.overlays.clearAim(); this.overlays.clearDebugLayer();
@@ -171,6 +177,7 @@ export class Game {
     async addView(u) {
         if (this.views.has(u.id)) return this.views.get(u.id);
         const v = new UnitView(this.scene, u, await loadCharacterArt(u.art),this.battle.store);
+        v.statusLines = x => this.statusLines(x);
         this.views.set(u.id, v);
         return v;
     }
@@ -188,6 +195,7 @@ export class Game {
         this.cameraDirector.update(dt);
         this.scene.rig.rotationSpeed=this.options.rotateSpeed;
         this.tacticalMarks.update(this.battle,this.cutLevel,this.time,this.selected);
+        this.sightings.update(this,this.time,dt);
         if(this.battle)updateReticle(this);
         const cine = this.cameraDirector.active;
         for (const v of this.views.values()) {
@@ -260,7 +268,30 @@ export class Game {
         this.views.get(id)?.setSelected(true);
         this.setMode({ kind: 'move' });
         this.focusUnit(u, !snap);
-        if (!this.levelLocked) this.applyZoomCut();
+        this.focusFloor(u);
+        this.views.get(id)?.flashStatus?.();   // PLAN-11: HP / ammo / gadgets for a moment
+    }
+    /** PLAN-11: the two short lines of the selected soldier's status card (weapon rounds, spare mags, gadgets). */
+    statusLines(u) {
+        const w = WEAPONS[u.weapon], lines = [];
+        if (w?.kind === 'ballistic') lines.push(`${w.name}  ${u.ammo[w.id] ?? 0}/${w.ammo}${(() => { try { const r = reserveAmmo(u, w); return r ? `  +${r}` : ''; } catch { return ''; } })()}`);
+        else if (w) lines.push(w.name);
+        const items = Object.entries(u.items || {}).filter(([id, n]) => n > 0 && THROWABLES[id]).map(([id, n]) => `${THROWABLES[id].short || THROWABLES[id].name.split(' ')[0]} ${n}`);
+        if (items.length) lines.push(items.join(' · '));
+        return lines;
+    }
+    /**
+     * PLAN-10: show the storey a unit stands on (Tab, selection, targeting, enemy activity). Indoors and on upper
+     * levels the cut follows the unit; outdoors at street level the zoom keeps deciding. Exterior view is respected.
+     */
+    focusFloor(...units) {
+        if (!this.battle?.mission) return;
+        if (this.options.buildingView === 'exterior') { if (!this.levelLocked) this.applyZoomCut(); return; }
+        const u = units.filter(Boolean).sort((a, b) => b.z - a.z)[0];
+        const cut = u ? unitCutLevel(this.battle.mission, u) : null;
+        if (cut === null) { if (this.levelSource === 'unit' || !this.levelLocked) { this.levelSource = null; this.applyZoomCut(); } return; }
+        this.levelLocked = true; this.levelSource = 'unit';
+        if (cut !== this.cutLevel) this.setLevel(cut);
     }
     cycleUnit(d = 1) {
         const list = this.battle.unitsOf(this.battle.activeSide === 'player' ? 'player' : this.battle.activeSide).filter(u => this.controllable(u) || u.side === 'player');
@@ -278,7 +309,8 @@ export class Game {
     setMode(m) {
         if (m.kind === 'shoot' && m.weaponId === 'handcannon' && (this.mode.kind !== 'shoot' || this.mode.weaponId !== m.weaponId)) this.audio.play('handgunClick', { volume: 0.5 });
         if (this.cameraDirector.phase === 'prepare') this.cameraDirector.end();
-        this.mode = m;this.aimDrag=null; this.targetInfo = null;this.freeAim=null;this.freeAimManual=false;this.moveConfirmation=null;this.aim.clear();this.aimStance=null;
+        this.mode = m;this.aimDrag=null;this.rawAim=null;
+        if (['throw','gadget','breach'].includes(m.kind)) this.views.get(this.selected)?.flashStatus?.(); this.targetInfo = null;this.freeAim=null;this.freeAimManual=false;this.moveConfirmation=null;this.aim.clear();this.aimStance=null;
         this.aimPointer.setEnabled(m.kind==='shoot');
         this.overlays.clearAim();
         this.overlays.clearPath();
@@ -303,7 +335,7 @@ export class Game {
     }
     setLevel(top) {
         const changed=top!==this.voxelView?.cutZ;
-        this.cutLevel=top;this.scene.setCut(top);
+        this.cutLevel=top;this.scene.setCut(top);this.cameraDirector.cutZ=top;
         this.scene.rig.minLayerHeight=top===this.battle.mission.meta.streetDatum?2:(this.battle.mission.meta.streetDatum||1)+1;
         if(top===this.battle.mission.meta.streetDatum){
             const u=this.selectedUnit(),route=this.battle.mission.meta.underground?.route,p=u&&u.z<top?u:route?.[Math.floor(route.length/2)];
@@ -343,7 +375,7 @@ export class Game {
         this.chooseFloor(levels[i]);
     }
     chooseFloor(top) {
-        this.levelLocked=true;
+        this.levelLocked=true;this.levelSource='manual';
         if(this.options.buildingView==='exterior')this.options.buildingView='auto';
         if(Number.isFinite(top)){this.scene.rig.glide=null;this.scene.rig.target.y=top-2;}
         this.setLevel(top);this.hoverPick=null;this.hoverCell=null;
@@ -355,7 +387,7 @@ export class Game {
         this.targets = this.targetsFor(u, this.mode.weaponId);
         const keep = this.targets.find(t => t.id === this.lastTargetId) || this.targets[0];
         if (keep) this.aimAt(u, keep, 'torso', { frame: true });
-        else {this.freeAim={x:u.x+.5,y:u.y-8,h:u.z+2.1};this.aim.snap(this.freeAim);this.freeAimManual=true;this.frameAim(u,this.freeAim);}
+        else {this.freeAim={x:u.x+.5,y:u.y-8,h:u.z+2.1};this.aim.snap(this.freeAim);this.freeAimManual=true;this.frameAim(u,this.freeAim);this.focusFloor(u);}
         if(navigator.userActivation?.isActive&&!this.aimPointer.unavailable)this.aimPointer.request();
     }
     cycleTarget(d = 1) {
@@ -386,6 +418,7 @@ export class Game {
         if (!r.ok) { this.hud.toast(`Can't: ${reasonText(r.reason)}`, 'warn'); this.refreshRange(); return r; }
         this.player.enqueue(r.events || []);
         await this.player.whenIdle();
+        if (partial.type === 'reload' && u) this.views.get(u.id)?.flashStatus?.();
         if(['inventoryMove','equipCargo','setFireMode','mark','formation_plan'].includes(partial.type)){this.refreshRange();this.hud.refresh();return r;}
         if (this.battle.outcome) return r;
         if (u && alive(u) && this.mode.kind === 'shoot' && partial.type === 'shoot' && u.ap >= this.battle.shotAp(u, WEAPONS[this.mode.weaponId])) this.setMode({ kind: 'shoot', weaponId: this.mode.weaponId });
@@ -497,7 +530,7 @@ export class Game {
                         if (this.debug.paused) await this.debug.waitStep();
                         const intent = decide(this.battle, u, { formations: side === 'player' });
                         if (!intent) break;
-                        if (!looked && this.options.followCamera && (u.side === 'player' || this.isVisible(u))) { this.focusUnit(u); looked = true; await wait(220 / this.player.speed); }
+                        if (!looked && this.options.followCamera && (u.side === 'player' || this.isVisible(u))) { this.focusUnit(u); this.focusFloor(u); looked = true; await wait(220 / this.player.speed); }
                         const r = await this.session.submit(intent);
                         if (!r.ok) break;
                         this.player.enqueue(r.events);
@@ -589,6 +622,8 @@ export class Game {
             const px = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
             if(this.mode.kind==='shoot'&&this.cameraDirector.phase==='prepare'){this.cameraDirector.zoomAim(Math.exp(Math.max(-1,Math.min(1,px*.0015))));return;}
             this.scene.zoom(Math.exp(Math.max(-1, Math.min(1, px * 0.0015))));
+            // A unit-driven floor holds while zooming in; pulling out to the roof view hands the cut back to the zoom.
+            if(this.levelSource==='unit'&&this.scene.rig.distanceTarget>=36){this.levelSource=null;this.levelLocked=false;}
             if(!this.levelLocked)this.applyZoomCut();
         }, { passive: false });
         window.addEventListener('keydown', e => this.onKey(e));
@@ -646,7 +681,7 @@ export class Game {
             case 'tab': e.preventDefault(); if (this.mode.kind === 'shoot') this.cycleTarget(e.shiftKey ? -1 : 1); else this.cycleUnit(e.shiftKey ? -1 : 1); break;
             case 'enter': case ' ': e.preventDefault(); if (this.mode.kind === 'shoot') this.confirmFire(); else if (key === 'enter') this.endTurn(); break;
             case 'backspace': case 'escape': this.cancel(); break;
-            case 'h': case 'home': e.preventDefault(); this.focusUnit(u); break;
+            case 'h': case 'home': e.preventDefault(); this.focusUnit(u); this.focusFloor(u); break;
             case 'i': this.aimPointer.release();this.hud.equipment.toggle(); break;
             case 'v': this.scene.toggleProjection(); this.hud.toast(this.scene.projection === 'ortho' ? 'Camera: isometric' : 'Camera: perspective'); break;
             case 'o': this.setMode({ kind: 'overwatch' }); break;
@@ -757,7 +792,7 @@ export class Game {
                 const a = ABILITIES[this.mode.abilityId];
                 const intent = {type:'ability', unitId:u.id, abilityId:a.id, to:this.hoverCell, targetId:unit?.id, by:'*'};
                 const reason = this.battle.validate(intent);
-                if((a.support||a.commander) && this.hoverCell)this.overlays.showSupportArea(footprint(this.battle,a.id,this.hoverCell,u),!reason);   // the whole strike path
+                if((a.support||a.commander) && this.hoverCell)this.overlays.showSupportArea(drapeFootprint(this.battle.store,footprint(this.battle,a.id,this.hoverCell,u),this.cutLevel),!reason);   // the whole strike area, on the floor in view
                 else this.overlays.showAbilityTile(a.targeting === 'ally' ? unit : this.hoverCell, !reason);
                 this.hud.cursorTip(e.clientX,e.clientY, reason ? `${a.name} · ${reasonText(reason)}` : `${a.name} · click to cast · ${a.ap} AP / ${a.wp} WP`);
                 break;
@@ -789,25 +824,25 @@ export class Game {
             const cover = coverAgainst(this.battle.store, target.x, target.y, target.z, u.x, u.y, u.z);
             this.targetInfo = { key, target, part, byPart, anyHit: any, blocked, friendly, spread, mods, muzzle, lean, distance, cover, flanked: cover === COVER.NONE, ap: this.mode.suppress ? ABILITIES.suppress.ap : this.battle.shotAp(u, w), inRange: distance <= weaponBuild(u,w).maxRange };
         }
-        // Target selection re-frames and zooms; body-part changes and free aim retain the aim spring.
-        const anchor=partCentre(target,part);this.freeAimManual=false;this.lastTargetId=target.id;
+        // Target selection re-frames and zooms; body-part changes and free aim keep the current framing.
+        const anchor=partCentre(target,part);this.freeAimManual=false;this.rawAim=null;this.lastTargetId=target.id;
         if(frame||!this.aim.current||this.cameraDirector.phase!=='prepare'){this.aim.snap(anchor);this.freeAim={...anchor};this.frameAim(u,anchor);}
         else this.aim.setTarget(anchor);
         if(frame)this.cameraDirector.focusTarget(new THREE.Vector3(anchor.x,anchor.h,anchor.y));
         this.targetInfo.part = part;
         this.overlays.showCone(this.targetInfo.muzzle, partCentre(target, part), this.targetInfo.spread);
         if (frame && this.options.followCamera) this.scene.glideTo(new THREE.Vector3((u.x + target.x) / 2 + 0.5, (u.z + target.z) / 2 + 1, (u.y + target.y) / 2 + 0.5), 4);
+        if (frame) this.focusFloor(u, target);
         this.hud.renderTarget();
     }
     /**
-     * PLAN-07: advance the aim spring, then make the shoulder camera and the shooter's back-view sprite follow the
-     * current aim point (the shot fires at exactly this point).
+     * Update the direct aim point and shoulder camera. The character stays on its world cell.
      */
     stepAim(dt){
         const u=this.selectedUnit();
         if(!u||this.mode.kind!=='shoot'||!this.aim.current)return;
-        const w=WEAPONS[this.mode.weaponId],origin={x:u.x+.5,y:u.y+.5,h:u.z+2.35};
-        const p=this.aim.step(dt,{tau:aimTau(u,w),sway:this.options.aimSway?swayDegrees(u):0,origin,inertia:this.options.aimInertia!==false});
+        const w=WEAPONS[this.mode.weaponId],origin=this.aimOrigin(u);
+        const p=this.aim.step(dt,{tau:aimTau(u,w),sway:this.options.aimSway?swayDegrees(u):0,origin,inertia:false});
         if(!p)return;
         this.freeAim=p;
         // Blocked angles: the shot steps out to a side tile (shared chooseMuzzle); the shoulder camera and the reticle
@@ -820,14 +855,26 @@ export class Game {
         }
         this.views.get(u.id)?.face(p.x-origin.x,p.y-origin.y);
         if(this.cameraDirector.phase==='prepare')this.cameraDirector.track(new THREE.Vector3(p.x,p.h,p.y),dt);
+        // PLAN-10: the aim line and cone follow the live aim from the muzzle the shot will actually leave from.
+        this.coneT=(this.coneT||0)+dt;
+        const m=this.aimStance?.muzzle,key=m&&`${aimStanceKey(m)}:${p.x.toFixed(1)},${p.y.toFixed(1)},${p.h.toFixed(1)}`;
+        if(m&&key!==this.coneKey&&this.coneT>=0.06){
+            this.coneKey=key;this.coneT=0;
+            const t=this.aimTargetNear(p),spread=this.battle.spreadFor(u,w,p,{target:t}).spread;
+            this.overlays.showCone(m,p,spread);
+            if(this.targetInfo)this.targetInfo.spread=spread;
+        }
     }
+    /** The shot's origin for aiming: the current stance muzzle (lean or step-out), else the shoulder on the unit's tile. */
+    aimOrigin(u){const m=this.aimStance?.unitId===u.id?this.aimStance.muzzle:null;return m?{x:m.x,y:m.y,h:m.h}:{x:u.x+.5,y:u.y+.5,h:u.z+2.35};}
+    /** The visible hostile whose body the aim point sits on (for target-dependent spread: smoke, darkness, height). */
+    aimTargetNear(p){const u=this.selectedUnit();return u&&p?aimedUnit(this.battle,u,p,t=>this.isVisible(t)):null;}
     /** Where a shot at `p` would leave from (lean or step-out), as the battle will resolve it. */
     aimMuzzle(u,p){return chooseMuzzle(this.battle.store,u,p,{occupied:occupiedBy(this.battle,u)});}
     /**
      * Frame the aiming shoulder camera for a shot at `p`: from the step-out tile when the angle is blocked, so the view
      * (and the reticle) look past the wall at the target, as in XCOM 2. The camera keeps the same shoulder and the
-     * back shot stays where it is; only the aim direction changes. The side is passed to the back shot so a future
-     * left-side aiming sprite can be shown.
+     * character stays on its occupied cell. Its world sprite flips toward the reticle.
      */
     frameAim(u,p,m=this.aimMuzzle(u,p)){
         const side=m.side||'right',o=m.step?new THREE.Vector3(m.step.x+.5,u.z+1,m.step.y+.5):new THREE.Vector3(u.x+.5,u.z+1,u.y+.5);
@@ -838,9 +885,21 @@ export class Game {
     /** Pointer-lock deltas never stop at the browser edge or feed back through the moving camera. */
     moveAim(dx,dy){
         const u=this.selectedUnit();if(!u||(!dx&&!dy))return;
-        const focus=this.aim.target||this.freeAim;if(!focus)return;
-        const step=aimDelta(focus,{x:u.x+.5,y:u.y+.5,h:u.z+2.35},dx,dy,{fov:this.cameraDirector.cam.fov,height:this.scene.renderer.domElement.clientHeight||innerHeight,sensitivity:this.options.aimSensitivity??.5});
-        if(step){this.aim.setTarget(step);this.freeAimManual=true;}
+        // The raw (unsnapped) aim keeps moving with the mouse, so the reticle can leave a sticky target again.
+        const focus=this.rawAim||this.aim.target||this.freeAim;if(!focus)return;
+        const origin=this.aimOrigin(u);
+        const step=aimDelta(focus,origin,dx,dy,{fov:this.cameraDirector.cam.fov,height:this.scene.renderer.domElement.clientHeight||innerHeight,sensitivity:this.options.aimSensitivity??.5});
+        // PLAN-10: put the aim on whatever the crosshair line meets, so near and far targets line up with the shot.
+        if(step){
+            const w=WEAPONS[this.mode.weaponId]?weaponBuild(u,WEAPONS[this.mode.weaponId]):null;
+            // PLAN-11: the reticle sticks to a visible enemy's body part when the line passes close to it, so it settles
+            // on the enemy rather than the wall or cover beside them; otherwise it lands on whatever the line meets.
+            this.rawAim=step;
+            const stick=this.battle?.store&&this.options.aimAssist!==false?stickyAim(this.battle,u,origin,step,{filter:t=>this.isVisible(t)}):null;
+            if(stick){this.aim.setTarget(stick.point);this.lastTargetId=stick.unit.id;}
+            else this.aim.setTarget(this.battle?.store?resolveAimPoint(this.battle,u,origin,step,(w?.maxRange??40)+12):step);
+            this.freeAimManual=true;
+        }
     }
     captureAim(){if(this.mode.kind==='shoot'&&!this.hud.equipment.open)this.aimPointer.request();}
     onClick(e) {

@@ -47,8 +47,10 @@ export class EventPlayer {
             case 'cutin': {
                 const u = g.battle.unit(e.unitId);
                 const group = (e.group || [e.unitId]).map(id => g.battle.unit(id)).filter(Boolean);
-                if (!group.length || (u.side === 'enemy' && !g.isVisible(u))) break;
                 const target = e.targetIds?.[0] ? g.battle.unit(e.targetIds[0]) : null;
+                // PLAN-10: a squad member being targeted pulls the camera (and the storey cut) to them.
+                if (u && u.side !== 'player' && target?.side === 'player' && g.options.followCamera) { g.focusUnit(target); g.focusFloor(target, g.isVisible(u) ? u : null); }
+                if (!group.length || (u.side === 'enemy' && !g.isVisible(u))) break;
                 const title = e.kind === 'breach' ? 'BREACH' : (WEAPONS[e.weaponId]?.name || THROWABLES[e.itemId]?.name || ABILITIES[e.abilityId]?.name || e.kind).toUpperCase();
                 // PLAN-09: NPC shots roll an XCOM-style chance to hit; show it like XCOM does.
                 const sub = e.chance != null ? `${e.chance}% to hit${target ? ` → ${target.name}` : ''}`
@@ -151,7 +153,7 @@ export class EventPlayer {
                 g.scene.scene.remove(ball); ball.geometry.dispose(); ball.material.dispose();
                 break;
             }
-            case 'explosion': g.audio?.play(explosionSound(e, g.scene.target), { volume: 0.7 }); fx.explosion(e, e.radius, e.element); g.voxelView?.flush(); await this.d(0.15); break;
+            case 'explosion': g.audio?.play(explosionSound(e, g.scene.target), { volume: e.of > 1 ? 0.7 / Math.sqrt(e.of) : 0.7 }); fx.explosion(e, e.radius, e.element); g.voxelView?.flush(); if (!(e.of > 1) || e.salvo === e.of - 1) await this.d(0.15); break;   // an airstrike salvo goes off at once
             case 'smoke': fx.syncField(g.battle.field); break;
             case 'voxels': g.voxelView.flush(); break;
             case 'collapse': g.voxelView.flush(); fx.float(new THREE.Vector3(e.fallen?.[0]?.x ?? 0, e.fallen?.[0]?.to ?? 1, e.fallen?.[0]?.y ?? 0), 'COLLAPSE', '#ffcc66', 22); g.scene.shake = 0.6; await this.d(0.25); break;

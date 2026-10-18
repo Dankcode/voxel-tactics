@@ -214,3 +214,80 @@ test('the playstyle reads a flanking, overwatch-heavy match and the AI tunes aga
     assert.equal(sanitizeAiProfile({ traits: 'x' }), null);
     assert.equal(sanitizeAiProfile({ traits: { flanking: 7 }, matches: -3 }).traits.flanking, 1);
 });
+
+// ---------------------------------------------------------------------------------------------- PLAN-10 pursuit
+const far = (extra = {}) => arena({ squad: ['grenadier', 'marksman', 'vanguard', 'warden'],
+    players: [{ x: 22, y: 25, z: 1 }, { x: 23, y: 25, z: 1 }, { x: 24, y: 25, z: 1 }, { x: 25, y: 25, z: 1 }],
+    enemies: [{ type: 'cultist', pos: { x: 2, y: 2, z: 1 }, group: 1, alerted: true }], ...extra });
+const seenAll = b => { for (const p of b.unitsOf('player')) b.enemyIntel[p.id] = { x: p.x, y: p.y, z: p.z, round: b.round, source: 'seen' }; };
+
+test('PLAN-10: with no worthwhile shot an NPC dashes, spending its whole turn closing in', () => {
+    const b = far(); b.apply({ type: 'endTurn', side: 'player' }); seenAll(b);
+    const u = b.unit('e0'), d0 = Math.min(...b.unitsOf('player').map(p => Math.hypot(p.x - u.x, p.y - u.y)));
+    for (let k = 0; k < 6; k++) { const i = decide(b, u); if (!i) break; assert.ok(b.apply(i).ok); }
+    const d1 = Math.min(...b.unitsOf('player').map(p => Math.hypot(p.x - u.x, p.y - u.y)));
+    assert.ok(d0 - d1 >= 6, `closed ${d0.toFixed(1)} -> ${d1.toFixed(1)}`);
+    assert.ok(u.ap + u.moveOnlyAp < 1, 'the whole turn went into the dash');
+});
+
+test('PLAN-10: a healthy pod facing a bigger squad presses on over three turns; a wounded one still hides', () => {
+    const b = far(); seenAll(b);
+    const u = b.unit('e0'), dist = () => Math.min(...b.unitsOf('player').map(p => Math.hypot(p.x - u.x, p.y - u.y)));
+    const d0 = dist();
+    for (let t = 0; t < 3 && !b.outcome; t++) { b.apply({ type: 'endTurn', side: 'player' }); seenAll(b); runAiSide(b, 'enemy'); }
+    assert.ok(dist() <= d0 * 0.5, `closed to ${dist().toFixed(1)} of ${d0.toFixed(1)}`);
+});
+
+test('PLAN-10: unalerted pods patrol around their post, deterministically, and policy.patrol=false keeps them still', () => {
+    const make = () => arena({ build: st => wall(st, 0, 12, 27, 12, 6), enemies: [{ type: 'cultist', pos: { x: 10, y: 5, z: 1 }, group: 1 }, { type: 'cultist', pos: { x: 12, y: 5, z: 1 }, group: 1 }] });
+    const a = make(), c = make();
+    a.apply({ type: 'endTurn', side: 'player' }); c.apply({ type: 'endTurn', side: 'player' });
+    const i = decide(a, a.unit('e0'));
+    assert.equal(i?.type, 'move');
+    assert.ok(Math.hypot(i.to.x - 10, i.to.y - 5) <= B.aiPatrolRadius + 0.01, 'stays near its post');
+    assert.deepEqual(decide(c, c.unit('e0')), i, 'same seed, same patrol');
+    assert.equal(decide(a, a.unit('e0'), { patrol: false }), null);
+    assert.ok(!a.unit('e0').alerted);
+});
+
+test('PLAN-10: a soldier against a full-cover corner sees and shoots past it from the step-out tile', () => {
+    const b = arena({ build: st => wall(st, 5, 0, 5, 9, 3), players: [{ x: 4, y: 9, z: 1 }, { x: 1, y: 20, z: 1 }],
+        enemies: [{ type: 'cultist', pos: { x: 16, y: 10, z: 1 }, group: 1, alerted: true }] });
+    const p = b.unit('p0'), e = b.unit('e0');
+    assert.equal(b.sightLine(b.eye(p), b.chest(e)), false, 'the wall blocks the straight line');
+    assert.ok(b.peekEyes(p, e).length, 'tucked into full cover: may step out');
+    assert.ok(b.sees(p, e), 'sees round the corner');
+    const r = b.apply({ type: 'shoot', unitId: p.id, weaponId: p.weapon, aim: { unitId: e.id, part: 'torso' } });
+    assert.ok(r.ok, r.reason);
+    const shot = r.events.find(x => x.t === 'shot');
+    assert.ok(shot.muzzle.step || shot.muzzle.lean, 'fired leaning or stepping out past the corner');
+    assert.deepEqual([p.x, p.y], [4, 9], 'and stepped back');
+    // In the open there is no peeking.
+    const open = arena({ players: [{ x: 4, y: 9, z: 1 }, { x: 1, y: 20, z: 1 }] });
+    assert.deepEqual(open.peekEyes(open.unit('p0'), open.unit('e0')), []);
+});
+
+test('PLAN-10: free aim lands on what the crosshair line meets, so leaning out never throws the shot off by depth', async () => {
+    const { resolveAimPoint, partCentre, aimedUnit } = await import('./Ballistics.js');
+    const b = arena({ players: [{ x: 10, y: 20, z: 1 }, { x: 1, y: 26, z: 1 }], enemies: [{ type: 'cultist', pos: { x: 10, y: 5, z: 1 }, group: 1, alerted: true }] });
+    const p = b.unit('p0'), e = b.unit('e0'), c = partCentre(e, 'torso');
+    const lean = { x: p.x + 0.5 + 0.55, y: p.y + 0.5, h: p.z + 2.35 };                 // leaning right out of cover
+    const dir = [c.x - lean.x, c.y - lean.y, c.h - lean.h], L = Math.hypot(...dir);
+    const near = { x: lean.x + dir[0] / L * 5, y: lean.y + dir[1] / L * 5, h: lean.h + dir[2] / L * 5 };   // reticle on him, point 5 m out
+    const r = resolveAimPoint(b, p, lean, near, 60);
+    assert.ok(Math.hypot(r.x - c.x, r.y - c.y) < 0.8, `resolved onto the target (${r.x.toFixed(2)},${r.y.toFixed(2)})`);
+    const cross = ((r.x - lean.x) * dir[1] - (r.y - lean.y) * dir[0]) / L;
+    assert.ok(Math.abs(cross) < 0.05, `stays on the crosshair line (off by ${cross.toFixed(3)} m)`);
+    assert.equal(aimedUnit(b, p, r)?.id, 'e0', 'point shots on a body use that target\'s modifiers');
+});
+
+test('PLAN-11: the free-aim reticle sticks to a nearby enemy body part, never through a wall', async () => {
+    const { stickyAim, partCentre } = await import('./Ballistics.js');
+    const b = arena({ players: [{ x: 10, y: 20, z: 1 }, { x: 1, y: 26, z: 1 }], enemies: [{ type: 'cultist', pos: { x: 10, y: 8, z: 1 }, group: 1, alerted: true }] });
+    const p = b.unit('p0'), e = b.unit('e0'), o = { x: p.x + 0.5, y: p.y + 0.5, h: p.z + 2.35 }, c = partCentre(e, 'torso');
+    const near = { x: c.x + 0.45, y: c.y + 0.3, h: c.h + 0.1 };                         // just beside him
+    assert.equal(stickyAim(b, p, o, near)?.unit.id, 'e0');
+    assert.equal(stickyAim(b, p, o, { x: c.x + 4, y: c.y, h: c.h }), null, 'far off: free aim');
+    const walled = arena({ build: st => wall(st, 6, 12, 14, 12, 4), players: [{ x: 10, y: 20, z: 1 }, { x: 1, y: 26, z: 1 }], enemies: [{ type: 'cultist', pos: { x: 10, y: 8, z: 1 }, group: 1, alerted: true }] });
+    assert.equal(stickyAim(walled, walled.unit('p0'), o, near), null, 'no magnet through a wall');
+});

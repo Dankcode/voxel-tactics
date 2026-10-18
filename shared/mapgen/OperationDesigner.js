@@ -39,7 +39,8 @@ export function designProgrammes({ buildings, target, plot, seed, objectiveKind 
             const seen = new Map();
             const rooms = kinds.map((k, i) => {
                 const kind = k.replace('*', ''), n = (seen.get(kind) || 0) + 1; seen.set(kind, n);
-                return { id: n > 1 ? `${kind}-${n}` : kind, kind, areaShare: i === 0 ? 0.4 : 0.6 / Math.max(1, kinds.length - 1), gameplay: !k.endsWith('*') };
+                // PLAN-10: service rooms (WC, plant room) are ordinary small rooms with a real door and windows, never sealed.
+                return { id: n > 1 ? `${kind}-${n}` : kind, kind, areaShare: i === 0 ? 0.4 : 0.6 / Math.max(1, kinds.length - 1), gameplay: true, service: k.endsWith('*') };
             });
             programs.push({ building: b.id, floor, rooms, adjacencies: [] });
         }

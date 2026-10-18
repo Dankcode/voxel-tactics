@@ -24,13 +24,13 @@ import { AGENT_PROFILES } from '../world/TraversalRules.js';
 import { MAT, AIR, materialById } from '../voxel/Materials.js';
 import { castRay, fitArc, blocksSight } from '../voxel/Raycast.js';
 import { damageVoxel, explodeVoxels, settleUnsupported, groundFloorLevels, scorchBlast } from '../voxel/Destruction.js';
-import { coverAgainst, COVER } from '../voxel/Cover.js';
+import { coverAgainst, coverAt, COVER } from '../voxel/Cover.js';
 import { ElementField, elementStatusesFor, STATUS_DEFS } from '../elements/Elements.js';
 import { WEAPONS, THROWABLES } from '../content/weapons.js';
 import { ABILITIES } from '../content/units.js';
 import { B } from '../content/balance.js';
 import { createUnit, alive, hasStatus, addStatus, removeStatus, accuracyMult, mobilityPerAp, partArmor, facingToward, FACING_VEC, EYE, CHEST } from './Units.js';
-import { estimateShot, chooseMuzzle, occupiedBy, sampleCone, traceProjectile, aimPointOf, partCentre } from './Ballistics.js';
+import { estimateShot, chooseMuzzle, occupiedBy, sampleCone, traceProjectile, aimPointOf, partCentre, stepOutTiles, aimedUnit } from './Ballistics.js';
 import { Formations } from './Formations.js';
 import { validateDebug, applyDebug } from './DebugOps.js';
 import { createObjective, inZone, extractionOpen } from './Objectives.js';
@@ -84,6 +84,7 @@ export class Battle {
         });
         (enemies || mission.spawns.enemy).forEach((e, i) => {
             this.units.push(createUnit(e.type, 'enemy', e.pos, `e${i}`, { group: e.group ?? 0, facing: e.facing || 's', extra: e.alerted ? { alerted: true, scattered: true } : undefined }));
+            this.units.at(-1).home = { x: e.pos.x, y: e.pos.y, z: e.pos.z };   // PLAN-10 patrol post
         });
         for(const u of [...this.units])if(WALKERS[u.type]){
             // A monster that cannot stand anywhere near its spawn is left out rather than failing the mission.
@@ -111,8 +112,24 @@ export class Battle {
     }
     sees(a, b) {
         if (this.distance(a, b) > B.sightRange) return false;
-        const e = this.eye(a);
-        return this.sightLine(e, { x: b.x + 0.5, y: b.y + 0.5, h: b.z + 1 + 1.5 }) || this.sightLine(e, this.chest(b));
+        const head = { x: b.x + 0.5, y: b.y + 0.5, h: b.z + 1 + 1.5 }, chest = this.chest(b);
+        const look = e => this.sightLine(e, head) || this.sightLine(e, chest);
+        return look(this.eye(a)) || this.peekEyes(a, b).some(look);
+    }
+    /**
+     * PLAN-10, XCOM 2 / Phoenix Point step-out: a soldier tucked against full cover sees round its edge from the free
+     * side tile it would step out to (the same tiles `chooseMuzzle` fires from), so targets past a full-cover corner
+     * can be seen, selected and shot. Walkers and units in the open do not peek.
+     */
+    peekEyes(a, b) {
+        if (WALKERS[a.type] || !alive(a)) return [];
+        // Stepping out never reveals the inside of a room the squad has not opened yet (breaching does that).
+        if (a.side === 'player') { const r = this.roomOf(b); if (r >= 0 && r !== this.roomOf(a) && !this.revealedRooms?.has(r)) return []; }
+        const c = coverAt(this.store, a.x, a.y, a.z);
+        if (!Object.values(c).some(v => v === COVER.FULL)) return [];
+        const eye = (WALKERS[a.type] ? 0 : EYE);
+        return stepOutTiles(this.store, a, { x: b.x + 0.5, y: b.y + 0.5 }, { occupied: occupiedBy(this, a) }).slice(0, 2)
+            .map(t => ({ x: t.x + 0.5, y: t.y + 0.5, h: t.z + 1 + eye }));
     }
     visibleEnemies(u) { return this.enemiesOf(u).filter(o => this.sees(u, o)); }
     /** Enemies of `side` that any unit of `side` can see (fog of war). */
@@ -728,7 +745,7 @@ export class Battle {
         const target = aim.unitId ? this.unit(aim.unitId) : null;
         const aimPoint = aimPointOf(this, aim);
         u.facing = facingToward(aimPoint.x - u.x - 0.5, aimPoint.y - u.y - 0.5);
-        const { spread } = this.spreadFor(u, w, aimPoint, { reaction, breach, target });
+        const { spread } = this.spreadFor(u, w, aimPoint, { reaction, breach, target: target || (aim.point ? aimedUnit(this, u, aim.point) : null) });
         // PLAN-09: overwatch reactions and NPC shots roll an XCOM-style chance to hit per round; a hit flies at a visible
         // part of the target, a miss is thrown wide past it and lands in cover or walls (so misses still chew up cover).
         const hc = target && (reaction || u.side === 'enemy') ? hitChance(this, u, target, w, { reaction, breach }) : null;

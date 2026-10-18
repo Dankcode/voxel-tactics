@@ -42,5 +42,49 @@
         }
       }
     }
+  },
+  "world-aim": {
+    "trigger": {
+      "palmCoverage": 1.0,
+      "palmDistancePixels": 0.636834422183041,
+      "wristCoverage": 1.0,
+      "wristDistancePixels": 0.404511820487231,
+      "socketIsOpen": true,
+      "families": {
+        "rifle": {
+          "wristCoverage": 1.0,
+          "wristDistancePixels": 0.40451182048723094
+        },
+        "sniper": {
+          "wristCoverage": 1.0,
+          "wristDistancePixels": 0.40451182048723094
+        },
+        "shotgun": {
+          "wristCoverage": 1.0,
+          "wristDistancePixels": 0.40451182048723094
+        }
+      }
+    },
+    "support": {
+      "palmCoverage": 0.0,
+      "palmDistancePixels": 3.447493302652358,
+      "wristCoverage": 1.0,
+      "wristDistancePixels": 0.49980538975805716,
+      "socketIsOpen": true,
+      "families": {
+        "rifle": {
+          "wristCoverage": 1.0,
+          "wristDistancePixels": 0.49980538975805716
+        },
+        "sniper": {
+          "wristCoverage": 1.0,
+          "wristDistancePixels": 0.49980538975805716
+        },
+        "shotgun": {
+          "wristCoverage": 1.0,
+          "wristDistancePixels": 0.49980538975805716
+        }
+      }
+    }
   }
 }

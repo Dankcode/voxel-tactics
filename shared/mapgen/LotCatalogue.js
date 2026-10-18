@@ -89,21 +89,25 @@ export const BAY_PIECES = Object.freeze({
 
 /** Bay piece pools per lot kind (or road part): piece base → weight. Facing variants share their base's weight. */
 export const PIECE_POOLS = Object.freeze({
-    sidewalk: { open: 9, planter: 1.1, bench: 0.6, bins: 0.6, lamp: 0.9, vending: 0.35, bus_stop: 0.25, tree: 0.5 },
-    lane: { open: 8, car: 1.3, jersey: 0.35 },
-    parking: { open: 4, car: 2.4, planter: 0.4, lamp: 0.3, jersey: 0.3 },
+    // PLAN-10: no crates, pallets or drums outdoors, and nothing standing in the carriageway but parked cars.
+    // Cover comes from what the place is (planters, walls, hedges, fences, bins, dumpsters, cars, containers).
+    sidewalk: { open: 9, planter: 1.1, bench: 0.6, bins: 0.3, lamp: 0.9, vending: 0.35, bus_stop: 0.25, tree: 0.5 },
+    lane: { open: 8, car: 1.3 },
+    parking: { open: 4, car: 2.4, planter: 0.4, lamp: 0.3 },
     plaza: { open: 6, planter: 1.4, bench: 1, tree: 0.9, lamp: 0.5, vending: 0.4, low_wall: 0.6 },
     park: { open: 5, tree: 1.6, hedge: 1.3, bench: 0.9, low_wall: 0.6 },
-    vacant: { open: 6, rubble: 1, chainlink: 0.7, drums: 0.5, pallets: 0.6, dumpster: 0.4, jersey: 0.5 },
-    containers: { open: 4, container: 1.6, crates: 1.2, pallets: 0.8, drums: 0.5 },
-    depot: { open: 5, pallets: 1.6, crates: 1.6, drums: 0.7, dumpster: 0.5, jersey: 0.25 },
-    construction: { open: 5, jersey: 1.4, sandbags: 0.7, pallets: 1, chainlink: 0.8, crates: 0.6 },
+    vacant: { open: 7, rubble: 0.8, chainlink: 0.7, dumpster: 0.15, jersey: 0.4 },
+    containers: { open: 4, container: 1.6, chainlink: 0.4, jersey: 0.3 },
+    depot: { open: 7, dumpster: 0.3, jersey: 0.5, chainlink: 0.6, bins: 0.15 },
+    construction: { open: 5, jersey: 1.4, sandbags: 0.7, chainlink: 0.8, rubble: 0.6 },
     garden: { open: 5, hedge: 1.2, fence: 1, tree: 0.9, low_wall: 0.6, bench: 0.3 },
-    alley: { open: 5, dumpster: 1.4, bins: 1.2, crates: 0.6, pallets: 0.5 },
-    yard_paved: { open: 7, planter: 0.9, bins: 0.6, dumpster: 0.5, bench: 0.4, low_wall: 0.4 },
-    yard_industrial: { open: 6, pallets: 1.3, crates: 1.3, drums: 0.6, dumpster: 0.4, jersey: 0.25 },
+    alley: { open: 7, dumpster: 0.6, bins: 0.5 },
+    yard_paved: { open: 7, planter: 0.9, bins: 0.3, dumpster: 0.2, bench: 0.4, low_wall: 0.5 },
+    yard_industrial: { open: 8, dumpster: 0.25, jersey: 0.5, chainlink: 0.6, bins: 0.15 },
     yard_garden: { open: 5, hedge: 1, fence: 0.8, tree: 0.8, low_wall: 0.5 }
 });
+/** PLAN-10: piece bases never placed outdoors (random clutter). Gates.noClutter checks generated layouts for them. */
+export const CLUTTER_BASES = Object.freeze(['crates', 'pallets', 'drums']);
 
 /** Lot kinds a family may use (objective kinds excluded). */
 export function lotKindsFor(family) {

@@ -26,18 +26,6 @@ test('flat and composited parts share the same anatomical occlusion order',()=>{
  assert.ok(z('trigger-hand')<z('trigger-upper'),'near sleeve overlaps the gripping hand');
 });
 
-test('aiming passes real lag to the arm rig and leaves the torso unskewed on both shoulders',t=>{
- const original=globalThis.document;t.after(()=>{globalThis.document=original;});
- globalThis.document={querySelectorAll:()=>[]};
- for(const shoulder of ['right','left']){
-  let input;const style={},art=sideCutin(cutin,shoulder);
-  const director={aiming:{art:{cutin:art},el:{querySelector:()=>({style})},weapon:{update:p=>input=p}}};
-  CutInDirector.prototype.placeAim.call(director,{x:640,y:360},{yaw:.08,pitch:-.04});
-  assert.equal(input.yaw,shoulder==='left'?-.08:.08);assert.equal(input.pitch,-.04);
-  assert.equal(style.transform,'none','articulated parts move without skewing the body');
- }
-});
-
 test('movement uses only running; downed plays every frame once and holds the settled pose',()=>{
  assert.equal(EVENT_TO_CLIP.move,'run');assert.equal(field.clips.walk,undefined);
  const a=new SpriteAnimator(field,new THREE.Texture());a.play('run');a.update(1/6);assert.equal(a.frame,1);

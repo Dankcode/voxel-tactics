@@ -103,6 +103,9 @@ export function furnishBuilding(m, b, out, { beats = [], seed = m.seed } = {}) {
         for (const d of doors) { floorSet.add(k2(d.x, d.y)); for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) keep.add(k2(d.x + dx, d.y + dy)); }
         for (const run of out.stairs) if (run.storey === f.floor || run.storey === f.floor - 1) for (const c of [run.before, ...run.cells, run.after]) { keep.add(k2(c.x, c.y)); blocked.add(k2(c.x, c.y)); }
         for (const c of rooms.find(r => r.kind === 'hall')?.cells || []) keep.add(k2(...c));
+        // PLAN-10: ground-floor windows are vault lines, so the cell inside each one stays clear as a landing.
+        if (f.floor === 0) for (const w of out.windows.filter(w => w.storey === 0 && (w.kind === 'window' || w.kind === 'band')))
+            for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (floorSet.has(k2(w.x + dx, w.y + dy))) keep.add(k2(w.x + dx, w.y + dy));
         let parts = floorComponents(floorSet, blocked);
         for (const room of rooms) {
             if (!room.gameplay || room.kind === 'hall') continue;

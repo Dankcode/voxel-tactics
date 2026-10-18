@@ -256,3 +256,56 @@ export function estimateShot(battle, shooter, aim, { weapon, spread, samples = 9
         expectedHits: f(hit) * (weapon.projectiles || 1), distance: dist, spread, muzzle: o, lean: o.lean || null
     };
 }
+
+/**
+ * PLAN-10 free aim depth. The reticle turns about the muzzle; the aim point is then put on the first thing that line
+ * meets (a body part or a bullet-stopping voxel; glass is looked through), so the shot line, the cone and the reticle
+ * all agree with what is under the crosshair whatever its distance. Geometry within `skip` of the muzzle (the cover
+ * being leant out of) is ignored. Returns `point` unchanged when nothing is met.
+ */
+export function resolveAimPoint(battle, shooter, origin, point, maxDist = 60, { skip = 1.2 } = {}) {
+    const dv = [point.x - origin.x, point.y - origin.y, point.h - origin.h], len = Math.hypot(...dv);
+    if (len < 1e-6) return point;
+    const d = dv.map(c => c / len), start = { x: origin.x + d[0] * skip, y: origin.y + d[1] * skip, h: origin.h + d[2] * skip };
+    const res = traceProjectile(battle, start, d, Math.max(1, maxDist - skip), { ignore: shooter?.id ?? null, energy: 0 });
+    return res.kind === 'none' ? point : { x: res.point.x, y: res.point.y, h: res.point.h };
+}
+/** PLAN-10: the hostile a free-aim point sits on (torso within ~1 m), so point shots get the same target modifiers. */
+export function aimedUnit(battle, shooter, point, filter = null) {
+    let best = null, bd = 1.1;
+    for (const t of battle.units) {
+        if (!alive(t) || t.side === shooter.side || (filter && !filter(t))) continue;
+        const c = partCentre(t, 'torso'), d = Math.hypot(c.x - point.x, c.y - point.y, (c.h - point.h) * 0.6);
+        if (d < bd) { bd = d; best = t; }
+    }
+    return best;
+}
+/**
+ * PLAN-11 aim magnetism. When the free-aim line passes within a small angle (or ~0.6 m) of a hostile's torso, head or
+ * legs, return that body part's centre so the reticle settles on the enemy instead of the wall or cover beside it.
+ * The part must be reachable by a straight line from the muzzle, so magnetism never pulls a shot into a blind wall.
+ */
+export function stickyAim(battle, shooter, origin, point, { filter = null, maxDeg = 3, maxOffset = 0.6 } = {}) {
+    const dv = [point.x - origin.x, point.y - origin.y, point.h - origin.h], L = Math.hypot(...dv);
+    if (L < 1e-6) return null;
+    const d = dv.map(c => c / L);
+    let best = null;
+    for (const t of battle.units) {
+        if (!alive(t) || t.side === shooter.side || (filter && !filter(t))) continue;
+        for (const part of ['torso', 'head', 'legs']) {
+            if (t.parts?.[part]?.disabled && part !== 'torso') continue;
+            const c = partCentre(t, part), v = [c.x - origin.x, c.y - origin.y, c.h - origin.h], along = v[0] * d[0] + v[1] * d[1] + v[2] * d[2];
+            if (along <= 0.5) continue;
+            const off = Math.hypot(v[0] - d[0] * along, v[1] - d[1] * along, v[2] - d[2] * along);
+            if (off > Math.max(maxOffset, along * Math.tan(maxDeg * Math.PI / 180))) continue;
+            // Judged from the muzzle the shot would really use for that part (a lean or step-out round a corner).
+            const m = chooseMuzzle(battle.store, shooter, c, { occupied: occupiedBy(battle, shooter) });
+            const hit = castRay(battle.store, m, c, { blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile === 'block' });
+            const blocked = !!hit.hit && hit.t < hit.length - 0.35;
+            if (blocked) continue;
+            const score = off / along;
+            if (!best || score < best.score) best = { score, unit: t, part, point: c };
+        }
+    }
+    return best;
+}

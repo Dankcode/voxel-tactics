@@ -6,7 +6,8 @@ import { normalizeInventory } from '../inventory/Inventory.js';
 //
 // desc: { scenario: map id, seed, squad?: string[] | squadKey, debug?, operation?, inventories?, test? }
 // `test` is the admin test ground (custom hostile roster and mission overrides, see TestGround.js).
-import { MAPS, DEFAULT_MAP, mapById } from '../mission/Maps.js';
+import { MAPS, mapById, FIXTURE_IDS, plotForMap } from '../mission/Maps.js';
+import { PLOT_FAMILIES } from '../mapgen/PlotCatalogue.js';
 import { SQUADS, CALLSIGNS, CLASSES } from '../content/units.js';
 import { Battle } from '../battle/Battle.js';
 import { generateOperation, operationOptions } from '../mapgen/Generator.js';
@@ -15,11 +16,17 @@ import { profileForDesc } from './Playstyle.js';
 import { sanitizeTest, applyTestGround } from './TestGround.js';
 
 export const SCENARIOS = MAPS.map(({ id, name, theme, text }) => ({ id, name, theme, text }));
+/** PLAN-10: what players choose — a theme (plot family); the map itself is generated fresh from it and a seed. */
+export const THEMES = Object.freeze(Object.entries(PLOT_FAMILIES).map(([id, f]) => ({ id, name: f.theme || f.name, text: f.text })));
+/** The two test rigs still offered in the admin Test ground (not in Play). */
+export const FIXTURES = Object.freeze(SCENARIOS.filter(s => FIXTURE_IDS.includes(s.id)));
+export { plotForMap };
 /** The generated-map game mode (PLAN-04): every operation is generated from a plot family and a seed. */
 export const OPERATION_ID = 'operation';
 
 /** A known map id (or the operation mode), else the default map. Server rooms sanitise client descriptors with this. */
-export function scenarioId(id) { return id === OPERATION_ID || mapById(id) ? id : DEFAULT_MAP; }
+/** PLAN-10: an unknown or missing id falls back to the generated game (a theme), never to a fixed map. */
+export function scenarioId(id) { return id === OPERATION_ID || mapById(id) ? id : OPERATION_ID; }
 
 /** Sanitise a whole descriptor (server rooms and deep links). */
 export function sanitizeDesc(d = {}) {

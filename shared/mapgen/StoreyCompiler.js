@@ -85,6 +85,8 @@ export function compileBuilding(m,b,{roomById=id=>m.ctx.rooms.find(r=>r.id===id)
         }
         out.stairs.push({storey:s,...run});
     }
+    // PLAN-11 note: no balustrade voxels across the stair core — the middle row is the only walkway across it on upper
+    // floors (a railing there cut floors in half). The stray "second staircase" was a renderer bug (KitView stairs).
     // Parapet.
     for(let y=y0;y<y0+d;y++)for(let x=x0;x<x0+w;x++)if(x===x0||x===x0+w-1||y===y0||y===y0+d-1)store.set(x,y,top+1,WALL);
     // Uniform vertical access (PLAN-04 §5.2): 3–4 storeys get the fire-escape module, 1–2 storey flat roofs a roof ladder.
@@ -125,6 +127,8 @@ reserveFireEscape(m,f);
             for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)keepFree.add(key(dr.x+dx,dr.y+dy));
         }
         for(const run of out.stairs)if(run.storey===f.floor||run.storey===f.floor-1)for(const c of [run.before,...run.cells,run.after]){keepFree.add(key(c.x,c.y));obstacles.add(key(c.x,c.y));}
+        // PLAN-10: keep a vault landing inside every ground-floor window.
+        if(f.floor===0)for(const w of out.windows.filter(w=>w.storey===0&&(w.kind==='window'||w.kind==='band')))for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]])if(floorSet.has(key(w.x+dx,w.y+dy)))keepFree.add(key(w.x+dx,w.y+dy));
         furnish(store,{floorSet,rooms,fz:m.G+STOREY*f.floor,keepFree,obstacles,rng:createRng(hashString(`${m.id}:${m.seed}:${b.id}:${f.floor}`)),hints:ctx.hints,decor:ctx.decor,wfc:true});
     }
     out.floorCells=out.rooms.filter(r=>r.storey===0&&r.gameplay).flatMap(r=>r.cells);

@@ -22,7 +22,7 @@ import { LocalSession } from '../net/LocalSession.js';
 import { DEBUG_PROGRAMS, DEBUG_TIMES } from '../../../shared/mapgen/DebugGenerator.js';
 import { PLOT_IDS } from '../../../shared/mapgen/PlotCatalogue.js';
 import { OPERATION_OBJECTIVES, OPERATION_TIMES } from '../../../shared/mapgen/Generator.js';
-import { SCENARIOS } from '../../../shared/session/Scenarios.js';
+import { THEMES, FIXTURES, OPERATION_ID } from '../../../shared/session/Scenarios.js';
 
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const TOOLS = [
@@ -276,7 +276,7 @@ export class DebugTools {
                 <label>Time <select aria-label="Map builder time" data-v="builderTime">${DEBUG_TIMES.map(t => `<option ${t === this.builderTime ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
                 <div class="row"><button data-d="generate" ${this.builderBusy || !g.session.local ? 'disabled' : ''}>Generate map</button><button data-d="generateNext" ${this.builderBusy || !g.session.local ? 'disabled' : ''}>New layout</button></div>
                 <p role="status" class="${this.builderError ? 'bad' : 'hint'}">${esc(this.builderMessage)}</p>
-                <div class="row">${SCENARIOS.map(m => `<button data-d="map" data-arg='${JSON.stringify({ scenario: m.id })}' class="${b.mission.id === m.id ? 'on' : ''}">${esc(m.name)}</button>`).join('')}</div>
+                <div class="row">${THEMES.map(t => `<button data-d="map" data-arg='${JSON.stringify({ scenario: OPERATION_ID, operation: { plot: t.id } })}'>${esc(t.name)}</button>`).join('')}${FIXTURES.map(m => `<button data-d="map" data-arg='${JSON.stringify({ scenario: m.id })}' class="${b.mission.id === m.id ? 'on' : ''}">${esc(m.name)} (rig)</button>`).join('')}</div>
                 <h5>Map metrics ${m.pass ? '<span class="ok">PASS</span>' : '<span class="bad">gates failing</span>'}</h5>
                 <div class="metrics">cover ${pct(m.coverDensity)} · outdoor cover ${pct(m.outdoorCover)} · full ${pct(m.fullCoverShare)} · indoor ${pct(m.interiorShare)} · open square ${m.killingField} · sightline ${(m.sightlineMedian || 0).toFixed(0)} · lanes ${m.lanes} · breachable ${pct(m.breachability)} · destructible ${pct(m.destructibleCover)} · rooms ${m.rooms}</div>
                 <div class="gates">${gates}</div>

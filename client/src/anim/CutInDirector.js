@@ -11,6 +11,7 @@
 // and the rest stays clear.
 import * as THREE from 'three';
 import { SpriteWeapon, sortedSpriteLayers, spriteLayerOrder } from './SpriteWeapon.js';
+import { WorldAimSprite, worldAimSide } from './WorldAimSprite.js';
 import { PRESETS } from './CutInTimeline.js';
 import { loadCharacterArt } from '../units/UnitView.js';
 
@@ -48,45 +49,6 @@ export function projectToScreen(camera, point, view) {
     const p = point.clone().project(camera);
     return { x: (p.x + 1) * view.width / 2, y: (1 - p.y) * view.height / 2, behind: p.z > 1 };
 }
-/** Aiming layout: cropped torso art meets the viewport edge; uncropped legacy art clears the squad rail. */
-export const AIM_SHOT = Object.freeze({ heightShare: 0.46, maxWidthShare: 0.42, gap: 12, followTau: 0.32, leanPerDeg: 0.3, maxLean: 5, maxBend: 3.5, bendPerPx: 0.005,
-    // Gun swing on the static figure: rad per screen width / height of crosshair offset, and per px/s of its motion.
-    yawPerScreen: 0.16, pitchPerScreen: 0.1, yawPerVel: 0.00002, pitchPerVel: 0.000015 });
-export function aimBackshotLayout(cutin, view, railRight = 0) {
-    const aspect = (cutin.width || 512) / (cutin.height || 768);
-    let height = view.height * AIM_SHOT.heightShare, width = height * aspect;
-    const maxWidthShare = cutin.maxWidthShare || AIM_SHOT.maxWidthShare;
-    if (width > view.width * maxWidthShare) { width = view.width * maxWidthShare; height = width / aspect; }
-    const left = cutin.cropEdges?.includes('left') ? (cutin.mirror ? view.width - width : 0) : Math.max(0, railRight + AIM_SHOT.gap);
-    return { left, top: view.height - height, width, height };
-}
-/**
- * How the static figure leans toward the (lagged) crosshair: it pivots at its feet so the barrel swings toward the
- * crosshair (lean, clamped), and its upper body trails the crosshair's motion while it moves (inertia, bend).
- * lag/vel are the crosshair position and velocity after the follow spring (CSS px, px/s). Degrees out.
- */
-export function aimBackshotPose(cutin, layout, lag, vel = { x: 0, y: 0 }, neutral = null) {
-    const [u, v] = cutin.muzzle || DEFAULT_MUZZLE;
-    const pivot = { x: layout.left + layout.width / 2, y: layout.top + layout.height };
-    const muzzle = { x: layout.left + u * layout.width, y: layout.top + v * layout.height };
-    // Upright when the crosshair is at `neutral` (the screen centre in play; the barrel line by default).
-    const n = neutral || muzzle;
-    const rest = Math.atan2(n.y - pivot.y, n.x - pivot.x), want = Math.atan2(lag.y - pivot.y, lag.x - pivot.x);
-    let d = (want - rest) * 180 / Math.PI; d = ((d + 540) % 360) - 180;
-    const clamp = (x, m) => Math.max(-m, Math.min(m, x));
-    // CSS skewX(+) with a bottom origin moves the top left: a crosshair moving right leaves the upper body trailing.
-    return { lean: clamp(d * AIM_SHOT.leanPerDeg, AIM_SHOT.maxLean), bend: clamp(vel.x * AIM_SHOT.bendPerPx, AIM_SHOT.maxBend) };
-}
-/** One step of the critically damped follow spring (the slight delay behind the crosshair). */
-export function followStep(state, target, dt, tau = AIM_SHOT.followTau) {
-    if (!state.pos) { state.pos = { ...target }; state.vel = { x: 0, y: 0 }; return state; }
-    const w = 2 / tau, n = Math.max(1, Math.ceil(dt / 0.008)), h = dt / n;
-    for (let i = 0; i < n; i++) for (const c of ['x', 'y']) {
-        const a = w * w * (target[c] - state.pos[c]) - 2 * w * state.vel[c];
-        state.vel[c] += a * h; state.pos[c] += state.vel[c] * h;
-    }
-    return state;
-}
 function paintFigure(fig, art) {
     const content = document.createElement('div'); content.className = 'sprite-content';
     if (art.cutin.mirror) content.classList.add('sprite-mirrored');
@@ -111,78 +73,28 @@ export class CutInDirector {
         this.root.addEventListener('click', () => this.skip());
     }
     newTurn() { this.shownThisTurn.clear(); }
-    /**
-     * Aiming back shot: shown whenever the shoulder camera is up for aiming. No bars, caption or flash; it never takes
-     * the mouse. It stands still in the bottom-left corner; `placeAim(screenAim)` (every frame, crosshair CSS position)
-     * moves its independent arms with the aiming spring while leaving the torso fixed.
-     */
+    /** A complete aiming character at the unit's world position; no screen-edge overlay. */
     async beginAim(unit, { shoulder = 'right', weaponId = unit.weapon } = {}) {
-        const cur = this.aiming;
-        if (cur?.unitId === unit.id) {
-            if (cur.shoulder === shoulder && cur.weaponId === weaponId) { this.cameraDirector.hidden = new Set([unit.id]); return; }
-            // Same sprite on both sides unless the art has a left-side aiming sprite: nothing to rebuild.
-            if (!cur.art || !cur.hasLeft) { cur.shoulder = shoulder; this.cameraDirector.hidden = new Set([unit.id]); return; }
-        }
-        const last = this.aiming?.unitId === unit.id ? this.aiming.last : null;
+        const cur=this.aiming;
+        if(cur?.unitId===unit.id&&cur.weaponId===weaponId){cur.shoulder=shoulder;return;}
         this.endAim();
-        const token = this.aiming = { unitId: unit.id, weaponId, shoulder, el: null, art: null, last };
-        // The shooter's own world sprite never shows in the shoulder view, not even while the back shot loads.
-        this.cameraDirector.hidden = new Set([unit.id]);
-        const loaded = await loadCharacterArt(unit.art);
-        if (this.aiming !== token) return;
-        token.hasLeft = !!loaded.cutin.variants?.left;
-        // One sprite for aiming and firing: the shooting pose (mirrored for the left shoulder).
-        const art = { ...loaded, cutin: sideCutin(loaded.cutin, token.shoulder) };
-        const el = document.createElement('div');
-        el.className = 'cutin cutin-aim'; el.style.pointerEvents = 'none';
-        el.innerHTML = '<div class="figures aligned"><div class="figure" data-aligned="1"></div></div>';
-        const fig = el.querySelector('.figure');
-        fig.style.aspectRatio = `${art.cutin.width} / ${art.cutin.height}`;
-        const content = paintFigure(fig, art);
-        token.weapon = new SpriteWeapon(content, art.cutin, unit, weaponId, this.cameraDirector.scene, art.base);
-        // Under the HUD (buttons and portraits stay on top), above the 3D view.
-        this.aimLayer().appendChild(el);
-        token.el = el; token.art = art;
-        if (token.last) this.placeAim(token.last, token.motion);
+        const view=this.unitView?.(unit.id);
+        if(!view||view.model)return;
+        const token=this.aiming={unitId:unit.id,weaponId,shoulder,view};
+        const loaded=await loadCharacterArt(unit.art);
+        if(this.aiming!==token||!loaded.cutin.worldAim)return;
+        token.world=new WorldAimSprite(view,loaded.cutin.worldAim,weaponId,loaded.base);
     }
-    aimLayer() {
-        let layer = document.getElementById('aimshot-layer');
-        if (!layer) {
-            layer = document.createElement('div'); layer.id = 'aimshot-layer';
-            const hud = document.getElementById('hud');
-            (hud?.parentNode || this.root.parentNode || document.body).insertBefore(layer, hud || this.root);
-        }
-        return layer;
-    }
-    placeAim(screenAim, motion = { yaw: 0, pitch: 0 }) {
-        const a = this.aiming; if (!a) return;
-        a.last = screenAim; a.motion = motion;
-        if (!a.el || !screenAim) return;
-        // Keep the authored torso crop against its viewport edge.
-        const now = performance.now(), dt = a.t ? Math.min(0.05, (now - a.t) / 1000) : 0; a.t = now;
-        const view = viewport(), rail = Math.max(0, ...[...document.querySelectorAll('#hud .squad-head')].map(e => e.getBoundingClientRect().right));
-        const layout = aimBackshotLayout(a.art.cutin, view, rail);
-
-        const mirror = a.art.cutin.mirror ? -1 : 1;
-        // The two independent arm chains follow the grip sockets, driven by actual aim lag.
-        // Bending the whole card would also bend the torso and disconnect the shoulder illusion.
-        const articulated = !!a.art.cutin.rig?.arms;
-        a.weapon?.update({ yaw: mirror * motion.yaw, pitch: motion.pitch });
-        let transform = 'none';
-        if (!articulated) {
-            followStep(a.follow ||= {}, screenAim, dt);
-            const pose = aimBackshotPose(a.art.cutin, layout, a.follow.pos, a.follow.vel, { x: view.width / 2, y: view.height / 2 });
-            transform = `rotate(${pose.lean.toFixed(2)}deg) skewX(${pose.bend.toFixed(2)}deg)`;
-        }
-        Object.assign(a.el.querySelector('.figure').style, { left: `${layout.left}px`, top: `${layout.top}px`, width: `${layout.width}px`, height: `${layout.height}px`,
-            transformOrigin: '50% 100%', transform });
+    placeAim(target) {
+        const a=this.aiming;if(!a?.world?.ready)return;
+        const camera=this.cameraDirector.scene.camera;
+        a.worldSide=worldAimSide(camera,a.view.pos,target,a.worldSide||a.shoulder);
+        a.world.update(camera,a.worldSide);
+        this.cameraDirector.hidden=new Set([a.unitId]);
     }
     endAim() {
-        if (!this.aiming) return;
-        this.aiming.weapon?.dispose();
-        this.aiming.el?.remove();
-        this.aiming = null;
-        if (!this.current) this.cameraDirector.hidden = new Set();
+        this.aiming?.world?.dispose();this.aiming=null;
+        if(!this.current)this.cameraDirector.hidden=new Set();
     }
     skip() { if (this.current) this.current.t = this.current.timeline.duration; }
     /**

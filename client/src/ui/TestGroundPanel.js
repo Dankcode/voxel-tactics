@@ -3,7 +3,7 @@ import {DISTRICT_MAP_IDS} from '../../../shared/mission/LargeDistricts.js';
 import {TopographyPreview} from './TopographyPreview.js';
 // Test ground (admin build): set up any map with a chosen squad and hostile roster, preview the placements, launch,
 // save setups, share them as links, and reopen recent after-action reports.
-import { SCENARIOS, OPERATION_ID, sanitizeDesc, createBattle } from '../../../shared/session/Scenarios.js';
+import { SCENARIOS, FIXTURES, OPERATION_ID, sanitizeDesc, createBattle, plotForMap } from '../../../shared/session/Scenarios.js';
 import { CLASSES, ENEMIES, SQUADS } from '../../../shared/content/units.js';
 import { WEAPONS } from '../../../shared/content/weapons.js';
 import { PLOT_FAMILIES, PLOT_IDS } from '../../../shared/mapgen/PlotCatalogue.js';
@@ -19,7 +19,7 @@ const cap = s => s[0].toUpperCase() + s.slice(1);
 const MAX_SQUAD = 6;
 
 export const DEFAULT_SETUP = Object.freeze({
-    scenario: 'park-district', seed: 27, width:96,depth:72,shape:'rectangle',remix:remixParameters(), plot: 'downtown', opObjective: '', opTime: '',
+    scenario: OPERATION_ID, seed: 27, width:96,depth:72,shape:'rectangle',remix:remixParameters(), plot: 'downtown', opObjective: '', opTime: '',
     squad: [...SQUADS.standard], useMapHostiles: false, roster: { ...TEST_PRESETS.patrol.enemies }, podSize: 3,
     alerted: false, objective: 'map', rounds: '', timeOfDay: '', autopilot: false, debug: false, intel: false, support: 'carpet_bomb'
 });
@@ -44,8 +44,9 @@ export function descToSetup(desc = {}, client = {}) {
     for (const e of t.enemies || []) roster[e.type] = e.count;
     return {
         ...DEFAULT_SETUP, width:desc.district?.width||96,depth:desc.district?.depth||72,shape:desc.district?.shape||'rectangle',remix:remixParameters(desc.district?.remix),
-        scenario: desc.scenario === OPERATION_ID || SCENARIOS.some(s => s.id === desc.scenario) ? desc.scenario : DEFAULT_SETUP.scenario,
-        seed: desc.seed ?? 1, plot: desc.operation?.plot || 'downtown', opObjective: desc.operation?.objective || '', opTime: desc.operation?.timeOfDay || '',
+        // PLAN-10: only generated themes and the two test rigs; an old map id opens its closest theme.
+        scenario: desc.scenario === OPERATION_ID || FIXTURES.some(s => s.id === desc.scenario) ? desc.scenario : OPERATION_ID,
+        seed: desc.seed ?? 1, plot: desc.operation?.plot || (desc.scenario && desc.scenario !== OPERATION_ID ? plotForMap(desc.scenario) : 'downtown'), opObjective: desc.operation?.objective || '', opTime: desc.operation?.timeOfDay || '',
         squad: Array.isArray(desc.squad) ? desc.squad.slice(0, MAX_SQUAD) : [...(SQUADS[desc.squad] || SQUADS.standard)],
         useMapHostiles: !t.enemies, roster: t.enemies ? roster : { ...DEFAULT_SETUP.roster }, podSize: t.podSize || 3,
         alerted: !!t.alerted, objective: t.objective === 'eliminate' ? 'eliminate' : 'map', rounds: t.rounds || '', timeOfDay: t.timeOfDay || '',
@@ -71,7 +72,7 @@ export class TestGroundPanel {
     total() { return ENEMY_TYPES.reduce((n, t) => n + (this.c.roster[t] || 0), 0); }
 
     render() {
-        const c = this.c, maps = SCENARIOS, themes = [...new Set(maps.map(s => s.theme))], total = this.total();
+        const c = this.c, maps = FIXTURES, total = this.total();
         const op = c.scenario === OPERATION_ID,district=DISTRICT_MAP_IDS.includes(c.scenario),r=remixParameters(c.remix);
         const choice=(label,field,items)=>`<label>${label}<select data-remix="${field}">${items.map(([value,text])=>`<option value="${value}" ${String(r[field])===String(value)?'selected':''}>${text}</option>`).join('')}</select></label>`;
         const enemyRow = t => {
@@ -87,11 +88,11 @@ export class TestGroundPanel {
           <div class="tg-col">
             <h4>Map</h4>
             <div class="row"><label>Map <select data-tg-field="scenario">
-              <optgroup label="Generated"><option value="${OPERATION_ID}" ${op ? 'selected' : ''}>Generated operation</option></optgroup>
-              ${themes.map(t => `<optgroup label="${esc(t)}">${maps.filter(s => s.theme === t).map(s => `<option value="${s.id}" ${s.id === c.scenario ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</optgroup>`).join('')}
+              <optgroup label="Generated"><option value="${OPERATION_ID}" ${op ? 'selected' : ''}>Generated map (pick a theme)</option></optgroup>
+              <optgroup label="Test rigs">${maps.map(s => `<option value="${s.id}" ${s.id === c.scenario ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</optgroup>
             </select></label>
             <label class="tg-seed">Seed <input data-tg-field="seed" type="number" min="0" max="4294967295" value="${esc(c.seed)}"></label><button data-tg="dice" title="Random seed" aria-label="Random seed">🎲</button></div>
-            ${op ? `<div class="row"><label>Plot <select data-tg-field="plot">${PLOT_IDS.map(id => `<option value="${id}" ${id === c.plot ? 'selected' : ''}>${esc(PLOT_FAMILIES[id].name)}</option>`).join('')}</select></label>
+            ${op ? `<div class="row"><label>Theme <select data-tg-field="plot">${PLOT_IDS.map(id => `<option value="${id}" ${id === c.plot ? 'selected' : ''}>${esc(PLOT_FAMILIES[id].name)}</option>`).join('')}</select></label>
               <label>Map objective <select data-tg-field="opObjective"><option value="">Auto</option>${OPERATION_OBJECTIVES.map(o => `<option value="${o}" ${o === c.opObjective ? 'selected' : ''}>${cap(o)}</option>`).join('')}</select></label>
               <label>Map time <select data-tg-field="opTime"><option value="">Auto</option>${TEST_TIMES.map(t => `<option ${t === c.opTime ? 'selected' : ''}>${t}</option>`).join('')}</select></label></div>` : ''}
             ${district?`<section class="tg-remix"><h4>Map remix & collision lab</h4>
@@ -114,7 +115,7 @@ export class TestGroundPanel {
             <label class="check"><input type="checkbox" data-tg-field="autopilot" ${c.autopilot ? 'checked' : ''}> Autopilot squad (AI plays both sides; watch and read the report)</label>
             <label class="check"><input type="checkbox" data-tg-field="debug" ${c.debug ? 'checked' : ''}> Debug tools in battle (F1)</label>
             <label class="check"><input type="checkbox" data-tg-field="intel" ${c.intel ? 'checked' : ''}> Intel co-op rules (experimental): sensing roles, drones, quiet cuts, precision shots, independent turns</label>
-            ${c.intel ? `<div class="row"><label>Match support <select data-tg-field="support"><option value="carpet_bomb" ${c.support !== 'orbital_laser' ? 'selected' : ''}>Airstrike · wide bombing corridor</option><option value="orbital_laser" ${c.support === 'orbital_laser' ? 'selected' : ''}>Orbital Laser · long line cut</option></select></label></div>` : ''}
+            ${c.intel ? `<div class="row"><label>Match support <select data-tg-field="support"><option value="carpet_bomb" ${c.support !== 'orbital_laser' ? 'selected' : ''}>Airstrike · three blasts in a square</option><option value="orbital_laser" ${c.support === 'orbital_laser' ? 'selected' : ''}>Orbital Laser · long line cut</option></select></label></div>` : ''}
           </div>
           <div class="tg-col">
             <h4>Hostiles <span>${c.useMapHostiles ? 'map pods' : `${total} / ${TEST_LIMITS.total}`}</span></h4>

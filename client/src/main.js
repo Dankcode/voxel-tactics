@@ -4,13 +4,12 @@ import { Game } from './Game.js';
 import { LocalSession } from './net/LocalSession.js';
 import { OnlineSession } from './net/OnlineSession.js';
 import { SQUADS } from '../../shared/content/units.js';
-import { SCENARIOS, OPERATION_ID, operationFor, scenarioId } from '../../shared/session/Scenarios.js';
+import { OPERATION_ID, operationFor, plotForMap } from '../../shared/session/Scenarios.js';
 import { PLOT_FAMILIES, PLOT_IDS } from '../../shared/mapgen/PlotCatalogue.js';
 import { OPERATION_OBJECTIVES, OPERATION_TIMES } from '../../shared/mapgen/Generator.js';
 import { drawOperationPreview } from './ui/OperationPreview.js';
 import { decodeSetup } from './ui/TestGroundStore.js';
 import { sanitizeDesc } from '../../shared/session/Scenarios.js';
-import { DISTRICT_MAP_IDS } from '../../shared/mission/LargeDistricts.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -24,17 +23,17 @@ let game = null;
 async function showMenu(opts = {}) {
     menu.classList.remove('hidden');
     const defaultServer = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}`;
-    const themes = [...new Set(SCENARIOS.map(s => s.theme))];
+    // PLAN-10: no fixed maps to pick — a theme and a seed; old map links open the closest theme.
     const linked = opts.desc?.scenario || params.get('map');
-    const pick = scenarioId(linked);
-    const op = { plot: PLOT_IDS.includes(params.get('plot')) ? params.get('plot') : 'downtown', objective: OPERATION_OBJECTIVES.includes(params.get('objective')) ? params.get('objective') : '', timeOfDay: OPERATION_TIMES.includes(params.get('time')) ? params.get('time') : '' };
+    const pick = OPERATION_ID;
+    const op = { plot: PLOT_IDS.includes(opts.desc?.operation?.plot) ? opts.desc.operation.plot : PLOT_IDS.includes(params.get('plot')) ? params.get('plot') : linked && linked !== OPERATION_ID ? plotForMap(linked) : 'downtown', objective: OPERATION_OBJECTIVES.includes(params.get('objective')) ? params.get('objective') : '', timeOfDay: OPERATION_TIMES.includes(params.get('time')) ? params.get('time') : '' };
     menu.innerHTML = `
       <div class="menu-card">
         <h1>FIRETEAM</h1>
         <p class="tag">Present-day tactical operations · co-op</p><p><a href="/staging.html">Co-op briefing lobby</a> · <a href="/campaign.html">Campaign prototype</a></p>
         <div id="tab-play" role="tabpanel">
         <section class="operation ${pick === OPERATION_ID ? 'on' : ''}" id="m-op" data-map="${OPERATION_ID}">
-          <div class="op-head"><b>Generated operation</b><span>A new map every seed: a plot, its lots and buildings, interiors, cover along the line of advance, a tunnel flank and a fire escape — checked by the same gates as the authored maps.</span></div>
+          <div class="op-head"><b>Choose a theme</b><span>Every battle is a new map generated from the theme and the seed: streets, lots and buildings with full interiors, cover along the line of advance, a tunnel flank and fire escapes, all checked by the map gates. Roll the dice for a fresh one.</span></div>
           <div class="plots">${PLOT_IDS.map(id => `<button class="plot ${id === op.plot ? 'on' : ''}" data-plot="${id}"><b>${esc(PLOT_FAMILIES[id].name)}</b><span>${esc(PLOT_FAMILIES[id].text)}</span></button>`).join('')}</div>
           <div class="row">
             <label>Objective <select id="m-objective"><option value="">Auto</option>${OPERATION_OBJECTIVES.map(o => `<option value="${o}" ${o === op.objective ? 'selected' : ''}>${o[0].toUpperCase() + o.slice(1)}</option>`).join('')}</select></label>
@@ -44,21 +43,14 @@ async function showMenu(opts = {}) {
           </div>
           <div class="preview" id="m-preview-box" hidden><canvas id="m-canvas" aria-label="Operation map preview"></canvas><div class="op-info" id="m-op-info"></div></div>
         </section>
-        <div class="maps" id="m-maps">${themes.map(t => `<div class="theme"><h4>${esc(t)}</h4>${SCENARIOS.filter(s => s.theme === t).map(s =>
-            `<button class="map ${s.id === pick ? 'on' : ''}" data-map="${s.id}"><b>${esc(s.name)}</b><span>${esc(s.text)}</span></button>`).join('')}</div>`).join('')}</div>
         <div class="row">
-          <label>Seed <input id="m-seed" type="number" value="${Number(opts.desc?.seed ?? params.get('seed')) || 1}" min="0" max="4294967295"></label>
+          <label>Seed <input id="m-seed" type="number" value="${Number(opts.desc?.seed ?? params.get('seed')) || 1 + Math.floor(Math.random() * 99999)}" min="0" max="4294967295"></label>
           <label>Squad <select id="m-squad">${Object.keys(SQUADS).map(k => `<option ${opts.desc?.squad===k?'selected':''}>${k}</option>`).join('')}</select></label>
-        </div>
-        <div class="row" id="m-district" hidden>
-          <label>Width <input id="m-width" type="number" min="96" max="128" value="${Number(opts.desc?.district?.width)||96}"></label>
-          <label>Depth <input id="m-depth" type="number" min="72" max="96" value="${Number(opts.desc?.district?.depth)||72}"></label>
-          <label>Footprint <select id="m-shape"><option value="rectangle">Rectangle</option><option value="L">L shape</option><option value="T">T shape</option></select></label>
         </div>
         <label class="check"><input id="m-debug" type="checkbox" ${(opts.desc?.debug??!!params.get('debug')) ? 'checked' : ''}> Debug mode (F1 in battle: spawn, teleport, destroy, elements, overlays, AI stepping, operation generator)</label>
         <label class="check"><input id="m-arsenal" type="checkbox" ${opts.desc?.test?'checked':''}> Full arsenal for testing · all weapons and grenades, ammo and spare containers on the selected map</label>
         <label class="check"><input id="m-intel" type="checkbox" ${(opts.desc?.intel??!!params.get('intel')) ? 'checked' : ''}> Intel co-op rules (experimental) · sensing roles, drones, quiet cuts, precision shots, independent turns</label>
-        <label id="m-support-row" ${params.get('intel') ? '' : 'hidden'}>Match support <select id="m-support"><option value="carpet_bomb">Airstrike · wide bombing corridor</option><option value="orbital_laser">Orbital Laser · long line cut</option></select></label>
+        <label id="m-support-row" ${params.get('intel') ? '' : 'hidden'}>Match support <select id="m-support"><option value="carpet_bomb">Airstrike · three blasts in a square</option><option value="orbital_laser">Orbital Laser · long line cut</option></select></label>
         <section id="m-inventory"></section>
         <div class="row buttons">
           <button id="m-local" class="primary">Play vs AI</button>
@@ -79,15 +71,8 @@ async function showMenu(opts = {}) {
     if(opts.desc?.inventories&&opts.desc.inventories.length<=prep.packs.length){prep.packs=prep.packs.map((pack,i)=>structuredClone(opts.desc.inventories[i]??pack));prep.render();}
     $('#m-squad').onchange=()=>prep.reset($('#m-squad').value);
     let scenario = pick;
-    const select = id => {
-        scenario = id;
-        $('#m-district').hidden=!DISTRICT_MAP_IDS.includes(id);
-        $('#m-shape').value=opts.desc?.scenario===id&&opts.desc?.district?.shape?opts.desc.district.shape:id==='mall-district'?'L':id==='drainage-district'?'T':'rectangle';
-        menu.querySelectorAll('[data-map]').forEach(o => o.classList.toggle('on', o.dataset.map === id));
-    };
+    const select = id => { scenario = OPERATION_ID; menu.querySelectorAll('[data-map]').forEach(o => o.classList.toggle('on', o.dataset.map === scenario)); };
     select(pick);
-    menu.querySelectorAll('button[data-map]').forEach(b => b.onclick = () => select(b.dataset.map));
-    $('#m-op').onclick = e => { if (!e.target.closest('select, input, button[data-map]')) select(OPERATION_ID); };
     menu.querySelectorAll('[data-plot]').forEach(b => b.onclick = () => {
         op.plot = b.dataset.plot; select(OPERATION_ID);
         menu.querySelectorAll('[data-plot]').forEach(o => o.classList.toggle('on', o === b));
@@ -97,7 +82,7 @@ async function showMenu(opts = {}) {
     $('#m-time').onchange = e => { op.timeOfDay = e.target.value; select(OPERATION_ID); };
     $('#m-dice').onclick = () => { $('#m-seed').value = 1 + Math.floor(Math.random() * 99999); select(OPERATION_ID); if (!$('#m-preview-box').hidden) preview(); };
     const operation = () => ({ plot: op.plot, objective: op.objective || null, timeOfDay: op.timeOfDay || null });
-    const desc = () => ({ scenario, seed: Number($('#m-seed').value) || 1, squad: $('#m-squad').value, debug: $('#m-debug').checked, intel: $('#m-intel').checked, asyncCoop: $('#m-intel').checked, support: $('#m-support').value, inventories: prep.inventories(), ...($('#m-arsenal').checked?{test:{}}:{}), ...(!$('#m-district').hidden?{district:{width:Number($('#m-width').value),depth:Number($('#m-depth').value),shape:$('#m-shape').value}}:{}), ...(scenario === OPERATION_ID ? { operation: operation() } : {}) });
+    const desc = () => ({ scenario, seed: Number($('#m-seed').value) || 1, squad: $('#m-squad').value, debug: $('#m-debug').checked, intel: $('#m-intel').checked, asyncCoop: $('#m-intel').checked, support: $('#m-support').value, inventories: prep.inventories(), ...($('#m-arsenal').checked?{test:{}}:{}), ...(scenario === OPERATION_ID ? { operation: operation() } : {}) });
     const status = t => { $('#m-status').textContent = t; };
     const preview = async () => {
         select(OPERATION_ID);
@@ -140,6 +125,10 @@ async function startBattle(make, { generating = false, debug = false, autopilot 
     } catch (err) { console.error(err); status(`Failed: ${err.message}`); if (menu.classList.contains('hidden')) showMenu(); }
 }
 
+// PLAN-10: ?play=operation&plot=downtown is the generated game; an old map id opens its closest theme instead, unless
+// &fixture=1 asks for the fixed test map itself (debugging only).
+const playId = params.get('play'), fixture = params.has('fixture') && playId !== OPERATION_ID;
+const playOperation = () => fixture ? undefined : { plot: playId === OPERATION_ID ? params.get('plot') : plotForMap(playId), objective: params.get('objective'), timeOfDay: params.get('time') };
 // Test-ground deep link: ?test=<setup> (made by "Copy link") launches that exact setup.
 if (params.get('staged')) {
     const launch = JSON.parse(sessionStorage.getItem('fireteam.launch') || 'null');
@@ -151,11 +140,11 @@ if (params.get('staged')) {
     else showMenu();
 } else
 // Deep link for quick testing: ?play=cedar-close&seed=3 (&debug=1 &auto=1)
-if(params.get('play')&&params.has('brief')) {
-    showMenu().then(()=>startBattle(()=>LocalSession.create({scenario:params.get('play'),seed:Number(params.get('seed'))||1,debug:!!params.get('debug')})));
-} else if (params.get('play')) {
-    const operation = params.get('play') === OPERATION_ID ? { plot: params.get('plot'), objective: params.get('objective'), timeOfDay: params.get('time') } : undefined;
-    LocalSession.create({ scenario: params.get('play'), seed: Number(params.get('seed')) || 1, squad: params.get('squad') || 'standard', debug: !!params.get('debug'), operation, ...(params.get('intel') ? { intel: true, asyncCoop: true, support: params.get('support') === 'orbital_laser' ? 'orbital_laser' : 'carpet_bomb' } : {}) }).then(async session => {
+if(playId&&params.has('brief')) {
+    showMenu().then(()=>startBattle(()=>LocalSession.create({scenario:fixture?playId:OPERATION_ID,operation:playOperation(),seed:Number(params.get('seed'))||1,debug:!!params.get('debug')}),{generating:!fixture}));
+} else if (playId) {
+    const operation = playOperation();
+    LocalSession.create({ scenario: fixture ? playId : OPERATION_ID, seed: Number(params.get('seed')) || 1, squad: params.get('squad') || 'standard', debug: !!params.get('debug'), operation, ...(params.get('intel') ? { intel: true, asyncCoop: true, support: params.get('support') === 'orbital_laser' ? 'orbital_laser' : 'carpet_bomb' } : {}) }).then(async session => {
         menu.classList.add('hidden');
         game = new Game({ canvas: $('#view'), hudRoot: $('#hud'), cutinRoot: $('#cutin-layer'), floatRoot: $('#float-layer'), onExit: showMenu });
         await game.start(session);

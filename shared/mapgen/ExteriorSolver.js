@@ -370,6 +370,9 @@ export function piecesFromBays(bays, bayGrid) {
  * Engagement pockets (PLAN-04 §5.4): along the line of play, every 8–12 cells from a quarter of the way in, a pocket
  * of 2–4 cover pieces beside the route on alternating sides, facing the advance. Returned as bay pins.
  */
+const POCKET_COVER = ['planter', 'low_wall', 'hedge', 'jersey', 'sandbags', 'bench', 'fence', 'vending'];
+const bayCls = b => b.cls.startsWith('parking_') || b.cls === 'carriageway' ? 'asphalt' : b.cls.startsWith('lane_') ? 'lane' : b.cls;
+const onRoad = b => b.cls === 'carriageway' || b.cls.startsWith('lane_') || b.cls.startsWith('parking_');
 export function planPockets(main, bayGrid, { seed, spacing = null } = {}) {
     const pins = new Map(), pockets = [];
     if (!main?.length) return { pins, pockets };
@@ -384,15 +387,18 @@ export function planPockets(main, bayGrid, { seed, spacing = null } = {}) {
         for (const sd of [side, -side]) for (const r of [3, 2, 4]) {
             if (centre) break;
             const cx = Math.round(p.x - dy / len * sd * r), cy = Math.round(p.y + dx / len * sd * r), c = bayGrid.at(Math.floor(cx / BAY), Math.floor(cy / BAY));
-            if (c && !c.blocked) centre = c;
+            if (c && !c.blocked && !onRoad(c)) centre = c;
         }
         if (centre) {
             const members = [];
             for (const [ox, oy] of [[0, 0], [1, 0], [0, 1], [-1, 0], [0, -1]]) {
                 const b = bayGrid.at(centre.bx + ox, centre.by + oy);
-                if (!b || b.blocked || members.length >= 3) continue;
+                if (!b || b.blocked || onRoad(b) || members.length >= 3) continue;
                 if (members.some(m => Math.abs(m.bx - b.bx) + Math.abs(m.by - b.by) === 1)) continue;
-                const options = ['jersey', 'planter', 'crates', 'low_wall', 'sandbags', 'pallets'].map(base => `${base}_${toward}`).filter(id => BAY_PIECES[id] && !BAY_PIECES[id].cells.some(([x, y]) => b.protected.some(([px, py]) => px === x && py === y)));
+                // PLAN-10: pocket cover is what belongs on that ground (planters on pavements, hedges and walls in
+                // yards, barriers on hard standing), never crates, pallets or anything in the road.
+                const surf = bayCls(b);
+                const options = POCKET_COVER.map(base => `${base}_${toward}`).filter(id => BAY_PIECES[id] && BAY_PIECES[id].surfaces?.includes(surf) && !BAY_PIECES[id].cells.some(([x, y]) => b.protected.some(([px, py]) => px === x && py === y)));
                 if (!options.length) continue;
                 members.push(b); pins.set(`${b.bx},${b.by}`, options[Math.floor(unit(`${seed}:pocket:${k}:${members.length}`) * options.length)]);
             }

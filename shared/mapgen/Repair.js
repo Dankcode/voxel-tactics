@@ -21,7 +21,7 @@ import { designSlate } from './DesignSlate.js';
 import { wearOf } from './ExteriorCompiler.js';
 
 const BAY = 2;
-const OUTDOOR_GATES = new Set(['coverGap', 'killingField', 'outdoorCover', 'coverDensity', 'fullCoverShare', 'sightlineMedian', 'destructibleCover']);
+const OUTDOOR_GATES = new Set(['advanceCover', 'coverGap', 'killingField', 'outdoorCover', 'coverDensity', 'fullCoverShare', 'sightlineMedian', 'destructibleCover']);
 
 /** Compile with gates evaluated (not thrown) and finish the mission the same way compileV3Map does. */
 export function compileEvaluated(op, seed) {
@@ -60,12 +60,13 @@ function resolveLots(op, pins, reason, { lots: only = null, boost = null } = {})
 function pinCoverNear(op, cell, { full = false, destructible = false } = {}) {
     const ctx = op.context, obj = op.layout.objective.cell;
     const dx = obj.x - cell.x, dy = obj.y - cell.y, toward = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : (dy > 0 ? 's' : 'n');
-    const bases = destructible ? ['crates', 'pallets', 'planter', 'bins', 'bench', 'hedge', 'fence', 'low_wall'] : full ? ['crates', 'vending', 'fence'] : ['jersey', 'planter', 'crates', 'low_wall', 'sandbags', 'pallets', 'hedge', 'bench', 'bins'];
+    const bases = destructible ? ['planter', 'bins', 'bench', 'hedge', 'fence', 'low_wall'] : full ? ['vending', 'fence'] : ['jersey', 'planter', 'low_wall', 'sandbags', 'hedge', 'bench', 'bins'];   // PLAN-10: no crates or pallets
     const bx0 = Math.floor(cell.x / BAY), by0 = Math.floor(cell.y / BAY);
     for (let r = 0; r <= 3; r++) for (let oy = -r; oy <= r; oy++) for (let ox = -r; ox <= r; ox++) {
         if (Math.max(Math.abs(ox), Math.abs(oy)) !== r) continue;
         const bay = ctx.bayGrid.at(bx0 + ox, by0 + oy);
         if (!bay || bay.blocked || ctx.pins.has(`${bay.bx},${bay.by}`)) continue;
+        if (bay.cls === 'carriageway' || bay.cls.startsWith('lane_') || bay.cls.startsWith('parking_')) continue;   // PLAN-10/11: never in the road
         for (const facing of [toward, ...['n', 'e', 's', 'w'].filter(f => f !== toward)]) for (const base of bases) {
             const id = `${base}_${facing}`, p = BAY_PIECES[id];
             if (!p || p.cells.some(([x, y]) => bay.protected.some(([px, py]) => px === x && py === y))) continue;
@@ -119,8 +120,8 @@ function shieldDrop(op, m) {
         const cell = { x: Math.round(from.x + dx / l * 3), y: Math.round(from.y + dy / l * 3) };
         const facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : (dy > 0 ? 's' : 'n');
         const bay = op.context.bayGrid.at(Math.floor(cell.x / BAY), Math.floor(cell.y / BAY));
-        if (!bay || bay.blocked) continue;
-        for (const base of ['crates', 'vending', 'fence', 'jersey']) {
+        if (!bay || bay.blocked || bay.cls === 'carriageway' || bay.cls.startsWith('lane_') || bay.cls.startsWith('parking_')) continue;   // PLAN-10: nothing in the road
+        for (const base of ['vending', 'fence', 'jersey', 'low_wall']) {
             const id = `${base}_${facing}`, p = BAY_PIECES[id];
             const surf = bay.cls === 'lane_x' || bay.cls === 'lane_y' ? 'lane' : bay.cls;
             if (!p || p.cells.some(([x, y]) => bay.protected.some(([px, py]) => px === x && py === y)) || !(p.surfaces.includes(surf) || (surf === 'lane' && p.surfaces.includes('asphalt')))) continue;
@@ -230,6 +231,8 @@ export function buildWithRepair(op, { seed = 1, budget = Math.min(28,8*Math.ceil
                 else {
                     // Up to three separate trouble spots per pass (the worst gap cells, or a spread for destructible cover).
                     const cells = worstGapCells(m), spots = [];
+                    // PLAN-11: an open dash along the line of advance gets cover at its middle first.
+                    if (failures.includes('advanceCover') && m.metrics.advanceExposureAt) spots.push({ ...m.metrics.advanceExposureAt, d: 9 });
                     const list = failures.includes('coverGap') || failures.includes('killingField') ? cells.filter(c => c.d >= 3) : cells.filter((_, k) => k % 11 === i % 11).slice(0, 30);
                     for (const c of list) if (spots.length < 3 && spots.every(o => Math.hypot(o.x - c.x, o.y - c.y) > 6)) spots.push(c);
                     for (const c of spots) { const p = pinCoverNear(op, c, { full: failures.includes('fullCoverShare'), destructible: failures.includes('destructibleCover') }); if (p) for (const [k, v] of p) (pins ||= new Map()).set(k, v); }

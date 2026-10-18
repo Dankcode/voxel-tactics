@@ -652,5 +652,18 @@
         }
       }
     }
+  },
+  "worldAim": {
+    "bodySource": "aim-world-body.png",
+    "scale": 0.45,
+    "offset": [
+      0.28,
+      -0.01
+    ],
+    "anchor": [
+      0.4,
+      0.98
+    ],
+    "worldHeight": 2.4
   }
 }

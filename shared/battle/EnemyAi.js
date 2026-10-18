@@ -23,6 +23,7 @@ import { MAT } from '../voxel/Materials.js';
 import { hitChance } from './HitChance.js';
 import { DEFAULT_TUNING } from '../session/Playstyle.js';
 import { B } from '../content/balance.js';
+import { hashString } from '../util/Rng.js';
 
 const dist2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
@@ -103,11 +104,14 @@ export function decideEnemy(battle, u, policy) {
         return overwatchToward(battle, u, ranged, nearestOf(u, threats)) || (shot ? shot.intent : null);
     }
 
+    // PLAN-10: hide for real reasons only (wounded, or the pod half gone); a healthy pod presses the attack.
     const wounded = u.hp <= u.maxHp * 0.5;
     const near = battle.unitsOf(u.side).filter(o => o.id !== u.id && dist2(o, u) <= 10).length + 1;
-    const outnumbered = known.length > near;
-    const pushed = known.some(t => dist2(t, u) <= 6) && T.ambush >= 1.15;
-    const hide = (wounded || outnumbered || pushed) && !(shot && shot.chance >= 55);
+    const outnumbered = !!B.aiHideWhenOutnumbered && known.length > near;
+    const pod = battle.units.filter(o => o.side === u.side && (o.group ?? 0) === (u.group ?? 0) && !WALKERS[o.type]);
+    const depleted = pod.length >= 2 && pod.filter(alive).length * 2 <= pod.length;
+    const pushed = known.some(t => dist2(t, u) <= 6) && T.ambush >= 1.15 && u.hp < u.maxHp;
+    const hide = (wounded || depleted || outnumbered || pushed) && !(shot && shot.chance >= 55);
 
     if (!threats.length) {
         // Nobody known: hold an ambush, or sweep toward the squad's general direction (alerted pods do not idle).
@@ -119,12 +123,25 @@ export function decideEnemy(battle, u, policy) {
         return ammoOk && u.ap >= ranged.ap ? overwatchToward(battle, u, ranged, t) : null;
     }
 
+    const target = nearestOf(u, threats);
     if (u.ap + u.moveOnlyAp > (ammoOk && !hide ? shotAp : 0) && !u.movedThisTurn) {
         const budgetAp = Math.max(1, u.ap + u.moveOnlyAp - (ammoOk ? (hide ? ranged.ap : shotAp) : 0));
-        const tile = enemyTile(battle, u, ranged, threats, budgetAp, { role, hide, T, ammoOk });
-        if (tile && !same(tile, u)) return moveIntent(battle, u, tile);
+        const best = enemyTile(battle, u, ranged, threats, budgetAp, { role, hide, T, ammoOk, detail: true });
+        // PLAN-10, XCOM dash: no worthwhile shot from anywhere this turn → spend everything closing in on the target.
+        const fullAp = u.ap + u.moveOnlyAp;
+        if (!hide && target && fullAp > budgetAp && (!best || best.offense < B.aiDashIfOffenseBelow) && !(shot && shot.chance >= 30)) {
+            const dash = enemyTile(battle, u, ranged, threats, fullAp, { role, hide: false, T, ammoOk, pursue: target, detail: true });
+            if (dash && !same(dash.n, u) && dist2(dash.n, target) < dist2(u, target) - 1) return moveIntent(battle, u, dash.n);
+        }
+        if (best && !same(best.n, u)) return moveIntent(battle, u, best.n);
     }
     if (shot && shot.chance >= 30) return shot.intent;
+    // Moved, still no shot and AP left: keep closing instead of parking on overwatch out of range or out of sight.
+    if (!hide && target && u.movedThisTurn && u.ap + u.moveOnlyAp >= 1 && (dist2(u, target) > ranged.range || !shot)) {
+        const keep = ammoOk && u.ap - shotAp >= 0 && u.ap + u.moveOnlyAp - shotAp >= 1 ? shotAp : 0;
+        const step = enemyTile(battle, u, ranged, threats, Math.max(1, u.ap + u.moveOnlyAp - keep), { role, hide: false, T, ammoOk, pursue: target, detail: true });
+        if (step && !same(step.n, u) && dist2(step.n, target) < dist2(u, target) - 1) return moveIntent(battle, u, step.n);
+    }
     // Caught in the open after moving: raise a wall.
     const wall = earthCover(battle, u, known);
     if (wall) return wall;
@@ -181,7 +198,7 @@ function segDist(a, b, p) {
  * Tile choice. Pass 1 scores every reachable tile cheaply (cover, flank, range, hazards, spacing); pass 2 re-scores
  * the best few with line of sight and hit chance both ways, and checks the walk for known overwatch.
  */
-export function enemyTile(battle, u, w, threats, budgetAp, { role = 'anchor', hide = false, T = DEFAULT_TUNING, ammoOk = true, sweep = null } = {}) {
+export function enemyTile(battle, u, w, threats, budgetAp, { role = 'anchor', hide = false, T = DEFAULT_TUNING, ammoOk = true, sweep = null, pursue = null, detail = false } = {}) {
     const search = battle.reach(u, budgetAp * battle.mobility(u));
     const nodes = [...search.nodes.values()];
     if (!nodes.length) return null;
@@ -212,7 +229,14 @@ export function enemyTile(battle, u, w, threats, budgetAp, { role = 'anchor', hi
         const nearestD = Math.min(...threats.map(t => dist2(t, n)), 99);
         if (sweep) s -= dist2(n, sweep) * 0.9 * T.hunt;
         else if (hide) s += Math.min(nearestD, w.range) * 0.4;
-        else s -= Math.abs(nearestD - want) * 0.7 * (nearestD > 14 ? T.closeIn : 1);
+        // PLAN-10: being too far costs twice as much as being too close, so pods close to their effective range.
+        else s -= Math.abs(nearestD - want) * (nearestD > want ? 1.4 : 0.7) * (nearestD > 14 ? T.closeIn : 1);
+        if (pursue) {
+            // Pursuit: progress toward the target dominates; a tile that barely gains ground is a wasted turn.
+            const d = dist2(n, pursue) + Math.abs(n.z - pursue.z) * 0.7, gain = dist2(u, pursue) - d;
+            s -= d * B.aiPursuitPerTile * T.hunt;
+            if (gain < 0.4 * budgetAp * battle.mobility(u)) s -= 30;
+        }
         if (battle.field.surfaceAt(n.x, n.y, n.z) === 'burning' || battle.field.isBurning(n.x, n.y, n.z)) s -= 40;
         if (battle.field.surfaceAt(n.x, n.y, n.z) === 'wet') s -= 4;         // cryo bait
         s -= allies.filter(o => cheb(o, n) <= 2).length * 4 * T.spread;
@@ -255,7 +279,7 @@ export function enemyTile(battle, u, w, threats, budgetAp, { role = 'anchor', hi
         c.s -= battle.overwatchThreats(u, path).length * 20 * T.overwatchCaution;
     }
     top.sort((a, b) => b.s - a.s);
-    return top[0]?.n || null;
+    return detail ? top[0] || null : top[0]?.n || null;
 }
 function nextToDoor(battle, n) {
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (battle.store.get(n.x + dx, n.y + dy, n.z + 1) === MAT.door) return true;
@@ -276,6 +300,39 @@ function approachCovered(battle, u, target, keepAp, threats) {
         if (s > bs) { bs = s; best = n; }
     }
     return best && !same(best, u) ? best : null;
+}
+
+// ------------------------------------------------------------------------------------------------- patrols
+/**
+ * PLAN-10: an unalerted pod patrols instead of standing still. The pod's first living member walks one AP at a time
+ * toward a waypoint around its post (`u.home`, the spawn), re-picked every three rounds from a hash (deterministic on
+ * every peer); the others keep within two tiles of it. Pods posted inside a room patrol that room. Never mutates.
+ */
+export function patrolStep(battle, u) {
+    const radius = B.aiPatrolRadius;
+    if (!radius || WALKERS[u.type] || u.movedThisTurn || u.ap < 1 || u.formationId || hasStatus(u, 'frozen')) return null;
+    const pod = battle.unitsOf(u.side).filter(o => (o.group ?? 0) === (u.group ?? 0) && !o.alerted && !WALKERS[o.type]).sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+    const leader = pod[0], home = u.home || leader?.home || { x: u.x, y: u.y, z: u.z };
+    const room = battle.store.roomAt(home.x, home.y, home.z + 1);
+    const search = battle.reach(u, battle.mobility(u));
+    const ok = n => !(battle.occupant(n.x, n.y, n.z) && !same(n, u)) && (room < 0 || battle.store.roomAt(n.x, n.y, n.z + 1) === room)
+        && Math.hypot(n.x - home.x, n.y - home.y) <= radius && !battle.field.isBurning(n.x, n.y, n.z);
+    let goal;
+    if (leader && leader.id !== u.id) {
+        if (cheb(u, leader) <= 2) return null;
+        goal = leader;
+    } else {
+        const a = 2 * Math.PI * ((hashString(`${u.id}:patrol:${Math.floor(battle.round / 3)}`) >>> 0) / 4294967296);
+        goal = { x: home.x + Math.cos(a) * radius * 0.7, y: home.y + Math.sin(a) * radius * 0.7, z: home.z };
+    }
+    let best = null, bd = Infinity;
+    for (const n of search.nodes.values()) {
+        if (!ok(n) || (leader && leader.id !== u.id && cheb(n, leader) < 1)) continue;
+        const d = Math.hypot(n.x - goal.x, n.y - goal.y) + Math.abs(n.z - goal.z);
+        if (d < bd - 1e-9) { bd = d; best = n; }
+    }
+    if (!best || same(best, u) || bd >= Math.hypot(u.x - goal.x, u.y - goal.y) + Math.abs(u.z - goal.z) - 0.5) return null;
+    return { type: 'move', unitId: u.id, to: { x: best.x, y: best.y, z: best.z } };
 }
 
 // ------------------------------------------------------------------------------------------------- gadgets

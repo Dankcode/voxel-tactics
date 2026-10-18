@@ -5,7 +5,8 @@
 // per-frame anchors are TODOs for when real art lands.
 import { CLIPS, resolveClip, onClipFrameEvent } from './AnimationClips.js';
 
-const ROW_FOR_ANGLE = ['s', 'se', 'e', 'ne', 'n', 'nw', 'w', 'sw'];   // angle index 0..7 at 45° steps
+const ROW_FOR_ANGLE = ['s', 'se', 'e', 'ne', 'n', 'nw', 'w', 'sw'];
+export const STILL_CLIPS = new Set(['idle', 'aim', 'stacked', 'hunker']);   // angle index 0..7 at 45° steps
 
 export class SpriteAnimator {
     /** @param manifest field.json; @param texture THREE.Texture whose repeat/offset this animator drives */
@@ -36,6 +37,8 @@ export class SpriteAnimator {
     update(dt) {
         const c = this.m.clips[this.clip];
         if (!c) return;
+        // PLAN-11: idle and hold poses are still frames; only actions (run, fire, throw, vault, climb, down) animate.
+        if (STILL_CLIPS.has(this.clip)) { if (this.frame) { this.frame = 0; this.apply(); } return; }
         this.t += dt;
         const step = 1 / Math.max(1, c.fps);
         while (this.t >= step) {

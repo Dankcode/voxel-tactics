@@ -8,6 +8,11 @@ export const BALANCE = {
     rangeFalloff: { value: 1.0, min: 0.5, max: 2 },               // spread growth per effective range past `range`
     estimateSamples: { value: 96, min: 32, max: 256 },
     sightRange: { value: 24, min: 12, max: 40 },
+    // PLAN-10 enemy pursuit (shared/battle/EnemyAi.js). Hand-tuned; the sim only reports them.
+    aiDashIfOffenseBelow: { value: 0.35, min: 0, max: 1 },        // best reachable hit chance under this → dash (all AP) toward the target
+    aiPursuitPerTile: { value: 1.6, min: 0.5, max: 3 },           // score lost per tile still between a pursuer and its target
+    aiHideWhenOutnumbered: { value: 0, min: 0, max: 1 },          // 1 = the old PLAN-09 habit of hiding whenever outnumbered
+    aiPatrolRadius: { value: 6, min: 0, max: 12 },                // tiles an unalerted pod wanders from its post (0 = stand still)
     darkSpreadMult: { value:1.25,min:1,max:2 },
     dimRoomSpreadMult: { value: 1.25, min: 1, max: 2 },
     smokeSpreadMult: { value: 1.6, min: 1, max: 3 },

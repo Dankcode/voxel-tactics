@@ -10,7 +10,20 @@ export const VAULT_COST = 2.6;
 export function isWindowVault(world,from,to) {
     if(from.z!==to.z||Math.abs(to.x-from.x)+Math.abs(to.y-from.y)!==2)return false;
     const x=(from.x+to.x)/2,y=(from.y+to.y)/2,axis=to.x===from.x?'y':'x';
-    return world.windowOpenings?.get(`${x},${y},${from.z}`)===axis;
+    return world.windowOpenings?.get(`${x},${y},${from.z}`)===axis||isAperture(world,x,y,from.z,axis);
+}
+/**
+ * PLAN-10: a crouch-through gap in a wall, read from the voxels alone: a sill (or a wall shot down to sill height)
+ * at z+1, open air or glass at z+2, and a lintel or the rest of the wall at z+3. Generated windows, old registered
+ * windows and holes blasted into walls all qualify, so destruction opens new vault lines.
+ */
+export function isAperture(world,x,y,z,axis=null){
+    const sill=materialById(world.get(x,y,z+1));
+    if(!(sill.solid&&!sill.walkable&&!sill.liquid&&sill.part!==2&&sill.id!==MAT.door&&!world.isSolid(x,y,z+2)&&world.isSolid(x,y,z+3)))return false;
+    if(!axis)return true;
+    // It must be a gap in a wall crossed along its normal: the wall carries on to at least one side of it.
+    const [lx,ly]=axis==='x'?[0,1]:[1,0];
+    return [1,-1].some(s=>world.isSolid(x+lx*s,y+ly*s,z+2)||world.isSolid(x+lx*s,y+ly*s,z+3));
 }
 export function canVault(world, from, dx, dy, profile = AGENT_PROFILES.player) {
     if (profile.width !== 1) return null;

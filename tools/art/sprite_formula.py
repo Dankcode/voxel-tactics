@@ -3,7 +3,7 @@ MCP: import runpy; p=runpy.run_path(PATH); p['build'](); p['bake_field'](); p['b
 CLI: blender -b -P tools/art/sprite_formula.py
 The editable formula owns grid layout, arm cutouts, pivots and separate lighting passes.
 """
-import numpy as np, os, json, math, zlib, struct
+import numpy as np, os, json, math, zlib, struct, copy
 try:
     import bpy                      # Blender: previews, the editable .blend and the MCP workflow
 except ImportError:                 # plain Python: the bakes still run (PIL reads the sources)
@@ -274,6 +274,22 @@ def over(back,front):
 
 def bake_heroes():
     formula=json.load(open(CONFIG));poses={};contact_audit={}
+    # The world pose reuses the remade limb paintings at a smaller authored scale,
+    # with a complete full-body painting instead of a screen-edge torso crop.
+    if formula.get('worldAim'):
+        spec=formula['worldAim'];p=copy.deepcopy(formula['poses']['aim']);k=spec['scale'];ox,oy=spec['offset']
+        uv=lambda a:[a[0]*k+ox,a[1]*k+oy]
+        p['bodySource']=spec['bodySource'];p['cropEdges']=[];p['muzzle']=uv(p['muzzle'])
+        p['worldHeight']=spec['worldHeight'];p['anchor']=spec['anchor'];r=p['rig']
+        for key in ['stock','grip','support']:r[key]=uv(r[key])
+        r['handAxis']=[uv(a) for a in r['handAxis']]
+        r['gunView']['referenceMuzzle']=uv(r['gunView']['referenceMuzzle'])
+        for arm in r['arms'].values():
+            for key in ['shoulder','elbow','wrist','palm','gripWrist','cuffWrist','fingertip']:
+                if key in arm:arm[key]=uv(arm[key])
+        r['limbRadii']={key:[v*k for v in vals] for key,vals in r['limbRadii'].items()}
+        p['normalVolumes']=[[cx*k+ox,cy*k+oy,rx*k,ry*k,s] for cx,cy,rx,ry,s in p['normalVolumes']]
+        formula['poses']['world-aim']=p
     for name,p in formula['poses'].items():
         body=cleaned_albedo(resample(read_png(os.path.join(SRC,p['bodySource'])),768,768))
         if p.get('canvasWidth',768)>768:body=np.pad(body,((0,0),(0,p['canvasWidth']-768),(0,0)))
@@ -349,8 +365,11 @@ def bake_heroes():
         write_png(os.path.join(OUT,name+'-albedo.png'),preview)
         layers.insert(1,{'id':'gun','gun':True,'zIndex':p.get('layerZ',{}).get('gun',100)})
         poses[name]={'character':'ranger-01','version':3,'placeholder':False,'width':w,'height':h,'screenHeight':.72,'maxWidthShare':p.get('maxWidthShare',.42),'cropEdges':p.get('cropEdges',[]),'muzzle':p['muzzle'],'layers':layers,'rig':p['rig'],'anatomy':p.get('anatomy'),'lighting':'albedo-normal-response-mask','gun':True,'sections':'complete-independent-paintings'}
+        if 'anchor' in p:poses[name].update(anchor=p['anchor'],worldHeight=p['worldHeight'])
     with open(os.path.join(os.path.dirname(CONFIG),'rig-image-audit.json'),'w') as f:json.dump(contact_audit,f,indent=2)
-    base=poses['aim'];base['variants']={'left':{**dict(base),'mirror':True,'mirrorGun':True,'pose':'aim-left'}}
+    base=poses['aim']
+    if 'world-aim' in poses:base['worldAim']=poses['world-aim']
+    base['variants']={'left':{**dict(base),'mirror':True,'mirrorGun':True,'pose':'aim-left'}}
     with open(os.path.join(OUT,'cutin.json'),'w') as f:json.dump(base,f,indent=2)
     if bpy is None:
         return {'poses':list(poses),'scene':None,'note':'baked without Blender: no preview render or .blend update'}

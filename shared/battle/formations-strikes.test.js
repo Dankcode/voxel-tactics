@@ -64,33 +64,49 @@ test('single-tile enemy pods with a lead on the squad advance in a wedge; walker
 });
 
 // ---------------------------------------------------------------------------------------------- strikes
-test('the airstrike highlights one wide corridor along the flight path; the laser a longer, narrower band', () => {
+test('PLAN-10: the airstrike highlights one 15 x 15 square whatever the facing; the laser keeps its long band', () => {
     const b = arena(), u = b.unit('p0'), to = { x: 20, y: 11, z: 2 };
     const air = footprint(b, 'carpet_bomb', to, u), laser = footprint(b, 'orbital_laser', to, u);
     const s = STRIKES.carpet_bomb, l = STRIKES.orbital_laser;
-    assert.equal(air.length, (2 * s.halfLength + 1) * (2 * s.halfWidth + 1));
+    assert.equal(air.length, (2 * s.half + 1) ** 2);
     assert.equal(laser.length, (2 * l.halfLength + 1) * (2 * l.halfWidth + 1));
-    assert.ok(l.halfLength > s.halfLength && l.halfWidth < s.halfWidth);
-    assert.equal(new Set(air.map(c => c.y)).size, 2 * s.halfWidth + 1, 'east-west flight from a caster to the west');
-    const ns = footprint(b, 'carpet_bomb', { x: 10, y: 25, z: 2 }, u);
-    assert.equal(new Set(ns.map(c => c.x)).size, 2 * s.halfWidth + 1, 'north-south when the caster is north');
+    assert.deepEqual(new Set(air.map(c => c.x)), new Set(Array.from({ length: 2 * s.half + 1 }, (_, i) => to.x - s.half + i)));
+    const ns = footprint(b, 'carpet_bomb', to, { ...u, x: 20, y: 0 });
+    assert.deepEqual(ns.map(c => `${c.x},${c.y}`).sort(), air.map(c => `${c.x},${c.y}`).sort(), 'independent of the caster');
     assert.ok(air.every(c => c.z === 2), 'cells sit on the top surface');
 });
 
-test('airstrike craters stay one level deep on open ground and every blast lands inside the highlight', () => {
-    const b = arena({ intel: true }), u = b.unit('p0'), to = { x: 22, y: 10, z: 2 };
-    const cells = new Set(footprint(b, 'carpet_bomb', to, u).map(c => `${c.x},${c.y}`));
-    const before = b.log.length;
-    executeStrike(b, u, 'carpet_bomb', to);
-    const blasts = b.log.slice(before).filter(e => e.t === 'explosion');
-    assert.equal(blasts.length, STRIKES.carpet_bomb.bombs);
-    assert.ok(blasts.every(e => cells.has(`${Math.floor(e.x)},${Math.floor(e.y)}`)));
+test('PLAN-10: three bombs go off together inside the square, apart, deterministic per seed; damage stays inside', () => {
+    const run = () => {
+        const b = arena({ intel: true }), u = b.unit('p0'), to = { x: 22, y: 12, z: 2 };
+        const cells = new Set(footprint(b, 'carpet_bomb', to, u).map(c => `${c.x},${c.y}`));
+        const before = b.log.length;
+        executeStrike(b, u, 'carpet_bomb', to);
+        return { b, cells, blasts: b.log.slice(before).filter(e => e.t === 'explosion') };
+    };
+    const { b, cells, blasts } = run(), s = STRIKES.carpet_bomb;
+    assert.equal(blasts.length, 3);
+    assert.ok(blasts.every(e => e.of === 3), 'one salvo');
+    for (const e of blasts) for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++)
+        if (dx * dx + dy * dy <= s.bombRadius ** 2) assert.ok(cells.has(`${Math.floor(e.x) + dx},${Math.floor(e.y) + dy}`), 'every blast stays inside the highlight');
+    for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) assert.ok(Math.hypot(blasts[i].x - blasts[j].x, blasts[i].y - blasts[j].y) >= s.minSeparation);
+    assert.deepEqual(run().blasts.map(e => [e.x, e.y]), blasts.map(e => [e.x, e.y]), 'same seed, same bombs');
     let craters = 0;
     for (let y = 0; y < 40; y++) for (let x = 0; x < 40; x++) {
         assert.notEqual(b.store.get(x, y, 1), AIR, `never deeper than one level (${x},${y})`);
-        if (b.store.get(x, y, 2) === AIR) { craters++; assert.ok(cells.has(`${x},${y}`), 'damage stays in the corridor'); }
+        if (b.store.get(x, y, 2) === AIR) { craters++; assert.ok(cells.has(`${x},${y}`), 'damage stays in the square'); }
     }
     assert.ok(craters > 20, `craters ${craters}`);
+});
+
+test('PLAN-10: the highlight drapes onto the floor in view under the storey cut', async () => {
+    const { drapeFootprint } = await import('./Strikes.js');
+    const b = arena({ build: st => { for (let x = 18; x <= 22; x++) for (let y = 8; y <= 12; y++) { st.set(x, y, 5, MAT.concrete); st.set(x, y, 8, MAT.concrete); } } });
+    const cells = footprint(b, 'carpet_bomb', { x: 20, y: 10, z: 2 }, b.unit('p0'));
+    const roof = cells.find(c => c.x === 20 && c.y === 10);
+    assert.equal(roof.z, 8, 'the full view shows the roof');
+    assert.equal(drapeFootprint(b.store, cells, 7).find(c => c.x === 20 && c.y === 10).z, 5, 'cut under the roof: the upper floor');
+    assert.equal(drapeFootprint(b.store, cells, 4).find(c => c.x === 20 && c.y === 10).z, 2, 'cut under the floor: the ground');
 });
 
 test('strikes take at most two storeys off a building and the laser cuts its whole line', () => {

@@ -54,6 +54,11 @@ and a standable surface at the same z on the far side. The hop covers both cells
 landing cell's moveCost. So sandbags, hedges, planters, low walls, jersey barriers, fences, chain-link, bins,
 benches and one-high furniture are vaulted; two-high walls, closed doors and two-deep objects (cars) are not.
 
+**Aperture vaults** (PLAN-10, `PathSearch.isAperture`): a gap in a wall — sill (or wall shot down to sill height) at
+z+1, air or glass at z+2, lintel or wall at z+3, with the wall continuing to at least one side — is crossed along its
+normal as a crouched window vault. Generated windows, old registered windows and holes blasted into walls all qualify;
+the cell inside every ground-floor window is kept clear of furniture as the landing.
+
 ## Jumping down
 
 `PathSearch.canJumpDown`: a one-way drop off a ledge, balcony, roof edge or container.

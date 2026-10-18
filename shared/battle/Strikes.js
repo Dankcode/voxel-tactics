@@ -1,8 +1,8 @@
 // Killstreak strikes: the Airstrike (carpet_bomb), the Orbital Laser (intel rules) and the Commander Strike (classic).
 //
 // footprint() is exactly what the HUD highlights, and every strike stays inside it:
-//  - Airstrike: one large, wide rectangle along the flight path (from the caster toward the marked tile). Five bombs
-//    fall at deterministic, seeded spots inside it; each blast is wider than before (radius 3.5).
+//  - Airstrike (PLAN-10): one large square centred on the marked tile, whatever way the caster faces. Three bombs hit
+//    at once at deterministic, seeded spots inside it (centres inset by the blast radius, kept apart), radius 3.5.
 //  - Orbital Laser: a narrower but much longer band (33 x 5) that cuts the whole line.
 //  - Commander Strike: one big circle (radius 4).
 //
@@ -14,7 +14,7 @@ import { occupiedCells } from './Walker.js';
 import { alive } from './Units.js';
 
 export const STRIKES = Object.freeze({
-    carpet_bomb: { halfLength: 10, halfWidth: 3, bombs: 5, bombSpacing: 4, bombRadius: 3.5, jitter: 2, damage: 40, edgeDamage: 10 },
+    carpet_bomb: { half: 7, bombs: 3, bombRadius: 3.5, minSeparation: 4, inset: true, damage: 40, edgeDamage: 0 },
     orbital_laser: { halfLength: 16, halfWidth: 2, coreWidth: 1, damage: 40 },
     killstreak_strike: { radius: 4, damage: 25, power: 12 }
 });
@@ -39,6 +39,11 @@ export function footprint(b, id, to, from = null) {
             if (st.inBounds(x, y, 0) && (x - to.x) ** 2 + (y - to.y) ** 2 <= s.radius * s.radius) cells.push({ x, y, z: topOf(st, x, y, to.z) });
         return cells;
     }
+    if (id === 'carpet_bomb') {
+        for (let y = to.y - s.half; y <= to.y + s.half; y++) for (let x = to.x - s.half; x <= to.x + s.half; x++)
+            if (st.inBounds(x, y, 0)) cells.push({ x, y, z: topOf(st, x, y, to.z) });
+        return cells;
+    }
     const { ax, ay } = strikeAxis(to, from);
     for (let along = -s.halfLength; along <= s.halfLength; along++) for (let side = -s.halfWidth; side <= s.halfWidth; side++) {
         const x = to.x + ax * along + ay * side, y = to.y + ay * along + ax * side;
@@ -47,13 +52,31 @@ export function footprint(b, id, to, from = null) {
     return cells;
 }
 
-/** Bomb centres for an airstrike: evenly along the path, jittered sideways and along it by the battle's rng. */
-export function airstrikeBombs(b, to, from) {
-    const s = STRIKES.carpet_bomb, { ax, ay } = strikeAxis(to, from), out = [];
+/**
+ * Bomb centres for an airstrike: `bombs` seeded points inside the square (inset by the blast radius so every blast
+ * stays inside the highlight), at least `minSeparation` apart. Bounded rejection sampling, then a fixed triangle.
+ */
+export function airstrikeBombs(b, to) {
+    const s = STRIKES.carpet_bomb, r = s.inset ? Math.max(0, s.half - Math.floor(s.bombRadius)) : s.half, out = [];
+    const pick = () => ({ x: to.x + Math.round((b.rng.next() * 2 - 1) * r), y: to.y + Math.round((b.rng.next() * 2 - 1) * r) });
+    const fallback = [[-1, -1], [1, -1], [0, 1]].map(([fx, fy]) => ({ x: to.x + Math.round(fx * r * 0.75), y: to.y + Math.round(fy * r * 0.75) }));
     for (let i = 0; i < s.bombs; i++) {
-        const along = Math.max(-s.halfLength, Math.min(s.halfLength, (i - (s.bombs - 1) / 2) * s.bombSpacing + Math.round((b.rng.next() * 2 - 1) * (s.jitter - 1))));
-        const side = Math.round((b.rng.next() * 2 - 1) * s.jitter);
-        out.push({ x: to.x + ax * along + ay * side, y: to.y + ay * along + ax * side });
+        let p = null;
+        for (let k = 0; k < 40 && !p; k++) { const q = pick(); if (out.every(o => Math.hypot(o.x - q.x, o.y - q.y) >= s.minSeparation)) p = q; }
+        out.push(p || fallback[i % fallback.length]);
+    }
+    return out;
+}
+/**
+ * Highlight cells for the floor in view (PLAN-10): each column is drawn on its highest standable surface below the
+ * camera's storey cut, so the square sits on the floor you are looking at instead of on the roofs above it.
+ */
+export function drapeFootprint(store, cells, cutZ = Infinity) {
+    if (!Number.isFinite(cutZ)) return cells;
+    const out = [];
+    for (const c of cells) {
+        const s = store.surfaces(c.x, c.y).filter(q => q.z < cutZ - 1).at(-1);
+        if (s) out.push({ x: c.x, y: c.y, z: s.z });
     }
     return out;
 }
@@ -90,20 +113,21 @@ export function executeStrike(b, u, id, to) {
     const inside = (e, test) => occupiedCells(e).some(p => test(p.x, p.y));
     const changes = b.store.record(() => {
         if (id === 'carpet_bomb') {
-            const bombs = airstrikeBombs(b, to, u), r2 = s.bombRadius ** 2;
+            const bombs = airstrikeBombs(b, to), r2 = s.bombRadius ** 2;
             for (const c of cells) {
                 const d2 = Math.min(...bombs.map(p => (c.x - p.x) ** 2 + (c.y - p.y) ** 2));
                 if (d2 <= r2) carveColumn(b, c.x, c.y, { crater: d2 <= (s.bombRadius - 1.2) ** 2 ? 1 : 0 });
             }
-            for (const p of bombs) {
+            // All three bombs land together: one salvo, played at once by the client.
+            bombs.forEach((p, i) => {
                 const h = topOf(b.store, p.x, p.y, to.z) + 1.2;
                 scorchBlast(b.store, { x: p.x + 0.5, y: p.y + 0.5, h, radius: s.bombRadius });
-                b.emit({ t: 'explosion', x: p.x + 0.5, y: p.y + 0.5, h, radius: s.bombRadius, element: 'geo', source: id });
-            }
+                b.emit({ t: 'explosion', x: p.x + 0.5, y: p.y + 0.5, h, radius: s.bombRadius, element: 'geo', source: id, salvo: i, of: bombs.length });
+            });
             const inRect = (x, y) => cells.some(c => c.x === x && c.y === y);
             for (const e of b.units.filter(alive)) {
                 if (inside(e, (x, y) => bombs.some(p => (x - p.x) ** 2 + (y - p.y) ** 2 <= r2))) hurt(e, s.damage);
-                else if (inside(e, inRect)) hurt(e, s.edgeDamage);
+                else if (s.edgeDamage && inside(e, inRect)) hurt(e, s.edgeDamage);
             }
         } else {
             const { ax, ay } = strikeAxis(to, u);

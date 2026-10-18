@@ -27,3 +27,23 @@ test('a normal move automatically vaults a furnished building window into interi
     const back=a.apply({type:'move',unitId:'p0',to:from});assert.ok(back.ok,back.reason);assert.equal(back.events.find(e=>e.t==='move').windowVaults[0],true);
     a.light.dispose();b.light.dispose();
 });
+
+test('PLAN-10: any sill-high gap under a lintel is a vault line, including holes blasted into a wall', async () => {
+    const { isAperture, isWindowVault } = await import('../world/PathSearch.js');
+    const m = createMap({ id: 'aperture', width: 14, depth: 14, seed: 3 });
+    const s = m.store, z = 1;
+    for (let y = 2; y < 12; y++) for (let h = 1; h <= 3; h++) s.set(6, y, z + h, MAT.stucco);   // a storey-high wall at x = 6
+    const from = { x: 5, y: 6, z }, to = { x: 7, y: 6, z };
+    assert.equal(canVault(s, from, 1, 0), null, 'an intact wall is not vaulted');
+    s.set(6, 6, z + 2, AIR);                                                               // shot out at chest height
+    assert.ok(isAperture(s, 6, 6, z));
+    assert.deepEqual(canVault(s, from, 1, 0), to, 'sill below, lintel above: crouch through');
+    assert.ok(isWindowVault(s, from, to));
+    s.set(6, 8, z + 1, AIR);                                                               // a hole at foot height only
+    assert.equal(canVault(s, { x: 5, y: 8, z }, 1, 0), null, 'a foot-high hole is not passable');
+    s.set(6, 10, z + 2, MAT.glass); s.set(6, 10, z + 1, MAT.stucco);                    // a glazed window over a solid sill
+    assert.deepEqual(canVault(s, { x: 5, y: 10, z }, 1, 0), { x: 7, y: 10, z }, 'glazed windows are vaulted (the pane breaks)');
+    s.set(6, 4, z + 2, AIR); s.set(6, 4, z + 3, AIR);                                     // wall knocked down to one voxel
+    assert.deepEqual(canVault(s, { x: 5, y: 4, z }, 1, 0), { x: 7, y: 4, z }, 'a wall remnant is an ordinary low-cover vault');
+    assert.equal(isWindowVault(s, { x: 5, y: 4, z }, { x: 7, y: 4, z }), false);
+});

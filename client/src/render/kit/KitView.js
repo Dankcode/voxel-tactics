@@ -290,7 +290,9 @@ export class KitView {
                 break;
             }
             case 'stairs': {
-                const top = !['stairs_wood', 'stairs_stone', 'steel_stair'].includes(keyOf(get(x, y, z + 1)));
+                // PLAN-11: decide the tread from the real column, not the cut view. A flight cut by the storey cutaway
+                // used to grow a full tread set on every cut column top (extra "staircases" beside the real one).
+                const top = !['stairs_wood', 'stairs_stone', 'steel_stair'].includes(keyOf(store.get(x, y, z + 1)));
                 if (!top) { add('stair_block', x, y, z, 0, k); break; }
                 add('stair_step', x, y, z, stairYaw(store, x, y, z), k);
                 break;

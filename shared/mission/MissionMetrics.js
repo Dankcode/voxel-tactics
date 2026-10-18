@@ -75,7 +75,7 @@ export function measureMission(mission, { search = null, gates = DEFAULT_GATES }
     const z0=mission.meta?.lanesGoal==='objective'&&mission.objective?.zone,g0=typeof mission.meta?.lanesGoal==='object'?mission.meta.lanesGoal:null;
     const enemyCentre = g0?g0:z0?{x:(z0.x0+z0.x1)/2,y:(z0.y0+z0.y1)/2,z:z0.z??0}:targetBuilding?{x:targetBuilding.x0-2,y:targetBuilding.entry.y,z:targetBuilding.baseZ}:centroid(mission.spawns.enemy.map(e => e.pos));
     const goal = nodes.reduce((b, n) => (!b || dist(n, enemyCentre) < dist(b, enemyCentre) ? n : b), null);
-    let lanes = 0, shortest = Infinity;
+    let lanes = 0, shortest = Infinity, advance = { run: 0, at: null };
     const blocked = new Set();
     for (let attempt = 0; attempt < 4 && goal; attempt++) {
         const s = reachable(store, start, Infinity, AGENT_PROFILES.player, { blocked: p => blocked.has(`${p.x},${p.y},${p.z}`) });
@@ -85,6 +85,7 @@ export function measureMission(mission, { search = null, gates = DEFAULT_GATES }
         if (cost > shortest * 1.8) break;
         lanes++;
         const path = pathTo(s, nodeKey(goal));
+        if (attempt === 0) advance = advanceExposure(store, path);
         for (const p of path.slice(Math.floor(path.length * 0.2), Math.floor(path.length * 0.8))) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) blocked.add(`${p.x + dx},${p.y + dy},${p.z}`);
     }
     // Rooms with two or more ways in.
@@ -105,12 +106,28 @@ export function measureMission(mission, { search = null, gates = DEFAULT_GATES }
     const n = Math.max(1, nodes.length);
     const metrics = {
         reachableTiles: nodes.length, coverDensity: covered / n, outdoorCover: outdoorNodes.length ? outdoorCovered / outdoorNodes.length : 1, coverGap, fullCoverShare: full / n, interiorShare: indoor / n, killingField,
-        sightlineMedian, lanes, breachability, destructibleCover: coverVoxels ? destructible / coverVoxels : 0, spawnSafe, firstContact,
+        sightlineMedian, lanes, breachability, advanceExposure: advance.run, advanceExposureAt: advance.at, destructibleCover: coverVoxels ? destructible / coverVoxels : 0, spawnSafe, firstContact,
         rooms: rooms.length, buildings: (mission.buildings || []).length
     };
     metrics.gates = Object.fromEntries(Object.entries(gates).map(([k, [lo, hi]]) => [k, metrics[k] >= lo && metrics[k] <= hi]));
     metrics.pass = Object.values(metrics.gates).every(Boolean);
     return metrics;
+}
+
+/**
+ * PLAN-11 cover chain (after the Gears of War MP map theory notes on traversal between cover): along the main line of
+ * advance, the longest run of outdoor steps with no half-or-better cover on the tile or a neighbour — the stretch a
+ * squad would have to cross in the open. Returns { run, at } (at = the middle of that run).
+ */
+export function advanceExposure(store, path) {
+    let run = 0, best = { run: 0, at: null }, startIdx = 0;
+    const covered = p => { for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const c = coverAt(store, p.x + dx, p.y + dy, p.z); if (Math.max(c.n, c.e, c.s, c.w) >= COVER.HALF) return true; } return false; };
+    path.forEach((p, i) => {
+        const exposed = store.roomAt(p.x, p.y, p.z + 1) < 0 && !covered(p);
+        if (exposed) { if (!run) startIdx = i; run++; if (run > best.run) best = { run, at: path[startIdx + Math.floor(run / 2)] }; }
+        else run = 0;
+    });
+    return best.at ? { run: best.run, at: { x: best.at.x, y: best.at.y, z: best.at.z } } : best;
 }
 
 const centroid = ps => ({ x: ps.reduce((s, p) => s + p.x, 0) / Math.max(1, ps.length), y: ps.reduce((s, p) => s + p.y, 0) / Math.max(1, ps.length) });

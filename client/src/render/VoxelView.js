@@ -51,7 +51,7 @@ export class VoxelView {
         if (cx < 0 || cy < 0 || cz < 0 || cx * CHUNK >= this.store.width || cy * CHUNK >= this.store.depth || cz * CHUNK >= this.store.height) return;
         const old = this.chunks.get(key);
         if (old) { for (const m of old) { this.group.remove(m); if (m.userData.kit) m.dispose?.(); if (!m.isInstancedMesh) m.geometry.dispose(); else if (m.userData.decals) m.dispose(); } }
-        const hidden = (x,y,z) => this.buildingView?.hiddenAt(x,y,z)||false;
+        const hidden = (x,y,z) => this.buildingView?.hiddenAt(x,y,z)||(this.xray?.has(`${x},${y},${z}`)??false);
         const parts = meshChunk(this.store, cx, cy, cz, { hidden, tint: this.tint, cutZ: this.cutZ, kit: this.kitView ? kitHandler : null, apron: false });
         const meshes = [];
         for (const p of parts) {
@@ -94,6 +94,23 @@ export class VoxelView {
     }
     /** Hard tactical boundary: off-map scenery is a screen-space image. */
     buildApron() { /* The tactical map ends at its bounds; a 2D background replaces off-map geometry. */ }
+    /**
+     * PLAN-10 aim x-ray: hide these voxels ("x,y,z" keys) while the interior shoulder camera looks through them.
+     * Presentation only; rebuilds just the chunks (and their neighbours) whose hidden set changed.
+     */
+    setXray(cells) {
+        const next = cells && cells.size ? new Set(cells) : null, old = this.xray || null;
+        if (!old && !next) return;
+        this.xray = next;
+        const dirty = new Set();
+        for (const k of new Set([...(old || []), ...(next || [])])) {
+            if (old?.has(k) && next?.has(k)) continue;
+            const [x, y, z] = k.split(',').map(Number);
+            for (const [dx, dy, dz] of [[0, 0, 0], [1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]])
+                dirty.add(`${Math.floor((x + dx) / CHUNK)},${Math.floor((y + dy) / CHUNK)},${Math.floor((z + dz) / CHUNK)}`);
+        }
+        for (const c of dirty) this.rebuild(c);
+    }
     /** Storey cutaway: hide voxels at z >= top and cap what is cut. Rebuilds every chunk when it changes. */
     setCut(top) {
         const z = Number.isFinite(top) ? top : Infinity;

@@ -2,7 +2,7 @@ import { InventoryPrep } from '../ui/InventoryPrep.js';
 import { Client } from 'colyseus.js';
 import { CONTENT_CONTRACT } from '../../../shared/session/ContentContract.js';
 import { SQUADS, CLASSES } from '../../../shared/content/units.js';
-import { SCENARIOS, sanitizeDesc } from '../../../shared/session/Scenarios.js';
+import { THEMES, OPERATION_ID, plotForMap, sanitizeDesc } from '../../../shared/session/Scenarios.js';
 const root=document.querySelector('#shell');
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const url=`${location.protocol==='https:'?'wss':'ws'}://${location.host}`;
@@ -14,7 +14,7 @@ async function connect(host) {
     try {
         const client=new Client(document.querySelector('#server').value);
         const options={name:document.querySelector('#name').value,contract:CONTENT_CONTRACT};
-        room=host?await client.create('staging',{...options,desc:draft?.desc||sanitizeDesc()}):await client.joinById(document.querySelector('#code').value.trim(),options);
+        room=host?await client.create('staging',{...options,desc:draft?.desc||sanitizeDesc({scenario:OPERATION_ID,operation:{plot:'downtown'},seed:1+Math.floor(Math.random()*99999)})}):await client.joinById(document.querySelector('#code').value.trim(),options);
         room.onMessage('state',m=>{state=m;render();});room.onMessage('seat',m=>{myId=m.id;render();});
         room.onMessage('error',m=>status(m.message));room.onMessage('launched',m=>{
             // Only the validated, frozen launch contract crosses into the battle entry point.
@@ -28,7 +28,7 @@ async function connect(host) {
 function render() {
     if(!state||!myId)return;
     const host=state.host===myId,frozen=state.launching||state.launched,squad=Array.isArray(state.desc.squad)?state.desc.squad:SQUADS[state.desc.squad]||SQUADS.standard;
-    document.querySelector('#lobby').innerHTML=`<section><p class="eyebrow">Room ${esc(room.roomId)}</p><h2>Squad briefing</h2><ul>${state.seats.map(s=>`<li>${esc(s.name)} · ${s.id}${s.id===state.host?' · host':''}</li>`).join('')}</ul><div class="row"><label>Map <select id="map" ${!host||frozen?'disabled':''}>${SCENARIOS.map(s=>`<option value="${s.id}" ${s.id===state.desc.scenario?'selected':''}>${esc(s.name)}</option>`).join('')}</select></label><label>Seed <input id="seed" type="number" min="1" max="4294967295" value="${state.desc.seed}" ${!host||frozen?'disabled':''}></label><button id="config" ${!host||frozen?'disabled':''}>Apply mission</button></div><button id="edit-pack" ${!host||frozen?'disabled':''}>Prepare equipment</button><p>${state.desc.intel?'Intel rules · independent personal turns':'Classic squad turns'} · Revision ${state.revision}</p><table><thead><tr><th>Soldier / equipment</th><th>Controller</th></tr></thead><tbody>${squad.map((type,i)=>`<tr><td>${esc(CLASSES[type].intelName||CLASSES[type].name)}<br><small>${esc(CLASSES[type].weapons.join(', '))} · ${(state.desc.inventories?.[i]?.length??Object.values(CLASSES[type].items).reduce((a,b)=>a+b,0))} packed items</small></td><td><select data-soldier="${i}" ${!host||frozen?'disabled':''}>${state.seats.map((s,n)=>`<option value="${s.id}" ${(state.owners[i]||state.seats[i%state.seats.length].id)===s.id?'selected':''}>${esc(s.name)} (${s.id})</option>`).join('')}</select></td></tr>`).join('')}</tbody></table><div class="row" style="margin-top:24px"><button id="launch" ${!host||frozen?'disabled':''}>${state.launching?'Building battlefield…':'Launch mission'}</button></div></section>`;
+    document.querySelector('#lobby').innerHTML=`<section><p class="eyebrow">Room ${esc(room.roomId)}</p><h2>Squad briefing</h2><ul>${state.seats.map(s=>`<li>${esc(s.name)} · ${s.id}${s.id===state.host?' · host':''}</li>`).join('')}</ul><div class="row"><label>Theme <select id="map" ${!host||frozen?'disabled':''}>${THEMES.map(t=>`<option value="${t.id}" ${t.id===(state.desc.operation?.plot||(state.desc.scenario!==OPERATION_ID?plotForMap(state.desc.scenario):'downtown'))?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label><label>Seed <input id="seed" type="number" min="1" max="4294967295" value="${state.desc.seed}" ${!host||frozen?'disabled':''}></label><button id="config" ${!host||frozen?'disabled':''}>Apply mission</button></div><button id="edit-pack" ${!host||frozen?'disabled':''}>Prepare equipment</button><p>${state.desc.intel?'Intel rules · independent personal turns':'Classic squad turns'} · Revision ${state.revision}</p><table><thead><tr><th>Soldier / equipment</th><th>Controller</th></tr></thead><tbody>${squad.map((type,i)=>`<tr><td>${esc(CLASSES[type].intelName||CLASSES[type].name)}<br><small>${esc(CLASSES[type].weapons.join(', '))} · ${(state.desc.inventories?.[i]?.length??Object.values(CLASSES[type].items).reduce((a,b)=>a+b,0))} packed items</small></td><td><select data-soldier="${i}" ${!host||frozen?'disabled':''}>${state.seats.map((s,n)=>`<option value="${s.id}" ${(state.owners[i]||state.seats[i%state.seats.length].id)===s.id?'selected':''}>${esc(s.name)} (${s.id})</option>`).join('')}</select></td></tr>`).join('')}</tbody></table><div class="row" style="margin-top:24px"><button id="launch" ${!host||frozen?'disabled':''}>${state.launching?'Building battlefield…':'Launch mission'}</button></div></section>`;
     document.querySelector('#edit-pack').onclick=()=>{
         const panel=document.querySelector('#equipment');panel.hidden=false;
         panel.innerHTML='<div id="pack-editor"></div><button id="save-pack" class="primary">Apply equipment</button><button id="cancel-pack">Cancel</button>';
@@ -37,7 +37,7 @@ function render() {
         panel.querySelector('#save-pack').onclick=()=>{room.send('configure',{desc:{...state.desc,inventories:prep.inventories()}});panel.hidden=true;};
         panel.querySelector('#cancel-pack').onclick=()=>panel.hidden=true;
     };
-    document.querySelector('#config').onclick=()=>room.send('configure',{desc:{...state.desc,scenario:document.querySelector('#map').value,seed:Number(document.querySelector('#seed').value)}});
+    document.querySelector('#config').onclick=()=>room.send('configure',{desc:{...state.desc,scenario:OPERATION_ID,operation:{...(state.desc.operation||{}),plot:document.querySelector('#map').value},seed:Number(document.querySelector('#seed').value)}});   // PLAN-10: generated from a theme
     document.querySelectorAll('[data-soldier]').forEach(el=>el.onchange=()=>room.send('draft',{index:Number(el.dataset.soldier),owner:el.value}));
 
     document.querySelector('#launch').onclick=()=>room.send('launch');

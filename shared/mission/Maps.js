@@ -35,4 +35,13 @@ export const MAPS = Object.freeze([
 
 // Shared baseline for local play, co-op, and both agents' visual checks.
 export const DEFAULT_MAP = 'burger-district';
+// PLAN-10: players never pick these fixed maps any more — every battle is generated from a theme (Scenarios.THEMES).
+// The registry stays for tests, the balance sim, tools and old links; only these two test rigs are offered, and only
+// in the admin Test ground / debug panel.
+export const FIXTURE_IDS = Object.freeze([PROVING_GROUNDS_ID, ARCHITECTURE_YARD_ID]);
+// Old map ids → the generated theme closest to them (legacy links, saved setups, reports).
+const LEGACY_PLOTS = { 'suburb-district': 'suburb', 'cedar-close': 'suburb', 'cedar-image': 'suburb', 'highway-district': 'suburb', 'route-9': 'suburb',
+    'dockside-district': 'industrial', 'harbor-yard': 'industrial', 'freight-terraces': 'industrial', 'drainage-district': 'industrial', 'proving-grounds': 'industrial' };
+const THEME_PLOTS = { Suburbs: 'suburb', Industrial: 'industrial', Downtown: 'downtown', Roadside: 'suburb' };
+export function plotForMap(id) { const m = mapById(id); return LEGACY_PLOTS[id] || (m && THEME_PLOTS[m.theme]) || 'downtown'; }
 export const mapById = id => MAPS.find(m => m.id === id) || null;

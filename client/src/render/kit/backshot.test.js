@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { backshotPlacement, CUTIN_MODES, BAR_SHARE, aimBackshotLayout, aimBackshotPose, followStep, AIM_SHOT, sideCutin } from '../../anim/CutInDirector.js';
+import { backshotPlacement, CUTIN_MODES, BAR_SHARE, sideCutin } from '../../anim/CutInDirector.js';
 
 const art = name => JSON.parse(readFileSync(new URL(`../../../public/assets/characters/${name}/cutin.json`, import.meta.url)));
 const view = { width: 1280, height: 760 };
@@ -27,59 +27,29 @@ test('the committed back shot reaches the letterbox and stays left of the crossh
     assert.ok(cut.height <= view.height * 0.9);
 });
 
-test('the aiming back shot is static in the bottom-left corner past the squad rail, whole and unclipped', () => {
-    for (const name of ['test-soldier', 'grenadier']) {
-        const c = art(name), a = aimBackshotLayout(c, view, 100), b = aimBackshotLayout(c, view, 100);
-        assert.deepEqual(a, b, 'it does not depend on the crosshair');
-        assert.equal(a.left, 100 + AIM_SHOT.gap);
-        assert.ok(Math.abs(a.top + a.height - view.height) < 1e-9, 'sits on the bottom edge');
-        assert.ok(a.width <= view.width * AIM_SHOT.maxWidthShare + 1e-9 && a.height <= view.height * AIM_SHOT.heightShare + 1e-9);
-        assert.ok(Math.abs(a.width / a.height - c.width / c.height) < 1e-9, 'unstretched');
-    }
-});
-
-test('the figure leans toward the crosshair after a slight delay and its upper body trails fast moves', () => {
-    const c = art('test-soldier'), layout = aimBackshotLayout(c, view, 100);
-    const muzzle = { x: layout.left + c.muzzle[0] * layout.width, y: layout.top + c.muzzle[1] * layout.height };
-    assert.ok(Math.abs(aimBackshotPose(c, layout, muzzle).lean) < 1e-6, 'at rest when the crosshair is on the barrel line');
-    const right = aimBackshotPose(c, layout, { x: 1200, y: muzzle.y }), left = aimBackshotPose(c, layout, { x: muzzle.x - 200, y: 120 });
-    assert.ok(right.lean > 0 && left.lean < 0, 'leans toward the side the crosshair is on');
-    assert.ok(Math.abs(right.lean) <= AIM_SHOT.maxLean && Math.abs(left.lean) <= AIM_SHOT.maxLean, 'never more than the limit');
-    assert.ok(aimBackshotPose(c, layout, muzzle, { x: 900, y: 0 }).bend > 0, 'moving right, the top trails left (CSS skewX +)');
-    assert.ok(Math.abs(aimBackshotPose(c, layout, muzzle, { x: 1e6, y: 0 }).bend) <= AIM_SHOT.maxBend);
-    // The follow spring lags, then settles.
-    const st = {}; followStep(st, { x: 0, y: 0 }, 0); followStep(st, { x: 300, y: 0 }, 1 / 60);
-    assert.ok(st.pos.x > 0 && st.pos.x < 60, 'a slight delay behind the crosshair');
-    for (let i = 0; i < 90; i++) followStep(st, { x: 300, y: 0 }, 1 / 60);
-    assert.ok(Math.abs(st.pos.x - 300) < 1 && Math.abs(st.vel.x) < 5, 'settles');
-});
-
 test('there is no cut-in mode that skips the back shot', () => {
     assert.deepEqual(CUTIN_MODES, ['always']);
 });
 
-test('cropped ranger torso meets the viewport edge in aiming and firing on either shoulder',()=>{
+test('committed cropped ranger cut-in meets the letterbox on either shoulder',()=>{
     const ranger=art('ranger-01');
     for(const viewport of [{width:1280,height:720},{width:600,height:800}])for(const shoulder of ['right','left']){
         const c=sideCutin(ranger,shoulder);
-        const placements=[aimBackshotLayout(c,viewport,100),backshotPlacement(c,{x:viewport.width/2,y:viewport.height/2},viewport)];
+        const placements=[backshotPlacement(c,{x:viewport.width/2,y:viewport.height/2},viewport)];
         for(const p of placements){
             assert.equal(c.mirror?p.left+p.width:p.left,c.mirror?viewport.width:0,'no hard torso cut inside the scene');
             assert.ok(p.top>=0,'helmet stays inside viewport');
         }
-        assert.equal(placements[0].top+placements[0].height,viewport.height);
-        assert.equal(placements[1].top+placements[1].height,viewport.height*(1-BAR_SHARE));
+        assert.equal(placements[0].top+placements[0].height,viewport.height*(1-BAR_SHARE));
     }
 });
 
-test('left side: the back shot never flips or moves; only a future variants.left sprite replaces it, in the same place', () => {
+test('committed cut-ins select an authored left variant when present', () => {
     const c = art('test-soldier');
     assert.equal(sideCutin(c, 'right'), c);
     assert.equal(sideCutin(c, 'left'), c, 'no left sprite yet: the same art, not mirrored');
-    assert.deepEqual(aimBackshotLayout(sideCutin(c, 'left'), view, 120), aimBackshotLayout(c, view, 120), 'same bottom-left spot');
     const own = { ...c, variants: { left: { layers: [{ id: 'body', image: 'backshot-left.png' }], muzzle: [0.9, 0.4], width: 600, height: 440 } } };
     const v = sideCutin(own, 'left');
     assert.deepEqual(v.muzzle, [0.9, 0.4]); assert.equal(v.layers[0].image, 'backshot-left.png'); assert.equal(v.width, 600);
     assert.equal(sideCutin(own, 'right'), own);
-    assert.equal(aimBackshotLayout(v, view, 120).left, aimBackshotLayout(c, view, 120).left, 'left sprite stands in the same corner');
 });

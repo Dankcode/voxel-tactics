@@ -146,7 +146,8 @@ export function settleUnsupported(store) {
     // Only solid voxels carry load. Ladders, doors and leaves hang on whatever holds them but never hold anything up,
     // and a steel stand (fire escape) is held by its own posts rule above: neither may keep a building standing.
     const hangs = new Uint8Array(W * D * H);
-    for (let i = 0; i < store.mat.length; i++) if (store.mat[i] !== AIR && !MATERIALS[store.mat[i]].solid) hangs[i] = 1;
+    // Railings (stairwell balustrades, balconies) are bolted on too: they never hold a floor up (PLAN-11).
+    for (let i = 0; i < store.mat.length; i++) if (store.mat[i] !== AIR && (!MATERIALS[store.mat[i]].solid || store.mat[i] === MAT.railing)) hangs[i] = 1;
     for (let y = 0; y < D; y++) for (let x = 0; x < W; x++) {
         const i = store.index(x, y, 0);
         if (attached(store.mat[i])) { seen[i] = 1; stack.push(i); }

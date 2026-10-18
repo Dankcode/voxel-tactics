@@ -16,7 +16,8 @@ test('noise WFC is deterministic and constrains adjacent tallest parcels',()=>{
 test('remix configuration round-trips through saved setups, reports and sanitized mission descriptors',()=>{
  const settings={buildingCount:3,minStoreys:1,maxStoreys:1,elevated:false,furnish:false,glazing:'band',terrain:'flat'};
  const d=sanitizeDesc({scenario:'mall-district',seed:27,district:{width:104,depth:76,shape:'L',remix:settings},test:{enemies:[{type:'cultist',count:1}]}});
- assert.deepEqual(sanitizeDesc(setupToDesc(descToSetup(d))).district,d.district);
+ // PLAN-10: fixed district maps are no longer offered in the Test ground; an old setup opens the closest generated theme.
+ const legacy=descToSetup(d);assert.equal(legacy.scenario,'operation');assert.equal(legacy.plot,'downtown');
  assert.deepEqual(reportToDesc({scenario:{id:d.scenario,seed:d.seed,district:d.district}}).district,d.district);
  const m=buildMission(d);assert.ok(m.buildings.length<=3);assert.equal(m.meta.remix.glazing,'band');assert.equal(m.meta.remix.furnish,false);
  assert.ok(!m.meta.connectionParcels.some(c=>c.template==='supported-bridge-building'));
