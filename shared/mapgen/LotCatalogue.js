@@ -70,6 +70,8 @@ export const BAY_PIECES = Object.freeze({
     ...line('pallets', ['pallet'], { surfaces: LOTS, w: 1 }),
     ...line('drums', i => [i ? 'barrel_water' : 'barrel_powder'], { surfaces: LOTS, w: 0.6, hazard: 'explodes' }),
     ...line('vending', ['appliance', 'appliance'], { surfaces: ['sidewalk', 'paving', 'concrete'], w: 0.5, cover: 'full' }),
+    // PLAN-13: the full cover a paved place really has — a raised, planted concrete planter, two cells high.
+    ...line('tall_planter', ['planter', 'planter'], { surfaces: ['sidewalk', 'paving', 'concrete', 'yard'], w: 0.5, cover: 'full' }),
     ...line('chainlink', ['chainlink', 'chainlink'], { surfaces: ['gravel', 'concrete'], w: 0.6, cover: null }),
     dumpster_x: { id: 'dumpster_x', base: 'dumpster', cells: [[0, 0, ['dumpster']], [1, 0, ['dumpster']]], make: 'dumpster', axis: 'x', cover: 'half', surfaces: [...LOTS, 'paving', 'sidewalk'], w: 0.9, run: null },
     dumpster_y: { id: 'dumpster_y', base: 'dumpster', cells: [[0, 0, ['dumpster']], [0, 1, ['dumpster']]], make: 'dumpster', axis: 'y', cover: 'half', surfaces: [...LOTS, 'paving', 'sidewalk'], w: 0.9, run: null },
@@ -90,24 +92,18 @@ export const BAY_PIECES = Object.freeze({
 /** Bay piece pools per lot kind (or road part): piece base → weight. Facing variants share their base's weight. */
 export const PIECE_POOLS = Object.freeze({
     // PLAN-10: no crates, pallets or drums outdoors, and nothing standing in the carriageway but parked cars.
-    // Cover comes from what the place is (planters, walls, hedges, fences, bins, dumpsters, cars, containers).
-    sidewalk: { open: 9, planter: 1.1, bench: 0.6, bins: 0.3, lamp: 0.9, vending: 0.35, bus_stop: 0.25, tree: 0.5 },
+    // PLAN-13: no random scatter either. Open lots and yards are laid out by ParcelTemplates (designed parcels);
+    // the solver only fills what is left with open ground. Sidewalks get street trees on a rhythm and bus stops;
+    // cover along the line of play comes from the pockets and the repair loop.
+    sidewalk: { open: 9, bus_stop: 0.25 },
     lane: { open: 8, car: 1.3 },
-    parking: { open: 4, car: 2.4, planter: 0.4, lamp: 0.3 },
-    plaza: { open: 6, planter: 1.4, bench: 1, tree: 0.9, lamp: 0.5, vending: 0.4, low_wall: 0.6 },
-    park: { open: 5, tree: 1.6, hedge: 1.3, bench: 0.9, low_wall: 0.6 },
-    vacant: { open: 7, rubble: 0.8, chainlink: 0.7, dumpster: 0.15, jersey: 0.4 },
-    containers: { open: 4, container: 1.6, chainlink: 0.4, jersey: 0.3 },
-    depot: { open: 7, dumpster: 0.3, jersey: 0.5, chainlink: 0.6, bins: 0.15 },
-    construction: { open: 5, jersey: 1.4, sandbags: 0.7, chainlink: 0.8, rubble: 0.6 },
-    garden: { open: 5, hedge: 1.2, fence: 1, tree: 0.9, low_wall: 0.6, bench: 0.3 },
-    alley: { open: 7, dumpster: 0.6, bins: 0.5 },
-    yard_paved: { open: 7, planter: 0.9, bins: 0.3, dumpster: 0.2, bench: 0.4, low_wall: 0.5 },
-    yard_industrial: { open: 8, dumpster: 0.25, jersey: 0.5, chainlink: 0.6, bins: 0.15 },
-    yard_garden: { open: 5, hedge: 1, fence: 0.8, tree: 0.8, low_wall: 0.5 }
+    parking: { open: 4, car: 2.4 },
+    plaza: { open: 1 }, park: { open: 1 }, vacant: { open: 1 }, depot: { open: 1 }, construction: { open: 1 },
+    garden: { open: 1 }, alley: { open: 1 }, yard_paved: { open: 1 }, yard_industrial: { open: 1 }, yard_garden: { open: 1 },
+    containers: { open: 1, container: 0.001 }
 });
 /** PLAN-10: piece bases never placed outdoors (random clutter). Gates.noClutter checks generated layouts for them. */
-export const CLUTTER_BASES = Object.freeze(['crates', 'pallets', 'drums']);
+export const CLUTTER_BASES = Object.freeze(['crates', 'pallets', 'drums', 'vending']);   // PLAN-13: vending boxes too
 
 /** Lot kinds a family may use (objective kinds excluded). */
 export function lotKindsFor(family) {

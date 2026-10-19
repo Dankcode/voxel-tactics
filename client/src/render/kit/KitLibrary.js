@@ -54,6 +54,8 @@ export const SLOTS = {
     needles: { tex: 'leaves', uv: 'world', scale: 1.2, color: 0x7f9f78, rough: 0.9 },
     shutter: { tex: 'siding', uv: 'world', scale: 1, color: 0xc9cdd0, rough: 0.5, metal: 0.5 },
     wreck: { tex: 'metal', uv: 'world', scale: 1, color: 0x3a3330, rough: 0.9, metal: 0.4 },
+    veh_sedan: { tex: 'veh_sedan', uv: 'mesh', rough: 0.45, metal: 0.25 },     // PLAN-12 vehicle models (own UV textures)
+    veh_pickup: { tex: 'veh_pickup', uv: 'mesh', rough: 0.75, metal: 0.1 },
     books: { tex: null, color: 0x8a5a44, rough: 0.8 },
     // Legacy set (still used by the older pieces).
     trim: { tex: 'timber', uv: 'world', scale: 1.5, color: 0xa08468, rough: 0.8 },
@@ -101,6 +103,9 @@ export class KitLibrary {
         try { this.pieces = await read('/assets/kit/tileset.glb'); this.source = 'tileset.glb'; }
         catch (err) { console.warn('[kit] baked tile set missing, building pieces in the browser:', err.message); this.pieces = buildAllPieces(); this.source = 'procedural'; }
         try { if(typeof __HAS_KIT_ART__==='undefined'||__HAS_KIT_ART__){const art = await read('/assets/kit/tileset-art.glb'); for (const [k, v] of art) this.pieces.set(k, v); this.source += ' + tileset-art.glb';} } catch { /* optional */ }
+        // PLAN-12: low-poly vehicle models (sedan, pickup), decimated in Blender; procedural 'car' stays as the fallback.
+        try { const cars = await read('/assets/kit/vehicles.glb'); for (const [k, v] of cars) this.pieces.set(k, v); this.source += ' + vehicles.glb'; }
+        catch (err) { console.warn('[kit] vehicles.glb missing, using the procedural car:', err.message); }
         this.pieces.set('stair_step',PIECES.stair_step.build());
         for (const parts of this.pieces.values()) for (const p of parts) { p.geometry.computeBoundingSphere(); }
         return this;

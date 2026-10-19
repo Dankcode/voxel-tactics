@@ -1,6 +1,7 @@
 import { FORMATIONS } from '../../shared/content/formations.js';
 import { TacticalMarks } from './render/TacticalMarks.js';
 import { SightingMarks } from './render/SightingMarks.js';
+import { RoadMarkings } from './render/RoadMarkings.js';
 import { updateReticle } from './ui/AimReticle.js';
 import { AimController, aimTau, swayDegrees, aimDelta } from './ui/AimController.js';
 import { AimPointer } from './ui/AimPointer.js';
@@ -8,7 +9,6 @@ import { floorCutLevels, zoomCutLevel, unitCutLevel } from './render/FloorCutawa
 import { BuildingView, BUILDING_VIEWS } from './render/BuildingView.js';
 import { pickVisibleTile, pickReachableAlongRay } from './render/TilePicking.js';
 import { footprint } from '../../shared/battle/IntelOps.js';
-import { drapeFootprint } from '../../shared/battle/Strikes.js';
 import { InteriorVisibility } from './render/InteriorVisibility.js';
 import { battleReport } from '../../shared/session/BattleReport.js';
 import { saveReport } from './ui/TestGroundStore.js';
@@ -84,6 +84,7 @@ export class Game {
         this.overlays = new Overlays(this.scene);
         this.tacticalMarks=new TacticalMarks(this.scene);
         this.sightings=new SightingMarks(this.scene);   // PLAN-11: spotted flashes and last-seen markers
+        this.roadMarks=new RoadMarkings(this.scene);    // PLAN-12: thin centred road paint
         this.lanterns = new LanternLights(this.scene);
         this.fx = new Fx(this.scene, floatRoot);
         this.cameraDirector = new CameraDirector(this.scene);
@@ -116,7 +117,7 @@ export class Game {
         this.session = session;
         this.startedAt = performance.now();
         this.battle = session.battle;
-        this.voxelView?.dispose();this.tacticalMarks.clear();this.sightings.clear();
+        this.voxelView?.dispose();this.tacticalMarks.clear();this.sightings.clear();this.roadMarks.clear();
         for (const v of this.views.values()) v.dispose();
         this.views.clear();
         this.overlays.clearRange(); this.overlays.clearPath(); this.overlays.clearAim(); this.overlays.clearDebugLayer();
@@ -145,6 +146,7 @@ export class Game {
         this.refreshBuildingView({rebuild:false});
         this.voxelView.rebuildAll();
         this.lanterns.scan(store, this.battle.mission?.visual?.decor);
+        this.roadMarks.setCut(this.cutLevel);this.roadMarks.build(store);
         this.cameraDirector.store = store;
         await Promise.all(this.battle.units.map(u => this.addView(u)));
         this.selected = null; this.mode = { kind: 'move' };
@@ -335,7 +337,7 @@ export class Game {
     }
     setLevel(top) {
         const changed=top!==this.voxelView?.cutZ;
-        this.cutLevel=top;this.scene.setCut(top);this.cameraDirector.cutZ=top;
+        this.cutLevel=top;this.scene.setCut(top);this.cameraDirector.cutZ=top;this.roadMarks?.setCut(top);
         this.scene.rig.minLayerHeight=top===this.battle.mission.meta.streetDatum?2:(this.battle.mission.meta.streetDatum||1)+1;
         if(top===this.battle.mission.meta.streetDatum){
             const u=this.selectedUnit(),route=this.battle.mission.meta.underground?.route,p=u&&u.z<top?u:route?.[Math.floor(route.length/2)];
@@ -713,6 +715,21 @@ export class Game {
         }
         return hit;
     }
+    /** PLAN-12: the strike plane is the level in view: the visible floor under a storey cut, else the street. */
+    strikePlaneY() { const G = this.battle.mission.meta?.streetDatum ?? 1; return Number.isFinite(this.cutLevel) ? this.cutLevel - 2 : G + 1; }
+    /**
+     * PLAN-12 strike targeting: where the cursor ray meets the flat plane of the level in view (not a walkable-floor
+     * pick, which found nothing over roofs and walls). The tile's z is the highest surface in that column below the cut.
+     */
+    strikeCell(px, py) {
+        const ray = this.scene.rayAt(px, py).ray, y = this.strikePlaneY(), s = this.battle.store;
+        if (Math.abs(ray.direction.y) < 1e-4) return null;
+        const t = (y - ray.origin.y) / ray.direction.y; if (t <= 0) return null;
+        const x = Math.floor(ray.origin.x + ray.direction.x * t), cy = Math.floor(ray.origin.z + ray.direction.z * t);
+        if (!s.inBounds(x, cy, 0)) return null;
+        const cut = this.cutLevel, top = s.surfaces(x, cy).filter(q => q.z < cut - 1).at(-1)?.z ?? Math.max(0, s.topSolid(x, cy));
+        return { x, y: cy, z: top };
+    }
     unitAt(px, py) {
         const ray = this.scene.rayAt(px, py);
         const meshes = [...this.views.values()].filter(v => v.group.visible && alive(v.unit) && v.unit.z<this.cutLevel && (!this.levelLocked||!Number.isFinite(this.cutLevel)||v.unit.z>=this.cutLevel-3)).map(v => v.sprite);
@@ -746,6 +763,8 @@ export class Game {
         const unit = this.unitAt(e.clientX, e.clientY);
         const p = this.pick(e.clientX, e.clientY);
         this.hoverCell = p?.cell || (unit ? { x: unit.x, y: unit.y, z: unit.z } : null);
+        const ab = this.mode.kind === 'ability' ? ABILITIES[this.mode.abilityId] : null;
+        if (ab && (ab.support || ab.commander)) this.hoverCell = this.strikeCell(e.clientX, e.clientY) || this.hoverCell;
         this.hoverPick = p;
         this.hoverUnit = unit;
         this.overlays.setHover(this.hoverCell);
@@ -792,7 +811,7 @@ export class Game {
                 const a = ABILITIES[this.mode.abilityId];
                 const intent = {type:'ability', unitId:u.id, abilityId:a.id, to:this.hoverCell, targetId:unit?.id, by:'*'};
                 const reason = this.battle.validate(intent);
-                if((a.support||a.commander) && this.hoverCell)this.overlays.showSupportArea(drapeFootprint(this.battle.store,footprint(this.battle,a.id,this.hoverCell,u),this.cutLevel),!reason);   // the whole strike area, on the floor in view
+                if((a.support||a.commander) && this.hoverCell)this.overlays.showStrikeArea(footprint(this.battle,a.id,this.hoverCell,u),!reason,this.strikePlaneY());   // PLAN-12: one flat rectangle at the viewed level
                 else this.overlays.showAbilityTile(a.targeting === 'ally' ? unit : this.hoverCell, !reason);
                 this.hud.cursorTip(e.clientX,e.clientY, reason ? `${a.name} · ${reasonText(reason)}` : `${a.name} · click to cast · ${a.ap} AP / ${a.wp} WP`);
                 break;

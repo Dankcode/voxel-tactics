@@ -6,9 +6,8 @@ import { measureMission } from './MissionMetrics.js';
 import { castRay, blocksSight } from '../voxel/Raycast.js';
 
 export function finalizeMission({ id, name, store, rooms, buildings, spawns, rng, objective, meta = {}, visual = null, secure = true }) {
-    // Retire ubiquitous ornamental cover; retain its occupied footprint as practical supply cover.
-    for(let i=0;i<store.mat.length;i++)if([MAT.bench,MAT.planter,MAT.hedge].includes(store.mat[i])){const p={x:i%store.width,y:Math.floor(i/store.width)%store.depth,z:Math.floor(i/(store.width*store.depth))};store.set(p.x,p.y,p.z,store.mat[i]===MAT.hedge?MAT.sandbag:MAT.crate);}
-    if(visual)visual.decor=visual.decor.filter(d=>!['plant','bush','bench'].includes(d.kind));
+    // PLAN-12: planters, benches and hedges stay what the map placed (they used to be converted into crates and
+    // sandbags here, which put crates on every street).
     const occupied = new Set();
     const key = p => `${p.x},${p.y},${p.z}`;
     const player = spawns.player.map(p => {

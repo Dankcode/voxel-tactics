@@ -162,23 +162,14 @@ export class Overlays {
     }
     clearAim() { const owned=new Set();for (const c of [...this.aim.children]) { this.aim.remove(c); c.geometry?.dispose?.();if(c.userData.watch || c.userData.ownedMaterial)owned.add(c.material); }for(const m of owned)m.dispose();this.watchPreview=null; }
     /** Accuracy cone: lines from the muzzle to a ring of radius r at the aim point. */
+    /** PLAN-12: the aim is one line from the muzzle to the aim point (no spray cone, rings or spokes). */
     showCone(muzzle, aimPoint, spreadDeg) {
         this.clearAim();
+        if (!muzzle || !aimPoint) return;
         const a = new THREE.Vector3(muzzle.x, muzzle.h, muzzle.y), b = new THREE.Vector3(aimPoint.x, aimPoint.h, aimPoint.y);
-        const d = a.distanceTo(b), r = d * Math.tan(spreadDeg * Math.PI / 180);
-        const dir = b.clone().sub(a).normalize();
-        const up = Math.abs(dir.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
-        const u = new THREE.Vector3().crossVectors(dir, up).normalize(), v = new THREE.Vector3().crossVectors(dir, u).normalize();
-        const ring = [];
-        for (let i = 0; i <= 48; i++) { const t = i / 48 * Math.PI * 2; ring.push(b.clone().addScaledVector(u, Math.cos(t) * r).addScaledVector(v, Math.sin(t) * r)); }
-        const mat = new THREE.LineBasicMaterial({ color: 0xff6b5a, transparent: true, opacity: 0.95, depthTest: false, toneMapped: false });
-        const ringLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(ring), mat); ringLine.renderOrder = 20;
-        const inner = ring.map(p => b.clone().lerp(p, 0.5));
-        const innerLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(inner), mat); innerLine.renderOrder = 20;
-        const spokes = [0, 12, 24, 36].map(i => new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, ring[i]]), new THREE.LineBasicMaterial({ color: 0xff6b5a, transparent: true, opacity: 0.35, depthTest: false, toneMapped: false })));
-        const shot = new THREE.Mesh(ribbonGeometry([a, b], 0.03, true), glowMaterial(0xff6b5a, 0.6));
+        const shot = new THREE.Mesh(ribbonGeometry([a, b], 0.03, true), glowMaterial(0xff6b5a, 0.7));
         shot.material.depthTest = false; shot.renderOrder = 19;
-        this.aim.add(ringLine, innerLine, shot, ...spokes);
+        this.aim.add(shot);
     }
     showArc(points, radius, land) {
         this.clearAim();
@@ -205,6 +196,25 @@ export class Overlays {
         };
         for(const c of Object.values(battle.contacts))if(!battle.visibleTo('player').has(c.enemyId))add(c,false);
         for(const d of Object.values(battle.drones))if(d.active)add(d,true);
+    }
+    /**
+     * PLAN-12 strike area: one flat rectangle at the height being viewed (`y`, the visible floor or the surface under the
+     * cursor), with corner posts, instead of a tile-by-tile drape over roofs and floors.
+     */
+    showStrikeArea(cells, valid, y) {
+        this.clearAim();
+        if (!cells.length) return;
+        const x0 = Math.min(...cells.map(c => c.x)), x1 = Math.max(...cells.map(c => c.x)) + 1, z0 = Math.min(...cells.map(c => c.y)), z1 = Math.max(...cells.map(c => c.y)) + 1;
+        const col = valid ? ZONE.teal : ZONE.red;
+        const fill = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.18, depthTest: false, depthWrite: false, toneMapped: false, side: THREE.DoubleSide }));
+        fill.position.set((x0 + x1) / 2, y + 0.04, (z0 + z1) / 2); fill.renderOrder = 18; fill.userData.ownedMaterial = true;
+        const pts = [[x0, z0], [x1, z0], [x1, z1], [x0, z1], [x0, z0]].map(([a, b]) => new THREE.Vector3(a, y + 0.06, b));
+        const edge = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.95, depthTest: false, toneMapped: false }));
+        edge.renderOrder = 19; edge.userData.ownedMaterial = true;
+        const posts = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints([[x0, z0], [x1, z0], [x1, z1], [x0, z1]].flatMap(([a, b]) => [new THREE.Vector3(a, y, b), new THREE.Vector3(a, y + 2.5, b)])),
+            new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.5, depthTest: false, toneMapped: false }));
+        posts.renderOrder = 19; posts.userData.ownedMaterial = true;
+        this.aim.add(fill, edge, posts);
     }
     showSupportArea(cells,valid) {
         this.clearAim();

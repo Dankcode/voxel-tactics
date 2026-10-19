@@ -56,13 +56,13 @@ test('the reticle radius is the projected cone, with no 4 px floor', () => {
     assert.equal(reticleRadius(900), 260);
 });
 
-test('the shoulder camera follows the aim and re-anchors only past its yaw limit', () => {
+test('PLAN-12: the shoulder camera holds its framing while aiming and re-anchors only past its limits', () => {
     const cd = new CameraDirector({ aspect: 1 });
     const shooter = new THREE.Vector3(0, 1, 0);
     cd.prepareAim(shooter, new THREE.Vector3(0, 2, -10));
-    const from = cd.from.clone();
-    cd.track(new THREE.Vector3(2, 2, -10), 0.5);
-    assert.ok(cd.look.x > 0.5, 'the look point moves toward the aim');
+    const from = cd.from.clone(), look = cd.look.clone();
+    cd.track(new THREE.Vector3(1, 2, -10), 0.5);
+    assert.ok(cd.look.equals(look), 'the view does not swing with the reticle (the soldier stays put on screen)');
     assert.ok(cd.from.equals(from), 'small swings keep the framing');
     const yaw = MAX_YAW + 0.2, far = new THREE.Vector3(Math.sin(yaw) * 10, 2, -Math.cos(yaw) * 10);
     cd.track(far, 0.016);

@@ -95,6 +95,30 @@ export class Fx {
             const s = new THREE.Mesh(this.smokeGeo, this.smokeMat); s.position.set(x + 0.5, z + 0.5, y + 0.5); this.fireGroup.add(s);
         }
     }
+    /**
+     * PLAN-12 airstrike bomb: a dark finned body with a hot trail drops straight down from high above onto `at`
+     * ({x,y,h}) over `fall` seconds (after `delay`). Resolves when it lands, so the blast plays on impact.
+     */
+    bomb(at, { fall = 0.6, delay = 0, height = 26 } = {}) {
+        const obj = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.12, 0.9, 8), new THREE.MeshBasicMaterial({ color: 0x22262a }));
+        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 8), body.material); nose.position.y = -0.6; nose.rotation.x = Math.PI;
+        const fins = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.04), body.material); fins.position.y = 0.42;
+        const fins2 = fins.clone(); fins2.rotation.y = Math.PI / 2;
+        const trail = new THREE.Mesh(this.tracerGeo, new THREE.MeshBasicMaterial({ color: 0xffb35a, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+        trail.scale.set(0.1, 5, 0.1); trail.position.y = 3;
+        obj.add(body, nose, fins, fins2, trail); obj.visible = false;
+        this.group.add(obj);
+        return new Promise(resolve => this.items.push({ obj, kind: 'bomb', at: w2t(at), height, fall, wait: delay, t: 0, resolve }));
+    }
+    stepBomb(it, dt) {
+        if (it.wait > 0) { it.wait -= dt; if (it.wait > 0) return true; dt = -it.wait; it.wait = 0; }
+        it.obj.visible = true; it.t += dt;
+        const k = Math.min(1, it.t / it.fall);
+        it.obj.position.copy(it.at).add(new THREE.Vector3(0, it.height * (1 - k * k), 0));
+        if (k >= 1) { this.group.remove(it.obj); it.obj.traverse(o => { if (o.geometry && o.geometry !== this.tracerGeo) o.geometry.dispose(); }); it.resolve(); return false; }
+        return true;
+    }
     stepTracer(it, dt) {
         if (it.wait > 0) { it.wait -= dt; if (it.wait > 0) return true; dt = -it.wait; }
         it.obj.visible = true;
@@ -112,6 +136,7 @@ export class Fx {
         for (const c of this.fireGroup.children) if (c.material === this.fireMat) c.scale.y = 0.8 + Math.sin(t * 9 + c.position.x * 3) * 0.25;
         this.items = this.items.filter(it => {
             if (it.kind === 'tracer') return this.stepTracer(it, dt);
+            if (it.kind === 'bomb') return this.stepBomb(it, dt);
             if (it.kind === 'spark') { it.v.y -= 9 * dt; it.obj.position.addScaledVector(it.v, dt); it.obj.lookAt(it.obj.position.clone().add(it.v)); }
             it.life -= dt;
             const k = Math.max(0, it.life / it.max);

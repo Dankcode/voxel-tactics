@@ -27,7 +27,7 @@ const noisePref = (kind, n) => 0.35 + 1.3 * Math.max(0, 1 - 2.2 * Math.abs(n - u
 // ------------------------------------------------------------------------------------------------ ground
 /**
  * Road lots are shaped by their road connections: a 4-cell carriageway band toward every connected side, 2-cell
- * sidewalks elsewhere, a turning circle at a dead end, a dashed centre line and zebra crossings at junctions.
+ * sidewalks elsewhere and a turning circle at a dead end (road paint is a client overlay, PLAN-12).
  */
 export function roadLotCells(c) {
     const any = c.n || c.e || c.s || c.w, conn = SIDES.filter(s => c[s]).length, dead = conn === 1;
@@ -38,10 +38,8 @@ export function roadLotCells(c) {
         if (dead && cx >= 1 && cx <= 6 && cy >= 1 && cy <= 6) asph = true;
         let mat = asph ? 'asphalt' : 'concrete', cls = asph ? 'asphalt' : 'sidewalk';
         const straightX = (c.e || c.w) && !c.n && !c.s, straightY = (c.n || c.s) && !c.e && !c.w;
-        if (asph && straightX && cy === 3 && cx % 4 < 2) mat = 'road_mark';
-        if (asph && straightY && cx === 3 && cy % 4 < 2) mat = 'road_mark';
-        if (asph && conn >= 3 && ((c.n && cy === 1) || (c.s && cy === 6)) && by && cx % 2 === 0) mat = 'road_mark';
-        if (asph && conn >= 3 && ((c.w && cx === 1) || (c.e && cx === 6)) && bx && cy % 2 === 0) mat = 'road_mark';
+        // PLAN-12: no painted voxel cells for lines — a whole 1 m cell cannot centre a line on a 4-cell carriageway or draw a
+        // zebra. Road paint is drawn thin and centred by the client (client/src/render/RoadMarkings.js) from the asphalt.
         // Parking lane: carriageway cells next to the kerb on straight roads.
         if (asph && straightX && cy >= 2 && cy <= 5) cls = 'lane_x';
         if (asph && straightY && cx >= 2 && cx <= 5) cls = 'lane_y';
@@ -289,12 +287,12 @@ function bayDomain(bay, poolName, sidewalkAxis) {
  * graph as fixed context, so sockets hold across lot edges; multi-bay vehicles stay inside their lot. Pocket pins
  * are fixed tiles. Weights: pool × facing toward the objective × line of play × sightline breakers × noise × prior.
  */
-export function solveBays({ plot, bayGrid, lotPool, roadAxis, fields, seed, pins = new Map(), objectiveAt, weightBoost = () => 1, lots = null, previous = null }) {
+export function solveBays({ plot, bayGrid, lotPool, roadAxis, fields, seed, pins = new Map(), soft = null, objectiveAt, weightBoost = () => 1, lots = null, previous = null }) {
     const result = previous ? new Map(previous) : new Map();
     const LB = LOT / BAY;
     const toSolve = lots || plot.lots.map(l => [l.lx, l.ly]);
     for (const [lx, ly] of toSolve) {
-        const nodes = [], domains = new Map(), fixed = new Map();
+        const nodes = [], domains = new Map(), fixed = new Map(), free = new Map();
         const local = new Set();
         for (let j = 0; j < LB; j++) for (let i = 0; i < LB; i++) local.add(`${lx * LB + i},${ly * LB + j}`);
         const context = new Set();
@@ -310,6 +308,7 @@ export function solveBays({ plot, bayGrid, lotPool, roadAxis, fields, seed, pins
             let domain = bayDomain(bay, lotPool(lot, bay), roadAxis(lot));
             // Multi-bay objects must finish inside this lot.
             domain = domain.filter(t => { const p = BAY_PIECES[t]; if (!p.parts) return true; const off = p.axis === 'x' ? bx - lx * LB : by - ly * LB; return off - p.part >= 0 && off - p.part + p.parts <= LB; });
+            free.set(id, domain.filter(t => !BAY_PIECES[t].parts));
             if(pins.has(id)) {
                 const pin=BAY_PIECES[pins.get(id)],surface=bay.cls.startsWith('parking_')||bay.cls==='carriageway'?'asphalt':bay.cls.startsWith('lane_')?'lane':bay.cls;
                 // A repair may introduce a compatible cover module outside the decorative pool. It still obeys
@@ -318,6 +317,21 @@ export function solveBays({ plot, bayGrid, lotPool, roadAxis, fields, seed, pins
                 if(domain.includes(pins.get(id))||valid){fixed.set(id,pins.get(id));domain=[pins.get(id)];}
             }
             domains.set(id, domain.length ? domain : ['open']);
+        }
+        // PLAN-13: pins never contradict each other. Where two fixed bays would touch (the no-touch socket rule),
+        // the weaker pin is released: already-solved context > pocket / repair pins > parcel-layout pins (`soft`).
+        const rank = id => context.has(id) ? 3 : soft?.has(id) ? 1 : 2;
+        for (let changed = true; changed;) {
+            changed = false;
+            for (const node of nodes) {
+                const a = fixed.get(node.id); if (!a) continue;
+                const nb = node.neighbors.find(n => fixed.has(n.id) && !bayCompatible(a, fixed.get(n.id), n.direction));
+                if (!nb) continue;
+                const loser = rank(node.id) < rank(nb.id) ? node.id : rank(nb.id) < rank(node.id) ? nb.id : (node.id > nb.id ? node.id : nb.id);
+                if (context.has(loser)) continue;
+                fixed.delete(loser); domains.set(loser, (free.get(loser) || ['open']).filter(t => t !== a && t !== fixed.get(nb.id)).concat('open').filter((t, i, l) => l.indexOf(t) === i));
+                changed = true; break;
+            }
         }
         const weightOf = (nodeId, tileId) => {
             const p = BAY_PIECES[tileId], [bx, by] = nodeId.split(',').map(Number), bay = bayGrid.at(bx, by);
@@ -346,6 +360,7 @@ export function solveBays({ plot, bayGrid, lotPool, roadAxis, fields, seed, pins
         }
         if (!assignment) {
             // Last resort: open ground for this lot (logged, never silent).
+            if (globalThis.MAPGEN_TRACE) console.log('  lot fallback', lx, ly, last?.message?.slice(0, 120), JSON.stringify([...fixed]));
             for (const id of local) result.set(id, 'open');
             continue;
         }
@@ -370,7 +385,7 @@ export function piecesFromBays(bays, bayGrid) {
  * Engagement pockets (PLAN-04 §5.4): along the line of play, every 8–12 cells from a quarter of the way in, a pocket
  * of 2–4 cover pieces beside the route on alternating sides, facing the advance. Returned as bay pins.
  */
-const POCKET_COVER = ['planter', 'low_wall', 'hedge', 'jersey', 'sandbags', 'bench', 'fence', 'vending'];
+const POCKET_COVER = ['low_wall', 'planter', 'hedge', 'tall_planter', 'jersey', 'fence', 'bench'];   // PLAN-13: no vending boxes or sandbags
 const bayCls = b => b.cls.startsWith('parking_') || b.cls === 'carriageway' ? 'asphalt' : b.cls.startsWith('lane_') ? 'lane' : b.cls;
 const onRoad = b => b.cls === 'carriageway' || b.cls.startsWith('lane_') || b.cls.startsWith('parking_');
 export function planPockets(main, bayGrid, { seed, spacing = null } = {}) {
@@ -390,18 +405,15 @@ export function planPockets(main, bayGrid, { seed, spacing = null } = {}) {
             if (c && !c.blocked && !onRoad(c)) centre = c;
         }
         if (centre) {
-            const members = [];
-            for (const [ox, oy] of [[0, 0], [1, 0], [0, 1], [-1, 0], [0, -1]]) {
-                const b = bayGrid.at(centre.bx + ox, centre.by + oy);
-                if (!b || b.blocked || onRoad(b) || members.length >= 3) continue;
-                if (members.some(m => Math.abs(m.bx - b.bx) + Math.abs(m.by - b.by) === 1)) continue;
-                // PLAN-10: pocket cover is what belongs on that ground (planters on pavements, hedges and walls in
-                // yards, barriers on hard standing), never crates, pallets or anything in the road.
-                const surf = bayCls(b);
-                const options = POCKET_COVER.map(base => `${base}_${toward}`).filter(id => BAY_PIECES[id] && BAY_PIECES[id].surfaces?.includes(surf) && !BAY_PIECES[id].cells.some(([x, y]) => b.protected.some(([px, py]) => px === x && py === y)));
-                if (!options.length) continue;
-                members.push(b); pins.set(`${b.bx},${b.by}`, options[Math.floor(unit(`${seed}:pocket:${k}:${members.length}`) * options.length)]);
-            }
+            // PLAN-13: a pocket is ONE run of the same cover (a low wall, a planter row, a hedge) across the advance,
+            // up to three bays long, not single pieces dotted around a point. The run lies across the facing.
+            const along = toward === 'n' || toward === 's' ? [1, 0] : [0, 1];
+            const run = [[0, 0], along, [-along[0], -along[1]]].map(([ox, oy]) => bayGrid.at(centre.bx + ox, centre.by + oy)).filter(b => b && !b.blocked && !onRoad(b));
+            const fits = (base, b) => { const id = `${base}_${toward}`, p = BAY_PIECES[id]; return p && p.surfaces?.includes(bayCls(b)) && !p.cells.some(([x, y]) => b.protected.some(([px, py]) => px === x && py === y)); };
+            const options = POCKET_COVER.filter(base => run[0] && fits(base, run[0]));
+            const base = options.length ? options[Math.floor(unit(`${seed}:pocket:${k}`) * Math.min(options.length, 3))] : null;
+            const members = base ? run.filter(b => fits(base, b)) : [];
+            for (const b of members) pins.set(`${b.bx},${b.by}`, `${base}_${toward}`);
             if (members.length) pockets.push({ id: k, x: centre.x + 1, y: centre.y + 1, facing: toward, along: i / Math.max(1, main.length - 1), bays: members.map(b => [b.bx, b.by]) });
         }
         k++; side = -side;

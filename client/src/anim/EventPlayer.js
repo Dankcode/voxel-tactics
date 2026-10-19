@@ -153,9 +153,18 @@ export class EventPlayer {
                 g.scene.scene.remove(ball); ball.geometry.dispose(); ball.material.dispose();
                 break;
             }
+            case 'strike': {
+                // PLAN-12: the salvo drops out of the sky onto the strike area, all bombs together; the blasts follow.
+                const cx = e.bombs.reduce((s, b) => s + b.x, 0) / e.bombs.length, cy = e.bombs.reduce((s, b) => s + b.y, 0) / e.bombs.length;
+                const h = e.bombs.reduce((s, b) => s + b.h, 0) / e.bombs.length;
+                if (g.options.followCamera) g.scene.glideTo(new THREE.Vector3(cx, h, cy), 5);
+                g.overlays?.clearAim?.();
+                await Promise.all(e.bombs.map((b, i) => fx.bomb(b, { fall: 0.65 / this.speed, delay: i * 0.08 / this.speed })));
+                break;
+            }
             case 'explosion': g.audio?.play(explosionSound(e, g.scene.target), { volume: e.of > 1 ? 0.7 / Math.sqrt(e.of) : 0.7 }); fx.explosion(e, e.radius, e.element); g.voxelView?.flush(); if (!(e.of > 1) || e.salvo === e.of - 1) await this.d(0.15); break;   // an airstrike salvo goes off at once
             case 'smoke': fx.syncField(g.battle.field); break;
-            case 'voxels': g.voxelView.flush(); break;
+            case 'voxels': g.voxelView.flush(); if (g.roadMarks && g.battle && e.changes?.some(c => (c[2] ?? c.z) <= (g.battle.mission?.meta?.streetDatum ?? 1) + 1)) g.roadMarks.build(g.battle.store); break;
             case 'collapse': g.voxelView.flush(); fx.float(new THREE.Vector3(e.fallen?.[0]?.x ?? 0, e.fallen?.[0]?.to ?? 1, e.fallen?.[0]?.y ?? 0), 'COLLAPSE', '#ffcc66', 22); g.scene.shake = 0.6; await this.d(0.25); break;
             case 'elements': g.voxelView.flush(); fx.syncField(g.battle.field); break;
             case 'door': { const v=this.view(e.unitId); if(e.kicked){v?.animator.play('vault',{restart:true});fx.float(v?.worldPosition()||new THREE.Vector3(),'KICK!','#ffd54f',22);g.scene.shake=.18;await this.d(.3);} g.voxelView.flush(); break; }

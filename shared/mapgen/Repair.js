@@ -47,6 +47,7 @@ function resolveLots(op, pins, reason, { lots: only = null, boost = null } = {})
     const ctx = op.context; if (!ctx) return false;
     const lots = only || [...new Set([...pins.keys()].map(id => { const [bx, by] = id.split(',').map(Number); return `${Math.floor(bx / 4)},${Math.floor(by / 4)}`; }))].map(id => id.split(',').map(Number));
     const allPins = new Map([...ctx.pins, ...pins]);
+    for (const k of pins.keys()) ctx.solveArgs.soft?.delete(k);   // PLAN-13: a repair pin outranks a parcel-layout pin
     ctx.pins = allPins;
     // Un-collapse the chosen lots (drop their bays from the previous result) and re-solve only those.
     const previous = new Map([...ctx.bays].filter(([id]) => { const [bx, by] = id.split(',').map(Number); return !lots.some(([lx, ly]) => Math.floor(bx / 4) === lx && Math.floor(by / 4) === ly); }));
@@ -60,7 +61,8 @@ function resolveLots(op, pins, reason, { lots: only = null, boost = null } = {})
 function pinCoverNear(op, cell, { full = false, destructible = false } = {}) {
     const ctx = op.context, obj = op.layout.objective.cell;
     const dx = obj.x - cell.x, dy = obj.y - cell.y, toward = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : (dy > 0 ? 's' : 'n');
-    const bases = destructible ? ['planter', 'bins', 'bench', 'hedge', 'fence', 'low_wall'] : full ? ['vending', 'fence'] : ['jersey', 'planter', 'low_wall', 'sandbags', 'hedge', 'bench', 'bins'];   // PLAN-10: no crates or pallets
+    // PLAN-10: no crates or pallets. PLAN-13: no vending boxes, bins or sandbags either — cover a street really has.
+    const bases = destructible ? ['planter', 'bench', 'hedge', 'fence', 'low_wall'] : full ? ['tall_planter', 'fence'] : ['planter', 'low_wall', 'hedge', 'jersey', 'bench'];
     const bx0 = Math.floor(cell.x / BAY), by0 = Math.floor(cell.y / BAY);
     for (let r = 0; r <= 3; r++) for (let oy = -r; oy <= r; oy++) for (let ox = -r; ox <= r; ox++) {
         if (Math.max(Math.abs(ox), Math.abs(oy)) !== r) continue;
@@ -121,7 +123,7 @@ function shieldDrop(op, m) {
         const facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : (dy > 0 ? 's' : 'n');
         const bay = op.context.bayGrid.at(Math.floor(cell.x / BAY), Math.floor(cell.y / BAY));
         if (!bay || bay.blocked || bay.cls === 'carriageway' || bay.cls.startsWith('lane_') || bay.cls.startsWith('parking_')) continue;   // PLAN-10: nothing in the road
-        for (const base of ['vending', 'fence', 'jersey', 'low_wall']) {
+        for (const base of ['tall_planter', 'fence', 'jersey', 'low_wall']) {
             const id = `${base}_${facing}`, p = BAY_PIECES[id];
             const surf = bay.cls === 'lane_x' || bay.cls === 'lane_y' ? 'lane' : bay.cls;
             if (!p || p.cells.some(([x, y]) => bay.protected.some(([px, py]) => px === x && py === y)) || !(p.surfaces.includes(surf) || (surf === 'lane' && p.surfaces.includes('asphalt')))) continue;
@@ -237,6 +239,7 @@ export function buildWithRepair(op, { seed = 1, budget = Math.min(28,8*Math.ceil
                     for (const c of list) if (spots.length < 3 && spots.every(o => Math.hypot(o.x - c.x, o.y - c.y) > 6)) spots.push(c);
                     for (const c of spots) { const p = pinCoverNear(op, c, { full: failures.includes('fullCoverShare'), destructible: failures.includes('destructibleCover') }); if (p) for (const [k, v] of p) (pins ||= new Map()).set(k, v); }
                 }
+                if (globalThis.MAPGEN_TRACE) console.log('  pins', JSON.stringify(pins && [...pins]));
                 if (pins) fixed = resolveLots(op, pins, failures.filter(f => OUTDOOR_GATES.has(f)).join('+'));
             }
         }

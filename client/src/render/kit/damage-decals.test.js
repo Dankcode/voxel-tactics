@@ -67,3 +67,14 @@ test('the edge-chip texture is opaque along all four edges and clear in the midd
     for (const [x, y] of [[n >> 1, 1], [n >> 1, n - 2], [1, n >> 1], [n - 2, n >> 1]]) assert.ok(a(x, y) > 150, `edge ${x},${y}`);
     assert.equal(a(n >> 1, n >> 1), 0);
 });
+
+test('PLAN-12: a hole shot above the storey cut leaves no marks on the floor in view, and cut caps carry none', () => {
+    const s = room();
+    for (let z = 1; z <= 6; z++) for (let y = 2; y <= 10; y++) s.set(6, y, z, MAT.brick);     // a storey-plus wall
+    destroyVoxel(s, 6, 6, 4);                                                                 // shot out just above the cut
+    const d = new DamageDecals();
+    const above = d.collect(s, 0, 0, 0, { cutZ: Infinity });
+    assert.ok(above.some(x => x.kind === 'rubble' || x.kind === 'fray'), 'visible with the full view');
+    const cut = d.collect(s, 0, 0, 0, { cutZ: 4 });
+    assert.equal(cut.filter(x => x.matrix.elements[13] > 3.9).length, 0, 'nothing on the cut cap or above it');
+});

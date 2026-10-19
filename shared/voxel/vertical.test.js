@@ -10,8 +10,9 @@ test('ladder columns require one continuous backing side',()=>{
  m.store.fill(5,5,2,5,5,5,'concrete');m.ladder(4,5,1,0);assert.deepEqual(ladderAttachment(m.store,4,5,3),[1,0]);assert.ok(validateLadders(m.store));
  m.store.set(5,5,3,0);assert.throws(()=>validateLadders(m.store),/attachment/);
 });
-test('hand-built maps preserve their datum and deterministic hashes with walk-through glass, reserved window landings and retired ornamental cover',()=>{
- const hashes={'cedar-close':'b0d2dabb','main-street':'df99af70','harbor-yard':'d19c1c56','route-9':'e6749d4f','proving-grounds':'7d3f4d86'};
+test('hand-built maps preserve their datum and deterministic hashes with walk-through glass and reserved window landings',()=>{
+ // PLAN-12: planters, benches and hedges are no longer turned into crates / sandbags, so these fixture hashes moved.
+ const hashes={'cedar-close':'23c78674','main-street':'38871f16','harbor-yard':'d19c1c56','route-9':'19ec9d53','proving-grounds':'80793ed9'};
  for(const [id,hash] of Object.entries(hashes))assert.equal(MAPS.find(m=>m.id===id).build({seed:1}).store.hash(),hash);
 });
 import { reachable, nodeKey } from '../world/PathSearch.js';

@@ -64,19 +64,19 @@ test('single-tile enemy pods with a lead on the squad advance in a wedge; walker
 });
 
 // ---------------------------------------------------------------------------------------------- strikes
-test('PLAN-10: the airstrike highlights one 15 x 15 square whatever the facing; the laser keeps its long band', () => {
+test('PLAN-12: the airstrike highlights one 15 x 9 rectangle along the caster\'s facing; the laser keeps its long band', () => {
     const b = arena(), u = b.unit('p0'), to = { x: 20, y: 11, z: 2 };
     const air = footprint(b, 'carpet_bomb', to, u), laser = footprint(b, 'orbital_laser', to, u);
     const s = STRIKES.carpet_bomb, l = STRIKES.orbital_laser;
-    assert.equal(air.length, (2 * s.half + 1) ** 2);
+    assert.equal(air.length, (2 * s.halfLength + 1) * (2 * s.halfWidth + 1));
     assert.equal(laser.length, (2 * l.halfLength + 1) * (2 * l.halfWidth + 1));
-    assert.deepEqual(new Set(air.map(c => c.x)), new Set(Array.from({ length: 2 * s.half + 1 }, (_, i) => to.x - s.half + i)));
-    const ns = footprint(b, 'carpet_bomb', to, { ...u, x: 20, y: 0 });
-    assert.deepEqual(ns.map(c => `${c.x},${c.y}`).sort(), air.map(c => `${c.x},${c.y}`).sort(), 'independent of the caster');
+    const span = cs => [new Set(cs.map(c => c.x)).size, new Set(cs.map(c => c.y)).size];
+    assert.deepEqual(span(air), [2 * s.halfLength + 1, 2 * s.halfWidth + 1], 'long side east-west for a caster to the west');
+    assert.deepEqual(span(footprint(b, 'carpet_bomb', { x: 10, y: 25, z: 2 }, u)), [2 * s.halfWidth + 1, 2 * s.halfLength + 1], 'north-south for a caster to the north');
     assert.ok(air.every(c => c.z === 2), 'cells sit on the top surface');
 });
 
-test('PLAN-10: three bombs go off together inside the square, apart, deterministic per seed; damage stays inside', () => {
+test('PLAN-12: three bombs fall together inside the rectangle, apart, deterministic per seed; damage stays inside', () => {
     const run = () => {
         const b = arena({ intel: true }), u = b.unit('p0'), to = { x: 22, y: 12, z: 2 };
         const cells = new Set(footprint(b, 'carpet_bomb', to, u).map(c => `${c.x},${c.y}`));
@@ -87,6 +87,8 @@ test('PLAN-10: three bombs go off together inside the square, apart, determinist
     const { b, cells, blasts } = run(), s = STRIKES.carpet_bomb;
     assert.equal(blasts.length, 3);
     assert.ok(blasts.every(e => e.of === 3), 'one salvo');
+    const drop = b.log.find(e => e.t === 'strike');
+    assert.equal(drop?.bombs.length, 3, 'the bombs are announced for the falling animation');
     for (const e of blasts) for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++)
         if (dx * dx + dy * dy <= s.bombRadius ** 2) assert.ok(cells.has(`${Math.floor(e.x) + dx},${Math.floor(e.y) + dy}`), 'every blast stays inside the highlight');
     for (let i = 0; i < 3; i++) for (let j = i + 1; j < 3; j++) assert.ok(Math.hypot(blasts[i].x - blasts[j].x, blasts[i].y - blasts[j].y) >= s.minSeparation);
@@ -122,11 +124,15 @@ test('strikes take at most two storeys off a building and the laser cuts its who
     assert.notEqual(c.store.get(22, 10, 1), AIR);
 });
 
-test('the commander strike (classic) is a radius-4 circle that craters one level on open ground', () => {
+test('PLAN-12: the classic killstreak is the same three-bomb airstrike over a rectangle, with no soldier cut-in', () => {
     const b = arena(), u = b.unit('p0'), to = { x: 20, y: 20, z: 2 };
-    assert.equal(footprint(b, 'killstreak_strike', to, u).length > 40, true);
+    const s = STRIKES.killstreak_strike;
+    assert.equal(footprint(b, 'killstreak_strike', to, u).length, (2 * s.halfLength + 1) * (2 * s.halfWidth + 1));
+    const before = b.log.length;
     const r = b.apply({ type: 'ability', unitId: 'p0', abilityId: 'killstreak_strike', to });
     assert.ok(r.ok, r.reason);
-    for (let y = 14; y <= 26; y++) for (let x = 14; x <= 26; x++) assert.notEqual(b.store.get(x, y, 1), AIR);
-    assert.equal(b.store.get(20, 20, 2), AIR);
+    const ev = b.log.slice(before);
+    assert.equal(ev.filter(e => e.t === 'explosion').length, 3);
+    assert.ok(!ev.some(e => e.t === 'cutin'), 'strikes come from the sky');
+    for (let y = 10; y <= 30; y++) for (let x = 10; x <= 30; x++) assert.notEqual(b.store.get(x, y, 1), AIR);
 });

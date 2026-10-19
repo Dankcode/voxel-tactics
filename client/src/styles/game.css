@@ -434,3 +434,15 @@ button{background:rgba(15,15,18,.68);border-color:var(--line);border-radius:4px}
 
 /* PLAN-10: the operation preview stays hidden until Preview is pressed. */
 .menu-card .preview[hidden] { display: none; }
+
+/* PLAN-12: a reticle that reads at a glance — one bold accuracy ring with a dark halo, a centre cross, a legible label.
+   The dashed half-of-the-rounds ring is gone (no spray pattern on screen). */
+#hud>.aim-reticle .reticle-ring.outer{border:2px solid #fff;box-shadow:0 0 0 1px #000b,inset 0 0 0 1px #000b,0 0 10px #0008}
+#hud>.aim-reticle .reticle-ring.inner{display:none}
+#hud>.aim-reticle .reticle-cross{width:0;height:0;left:0;top:0;background:none;box-shadow:none}
+#hud>.aim-reticle .reticle-cross::before,#hud>.aim-reticle .reticle-cross::after{content:"";position:absolute;background:#fff;box-shadow:0 0 0 1px #000c;border-radius:1px}
+#hud>.aim-reticle .reticle-cross::before{width:16px;height:2px;left:-8px;top:-1px}
+#hud>.aim-reticle .reticle-cross::after{width:2px;height:16px;left:-1px;top:-8px}
+#hud>.aim-reticle.blocked .reticle-ring.outer{border-color:#ff6a4a}
+#hud>.aim-reticle.blocked .reticle-cross::before,#hud>.aim-reticle.blocked .reticle-cross::after{background:#ff6a4a}
+#hud>.aim-reticle>span{font-size:11px;font-weight:600;letter-spacing:.04em;padding:2px 7px;border-radius:3px;background:#0b0e12c4;text-shadow:none;top:calc(var(--aim-radius) + 10px)}

@@ -9,6 +9,7 @@ import { QUALITY } from './Quality.js';
 
 const BASE = QUALITY.textures;
 const loader = new THREE.TextureLoader();
+const VEHICLE_TEXTURES = ['veh_sedan', 'veh_pickup'];
 
 export class MaterialLibrary {
     constructor(renderer, clipping) {
@@ -22,6 +23,8 @@ export class MaterialLibrary {
     async load() {
         const names = new Set(Object.values(RENDER).map(r => r.tex).filter(Boolean));
         await Promise.all([...names].map(n => Promise.all([this.texture(n, false), this.texture(n, true)])));
+        // PLAN-12: vehicle model textures (albedo only, glTF UV orientation).
+        await Promise.all(VEHICLE_TEXTURES.map(n => this.texture(n, false)));
     }
     texture(name, normal) {
         const key = `${name}${normal ? '_n' : ''}`;
@@ -29,6 +32,7 @@ export class MaterialLibrary {
         const entry = { tex: null };
         entry.promise = new Promise(resolve => loader.load(`${BASE}${key}.jpg`, t => {
             t.wrapS = t.wrapT = THREE.RepeatWrapping;
+            if (VEHICLE_TEXTURES.includes(name)) { t.flipY = false; t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping; }
             t.anisotropy = this.aniso;
             t.colorSpace = normal ? THREE.NoColorSpace : THREE.SRGBColorSpace;
             t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter;

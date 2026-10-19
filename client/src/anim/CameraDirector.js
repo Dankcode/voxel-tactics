@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { castRay, blocksSight } from '../../../shared/voxel/Raycast.js';
 export const MAX_YAW = 35 * Math.PI / 180;
+const EDGE = 0.78;   // PLAN-12: reticle NDC beyond this re-frames the aiming camera
 /** Frame a human-size target at roughly a third of the viewport, without moving through cover. */
 export function targetAimFov(distance) {
     return THREE.MathUtils.clamp(THREE.MathUtils.radToDeg(2*Math.atan(2.4/(Math.max(1,distance)*.7))),14,38);
@@ -55,10 +56,14 @@ export class CameraDirector {
      */
     track(point,dt){
         if(this.phase!=='prepare'||!this.shooter)return;
-        const k=1-Math.exp(-dt/0.12);this.look.lerp(point,k);
+        // PLAN-12: the framing holds still while aiming, so the soldier stays put on screen and the reticle moves
+        // instead. Only when the reticle nears the frame edge (or swings past ±35° yaw) does the shoulder re-anchor,
+        // in one step, on the new aim.
         const d=this.flatDir(this.shooter,point),yaw=Math.acos(THREE.MathUtils.clamp(d.dot(this.aimDir),-1,1));
-        // Pitch is followed by the look-at alone; only a yaw beyond the framing re-anchors the shoulder.
-        if(yaw>MAX_YAW){const look=this.look.clone();if(this.begin(this.shooter,point.clone().add(new THREE.Vector3(0,-1.1,0)),'prepare',{side:this.side})){this.look.copy(look);this.aimDir=d;this.elapsed=0;}}
+        this.cam.updateMatrixWorld();const ndc=point.clone().project(this.cam);
+        const off=ndc.z>1||Math.abs(ndc.x)>EDGE||Math.abs(ndc.y)>EDGE;
+        this.reanchorT=Math.max(0,(this.reanchorT||0)-dt);
+        if((yaw>MAX_YAW||off)&&!this.reanchorT){if(this.begin(this.shooter,point.clone().add(new THREE.Vector3(0,-1.1,0)),'prepare',{side:this.side})){this.aimDir=d;this.elapsed=0;this.reanchorT=0.4;}}
     }
     prepare(shooter,target) { this.begin(shooter,target,'prepare'); }
     /**

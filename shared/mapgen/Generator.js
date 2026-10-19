@@ -12,6 +12,7 @@ import { createPlot, familyForSite, PLOT_FAMILIES, plotLot, SIDE_VEC, OPPOSITE }
 import { LOT_KINDS, DISTRICT_WALLS, DISTRICT_PALETTE, lotKindsFor } from './LotCatalogue.js';
 import { Field, picturePrior, lineOfPlay, sightlineField, heightIntent, noiseField, gridPath, fbm, NOISE_LAYERS } from './Fields.js';
 import { roadLotCells, solveDistricts, solveLots, placeBuildings, classifyBays, solveBays, piecesFromBays, planPockets } from './ExteriorSolver.js';
+import { planParcelPins, planStreetTrees } from './ParcelTemplates.js';
 import { placeCore, solveInteriorPlan, bayGridOf } from './InteriorPlanSolver.js';
 import { solveFacadeV3 } from './FacadeSolver.js';
 import { solveLayers } from './LayerSolver.js';
@@ -44,7 +45,7 @@ function groundFromPlot(plot, lotKind) {
 function markParking(plot, ground, lotKind) {
     for (const lot of plot.lots) {
         if (lot.road || lotKind(lot) !== 'parking_lot') continue;
-        for (let x = lot.x0 + 1; x < lot.x0 + LOT - 1; x += 2) for (const y of [lot.y0 + 3, lot.y0 + 4]) ground.mat[x + y * plot.W] = 'road_mark';
+        void lot;   // PLAN-12: bay lines are drawn by the client road-paint overlay, not as voxel cells
     }
 }
 
@@ -316,6 +317,12 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
         return plot.picture ? (ground.axisAt?.(lot) ?? null) : null;
     };
     const solveArgs = { plot, bayGrid, lotPool, roadAxis, fields, seed, objectiveAt: objectiveCell };
+    // PLAN-13: designed parcels (ParcelTemplates) and street trees first; line-of-play pockets win where they meet.
+    if (!plot.picture) {
+        const layoutPins = new Map([...planStreetTrees(bayGrid), ...planParcelPins(plot, bayGrid, lotKindAt, kind => LOT_KINDS[kind]?.pool)]);
+        solveArgs.soft = new Set();
+        for (const [id, piece] of layoutPins) if (!pins.has(id)) { pins.set(id, piece); solveArgs.soft.add(id); }
+    }
     const bays = solveBays({ ...solveArgs, pins });
     const pieces = piecesFromBays(bays, bayGrid);
     // ---- world edges and dressing
@@ -474,7 +481,6 @@ function pictureGround(plot, siteRead, W, D) {
     }
     for(const p of site.parking||[])for(let y=p.y0;y<Math.min(D,p.y0+p.d);y++)for(let x=p.x0;x<Math.min(W,p.x0+p.w);x++) {
         mat[x+y*W]='asphalt';cls[x+y*W]=`parking_${p.axis||'y'}`;
-        if((p.axis||'y')==='y'?(x-p.x0)%4===0:(y-p.y0)%4===0)mat[x+y*W]='road_mark';
     }
     const owned=(x,y)=>plot.buildings.some(b=>x>=b.x0-1&&y>=b.y0-1&&x<=b.x0+b.w&&y<=b.y0+b.d);
     for(const c of rasterRoadNetwork(site.roads||[],W,D,{blocked:owned})) {mat[c.x+c.y*W]=c.material;cls[c.x+c.y*W]=c.road?(c.edge<1.5?`lane_${c.axis}`:'carriageway'):'sidewalk';}

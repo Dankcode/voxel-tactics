@@ -184,23 +184,26 @@ export class DamageDecals {
             const m = materialById(store.get(x, y, z));
             if (!m.solid || m.liquid || m.shatters || OBJECT_KEYS.has(m.key) || hidden(x, y, z)) continue;
             const lvl = damageLevel(store, x, y, z), soot = scorch.get(`${x},${y},${z}`) || 0;
+            // PLAN-12: holes above the storey cut are not on screen, so they leave no marks on the walls below it.
+            const seenScar = (sx, sy, sz) => sz < cutZ && scars.has(`${sx},${sy},${sz}`) && !store.isSolid(sx, sy, sz);
             let nearScar = false;
-            if (scars.size) for (const [dx, dy, dz] of DIRS) if (scars.has(`${x + dx},${y + dy},${z + dz}`) && !store.isSolid(x + dx, y + dy, z + dz)) { nearScar = true; break; }
+            if (scars.size) for (const [dx, dy, dz] of DIRS) if (seenScar(x + dx, y + dy, z + dz)) { nearScar = true; break; }
             if (!lvl && !soot && !nearScar) continue;
             const box = footBox(store, x, y, z), tint = FAMILY_TINT[m.family] ?? 0x8d857a;
             for (const d of DIRS) {
                 const [dx, dy, dz] = d;
                 if (dz === 0 ? !open(store, x + dx, y + dy, z) : !open(store, x, y, z + dz)) continue;
                 if (dz < 0) continue;                                   // nobody sees the underside
+                if (dz > 0 && z + 1 >= cutZ) continue;                  // PLAN-12: the cut cap of a wall carries no damage marks
                 if (lvl) out.push({ kind: lvl === 2 ? 'heavy' : 'crack', tint: 0xffffff, opacity: 1, matrix: faceMatrix(box, z, d) });
                 if (soot) out.push(dz > 0 ? { kind: 'scorch', tint: 0xffffff, opacity: [0, 0.55, 0.8, 1][soot], matrix: faceMatrix(box, z, d, { scale: 1.08, spin: hashSpin(x, y, z) }) }
                     : { kind: 'soot', tint: 0xffffff, opacity: [0, 0.45, 0.7, 0.9][soot], matrix: faceMatrix(box, z, d) });
                 // The blast-facing side of a burned voxel is chipped along its edges (XCOM-style wear), heavier with more soot.
                 if (soot && dz === 0) out.push({ kind: 'edge', tint, opacity: [0, 0.55, 0.8, 1][soot], matrix: faceMatrix(box, z, d, { inset: -0.002 }) });
                 if (nearScar) {
-                    const toward = DIRS.find(([ax, ay, az]) => scars.has(`${x + ax},${y + ay},${z + az}`) && !store.isSolid(x + ax, y + ay, z + az) && (ax !== dx || ay !== dy || az !== dz) && (ax !== -dx || ay !== -dy || az !== -dz));
+                    const toward = DIRS.find(([ax, ay, az]) => seenScar(x + ax, y + ay, z + az) && (ax !== dx || ay !== dy || az !== dz) && (ax !== -dx || ay !== -dy || az !== -dz));
                     // The face that looks into the hole shows broken material end-on.
-                    if (scars.has(`${x + dx},${y + dy},${z + dz}`)) out.push({ kind: 'rubble', tint, opacity: 1, matrix: faceMatrix(box, z, d, { inset: 0.04 }) });
+                    if (seenScar(x + dx, y + dy, z + dz)) out.push({ kind: 'rubble', tint, opacity: 1, matrix: faceMatrix(box, z, d, { inset: 0.04 }) });
                     // Faces at right angles get a frayed band along their edge nearest the hole.
                     else if (toward) out.push({ kind: 'fray', tint, opacity: 1, matrix: faceMatrix(box, z, d, { toward }) });
                 }

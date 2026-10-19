@@ -1063,7 +1063,8 @@ export class Battle {
     doAbility(u, intent) {
         const a = ABILITIES[intent.abilityId];
         u.will -= a.wp; u.ap -= a.ap;
-        if (a.id !== 'suppress') this.emit({ t: 'cutin', unitId: u.id, kind: 'skill', abilityId: a.id, targetIds: intent.targetId ? [intent.targetId] : [] });
+        // PLAN-12: strikes come from the sky — no soldier cut-in for them (the client animates the bombs instead).
+        if (a.id !== 'suppress' && !a.commander && !a.support) this.emit({ t: 'cutin', unitId: u.id, kind: 'skill', abilityId: a.id, targetIds: intent.targetId ? [intent.targetId] : [] });
         this.emit({ t: 'ability', unitId: u.id, abilityId: a.id });
         if(a.intel){executeIntel(this,u,intent);return;}
         switch (a.id) {

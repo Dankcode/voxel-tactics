@@ -77,6 +77,14 @@ export class KitView {
         this.hints = {};
         this.decorByChunk = new Map();
     }
+    /**
+     * PLAN-12: parked cars use the low-poly sedan and pickup models (assets/kit/vehicles.glb, decimated in Blender from
+     * tools/art/vehicles/source) when they loaded; the choice is a hash of the car's centre, so every peer draws the same.
+     */
+    vehicle(piece, cx, cy) {
+        if (piece !== 'car' || !this.kit.pieces?.has('car_sedan')) return piece;
+        return hash(Math.floor(cx), Math.floor(cy), 11) < 0.62 || !this.kit.pieces.has('car_pickup') ? 'car_sedan' : 'car_pickup';
+    }
     /** Mission render hints and decor (mission.visual). */
     setVisual(visual) {
         this.hints = visual?.hints || {};
@@ -202,7 +210,7 @@ export class KitView {
         if(hint?.member&&intact(hint.member))return;
         if(hint?.cells&&hint?.centre&&intact(`${x},${y},${z}`)){
             const [ccx,ccy]=hint.centre;
-            add(hint.piece,x,y,z,hint.yaw||0,k,{dx:ccx-x-.5,dy:ccy-y-.5,tint:hint.tint,tintSlots:['carpaint','self']});return;
+            add(this.vehicle(hint.piece,ccx,ccy),x,y,z,hint.yaw||0,k,{dx:ccx-x-.5,dy:ccy-y-.5,tint:hint.tint,tintSlots:['carpaint','self','veh_sedan']});return;
         }
         // Grouped cover: one connected module per cell, chosen from the family's face neighbours (same rule as collision).
         const grouped = () => {
@@ -328,7 +336,7 @@ export class KitView {
                 if (hint?.member) { if (intact(hint.member)) break; }
                 else if (hint?.piece && intact(`${x},${y},${z}`)) {
                     const [ccx, ccy] = hint.centre;
-                    add(hint.piece, x, y, z, hint.yaw || 0, k, { dx: ccx - x - 0.5, dy: ccy - y - 0.5, tint: hint.tint, tintSlots: ['carpaint', 'self'] });
+                    add(this.vehicle(hint.piece, ccx, ccy), x, y, z, hint.yaw || 0, k, { dx: ccx - x - 0.5, dy: ccy - y - 0.5, tint: hint.tint, tintSlots: ['carpaint', 'self', 'veh_sedan'] });
                     break;
                 }
                 add('wreck', x, y, z, hash(x, y, z) * 6.28, k, { tint: k === 'container' ? hint?.tint || null : null });
