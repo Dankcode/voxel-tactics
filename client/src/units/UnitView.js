@@ -1,5 +1,6 @@
 import {installBillboardDepth,billboardDepthSlope} from './BillboardDepth.js';
 import { WalkerModel } from './WalkerModel.js';
+import { DroneModel, DRONE_HOVER } from './DroneModel.js';
 import { WALKERS } from '../../../shared/battle/Walker.js';
 // A 2D character standing in the voxel world: a camera-facing quad (depth-tested against voxels),
 // a ground ring, an HP/AP bar, and a SpriteAnimator driving the illustrated, relightable atlas.
@@ -65,7 +66,8 @@ export class UnitView {
         this.sprite.castShadow = true; this.sprite.receiveShadow = true;
         this.sprite.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: this.texture, alphaTest: 0.5, side: THREE.DoubleSide });
         this.group.add(this.sprite);
-        if(WALKERS[unit.type]){this.group.remove(this.sprite);this.sprite.geometry.dispose();this.sprite.customDepthMaterial.dispose();this.model=new WalkerModel(unit,store,scene.clipping);this.sprite=this.model.root;this.spriteHeight=WALKERS[unit.type].height+.5;this.group.add(this.sprite);}
+        if(unit.drone){this.group.remove(this.sprite);this.sprite.geometry.dispose();this.sprite.customDepthMaterial.dispose();this.model=new DroneModel(unit,scene.clipping);this.sprite=this.model.root;this.spriteHeight=DRONE_HOVER+.15;this.group.add(this.sprite);}   // PLAN-14
+        else if(WALKERS[unit.type]){this.group.remove(this.sprite);this.sprite.geometry.dispose();this.sprite.customDepthMaterial.dispose();this.model=new WalkerModel(unit,store,scene.clipping);this.sprite=this.model.root;this.spriteHeight=WALKERS[unit.type].height+.5;this.group.add(this.sprite);}
         this.blob = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false, opacity: 0.55, clippingPlanes: scene.clipping }));
         this.blob.rotation.x = -Math.PI / 2; this.blob.position.y = 0.02;
         this.group.add(this.blob);
@@ -133,7 +135,7 @@ export class UnitView {
         this.breathTime=(this.breathTime||0)+dt;
         // Screen-facing art retains its drawn proportions; the transparent foot baseline stays at local zero.
         // Only the sprite tilts. Ground rings, collision position and elevation cues stay on the world grid.
-        if(this.model){this.model.update(this.pos,dt);this.bar.position.set(0,this.spriteHeight+.47,0);}
+        if(this.model){this.model.update(this.pos,dt,this.facingVec);this.bar.position.set(0,this.spriteHeight+.47,0);}
         else if(camera) {
             this.sprite.quaternion.copy(camera.quaternion);
             this.sprite.position.x=0;   // PLAN-11: no idle breathing sway on the field sprites (it read as jitter)

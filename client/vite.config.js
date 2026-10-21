@@ -15,9 +15,9 @@ function buildStamp(command) {
 }
 
 // The client imports the deterministic rules from ../shared, so Vite must be allowed to serve it.
-export default defineConfig(({ command }) => ({
+export default defineConfig(({ command, mode }) => ({
     root: path.resolve(__dirname),
-    define: { __HAS_KIT_ART__: JSON.stringify(fs.existsSync(path.resolve(__dirname,'public/assets/kit/tileset-art.glb'))), __BUILD__: JSON.stringify(buildStamp(command)) },
+    define: { __SOLO_ONLY__: JSON.stringify(mode === 'solo'), __HAS_KIT_ART__: JSON.stringify(fs.existsSync(path.resolve(__dirname,'public/assets/kit/tileset-art.glb'))), __BUILD__: JSON.stringify(buildStamp(command)) },
     server: { fs: { allow: [path.resolve(__dirname, '..')] } },
     build: { rollupOptions: { input: { battle: path.resolve(__dirname, 'index.html'), staging: path.resolve(__dirname, 'staging.html'), campaign: path.resolve(__dirname, 'campaign.html') } }, outDir: 'dist', emptyOutDir: true, chunkSizeWarningLimit: 4000 }
 }));

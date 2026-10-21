@@ -1,4 +1,5 @@
 import { ladderAttachment } from '../../../../shared/world/LadderAttachment.js';
+import { STREET_PROP_TALL } from './StreetPropPieces.js';
 import { straightCells } from '../../../../shared/mission/BuildingEra.js';
 // Autotiles structure and cover voxels into tile-set pieces, chunk by chunk, as instanced meshes.
 //
@@ -28,7 +29,7 @@ const FURNITURE = new Set(['sofa', 'cabinet', 'bed', 'desk', 'appliance', 'shelv
 const PROPS = new Set(['planter', 'privacy_fence', 'chainlink', 'railing', 'jersey', 'bench', 'bin', 'pump']);
 const OBJECTS = new Set(['car_body', 'car_cabin', 'container', 'dumpster']);
 // Outdoor objects taller than a storey are not sliced by the storey cutaway (trees, street lights, signs).
-const NO_CLIP = new Set(['canopy', 'tree_round', 'tree_conifer', 'tree_oak', 'tree_birch', 'tree_ornamental', 'tree_cypress', 'streetlight', 'floodlight', 'price_sign', 'motel_sign', 'crane_leg', 'bus_stop', 'umbrella', 'gate_sign']);
+const NO_CLIP = new Set([...STREET_PROP_TALL, 'canopy', 'tree_round', 'tree_conifer', 'tree_oak', 'tree_birch', 'tree_ornamental', 'tree_cypress', 'streetlight', 'floodlight', 'price_sign', 'motel_sign', 'crane_leg', 'bus_stop', 'umbrella', 'gate_sign']);
 const DIRS = [[1, 0, 0], [0, 1, -Math.PI / 2], [-1, 0, Math.PI], [0, -1, Math.PI / 2]];   // dx, dy, yaw (+X arm → dir)
 const keyOf = id => MATERIALS[id]?.key;
 const yawToward = (dx, dy) => Math.atan2(-dx, -dy);          // rotation that points a piece's −Z (its back) at (dx, dy)

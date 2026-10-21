@@ -264,12 +264,13 @@ export function checkAccess(mission) {
     const s = mission.store, out = { accessTemplates: true, accessByHeight: true };
     for (const b of mission.buildings) {
         for (const rec of b.access || []) {
+            if (rec.module === 'roof_stair') continue;   // PLAN-14: the core's own roof flight
             try { validateAccessModule(s, rec); } catch { out.accessTemplates = false; }
             if (rec.module === 'roof_ladder' && b.storeys > ROOF_LADDER.maxStoreys) out.accessByHeight = false;
             if (rec.module === 'fire_escape' && b.storeys < 3) out.accessByHeight = false;
         }
         if (b.storeys >= 3) {
-            if (!(b.access || []).some(r => r.module === 'fire_escape')) out.accessByHeight = false;
+            if (!(b.access || []).some(r => r.module === 'fire_escape' || r.module === 'roof_stair')) out.accessByHeight = false;
             const allowed=new Set((b.access||[]).filter(r=>r.module==='fire_escape').flatMap(r=>fireEscapeTemplate(r.params).cells.filter(c=>c.role==='rung').map(c=>key3(c.x,c.y,c.z))));
             for(let y=b.y0-1;y<=b.y0+b.d;y++)for(let x=b.x0-1;x<=b.x0+b.w;x++)for(let z=b.baseZ;z<=b.top+1;z++)
                 if(s.get(x,y,z)===MAT.ladder&&!allowed.has(key3(x,y,z)))out.accessByHeight=false;

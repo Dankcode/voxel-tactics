@@ -2,7 +2,8 @@
 import * as THREE from 'three';
 import { castRay, blocksSight } from '../../../shared/voxel/Raycast.js';
 export const MAX_YAW = 35 * Math.PI / 180;
-const EDGE = 0.78;   // PLAN-12: reticle NDC beyond this re-frames the aiming camera
+/** PLAN-14: the over-the-shoulder offset while aiming (tiles): behind the shoulder, to its side, above it. */
+export const SHOULDER = Object.freeze({ back: 3.4, side: 0.95, up: 0.45 });
 /** Frame a human-size target at roughly a third of the viewport, without moving through cover. */
 export function targetAimFov(distance) {
     return THREE.MathUtils.clamp(THREE.MathUtils.radToDeg(2*Math.atan(2.4/(Math.max(1,distance)*.7))),14,38);
@@ -46,24 +47,46 @@ export class CameraDirector {
         for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(let dz=-1;dz<=1;dz++)keep(Math.floor(a.x)+dx,Math.floor(a.y)+dy,Math.floor(a.h)+dz);
         return out;
     }
-    prepareAim(shooter,target,{side='right'}={}){this.side=side;if(!this.begin(shooter,target.clone().add(new THREE.Vector3(0,-1.1,0)),'prepare',{side}))return;this.look.copy(target);this.shooter=shooter.clone();this.aimDir=this.flatDir(shooter,target);this.apply(0);}
+    prepareAim(shooter,target,{side='right'}={}){
+        // PLAN-14: already aiming (a step-out or a shoulder swap): the follow camera glides over; no cut.
+        if(this.active&&this.phase==='prepare'&&this.following){this.side=side;this.shooter=shooter.clone();return;}
+        this.side=side;this.following=false;if(!this.begin(shooter,target.clone().add(new THREE.Vector3(0,-1.1,0)),'prepare',{side}))return;this.look.copy(target);this.shooter=shooter.clone();this.aimDir=this.flatDir(shooter,target);this.apply(0);}
     focusTarget(point) { this.aimFov=targetAimFov(this.cam.position.distanceTo(point)); }
     zoomAim(factor) { this.aimFov=THREE.MathUtils.clamp((this.aimFov??38)*factor,14,60); }
     flatDir(a,b){const d=b.clone().sub(a);d.y=0;return d.lengthSq()<1e-6?new THREE.Vector3(0,0,1):d.normalize();}
     /**
-     * PLAN-07: in the prepare phase the shoulder camera looks where the aim currently is (damped), and swings round
-     * behind the shooter again once the aim leaves ±35° yaw of its framing.
+     * PLAN-14: third-person-shooter aiming (Gears / The Division / Phoenix Point free aim). While aiming, the camera is
+     * rigidly attached over the shooter's shoulder and turns with the aim: the mouse swings the view, the soldier keeps
+     * the same place on screen and the reticle stays at the centre. Looking down raises the camera, looking up lowers
+     * it (an orbit around the shoulder). The shoulder never pushes through walls: it pulls in toward the shooter, and
+     * where even that is blocked the walls between camera and aim are cut away (x-ray, throttled).
      */
     track(point,dt){
         if(this.phase!=='prepare'||!this.shooter)return;
-        // PLAN-12: the framing holds still while aiming, so the soldier stays put on screen and the reticle moves
-        // instead. Only when the reticle nears the frame edge (or swings past ±35° yaw) does the shoulder re-anchor,
-        // in one step, on the new aim.
-        const d=this.flatDir(this.shooter,point),yaw=Math.acos(THREE.MathUtils.clamp(d.dot(this.aimDir),-1,1));
-        this.cam.updateMatrixWorld();const ndc=point.clone().project(this.cam);
-        const off=ndc.z>1||Math.abs(ndc.x)>EDGE||Math.abs(ndc.y)>EDGE;
-        this.reanchorT=Math.max(0,(this.reanchorT||0)-dt);
-        if((yaw>MAX_YAW||off)&&!this.reanchorT){if(this.begin(this.shooter,point.clone().add(new THREE.Vector3(0,-1.1,0)),'prepare',{side:this.side})){this.aimDir=d;this.elapsed=0;this.reanchorT=0.4;}}
+        const pivot=this.shooter.clone().add(new THREE.Vector3(0,1.55,0));
+        const dir=point.clone().sub(pivot),dist=dir.length();if(dist<1e-3)return;dir.multiplyScalar(1/dist);
+        const flat=new THREE.Vector3(dir.x,0,dir.z);if(flat.lengthSq()<1e-6)flat.set(0,0,1);flat.normalize();
+        const right=new THREE.Vector3(-flat.z,0,flat.x),side=(this.side==='left'?-1:1)*SHOULDER.side;
+        const desired=pivot.clone().addScaledVector(dir,-SHOULDER.back).addScaledVector(right,side).add(new THREE.Vector3(0,SHOULDER.up,0));
+        let at=desired;
+        // Pull in a little at most; closer than that the shooter fills the view, so the walls are cut away instead.
+        if(!this.clear(desired)){at=null;for(const k of [0.82,0.66]){const v=pivot.clone().lerp(desired,k);if(this.clear(v)){at=v;break;}}}
+        const look=pivot.clone().addScaledVector(dir,Math.max(dist,6));
+        // Interiors: keep the readable shoulder distance and cut away what stands between it and the aim.
+        this.xrayT=Math.max(0,(this.xrayT||0)-dt);
+        // Recomputed only when the shoulder has moved or turned noticeably, and handed on only when the cut changes
+        // (a cutaway rebuilds the chunks it touches).
+        const moved=!this.xrayAt||this.xrayAt.distanceTo(at||desired)>0.6||this.xrayLook.distanceTo(look)>1.5;
+        if((!at||!this.sees(at,look))&&this.store&&!this.xrayT&&moved){
+            this.xrayT=0.25;at=at&&at.distanceTo(pivot)>=SHOULDER.back*0.6?at:desired;this.xrayAt=at.clone();this.xrayLook=look.clone();
+            const cells=this.occluders(at,[pivot,look,point],Math.floor(this.shooter.y)-1),old=this.xrayCells;
+            if(!old||old.size!==cells.size||[...cells].some(c=>!old.has(c))){this.xrayCells=cells;this.xray?.(cells);}
+        } else if(at&&this.xrayCells&&!this.xrayT&&moved&&this.sees(at,look)){this.xrayCells=null;this.xrayAt=null;this.xray?.(null);}
+        at||=desired;
+        const k=dt>0?1-Math.exp(-dt/0.05):1;
+        this.cam.position.lerp(at,k);this.look.lerp(look,k);
+        this.cam.aspect=this.scene.aspect||1;this.cam.updateProjectionMatrix();this.cam.lookAt(this.look);this.cam.updateMatrixWorld();
+        this.aimDir=flat;this.following=true;
     }
     prepare(shooter,target) { this.begin(shooter,target,'prepare'); }
     /**
@@ -112,11 +135,11 @@ export class CameraDirector {
         // Keep whoever is hidden (the aiming shooter): re-framing while the reticle moves must not reveal them.
         this.active=true;this.scene.actionCamera=this.cam;this.hidden||=new Set();this.apply(0);return true;
     }
-    update(dt) {if(this.active&&this.phase==='prepare'){this.elapsed+=dt;this.cam.fov+=( (this.aimFov??38)-this.cam.fov)*(1-Math.exp(-dt/.15));this.apply(Math.min(1,this.elapsed/0.65));}}
+    update(dt) {if(this.active&&this.phase==='prepare'){this.elapsed+=dt;this.cam.fov+=( (this.aimFov??38)-this.cam.fov)*(1-Math.exp(-dt/.15));if(this.following){this.cam.updateProjectionMatrix();return;}this.apply(Math.min(1,this.elapsed/0.65));}}
     apply(k) {
         this.cam.position.lerpVectors(this.from,this.to,THREE.MathUtils.clamp(k,0,1));
         if(!this.clear(this.cam.position))this.cam.position.copy(this.from);
         this.cam.aspect=this.scene.aspect || 1;this.cam.updateProjectionMatrix();this.cam.lookAt(this.look);this.cam.updateMatrixWorld();
     }
-    end() {const was=this.active;this.aimFov=38;this.shooter=null;this.active=false;this.phase=null;if(this.xrayCells){this.xrayCells=null;this.xray?.(null);}if(was)this.onEnd?.();this.scene.actionCamera=null;this.hidden=new Set();}
+    end() {const was=this.active;this.following=false;this.xrayAt=null;this.aimFov=38;this.shooter=null;this.active=false;this.phase=null;if(this.xrayCells){this.xrayCells=null;this.xray?.(null);}if(was)this.onEnd?.();this.scene.actionCamera=null;this.hidden=new Set();}
 }

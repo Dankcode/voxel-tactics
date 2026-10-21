@@ -11,6 +11,7 @@ import { buildRoute9, ROUTE9_ID } from './Route9.js';
 
 import { buildPackagedMap } from '../mapgen/PackageBuilder.js';
 import { MAP_PACKAGES } from './generated/PackageCatalog.js';
+import { geoMapDefs } from './GeoMaps.js';
 
 export const MAPS = Object.freeze([
     {id:'park-district',name:'Civic District',theme:'Large districts',text:'96 × 72 rectangle: street-level shop rows, lots and yards solved as parcel mixes.',build:buildParkDistrict},
@@ -25,6 +26,8 @@ export const MAPS = Object.freeze([
     {id:'sunken-boulevard',name:'Sunken Boulevard',theme:'Split-level districts',text:'A lower street passes beneath an upper boulevard, with road ramps and a covered crossing.',build:buildSunkenBoulevard},
     {id:'freight-terraces',name:'Freight Terraces',theme:'Split-level districts',text:'Low warehouses, raised loading decks, cargo lanes and a service catwalk.',build:buildFreightTerraces},
     {id:ARCHITECTURE_YARD_ID,name:"Architecture Yard",theme:"Training",text:"Walk through full glass, vault solid window sills, inspect window families and rounded facades.",build:buildArchitectureYard},
+    // Geo imports: real places at 1:1 (BlenderGIS → GeoDistrict). Play with ?play=<id>&fixture=1.
+    ...geoMapDefs(),
     ...MAP_PACKAGES.map(pkg => ({id:pkg.manifest.id,name:pkg.manifest.name,theme:pkg.manifest.theme,text:pkg.design.mission.briefing,concept:`/maps/${pkg.manifest.id}/${pkg.manifest.reference}`,build: options => buildPackagedMap(pkg, { ...options, strict: false })})),
     { id: CEDAR_CLOSE_ID, name: 'Cedar Close', theme: 'Suburbs', text: 'Two modern homes on a quiet close. Glass walls, gardens, a residential street.', build: buildCedarClose },
     { id: MAIN_STREET_ID, name: 'Main Street', theme: 'Downtown', text: 'Shops, a diner and an office block on a main road. Storefront glass, roadworks, a parking lot.', build: buildMainStreet },

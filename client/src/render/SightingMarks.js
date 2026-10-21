@@ -35,7 +35,7 @@ export class SightingMarks {
     clear() {
         for (const f of this.flashes) this.dispose(f.group);
         for (const g of this.ghosts.values()) this.dispose(g.group);
-        this.flashes = []; this.ghosts.clear(); this.seen.clear(); this.visible.clear(); this.key = null;
+        this.flashes = []; this.ghosts.clear(); this.seen.clear(); this.visible.clear(); this.key = null; this.clearScan?.();
     }
     dispose(group) { this.group.remove(group); group.traverse(o => { if (o.material) { if (o.material.map && !Object.values(this.textures).includes(o.material.map)) o.material.map.dispose(); o.material.dispose(); } }); }
     sign(tex, scale = 0.62) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, toneMapped: false })); s.scale.set(scale, scale, 1); s.renderOrder = 31; return s; }
@@ -47,6 +47,7 @@ export class SightingMarks {
         this.group.visible = true;
         const key = `${b.seq}:${game.visualInterior?.size ?? 0}:${b.round}`;
         if (key !== this.key) { this.key = key; this.refresh(game); }
+        this.stepScan(game, time);
         // The shoulder / cut-in cameras look at the target itself: markers would only cover it there.
         if (game.cameraDirector?.active) { this.group.visible = false; return; }
         const cut = game.cutLevel ?? Infinity;
@@ -98,4 +99,31 @@ export class SightingMarks {
         this.group.add(group); this.ghosts.set(id, { group, ring, sign, key, z: s.z });
     }
     drop(id) { const g = this.ghosts.get(id); if (g) { this.dispose(g.group); this.ghosts.delete(id); } }
+    /**
+     * PLAN-14 Recon Scan: a red search circle (the contact is somewhere inside it, not at its centre) on each contact's
+     * floor, with a "CONTACT" tag; drones get a "DRONE" tag. They stay until the round the scan expires.
+     */
+    showScan(e) {
+        this.clearScan();
+        this.scan = { until: e.until, groups: [] };
+        for (const c of e.contacts) {
+            const group = new THREE.Group();
+            const fill = new THREE.Mesh(new THREE.CircleGeometry(c.r, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: RED, transparent: true, opacity: 0.12, depthTest: false, depthWrite: false, toneMapped: false, side: THREE.DoubleSide }));
+            const edge = new THREE.Mesh(new THREE.RingGeometry(c.r - 0.08, c.r, 64).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: RED, transparent: true, opacity: 0.85, depthTest: false, depthWrite: false, toneMapped: false, side: THREE.DoubleSide }));
+            fill.renderOrder = edge.renderOrder = 29; fill.position.y = 0.05; edge.position.y = 0.06;
+            const label = this.sign(labelTexture(c.drone ? 'DRONE?' : 'CONTACT?'), 1); label.scale.set(1.3, 0.33, 1); label.position.y = 0.9;
+            group.add(fill, edge, label); group.position.set(c.x + 0.5, c.z + 1, c.y + 0.5);
+            this.group.add(group); this.scan.groups.push({ group, edge, z: c.z, t: 0 });
+            group.userData.floorLabel = c.z;
+        }
+    }
+    clearScan() { for (const g of this.scan?.groups || []) this.dispose(g.group); this.scan = null; }
+    /** Called from update(): pulse the circles, hide them above the cut, drop them when the scan expires. */
+    stepScan(game, time) {
+        if (!this.scan) return;
+        if (game.battle.round > this.scan.until) { this.clearScan(); return; }
+        const cut = game.cutLevel ?? Infinity;
+        // A contact above the storey cut is still shown, on the cut plane, so the player knows to look up there.
+        for (const g of this.scan.groups) { g.group.position.y = g.z < cut ? g.z + 1 : cut + 0.05; g.edge.material.opacity = 0.55 + 0.3 * Math.sin(time * 3); }
+    }
 }

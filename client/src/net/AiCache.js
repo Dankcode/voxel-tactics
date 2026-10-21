@@ -3,6 +3,7 @@
 // server keeps the JSON file (server/data/ai-cache.json); this browser keeps a copy so a static build without the
 // server still adapts. Online games are recorded by the mission room itself.
 import { mergeProfile, sanitizeAiProfile } from '../../../shared/session/Playstyle.js';
+import { SOLO_ONLY } from './Hosting.js';
 
 const KEY = 'voxel-tactics.ai-profile.v1';
 const local = () => { try { return sanitizeAiProfile(JSON.parse(localStorage.getItem(KEY) || 'null')); } catch { return null; } };
@@ -10,6 +11,7 @@ const keep = p => { try { if (p) localStorage.setItem(KEY, JSON.stringify(p)); }
 
 /** The squad profile the AI plays against: the server cache when reachable, else this browser's copy. */
 export async function loadAiProfile() {
+    if (SOLO_ONLY) return local();
     try {
         const r = await fetch('/api/ai-cache', { cache: 'no-store' });
         if (r.ok) { const c = await r.json(); if (c?.squad) { keep(c.squad); return sanitizeAiProfile(c.squad); } }
@@ -23,6 +25,7 @@ export async function recordLocalMatch(style, meta = {}) {
     const at = new Date().toISOString();
     let profile = mergeProfile(local(), style, { ...meta, at });
     keep(profile);
+    if (SOLO_ONLY) return profile;
     try {
         const r = await fetch('/api/ai-cache', { method: 'POST', headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ style: { traits: style.traits, headline: style.headline }, meta }) });

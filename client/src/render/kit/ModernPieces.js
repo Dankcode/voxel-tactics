@@ -1,4 +1,5 @@
 import {TRAFFIC_PIECES} from './TrafficPieces.js';
+import {STREET_PROP_PIECES} from './StreetPropPieces.js';
 // Present-day tile-set pieces. Same contract as KitPieces.js (cell x, z ∈ [-0.5, 0.5], y ∈ [0, 1], pivot at the
 // cell-floor centre, runs along +X) plus two conventions for furniture and vehicles:
 //   * FRONT is +Z, the BACK (against a wall) is −Z — the builder's hints rotate pieces so the back meets the wall;
@@ -538,7 +539,7 @@ const tacticalFurniture = {
         {slot:'screen',geometry:merge([.15,.4,.65,.9].map(y=>box(.62,.14,.02,0,y-.07,.36)))},
         {slot:'lamp',geometry:merge([.15,.4,.65,.9].map(y=>box(.03,.025,.025,.24,y,.375)))}]),
 };
-export const MODERN_PIECES = { ...TRAFFIC_PIECES, ...tacticalFurniture, ...circulation, ...wallTrims, ...furniture, ...outdoor, ...objects, ...decor };
+export const MODERN_PIECES = { ...TRAFFIC_PIECES, ...STREET_PROP_PIECES, ...tacticalFurniture, ...circulation, ...wallTrims, ...furniture, ...outdoor, ...objects, ...decor };
 /** Pieces allowed to leave their cell (whole objects, tall decor, wall cupboards). */
 export const MODERN_OVERHANG = new Set(Object.entries(MODERN_PIECES).filter(([, p]) => p.meta.overhang || p.meta.group === 'decor').map(([id]) => id));
 /** Decor kinds that carry a light (LanternLights can follow them). */

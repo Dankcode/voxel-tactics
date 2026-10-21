@@ -1,4 +1,5 @@
 import {remixParameters} from '../../../shared/mapgen/DistrictRemix.js';
+import { SOLO_ONLY } from '../net/Hosting.js';
 import {DISTRICT_MAP_IDS} from '../../../shared/mission/LargeDistricts.js';
 import {TopographyPreview} from './TopographyPreview.js';
 // Test ground (admin build): set up any map with a chosen squad and hostile roster, preview the placements, launch,
@@ -129,7 +130,7 @@ export class TestGroundPanel {
             <p class="small">Pods mix the chosen types and take the map's pod positions first, then cover pockets, rooms and far ground — never within ${TEST_LIMITS.minSpawnDistance} tiles of the squad. The same seed always gives the same placement.</p>`}
           </div>
         </div>
-        <div class="row buttons"><button data-tg="preview">Preview placements</button><button data-tg="launch" class="primary">Launch test</button><button data-tg="host">Host online test</button></div>
+        <div class="row buttons"><button data-tg="preview">Preview placements</button><button data-tg="launch" class="primary">Launch test</button>${SOLO_ONLY ? '' : '<button data-tg="host">Host online test</button>'}</div>
         <div class="tg-preview" ${this.previewHtml ? '' : 'hidden'}><canvas aria-label="Test map preview with spawns"></canvas><div class="tg-pinfo">${this.previewHtml || ''}</div></div>
         <div class="row tg-save"><label>Setup name <input data-tg-field="name" placeholder="e.g. Brute rush, night" value="${esc(this.name || '')}"></label><button data-tg="save">Save setup</button><button data-tg="link">Copy link</button></div>
         <details class="tg-list" ${scenarios.length ? 'open' : ''}><summary>Saved setups (${scenarios.length})</summary>${scenarios.length ? scenarios.map((s, i) => `<div class="tg-item"><div><b>${esc(s.name)}</b><small>${esc(this.summary(s.desc))}</small></div><button data-tg="load" data-arg="${i}">Load</button><button data-tg="delete" data-arg="${i}" aria-label="Delete ${esc(s.name)}">✕</button></div>`).join('') : '<p class="small">None yet.</p>'}</details>

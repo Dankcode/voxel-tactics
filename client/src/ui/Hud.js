@@ -174,12 +174,14 @@ export class Hud {
     slotsFor(u) {
         const b = this.game.battle, mode = this.game.mode, s = [];
         const ap = u.ap,w=WEAPONS[u.weapon];
-        s.push({act:w.kind==='melee'?'melee':'weapon',arg:w.id,group:'weapon',icon:weaponIcon(w),name:w.kind==='melee'?'Melee':'Shoot',cost:String(b.shotAp(u,w)),sub:w.ammo?`${u.ammo[w.id]||0} − ${reserveAmmo(u,w)} · ${fireMode(u,w).toUpperCase()}`:'',on:mode.kind==='shoot',disabled:ap<b.shotAp(u,w)||(w.ammo&&u.ammo[w.id]<1),tip:`${w.name} · move the reticle (Tab snaps to an enemy) · Space fires`});
+        s.push({act:w.kind==='melee'?'melee':'weapon',arg:w.id,group:'weapon',icon:weaponIcon(w),name:w.kind==='melee'?'Melee':'Shoot',cost:String(b.shotAp(u,w)),sub:w.ammo?`${u.ammo[w.id]||0} − ${reserveAmmo(u,w)} · ${fireMode(u,w).toUpperCase()}`:'',on:mode.kind==='shoot',disabled:ap<b.shotAp(u,w)||(w.ammo&&u.ammo[w.id]<1),tip:`${w.name} · put the reticle on an enemy's body part · Space fires`});
         const ow = WEAPONS[watchWeapon(u)];
         if (ow) s.push({ group:'weapon',act: 'overwatch', icon: ICONS.overwatch, name: 'Overwatch', cost: 'all', disabled: ap < ow.ap || (u.ammo[ow.id] ?? 0) < (ow.perShot || 1), on: mode.kind === 'overwatch', tip: '<b>Overwatch</b> · choose direction · all AP · <span style="color:#5ff2d6">Teal ≥65%</span> / <span style="color:#ffb347">Amber &lt;65%</span> estimated hit' });
         s.push({act:'reload',icon:ICONS.reload,name:'Reload',group:'weapon',cost:'1',disabled:w.boltAction||!w.ammo||ap<w.reloadAp||u.ammo[w.id]>=w.ammo||reserveAmmo(u,w)<1,tip:w.boltAction?'Bolt cycles loose rounds automatically':'Reload from carried loose rounds'});
         if(Object.values(u.items).some(n=>n>0))s.push({act:'grenades',group:'equipment',icon:ICONS.grenade,name:'Gear',cost:'',tip:'Grenades and medical equipment'});
         for (const a of [...u.abilities.filter(id=>!ABILITIES[id].intel||b.intelMode), ...(b.intelMode?[b.supportChoices[u.owner]||'carpet_bomb']:[])]) { const ab = ABILITIES[a]; s.push({group:ab.support||a==='rally'?'commander':['brace','demolish','suppress'].includes(a)?'equipment':'augmentation', act: 'ability', arg: a, icon: ICONS[a] || ICONS.ability, name: ab.name, on: mode.abilityId === a || (a === 'suppress' && !!mode.suppress), cost: `${ab.ap || 0}`, sub: `${ab.wp} WP`, disabled: (ab.support && (!b.detected || (b.personalTurns[u.owner]||0)<(b.supportReady[u.owner]||0))) || u.will < ab.wp || ap < (ab.ap || 0) || u.statuses.some(s => s.id === 'panicked') || (a === 'suppress' && (u.ammo.repeater ?? 0) < (WEAPONS.repeater.perShot || 1)), tip: `<b>${ab.name}</b> · ${ab.wp} Will${ab.ap ? ` · ${ab.ap} AP` : ''}<br>${esc(ab.text)}` }); }
+        // PLAN-14: Recon Scan — any soldier, one squad cooldown.
+        if(u.side==='player'){const sc=ABILITIES.recon_scan,wait=Math.max(0,(b.scanReadyAt??1)-b.round);s.push({act:'ability',arg:'recon_scan',group:'commander',icon:ICONS.recon_scan||ICONS.overwatch,name:sc.name,cost:wait?`IN ${wait}`:`${sc.ap}`,sub:`${sc.wp} WP`,disabled:wait>0||u.will<sc.wp||ap<sc.ap,tip:`<b>${sc.name}</b> · ${sc.wp} Will · ${sc.ap} AP${wait?` · ready in ${wait} round${wait>1?'s':''}`:''}<br>${esc(sc.text)}`});}
         if(!b.intelMode){const wait=Math.max(0,(b.strikeReadyAt??1)-b.round);s.push({act:'ability',arg:'killstreak_strike',group:'commander',icon:ICONS.ability,name:'Strike',cost:wait?`IN ${wait}`:'READY',disabled:wait>0,tip:wait?`Commander strike · recharging, ready in ${wait} round${wait>1?'s':''}`:'Commander strike · ready · recharges 10 rounds after use'});}
         const f = b.formations.of(u);
         if (f) s.push({ group:'commander',act: 'formBreak', arg: f.id, icon: ICONS.formation, name: `Break ${FORMATIONS[f.template].name}`, cost: '0', tip: 'Dissolve the formation' });
@@ -252,26 +254,17 @@ export class Hud {
         this.renderTargets();
         this.renderTarget();
     }
-    renderTargets() {
-        const g = this.game, u = g.selectedUnit(), el = this.el('.targets');
-        if (!u || !g.controllable(u) || g.battle.outcome) { el.innerHTML = ''; return; }
-        const list = g.targetsFor(u, g.mode.weaponId || watchWeapon(u));
-        const cur = g.targetInfo?.target?.id;
-        el.innerHTML = list.map(t => {
-            return `<button class="tgt ${cur === t.id ? 'on' : ''}" data-act="target" data-arg="${t.id}" title="${esc(t.name)}"><img src="${portraitSrc(t)}" alt="${esc(t.name)}"></button>`;
-        }).join('');
-    }
+    /** PLAN-14: no target portraits — targets are picked with the reticle only. */
+    renderTargets() { this.el('.targets').innerHTML = ''; }
+    /** PLAN-14: a slim aiming bar (fire / back and how to aim); the body part and its odds sit on the reticle. */
     renderTarget(){
-        const g=this.game,t=g.targetInfo,el=this.el('.target');
+        const g=this.game,el=this.el('.target');
         if(g.mode.kind!=='shoot'){el.classList.add('hidden');return;}
-        el.classList.remove('hidden');
-        const u=g.selectedUnit(),w=WEAPONS[g.mode.weaponId],locked=g.aimPointer?.locked;
+        el.classList.remove('hidden');el.classList.add('slim');
+        const u=g.selectedUnit(),w=WEAPONS[g.mode.weaponId],locked=g.aimPointer?.locked,t=g.targetInfo;
         const cost=t?.ap??(u&&w?g.battle.shotAp(u,w):0);
-        el.innerHTML=`<header><b>${t?esc(t.target.name):'Free aim'}</b><span>${t?`${t.target.hp}/${t.target.maxHp} HP · ${t.distance.toFixed(1)} M`:'No target in range'}</span></header>
-            ${t?`<div class="parts">${PARTS.map(([k,label,key])=>`<button data-act="part" data-arg="${k}" class="${t.part===k?'on':''}"><b>${label} <kbd>${key}</kbd></b><small>${t.target.parts[k].hp}/${t.target.parts[k].max} · ARM ${t.target.parts[k].armor}</small></button>`).join('')}</div>`:''}
-            <p>${t?.blocked>.5?'Cover intercepts this angle. ':''}${locked?'Mouse captured · move to aim · click / Space to fire · wheel to zoom · Esc releases mouse':g.aimPointer?.unavailable?'Mouse capture is unavailable here. Drag in the scene or use arrow keys to aim; Space fires; wheel zooms.':'Select a target portrait to focus, or capture the mouse to aim freely.'}</p>
-            <div class="tbtns">${g.targets?.length?'<button data-act="nextTarget">Next target <kbd>Tab</kbd></button>':''}${!locked?'<button data-act="captureAim">Aim with mouse</button>':''}</div>
-            <div class="tbtns"><button data-act="cancel">${locked?'Release mouse':'Back'}</button><button data-act="fire">Fire · ${cost} AP <kbd>Space</kbd></button></div>`;
+        el.innerHTML=`<p>${locked?'Move the mouse to aim · the body part under the reticle is the one you hit · wheel zooms':g.aimPointer?.unavailable?'Drag in the scene to aim · Space fires · wheel zooms':'Click the scene to aim with the mouse'}</p>
+            <div class="tbtns">${!locked&&!g.aimPointer?.unavailable?'<button data-act="captureAim">Aim</button>':''}<button data-act="cancel">${locked?'Release <kbd>Esc</kbd>':'Back <kbd>Esc</kbd>'}</button><button data-act="fire" class="fire">Fire · ${cost} AP <kbd>Space</kbd></button></div>`;
     }
     showGearPanel(){const u=this.game.selectedUnit(),p=this.el('.panel');p.classList.remove('hidden');p.innerHTML=`<h3>Equipment <button data-act="closePanel">✕</button></h3><div class="gear-quick">${Object.entries(u.items).filter(([id,n])=>n>0&&THROWABLES[id]).map(([id,n])=>`<button data-act="item" data-arg="${id}">${ICONS.grenade}<b>${esc(THROWABLES[id].name)}</b><small>${n} carried · ${THROWABLES[id].ap} AP</small></button>`).join('')}</div>`;}
     showFormationPanel() {

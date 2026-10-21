@@ -1,0 +1,114 @@
+{
+  "format": "voxel-tactics/geo-places@1",
+  "notes": "Every real-place map, with every parameter the pipeline uses. tools/geo/geo-pipeline.mjs reads this file; GeoCatalog.js is generated from it.",
+  "places": [
+    {
+      "id": "baton-rouge-third-street",
+      "name": "Third Street · Baton Rouge",
+      "theme": "Downtown",
+      "objectiveName": "Fuqua Hardware Store Building",
+      "text": "Downtown Baton Rouge rebuilt 1:1 from OpenStreetMap and the USGS 3DEP terrain: the Third Street storefront row, Florida and 4th Street, the surface lot and the Capitol City Press building.",
+      "import": {
+        "lat": 30.4497,
+        "lon": -91.1874,
+        "window": [
+          -100,
+          42,
+          -95,
+          70
+        ],
+        "pad": 30,
+        "dem": "USGS10m",
+        "demStep": 3
+      },
+      "tagOverrides": {},
+      "build": {
+        "straighten": "grid"
+      },
+      "bakeSeeds": [
+        1
+      ]
+    },
+    {
+      "id": "baton-rouge-sherwood-florida",
+      "name": "Sherwood & Florida · Baton Rouge",
+      "theme": "Strip centre",
+      "objectiveName": "Asian Supermarket",
+      "text": "The Sherwood Forest Blvd × Florida Blvd crossing in Baton Rouge, rebuilt 1:1 from OpenStreetMap and USGS 3DEP: the divided boulevards and their slip lanes, the Sherwood Plaza car park, the corner pad and the Asian Supermarket / Dollar Tree building at 11244 Florida Blvd.",
+      "import": {
+        "lat": 30.4583,
+        "lon": -91.0587,
+        "window": [
+          -100,
+          71,
+          -97,
+          74
+        ],
+        "pad": 30,
+        "dem": "USGS10m",
+        "demStep": 3
+      },
+      "tagOverrides": {},
+      "build": {
+        "straighten": "grid"
+      },
+      "bakeSeeds": [
+        1
+      ]
+    },
+    {
+      "id": "baton-rouge-old-state-capitol",
+      "name": "Old State Capitol · Baton Rouge",
+      "theme": "Landmark",
+      "objectiveName": "Old State Capitol",
+      "text": "Louisiana's Gothic Revival Old State Capitol (1847–52) on North Boulevard, its square and neighbours, rebuilt from OpenStreetMap, Wikidata and USGS 3DEP.",
+      "import": {
+        "lat": 30.4465932,
+        "lon": -91.1890705,
+        "window": [
+          -80,
+          80,
+          -80,
+          80
+        ],
+        "pad": 30,
+        "dem": "USGS10m",
+        "demStep": 3
+      },
+      "tagOverrides": {},
+      "build": {
+        "straighten": "grid"
+      },
+      "bakeSeeds": [
+        1
+      ]
+    },
+    {
+      "id": "philadelphia-independence-hall",
+      "name": "Independence Hall · Philadelphia",
+      "theme": "Landmark",
+      "objectiveName": "Independence Hall",
+      "text": "Independence Hall (1753) on Chestnut Street and Independence Square, Philadelphia, rebuilt from OpenStreetMap, Wikidata and USGS 3DEP.",
+      "import": {
+        "lat": 39.9488873,
+        "lon": -75.150026,
+        "window": [
+          -80,
+          80,
+          -80,
+          80
+        ],
+        "pad": 30,
+        "dem": "USGS10m",
+        "demStep": 3
+      },
+      "tagOverrides": {},
+      "build": {
+        "straighten": "grid"
+      },
+      "bakeSeeds": [
+        1
+      ]
+    }
+  ]
+}

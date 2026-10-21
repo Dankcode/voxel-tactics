@@ -86,6 +86,8 @@ export class Battle {
             this.units.push(createUnit(e.type, 'enemy', e.pos, `e${i}`, { group: e.group ?? 0, facing: e.facing || 's', extra: e.alerted ? { alerted: true, scattered: true } : undefined }));
             this.units.at(-1).home = { x: e.pos.x, y: e.pos.y, z: e.pos.z };   // PLAN-10 patrol post
         });
+        // PLAN-14: a drone placed with a pod belongs to that pod's tech (the nearest one).
+        for(const d of this.units)if(d.drone&&!d.techId){const t=this.units.filter(o=>o.type==='tech'&&o.group===d.group).sort((a,b)=>this.distance(a,d)-this.distance(b,d))[0];if(t)d.techId=t.id;}
         for(const u of [...this.units])if(WALKERS[u.type]){
             // A monster that cannot stand anywhere near its spawn is left out rather than failing the mission.
             try{fitWalkerSpawn(this,u);u.footprint=occupiedCells(u,{x:u.x,y:u.y,z:u.z},this.store);}catch{this.units.splice(this.units.indexOf(u),1);}
@@ -336,7 +338,10 @@ export class Battle {
             case 'switchWeapon': return u.weapons.includes(intent.weaponId) ? null : 'bad_intent';
             case 'ability': {
                 const a = ABILITIES[intent.abilityId];
-                if (!a || !(u.abilities.includes(a.id)||(a.support && this.intelMode)||(a.commander&&u.side==='player'))) return 'bad_intent';
+                if (!a || !(u.abilities.includes(a.id)||(a.support && this.intelMode)||(a.commander&&u.side==='player')||(a.squad&&u.side==='player'))) return 'bad_intent';
+                // PLAN-14: Recon Scan shares one squad cooldown; a tech launches a drone at most every few rounds.
+                if (a.squad && this.round < (this.scanReadyAt ?? 1)) return 'support_cooldown';
+                if (a.id === 'launch_drone') { if (this.round < (u.droneReadyAt ?? 0)) return 'support_cooldown'; if (this.dronesOf(u).length >= a.max) return 'occupied'; if (!this.droneSpot(u)) return 'unreachable'; }
                 if (u.will < a.wp) return 'no_will';
                 if (u.ap < a.ap) return 'no_ap';
                 if (hasStatus(u, 'panicked')) return 'no_will';
@@ -505,6 +510,8 @@ export class Battle {
             this.formations.onSideEnd('enemy');
             this.roundEnd();
             this.objectiveRoundEnd();
+            // PLAN-14: a search point goes cold after three rounds (two once it has been reached and swept).
+            for (const e of this.units) if (e.investigate && this.round - e.investigate.round >= (e.investigate.reached ? 2 : 3)) e.investigate = null;
             if (!this.outcome) { this.round++; this.startSide('player'); }
         }
     }
@@ -529,7 +536,7 @@ export class Battle {
     checkOutcome() {
         if (this.outcome) return;
         const o = this.objective;
-        const p = this.unitsOf('player').length, e = this.unitsOf('enemy').length;
+        const p = this.unitsOf('player').length, e = this.unitsOf('enemy').filter(u => !u.drone).length;   // PLAN-14: drones do not hold ground
         let winner = null, reason = null;
         if (o.failed) { winner = 'enemy'; reason = 'timer'; }
         else if (o.kind === 'recover' && o.item.secured) { winner = 'player'; reason = 'recovered'; }
@@ -620,6 +627,8 @@ export class Battle {
             if (surf === 'wet') this.giveStatus(u, 'wet');
         }
         this.formations.onMoved(u);
+        // PLAN-14: a searcher that reaches the sound's source sweeps around it next (EnemyAi.searchStep).
+        if (u.investigate && !u.investigate.reached && Math.hypot(u.x - u.investigate.x, u.y - u.investigate.y) <= 2.5) { u.investigate.reached = true; u.investigate.round = this.round; }
         this.noise(u.x, u.y, u.z, 3, u);
     }
 
@@ -886,7 +895,7 @@ export class Battle {
         this.formations.onUnitLost(t);
         const killer = this.unit(source);
         if (killer && killer.side !== t.side) { killer.stats.kills++; this.addStress(killer, -B.stressRelieveOnKill, 'kill'); const ws = this.weaponStats(killer.weapon); ws.kills++; }
-        for (const ally of this.unitsOf(t.side)) if (this.distance(ally, t) <= 8 && this.sees(ally, t)) this.addStress(ally, B.stressOnAllyDown, 'ally down');
+        if (!t.drone) for (const ally of this.unitsOf(t.side)) if (this.distance(ally, t) <= 8 && this.sees(ally, t)) this.addStress(ally, B.stressOnAllyDown, 'ally down');
         this.checkOutcome();
     }
     giveStatus(u, id, rounds) {
@@ -1069,6 +1078,8 @@ export class Battle {
         if(a.intel){executeIntel(this,u,intent);return;}
         switch (a.id) {
             case 'killstreak_strike':this.supportUsed++;this.strikeReadyAt=this.round+10;commanderStrike(this,u,intent.to);break;
+            case 'recon_scan': this.reconScan(u, a); break;
+            case 'launch_drone': this.launchDrone(u, a); break;
             case 'earth_cover': {
                 const t = intent.to;
                 const changes = this.store.record(() => this.store.set(t.x,t.y,t.z+1,MAT.drystone));
@@ -1232,15 +1243,60 @@ export class Battle {
         // Any NPC within earshot learns roughly where the squad member is (PLAN-09 enemy intel).
         if (by && by.side === 'player' && this.units.some(e => alive(e) && e.side === 'enemy' && Math.hypot(e.x - x, e.y - y, e.z - z) <= radius))
             this.enemyIntel[by.id] = { x, y, z, round: this.round, source: 'heard' };
-        const groups = [];
+        const groups = [], heard = new Set();
+        // PLAN-14: loud sounds (gunfire, blasts, breaches, smashes) carry further than they alert: within the radius a
+        // pod is alerted as before; out to 1.75× the radius it hears *something* and goes to search the source. Either
+        // way every member of a pod that heard it takes the source as its search point (the latest sound wins).
+        const loud = radius >= 10, reach = loud ? radius * 1.75 : radius;
         for (const e of this.units) {
-            if (!alive(e) || e.alerted || (by && e.side === by.side)) continue;
-            let r = radius;
+            if (!alive(e) || (by && e.side === by.side) || e.side !== 'enemy') continue;
+            let r = 1;
             const room = this.store.roomAt(e.x, e.y, e.z + 1);
-            if (room >= 0 && room !== this.store.roomAt(x, y, z + 1)) r *= 0.6;   // walls muffle
-            if (Math.hypot(e.x - x, e.y - y, e.z - z) <= r) groups.push(e.group);
+            if (room >= 0 && room !== this.store.roomAt(x, y, z + 1)) r = 0.6;   // walls muffle
+            const d = Math.hypot(e.x - x, e.y - y, e.z - z);
+            if (d <= radius * r && !e.alerted) groups.push(e.group);
+            if (d <= reach * r && (loud || !e.alerted)) heard.add(e.group);
+        }
+        if (heard.size) {
+            const ids = [];
+            for (const e of this.units) if (alive(e) && e.side === 'enemy' && heard.has(e.group)) { e.investigate = { x, y, z, round: this.round, reached: false, loud }; ids.push(e.id); }
+            this.emit({ t: 'heard', unitIds: ids, at: { x, y, z }, loud, radius: reach });
         }
         if (groups.length) this.alertGroup(groups, 'noise');
+    }
+    // ---------------------------------------------------------------- PLAN-14 drones and recon
+    dronesOf(u) { return this.units.filter(d => d.drone && alive(d) && d.techId === u.id); }
+    /** A free standing tile next to the tech for a new drone (nearest first, deterministic), or null. */
+    droneSpot(u) {
+        for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0], [1, -1], [1, 1], [-1, 1], [-1, -1], [2, 0], [-2, 0], [0, 2], [0, -2]]) {
+            const x = u.x + dx, y = u.y + dy;
+            if (!this.store.inBounds(x, y, u.z)) continue;
+            const c = this.store.surfaces(x, y).find(c => Math.abs(c.z - u.z) <= 1 && c.headroom >= 2);
+            if (c && !this.occupant(x, y, c.z) && this.sightLine(this.eye(u), { x: x + .5, y: y + .5, h: c.z + 1.5 })) return { x, y, z: c.z };
+        }
+        return null;
+    }
+    launchDrone(u, a) {
+        const at = this.droneSpot(u); if (!at) return;
+        const id = `d${this.units.length}`;
+        const d = createUnit('search_drone', 'enemy', at, id, { group: u.group, facing: u.facing, extra: { alerted: u.alerted, techId: u.id, home: { x: u.x, y: u.y, z: u.z }, investigate: u.investigate ? { ...u.investigate } : null } });
+        d.ap = 0;   // airborne now, searching from the next enemy turn
+        this.units.push(d);
+        u.droneReadyAt = this.round + (a.cooldown ?? 3);
+        this.emit({ t: 'spawn', unitId: id, side: 'enemy', unitType: 'search_drone', by: u.id });
+        this.noise(u.x, u.y, u.z, 3, u);
+    }
+    /** Recon Scan: every hostile within range shows as a circle around a deterministic offset of its real tile. */
+    reconScan(u, a) {
+        this.scanReadyAt = this.round + (a.cooldown ?? 3);
+        const contacts = [];
+        for (const e of this.enemiesOf(u)) {
+            if (this.distance(u, e) > a.range) continue;
+            const h = hashString(`${e.id}:scan:${this.round}:${u.id}`) >>> 0, ang = (h % 3600) / 3600 * Math.PI * 2, off = ((h >>> 12) % 1000) / 1000 * (a.radius - 0.8);
+            contacts.push({ x: Math.round(e.x + Math.cos(ang) * off), y: Math.round(e.y + Math.sin(ang) * off), z: e.z, r: a.radius, drone: !!e.drone });
+        }
+        contacts.sort((p, q) => p.x - q.x || p.y - q.y || p.z - q.z);
+        this.emit({ t: 'scan', unitId: u.id, contacts, range: a.range, round: this.round, until: this.round + 2 });
     }
     alertGroup(groups, why) {
         const set = new Set(groups);
@@ -1283,6 +1339,8 @@ export class Battle {
         const seen=this.visibleTo('player'),groups=[];
         for(const id of seen){const e=this.unit(id);if(e&&!e.alerted&&!this.intelMode)groups.push(e.group);if(initial)e.scattered=true;}
         for(const e of this.unitsOf('enemy'))if(!e.alerted&&this.unitsOf('player').some(p=>this.spotsPlayer(e,p)))groups.push(e.group);
+        // PLAN-14: a drone that has someone in view relays it: every pod within 14 tiles of the drone is alerted.
+        for(const d of this.unitsOf('enemy'))if(d.drone&&this.unitsOf('player').some(p=>this.sees(d,p)))for(const e of this.unitsOf('enemy'))if(!e.alerted&&this.distance(e,d)<=14)groups.push(e.group);
         if(groups.length){this.alertGroup(groups,'spotted');if(this.intelMode)this.detected=true;}
         this.visible=seen;
         if(!initial)for(const group of [...new Set([...seen].map(id=>this.unit(id).group))])if(!this.intelMode||this.unit([...seen].find(id=>this.unit(id).group===group))?.alerted)this.scatterPod(group);
@@ -1331,7 +1389,7 @@ export class Battle {
     hash() {
         let voxelHp = 0x811c9dc5;
         for (const hp of this.store.hp) { voxelHp ^= hp; voxelHp = Math.imul(voxelHp, 0x01000193); }
-        const state = { supportUsed:this.supportUsed,strikeReadyAt:this.strikeReadyAt,marks:this.store.marksSnapshot?.(),markers:this.markers,squareCorners:[...this.store.squareCorners].sort(),windowOpenings:[...this.store.windowOpenings].sort(([a],[b])=>a<b?-1:a>b?1:0), intelMode:this.intelMode, asyncCoop:this.asyncCoop, personalTurns:this.personalTurns,supportReady:this.supportReady,supportChoices:this.supportChoices,contacts:this.contacts,drones:this.drones,detected:this.detected,refreshOwner:this.refreshOwner, units: this.units, round: this.round, activeSide: this.activeSide, outcome: this.outcome,
+        const state = { supportUsed:this.supportUsed,strikeReadyAt:this.strikeReadyAt,scanReadyAt:this.scanReadyAt,marks:this.store.marksSnapshot?.(),markers:this.markers,squareCorners:[...this.store.squareCorners].sort(),windowOpenings:[...this.store.windowOpenings].sort(([a],[b])=>a<b?-1:a>b?1:0), intelMode:this.intelMode, asyncCoop:this.asyncCoop, personalTurns:this.personalTurns,supportReady:this.supportReady,supportChoices:this.supportChoices,contacts:this.contacts,drones:this.drones,detected:this.detected,refreshOwner:this.refreshOwner, units: this.units, round: this.round, activeSide: this.activeSide, outcome: this.outcome,
             revealedRooms: [...this.revealedRooms].sort((a, b) => a - b), field: this.field.snapshot(),
             formations: this.formations.snapshot(), nextFormationId: this.formations.nextId,
             objective: this.objective, enemyIntel: this.enemyIntel, aiTuning: this.aiTuning, rng: this.rng.state, debugEnabled: this.debugEnabled, controllers: this.controllers, seq: this.seq };

@@ -14,6 +14,8 @@
     "server": "npm run play",
     "play": "npm run build && npm start --workspace=server",
     "build": "npm run content:sync && npm run build --workspace=client",
+    "deploy": "wrangler deploy",
+    "deploy:check": "wrangler deploy --dry-run",
     "test": "npm run content:check && node --test shared/voxel/*.test.js shared/elements/*.test.js shared/battle/*.test.js shared/mission/*.test.js shared/mapgen/*.test.js shared/session/*.test.js client/src/render/kit/*.test.js client/src/audio/*.test.js server/test/*.test.js",
     "test:fast": "node --test shared/voxel/*.test.js shared/elements/*.test.js shared/battle/*.test.js shared/mission/*.test.js shared/mapgen/*.test.js shared/session/*.test.js client/src/render/kit/*.test.js client/src/audio/*.test.js",
     "sim": "node tools/sim/battle_sim.mjs --seeds 24",
@@ -28,12 +30,18 @@
     "mapgen": "node tools/mapgen/cli.mjs",
     "mapgen:audit": "node tools/mapgen/district-audit.mjs",
     "content:sync": "node tools/net/content-contract.mjs",
-    "content:check": "node tools/net/content-contract.mjs --check"
+    "content:check": "node tools/net/content-contract.mjs --check",
+    "build:solo": "npm run content:sync && npm run build --workspace=client -- --mode solo",
+    "deploy:coop": "wrangler deploy --config wrangler.coop.jsonc"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "wrangler": "^4.151.2"
   },
   "engines": {
     "node": ">=20.10"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "^0.3.7"
   }
 }

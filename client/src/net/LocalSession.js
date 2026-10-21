@@ -6,6 +6,8 @@ import { generateDebugMap } from '../../../shared/mapgen/DebugGenerator.js';
 import { Battle } from '../../../shared/battle/Battle.js';
 import { profileForDesc } from '../../../shared/session/Playstyle.js';
 import { loadAiProfile } from './AiCache.js';
+import { preloadBaked } from '../../../shared/mission/BakedMaps.js';
+import { GEO_IDS } from '../../../shared/mission/GeoMaps.js';
 
 export class LocalSession {
     static async create(desc) {
@@ -16,6 +18,8 @@ export class LocalSession {
         }
         // PLAN-09: the AI adapts to the squad's cached playstyle (server cache, else this browser's copy).
         if (desc.aiProfile === undefined) desc = { ...desc, aiProfile: profileForDesc(await loadAiProfile().catch(() => null)) };
+        // geo maps: the baked package (instant load), when there is one for this seed; otherwise generated live
+        if (GEO_IDS.has(desc.scenario)) await preloadBaked(desc.scenario, desc.seed ?? 1);
         return new LocalSession(desc, createBattle(desc));
     }
     constructor(desc, battle) { this.desc = desc; this.battle = battle; this.local = true; this.playerId = '*'; }

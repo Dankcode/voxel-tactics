@@ -26,7 +26,8 @@ test('moving spends AP by path cost / mobility and is rejected beyond the budget
     const u = b.unit('p0');
     const r = b.apply({ type: 'move', unitId: 'p0', to: { x: 10, y: 13, z: 1 } });
     assert.ok(r.ok);
-    assert.equal(u.ap, 2);
+    assert.equal(u.ap, 3);   // PLAN-14: soldiers cover 1.5× the ground per AP (B.moveScale)
+    u.ap = 1;
     assert.equal(b.apply({ type: 'move', unitId: 'p0', to: { x: 10, y: 1, z: 1 } }).reason, 'no_ap');
 });
 

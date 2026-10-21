@@ -5,3 +5,7 @@ server/data/
 .DS_Store
 *.log
 __pycache__/
+.wrangler/
+.dev.vars*
+.env
+.env.*

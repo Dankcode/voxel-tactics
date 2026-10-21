@@ -33,6 +33,8 @@ export function carryWeight(u){
     const attachments=Object.values(u.attachments||{}).reduce((n,parts)=>n+(parts.scope?0.45:0)+(parts.barrel?0.8:0),0);
     return Math.round((worn+weapons+cargo+loaded+attachments)*100)/100;
 }
+/** PLAN-14: tiles per AP the worn equipment adds or takes off (GEAR[id].move). */
+export function gearMove(u){return Object.values(u.equipment||{}).reduce((n,id)=>n+(GEAR[id]?.move||0),0);}
 export function loadPenalty(u){return Math.min(.65,Math.max(0,carryWeight(u)-12)/45);}
 export function initializeEquipment(u,def){
     u.equipment={helmet:'helmet_patrol',armor:GEAR[`armor_${def.armor}`]?`armor_${def.armor}`:'armor_light',rig:'rig_patrol',backpack:'pack_day'};

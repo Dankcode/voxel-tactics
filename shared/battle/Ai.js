@@ -11,7 +11,7 @@ import { AGENT_PROFILES } from '../world/TraversalRules.js';
 import { MAT } from '../voxel/Materials.js';
 import { inZone, extractionOpen, objectiveGoal } from './Objectives.js';
 import { reserveAmmo } from '../inventory/Equipment.js';
-import { decideEnemy, enemyThreats, patrolStep } from './EnemyAi.js';
+import { decideEnemy, enemyThreats, patrolStep, decideDrone, investigateStep, launchIntent } from './EnemyAi.js';
 import { DEFAULT_TUNING } from '../session/Playstyle.js';
 
 export const DEFAULT_POLICY = Object.freeze({ formations: false, breach: true, grenadeMinTargets: 2, shootThreshold: 0.9, samples: 24 });
@@ -51,8 +51,11 @@ function knownEnemies(battle, u) {
 
 export function decide(battle, u, policy = DEFAULT_POLICY) {
     policy = { ...DEFAULT_POLICY, ...policy };
+    // PLAN-14: drones search and spot; techs keep a drone up; a pod that heard something goes to look.
+    if (u.drone) return policy.patrol === false && !u.alerted ? null : decideDrone(battle, u);
+    if (u.side === 'enemy' && policy.patrol !== false) { const l = launchIntent(battle, u); if (l) return l; }
     // PLAN-10: unalerted pods patrol around their post (policy.patrol false keeps them still, e.g. scripted tests).
-    if (u.side === 'enemy' && !u.alerted) return policy.patrol === false ? null : patrolStep(battle, u);
+    if (u.side === 'enemy' && !u.alerted) return policy.patrol === false ? null : (investigateStep(battle, u) || patrolStep(battle, u));
     if (u.ap <= 0 && u.moveOnlyAp <= 0) return null;
     // PLAN-09: the enemy side plays by its own intel, hit chances, roles, gadgets and the player's cached playstyle.
     if (u.side === 'enemy' && !policy.classicEnemies) return decideEnemy(battle, u, policy);

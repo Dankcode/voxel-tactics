@@ -108,7 +108,8 @@ export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'l
         /** Tree: trunk + canopy voxels (cover and sight); drawn as one tree while its trunk stands. kind 'round' | 'conifer' | 'palm'. */
         tree(x, y, kind = 'round', z = 1) {
             const cells = [];
-            const put = (cx, cy, cz, key) => { if (store.inBounds(cx, cy, cz) && !store.isSolid(cx, cy, cz)) { store.set(cx, cy, cz, MAT[key]); cells.push([cx, cy, cz]); } };
+            // PLAN-14: a canopy only fills empty air (never a ladder rung, railing or other non-solid fixture).
+            const put = (cx, cy, cz, key) => { if (store.inBounds(cx, cy, cz) && store.get(cx, cy, cz) === 0) { store.set(cx, cy, cz, MAT[key]); cells.push([cx, cy, cz]); } };
             if (kind === 'conifer') {
                 put(x, y, z + 1, 'trunk');
                 for (let h = 2; h <= 5; h++) put(x, y, z + h, 'leaves');

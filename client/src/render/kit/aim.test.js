@@ -56,17 +56,24 @@ test('the reticle radius is the projected cone, with no 4 px floor', () => {
     assert.equal(reticleRadius(900), 260);
 });
 
-test('PLAN-12: the shoulder camera holds its framing while aiming and re-anchors only past its limits', () => {
+test('PLAN-14: the aiming camera follows the aim like a third-person shooter — the aim point stays at the centre', () => {
     const cd = new CameraDirector({ aspect: 1 });
     const shooter = new THREE.Vector3(0, 1, 0);
     cd.prepareAim(shooter, new THREE.Vector3(0, 2, -10));
-    const from = cd.from.clone(), look = cd.look.clone();
-    cd.track(new THREE.Vector3(1, 2, -10), 0.5);
-    assert.ok(cd.look.equals(look), 'the view does not swing with the reticle (the soldier stays put on screen)');
-    assert.ok(cd.from.equals(from), 'small swings keep the framing');
-    const yaw = MAX_YAW + 0.2, far = new THREE.Vector3(Math.sin(yaw) * 10, 2, -Math.cos(yaw) * 10);
-    cd.track(far, 0.016);
-    assert.ok(!cd.from.equals(from), 'past the limit the camera swings round behind the shooter');
+    const settle = p => { for (let i = 0; i < 40; i++) cd.track(p, 1 / 60); };
+    const centred = p => { cd.cam.updateMatrixWorld(); const n = p.clone().project(cd.cam); return Math.hypot(n.x, n.y); };
+    const ahead = new THREE.Vector3(0, 2, -10); settle(ahead);
+    assert.ok(centred(ahead) < 0.05, 'the reticle sits at the screen centre');
+    assert.ok(cd.cam.position.z > shooter.z, 'behind the shooter');
+    const pos = cd.cam.position.clone();
+    const right = new THREE.Vector3(10, 2, 0); settle(right);
+    assert.ok(centred(right) < 0.05, 'a 90° turn swings the view with it');
+    assert.ok(cd.cam.position.x < pos.x - 1, 'the camera orbits round behind the new aim');
+    const down = new THREE.Vector3(10, -3, 0), y0 = cd.cam.position.y; settle(down);
+    assert.ok(cd.cam.position.y > y0, 'aiming down raises the camera (orbit about the shoulder)');
+    const shooterOnScreen = () => { cd.cam.updateMatrixWorld(); return shooter.clone().add(new THREE.Vector3(0, 1.4, 0)).project(cd.cam); };
+    settle(right); const s1 = shooterOnScreen(); settle(new THREE.Vector3(8, 2, 6)); const s2 = shooterOnScreen();
+    assert.ok(Math.abs(s1.x - s2.x) < 0.08 && Math.abs(s1.y - s2.y) < 0.08, 'the soldier keeps their place on screen');
 });
 
 test('re-anchoring the shoulder camera while the reticle moves keeps the shooter hidden', () => {

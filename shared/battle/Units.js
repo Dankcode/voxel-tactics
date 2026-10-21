@@ -1,4 +1,4 @@
-import { initializeEquipment, loadPenalty } from '../inventory/Equipment.js';
+import { initializeEquipment, loadPenalty, gearMove } from '../inventory/Equipment.js';
 import { packItems } from '../inventory/Inventory.js';
 // Units: Phoenix Point body parts on an XCOM-style squad member, plus Will and Stress.
 import { CLASSES, ENEMIES, PARTS, BODY } from '../content/units.js';
@@ -38,6 +38,8 @@ export function createUnit(typeId, side, pos, id, overrides = {}) {
         ...overrides.extra
     };
     initializeEquipment(unit,def);
+    // PLAN-14: a drone carries nothing and has no armour anywhere — any hit that connects destroys it.
+    if (def.drone) { unit.drone = true; unit.equipment = {}; unit.rigInventory = []; unit.pocketInventory = []; unit.inventory = []; for (const p of PARTS) unit.parts[p].armor = 0; }
     return unit;
 }
 
@@ -68,7 +70,8 @@ export function accuracyMult(u) {
     return m;
 }
 export function mobilityPerAp(u, formationPenalty = 0) {
-    let m = (u.mobility + formationPenalty)*(1-loadPenalty(u));
+    // PLAN-14: faster soldiers (B.moveScale) and gear that changes it (light rigs and packs add, heavy kit takes off).
+    let m = ((u.mobility + gearMove(u)) * B.moveScale + formationPenalty)*(1-loadPenalty(u));
     if (u.parts.legs.disabled) m *= 0.5;
     if (hasStatus(u, 'frozen')) return 0;
     const chill = u.statuses?.find(s => s.id === 'chilled');

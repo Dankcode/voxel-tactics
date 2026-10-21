@@ -50,26 +50,54 @@ export function planRoadPaint(store, isRoad = id => id === MAT.asphalt || id ===
     return { dashes, bars };
 }
 
+/** Rectangles from the inferred planner as quads (one colour: white). */
+const rectQuad = r => ({ c: [[r.x0, r.y0], [r.x1, r.y0], [r.x1, r.y1], [r.x0, r.y1]], z: r.z, color: 'white' });
+const isRoadId = id => id === MAT.asphalt || id === MAT.road_mark;
+
 export class RoadMarkings {
     constructor(scene) {
         this.scene = scene; this.group = new THREE.Group(); this.group.name = 'road-paint'; scene.scene.add(this.group);
         this.material = new THREE.MeshStandardMaterial({ color: 0xe9e4d4, roughness: 0.85, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+        this.yellow = new THREE.MeshStandardMaterial({ color: 0xd8a43a, roughness: 0.85, metalness: 0, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
         this.cut = Infinity; this.z = 0;
     }
-    build(store) {
+    /**
+     * plan (optional): mission.visual.roadPaint — { quads: [{ c: [[x, y] ×4], z, color }] } from maps that know their
+     * road graph (geo imports). Without it the PLAN-12 planner infers paint from the asphalt. A quad is skipped when the
+     * asphalt under it is gone (craters lose paint).
+     */
+    build(store, plan = null) {
         this.clear();
-        const { dashes, bars } = planRoadPaint(store), drop = renderFor('asphalt').drop || 0;
-        const pos = [], idx = [];
-        for (const r of [...dashes, ...bars]) {
-            const h = r.z + 1 - drop + 0.012, b = pos.length / 3;
-            pos.push(r.x0, h, r.y0, r.x1, h, r.y0, r.x1, h, r.y1, r.x0, h, r.y1);
-            idx.push(b, b + 2, b + 1, b, b + 3, b + 2);
-            this.z = Math.max(this.z, r.z);
+        const drop = renderFor('asphalt').drop || 0;
+        let quads;
+        if (plan?.quads?.length) {
+            quads = plan.quads.filter(q => {
+                const cx = Math.floor((q.c[0][0] + q.c[2][0]) / 2), cy = Math.floor((q.c[0][1] + q.c[2][1]) / 2);
+                if (cx < 0 || cy < 0 || cx >= store.width || cy >= store.depth) return false;
+                const z = store.topSolid(cx, cy);
+                return z === q.z && isRoadId(store.get(cx, cy, z));
+            });
+        } else {
+            const { dashes, bars } = planRoadPaint(store);
+            quads = [...dashes, ...bars].map(rectQuad);
         }
-        if (!idx.length) return;
-        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
-        const mesh = new THREE.Mesh(g, this.material); mesh.receiveShadow = true; mesh.renderOrder = 2;
-        this.group.add(mesh); this.setCut(this.cut);
+        for (const [color, material] of [['white', this.material], ['yellow', this.yellow]]) {
+            const pos = [], idx = [];
+            for (const q of quads) {
+                if ((q.color === 'yellow' ? 'yellow' : 'white') !== color) continue;
+                const h = q.z + 1 - drop + 0.012, b = pos.length / 3;
+                for (const [x, y] of q.c) pos.push(x, h, y);
+                // either winding: draw both faces' worth by ordering for an upward normal
+                const [a, c1, c2] = q.c, cross = (c1[0] - a[0]) * (c2[1] - a[1]) - (c1[1] - a[1]) * (c2[0] - a[0]);
+                if (cross > 0) idx.push(b, b + 2, b + 1, b, b + 3, b + 2); else idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
+                this.z = Math.max(this.z, q.z);
+            }
+            if (!idx.length) continue;
+            const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+            const mesh = new THREE.Mesh(g, material); mesh.receiveShadow = true; mesh.renderOrder = 2;
+            this.group.add(mesh);
+        }
+        this.setCut(this.cut);
     }
     setCut(top) { this.cut = top; this.group.visible = !(top <= this.z); }
     clear() { for (const c of [...this.group.children]) { this.group.remove(c); c.geometry.dispose(); } }

@@ -8,14 +8,19 @@
 
 export const LOT_KINDS = Object.freeze({
     // ---------------------------------------------------------------- buildings
-    office_block: { size: [2, 2], districts: ['commercial'], w: 1.6, building: { program: 'office', along: 13, deep: 9, front: 1, storeys: [3, 4] }, ground: 'concrete', pool: 'yard_paved' },
-    apartment: { size: [2, 2], districts: ['residential', 'commercial'], w: 1.3, building: { program: 'apartment', along: 11, deep: 9, front: 2, storeys: [2, 4] }, ground: 'paving', pool: 'yard_paved' },
-    warehouse: { size: [2, 2], districts: ['industrial'], w: 2, building: { program: 'warehouse', along: 15, deep: 11, front: 1, storeys: [1, 2] }, ground: 'concrete', pool: 'yard_industrial' },
-    house: { size: [2, 2], districts: ['residential'], w: 2.2, building: { program: 'house', along: 13, deep: 9, front: 3, storeys: [1, 2] }, ground: 'lawn', pool: 'yard_garden' },
-    shop_row: { size: [2, 1], districts: ['commercial', 'residential'], w: 1.8, building: { program: 'shop', along: 15, deep: 7, front: 1, storeys: [1, 2] }, ground: 'paving', pool: 'yard_paved' },
+    office_block: { size: [2, 2], districts: ['commercial'], w: 1.6, building: { program: 'office', along: 13, deep: 9, front: 1, storeys: [3, 4], variants: [[13, 9], [11, 9], [13, 7], [9, 9]] }, ground: 'concrete', pool: 'yard_paved' },
+    apartment: { size: [2, 2], districts: ['residential', 'commercial'], w: 1.3, building: { program: 'apartment', along: 11, deep: 9, front: 2, storeys: [2, 4], variants: [[11, 9], [9, 9], [11, 7]] }, ground: 'paving', pool: 'yard_paved' },
+    warehouse: { size: [2, 2], districts: ['industrial'], w: 2, building: { program: 'warehouse', along: 15, deep: 11, front: 1, storeys: [1, 2], variants: [[15, 11], [13, 11], [15, 9], [11, 9]] }, ground: 'concrete', pool: 'yard_industrial' },
+    house: { size: [2, 2], districts: ['residential'], w: 2.2, building: { program: 'house', along: 13, deep: 9, front: 3, storeys: [1, 2], variants: [[13, 9], [11, 9], [11, 7], [9, 9]] }, ground: 'lawn', pool: 'yard_garden' },
+    shop_row: { size: [2, 1], districts: ['commercial', 'residential'], w: 1.8, building: { program: 'shop', along: 15, deep: 7, front: 1, storeys: [1, 2], variants: [[15, 7], [13, 7], [11, 7]] }, ground: 'paving', pool: 'yard_paved' },
     diner: { size: [2, 1], districts: ['commercial', 'residential', 'yard'], w: 0.7, building: { program: 'diner', along: 13, deep: 7, front: 1, storeys: [1, 1] }, ground: 'paving', pool: 'yard_paved' },
     garage_row: { size: [2, 1], districts: ['industrial', 'yard'], w: 1.4, building: { program: 'garage', along: 13, deep: 7, front: 1, storeys: [1, 1] }, ground: 'concrete', pool: 'yard_industrial' },
-    bungalow: { size: [2, 1], districts: ['residential'], w: 1.2, building: { program: 'house', along: 13, deep: 7, front: 1, storeys: [1, 1] }, ground: 'lawn', pool: 'yard_garden' },
+    bungalow: { size: [2, 1], districts: ['residential'], w: 1.2, building: { program: 'house', along: 13, deep: 7, front: 1, storeys: [1, 1], variants: [[13, 7], [11, 7], [9, 7]] }, ground: 'lawn', pool: 'yard_garden' },
+    // PLAN-14: more building types from the same kit (programmes, footprints and heights the compiler already builds).
+    tenement: { size: [2, 2], districts: ['residential', 'commercial'], w: 1.1, building: { program: 'apartment', along: 13, deep: 11, front: 1, storeys: [3, 4], variants: [[13, 11], [11, 11], [13, 9]] }, ground: 'paving', pool: 'yard_paved' },
+    townhouses: { size: [2, 1], districts: ['residential'], w: 1.0, building: { program: 'house', along: 15, deep: 7, front: 1, storeys: [2, 3] }, ground: 'lawn', pool: 'yard_garden' },
+    motel: { size: [2, 1], districts: ['commercial', 'yard'], w: 0.5, building: { program: 'motel', along: 15, deep: 7, front: 1, storeys: [1, 2] }, ground: 'concrete', pool: 'yard_paved' },
+    bar: { size: [2, 1], districts: ['commercial', 'residential'], w: 0.5, building: { program: 'bar', along: 11, deep: 7, front: 1, storeys: [1, 2], variants: [[11, 7], [9, 7]] }, ground: 'paving', pool: 'yard_paved' },
     // ---------------------------------------------------------------- objective parcels (a separate pool, as in XCOM 2)
     objective_office: { size: [2, 2], objective: true, families: ['downtown'], building: { program: 'office', along: 13, deep: 9, front: 1, storeys: [4, 4] }, ground: 'concrete', pool: 'yard_paved' },
     objective_depot: { size: [2, 2], objective: true, families: ['industrial'], building: { program: 'office', along: 13, deep: 9, front: 1, storeys: [3, 3] }, ground: 'concrete', pool: 'yard_industrial' },
@@ -32,6 +37,9 @@ export const LOT_KINDS = Object.freeze({
     alley: { size: [1, 1], districts: ['commercial', 'residential', 'industrial'], w: 0.8, ground: 'paving', pool: 'alley' },
     subway_plaza: { size: [1, 1], districts: ['commercial', 'plaza'], families: ['downtown'], w: 0.6, ground: 'paving', pool: 'plaza', underground: true }
 });
+
+/** PLAN-14: what the attached lower wing of a merged parcel houses, by the main block's programme. */
+export const WING_PROGRAM = Object.freeze({ office: 'shop', apartment: 'shop', house: 'garage', warehouse: 'garage', shop: 'diner', motel: 'diner', bar: 'shop' });
 
 /** Which district kinds a plot family can field, and which lots may stand in them. */
 export const DISTRICT_KINDS = Object.freeze(['commercial', 'residential', 'industrial', 'yard', 'plaza', 'park']);
@@ -121,8 +129,9 @@ export function groupSize(kind, front) {
  * The building rect (cells) for a parcel template placed on a lot group, plus its side sockets. Footprints are
  * n bays + shell (odd lengths) and never resize; the rest of the group is apron, yard and margins.
  */
-export function buildingRect(kind, group, front, shift = 0) {
-    const t = LOT_KINDS[kind].building; if (!t) return null;
+export function buildingRect(kind, group, front, shift = 0, dims = null) {
+    const t0 = LOT_KINDS[kind].building; if (!t0) return null;
+    const t = dims ? { ...t0, along: dims[0], deep: dims[1] } : t0;   // PLAN-14: footprint variant
     const { x0: gx, y0: gy, w: gw, d: gd } = group;
     const ns = front === 'n' || front === 's';
     const w = ns ? t.along : t.deep, d = ns ? t.deep : t.along;

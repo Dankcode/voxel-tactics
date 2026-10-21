@@ -60,5 +60,6 @@ export const ARMOR = Object.freeze({
     medium: { head: 1, torso: 3, armL: 2, armR: 2, legs: 2, mobility: -0.2 },
     heavy: { head: 2, torso: 4, armL: 3, armR: 3, legs: 3, mobility: -0.4 },
     hide: { head: 0, torso: 1, armL: 0, armR: 0, legs: 0, mobility: 0 },
-    plate: { head: 3, torso: 6, armL: 4, armR: 4, legs: 4, mobility: -0.4 }
+    plate: { head: 3, torso: 6, armL: 4, armR: 4, legs: 4, mobility: -0.4 },
+    drone: { head: 0, torso: 0, armL: 0, armR: 0, legs: 0, mobility: 0 }   // PLAN-14: search drones — one hit
 });

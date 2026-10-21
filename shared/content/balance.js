@@ -2,6 +2,7 @@
 // then run `npm run sim` and read the report.
 export const BALANCE = {
     apPerTurn: { value: 4, min: 3, max: 6 },
+    moveScale: { value: 1.5, min: 1, max: 2.5 },                  // PLAN-14: tiles per AP × this (both sides); gear adds or takes off on top
     willRegen: { value: 1, min: 0, max: 2 },
     reactionSpreadMult: { value: 1.3, min: 1, max: 2 },           // overwatch shots are less accurate
     breachAccuracyMult: { value: 1.15, min: 1, max: 1.5 },

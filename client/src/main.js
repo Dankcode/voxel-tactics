@@ -3,6 +3,7 @@ import { InventoryPrep } from './ui/InventoryPrep.js';
 import { Game } from './Game.js';
 import { LocalSession } from './net/LocalSession.js';
 import { OnlineSession } from './net/OnlineSession.js';
+import { SOLO_ONLY } from './net/Hosting.js';
 import { SQUADS } from '../../shared/content/units.js';
 import { OPERATION_ID, operationFor, plotForMap } from '../../shared/session/Scenarios.js';
 import { PLOT_FAMILIES, PLOT_IDS } from '../../shared/mapgen/PlotCatalogue.js';
@@ -10,6 +11,7 @@ import { OPERATION_OBJECTIVES, OPERATION_TIMES } from '../../shared/mapgen/Gener
 import { drawOperationPreview } from './ui/OperationPreview.js';
 import { decodeSetup } from './ui/TestGroundStore.js';
 import { sanitizeDesc } from '../../shared/session/Scenarios.js';
+import { loading } from './ui/LoadingScreen.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -21,6 +23,7 @@ const menu = $('#menu');
 let game = null;
 
 async function showMenu(opts = {}) {
+    loading.hide();
     menu.classList.remove('hidden');
     const defaultServer = `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}`;
     // PLAN-10: no fixed maps to pick — a theme and a seed; old map links open the closest theme.
@@ -30,7 +33,7 @@ async function showMenu(opts = {}) {
     menu.innerHTML = `
       <div class="menu-card">
         <h1>FIRETEAM</h1>
-        <p class="tag">Present-day tactical operations · co-op</p><p><a href="/staging.html">Co-op briefing lobby</a> · <a href="/campaign.html">Campaign prototype</a></p>
+        <p class="tag">Present-day tactical operations · ${SOLO_ONLY ? 'solo play' : 'co-op'}</p><p>${SOLO_ONLY ? '' : '<a href="/staging.html">Co-op briefing lobby</a> · '}<a href="/campaign.html">Campaign prototype</a></p>
         <div id="tab-play" role="tabpanel">
         <section class="operation ${pick === OPERATION_ID ? 'on' : ''}" id="m-op" data-map="${OPERATION_ID}">
           <div class="op-head"><b>Choose a theme</b><span>Every battle is a new map generated from the theme and the seed: streets, lots and buildings with full interiors, cover along the line of advance, a tunnel flank and fire escapes, all checked by the map gates. Roll the dice for a fresh one.</span></div>
@@ -54,16 +57,16 @@ async function showMenu(opts = {}) {
         <section id="m-inventory"></section>
         <div class="row buttons">
           <button id="m-local" class="primary">Play vs AI</button>
-          <button id="m-host">Host online co-op</button>
+          ${SOLO_ONLY ? '' : '<button id="m-host">Host online co-op</button>'}
         </div>
         </div>
-        <div class="row">
+        ${SOLO_ONLY ? '' : `<div class="row">
           <label>Server <input id="m-server" value="${defaultServer}"></label>
           <label>Room <input id="m-room" placeholder="room code"></label>
           <button id="m-join">Join</button>
-        </div>
+        </div>`}
         <p class="status" id="m-status" role="status"></p>
-        <p class="small">Online co-op uses this same game server. Units are dealt to players round-robin; the squad ends its turn when every player has pressed End turn. With the experimental intel rules each player ends and refreshes their own turn, with an enemy response per completion; supports unlock after detection and recharge every 10 personal turns; sensor contacts are shared snapshots, not firing targets.</p>
+        <p class="small">${SOLO_ONLY ? 'Solo edition · Play against AI. Saved setups and AI profiles stay in this browser. Online co-op is unavailable on this site.' : 'Online co-op uses this same game server. Units are dealt to players round-robin; the squad ends its turn when every player has pressed End turn. With the experimental intel rules each player ends and refreshes their own turn, with an enemy response per completion; supports unlock after detection and recharge every 10 personal turns; sensor contacts are shared snapshots, not firing targets.'}</p>
         <p class="small build">Build ${esc(BUILD.commit)} · ${esc(BUILD.time)}${BUILD.dirty ? ' · uncommitted changes' : ''}</p>
       </div>`;
     $('#m-intel').onchange = e => { $('#m-support-row').hidden = !e.target.checked; };
@@ -102,8 +105,10 @@ async function showMenu(opts = {}) {
     const launch = (make, { generating = scenario === OPERATION_ID, debug = desc().debug, autopilot = false,skipReview } = {}) =>
         startBattle(make, { generating, debug, autopilot, skipReview, status });
     $('#m-local').onclick = () => launch(() => LocalSession.create(desc()));
-    $('#m-host').onclick = () => launch(() => OnlineSession.connect({url:$('#m-server').value,desc:desc(),support:$('#m-support').value}));
-    $('#m-join').onclick = () => launch(() => OnlineSession.connect({ url: $('#m-server').value, roomId: $('#m-room').value.trim(), support: $('#m-support').value }), { generating: false, debug: false });
+    if (!SOLO_ONLY) {
+        $('#m-host').onclick = () => launch(() => OnlineSession.connect({url:$('#m-server').value,desc:desc(),support:$('#m-support').value}));
+        $('#m-join').onclick = () => launch(() => OnlineSession.connect({ url: $('#m-server').value, roomId: $('#m-room').value.trim(), support: $('#m-support').value }), { generating: false, debug: false });
+    }
 
 }
 
@@ -111,18 +116,21 @@ async function showMenu(opts = {}) {
 async function startBattle(make, { generating = false, debug = false, autopilot = false, skipReview = params.has('quick'), status = () => {} } = {}) {
     try {
         status(generating ? 'Generating the operation…' : 'Building the battlefield…');
-        await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+        // PLAN-14: loading screen over generation and the battlefield build (the review screen sits between them).
+        await loading.show(generating ? 'generate' : 'world');
         const session = await make();
-        if(!skipReview&&!await reviewDispatch(menu,session)){session.leave?.();session.battle.light.dispose();await showMenu({desc:session.desc});return;}
+        if(!skipReview){loading.hide();if(!await reviewDispatch(menu,session)){session.leave?.();session.battle.light.dispose();await showMenu({desc:session.desc});return;}}
+        await loading.show('art', { title: session.battle?.mission?.name || '' });
         menu.classList.add('hidden');
         if (!game) game = new Game({ canvas: $('#view'), hudRoot: $('#hud'), cutinRoot: $('#cutin-layer'), floatRoot: $('#float-layer'), onExit: o => { game.session?.leave?.(); game.autoPlayer = false; showMenu(o); } });
-        await game.start(session);
+        await game.start(session, { progress: stage => loading.show(stage) });
+        loading.hide();
         if (debug && !game.debug.enabled) game.debug.enable(true);
         game.autoPlayer = !!autopilot;
         if (autopilot) game.maybeRunAi();
         window.__game = game;
         if (session.roomId) game.hud.log(`Room code: ${session.roomId} — share it with your squadmates`);
-    } catch (err) { console.error(err); status(`Failed: ${err.message}`); if (menu.classList.contains('hidden')) showMenu(); }
+    } catch (err) { console.error(err); loading.hide(); status(`Failed: ${err.message}`); if (menu.classList.contains('hidden')) showMenu(); }
 }
 
 // PLAN-10: ?play=operation&plot=downtown is the generated game; an old map id opens its closest theme instead, unless
@@ -130,7 +138,7 @@ async function startBattle(make, { generating = false, debug = false, autopilot 
 const playId = params.get('play'), fixture = params.has('fixture') && playId !== OPERATION_ID;
 const playOperation = () => fixture ? undefined : { plot: playId === OPERATION_ID ? params.get('plot') : plotForMap(playId), objective: params.get('objective'), timeOfDay: params.get('time') };
 // Test-ground deep link: ?test=<setup> (made by "Copy link") launches that exact setup.
-if (params.get('staged')) {
+if (params.get('staged') && !SOLO_ONLY) {
     const launch = JSON.parse(sessionStorage.getItem('fireteam.launch') || 'null');
     showMenu().then(() => launch ? startBattle(() => OnlineSession.connect(launch), {status: text => { $('#m-status').textContent=text; }}) : $('#m-status').textContent='No staging seat found. Open the co-op briefing lobby.');
 } else if (params.get('test')) {
@@ -144,11 +152,13 @@ if(playId&&params.has('brief')) {
     showMenu().then(()=>startBattle(()=>LocalSession.create({scenario:fixture?playId:OPERATION_ID,operation:playOperation(),seed:Number(params.get('seed'))||1,debug:!!params.get('debug')}),{generating:!fixture}));
 } else if (playId) {
     const operation = playOperation();
-    LocalSession.create({ scenario: fixture ? playId : OPERATION_ID, seed: Number(params.get('seed')) || 1, squad: params.get('squad') || 'standard', debug: !!params.get('debug'), operation, ...(params.get('intel') ? { intel: true, asyncCoop: true, support: params.get('support') === 'orbital_laser' ? 'orbital_laser' : 'carpet_bomb' } : {}) }).then(async session => {
+    loading.show('generate').then(() => LocalSession.create({ scenario: fixture ? playId : OPERATION_ID, seed: Number(params.get('seed')) || 1, squad: params.get('squad') || 'standard', debug: !!params.get('debug'), operation, ...(params.get('intel') ? { intel: true, asyncCoop: true, support: params.get('support') === 'orbital_laser' ? 'orbital_laser' : 'carpet_bomb' } : {}) }).then(async session => {
         menu.classList.add('hidden');
         game = new Game({ canvas: $('#view'), hudRoot: $('#hud'), cutinRoot: $('#cutin-layer'), floatRoot: $('#float-layer'), onExit: showMenu });
-        await game.start(session);
+        await loading.show('art', { title: session.battle?.mission?.name || '' });
+        await game.start(session, { progress: stage => loading.show(stage) });
+        loading.hide();
         if (params.get('auto')) { game.autoPlayer = true; game.maybeRunAi(); }
         window.__game = game;
-    });
+    })).catch(err => { console.error(err); showMenu(); });
 } else showMenu();

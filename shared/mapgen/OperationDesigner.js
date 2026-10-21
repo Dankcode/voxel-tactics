@@ -14,7 +14,10 @@ const PROGRAMMES = {
     shop: { ground: ['sales', 'storeroom', 'office', 'restroom*'], upper: ['storeroom', 'office', 'unit', 'restroom*'], top: ['office', 'storeroom', 'unit', 'restroom*'] },
     diner: { ground: ['dining', 'galley', 'office', 'restroom*'], upper: ['office', 'storeroom', 'unit'], top: ['office', 'storeroom'] },
     warehouse: { ground: ['warehouse', 'loading', 'office', 'utility*'], upper: ['office', 'storeroom', 'meeting', 'utility*'], top: ['office', 'meeting', 'storeroom'] },
-    garage: { ground: ['workshop', 'storeroom', 'office', 'utility*'], upper: ['office', 'storeroom'], top: ['office', 'storeroom'] }
+    garage: { ground: ['workshop', 'storeroom', 'office', 'utility*'], upper: ['office', 'storeroom'], top: ['office', 'storeroom'] },
+    // PLAN-14 building types, from room kinds the planner and furnisher already know.
+    motel: { ground: ['lobby', 'unit', 'unit', 'utility*'], upper: ['unit', 'unit', 'bathroom*'], top: ['unit', 'unit', 'bathroom*'] },
+    bar: { ground: ['dining', 'galley', 'storeroom', 'restroom*'], upper: ['office', 'storeroom', 'unit'], top: ['office', 'unit'] }
 };
 const CODE_A = ['Iron', 'Silent', 'Grey', 'Night', 'Glass', 'Cold', 'Black', 'Copper', 'Ashen', 'Low', 'Broken', 'Last'];
 const CODE_B = ['Ledger', 'Harbor', 'Lantern', 'Viaduct', 'Canopy', 'Signal', 'Gutter', 'Spire', 'Ward', 'Switchyard', 'Crossing', 'Furnace'];
@@ -81,6 +84,7 @@ export function addPocketPods(design, pockets, seed) {
     // One outdoor pod on the last pocket before the objective (the squad's fight to get in); a second only on long routes.
     const late = pockets.filter(p => p.along >= 0.45).slice(pockets.length >= 4 ? -2 : -1);
     let group = Math.max(-1, ...design.encounters.map(e => e.group)) + 1;
-    for (const p of late) design.encounters.push({ group: group++, pocket: p.id, at: { x: p.x, y: p.y }, types: unit(`${seed}:pocket-pod:${p.id}`) < 0.5 ? ['cultist', 'archer'] : ['warden_foe', 'cultist'] });
+    // PLAN-14: the first outdoor pod is a drone tech's crew; its search drone sweeps the street ahead of it.
+    late.forEach((p, i) => design.encounters.push({ group: group++, pocket: p.id, at: { x: p.x, y: p.y }, types: i === 0 ? ['tech', 'search_drone', 'cultist'] : unit(`${seed}:pocket-pod:${p.id}`) < 0.5 ? ['cultist', 'archer'] : ['warden_foe', 'cultist'] }));
     return design;
 }

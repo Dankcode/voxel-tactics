@@ -21,7 +21,10 @@ export const HITBOX = Object.freeze({
 });
 const DEG = Math.PI / 180;
 
+/** PLAN-14: a search drone's body hovers over its tile at head height; every part is that one small body. */
+export const DRONE_BODY = Object.freeze({ h0: 1.6, h1: 2.0, r: 0.45 });   // hovers just over head height, so it reads above a crowd
 export function partCentre(u, part) {
+    if (u.drone) return { x: u.x + 0.5, y: u.y + 0.5, h: u.z + 1 + (DRONE_BODY.h0 + DRONE_BODY.h1) / 2 };
     if(WALKERS[u.type]){const spec=WALKERS[u.type];return {x:u.x+.5+(part==='armR'?.4:part==='armL'?-.4:part==='legs'?spec.legs[0][0]:0),y:u.y+.5+(part==='legs'?spec.legs[0][1]:part==='head'?-.55:part==='armR'?-.7:part==='armL'?-.2:0),h:u.z+1+(part==='legs'?.5:spec.height+(part==='head'?.25:0))};}
     const hb = HITBOX[part];
     const [fx, fy] = FACING_VEC[u.facing] || [0, 1];
@@ -56,6 +59,7 @@ function rayCylinder(o, d, cx, cy, r, h0, h1) {
 
 /** First body part of `u` a ray meets, or null. */
 export function rayUnit(o, d, u, maxT, store=null) {
+    if (u.drone) { const t = rayCylinder(o, d, u.x + .5, u.y + .5, DRONE_BODY.r, u.z + 1 + DRONE_BODY.h0, u.z + 1 + DRONE_BODY.h1); return t <= maxT ? { part: 'torso', t } : null; }
     if(WALKERS[u.type]){
         const spec=WALKERS[u.type],origin=[o.x,o.y,o.h];let best=null;
         const take=(part,t)=>{if(t<=maxT&&t<(best?.t??Infinity))best={part,t};};
@@ -292,7 +296,8 @@ export function stickyAim(battle, shooter, origin, point, { filter = null, maxDe
     let best = null;
     for (const t of battle.units) {
         if (!alive(t) || t.side === shooter.side || (filter && !filter(t))) continue;
-        for (const part of ['torso', 'head', 'legs']) {
+        // PLAN-14: every body part can sit under the reticle (Phoenix Point); a drone is one small body.
+        for (const part of t.drone ? ['torso'] : ['torso', 'head', 'legs', 'armL', 'armR']) {
             if (t.parts?.[part]?.disabled && part !== 'torso') continue;
             const c = partCentre(t, part), v = [c.x - origin.x, c.y - origin.y, c.h - origin.h], along = v[0] * d[0] + v[1] * d[1] + v[2] * d[2];
             if (along <= 0.5) continue;

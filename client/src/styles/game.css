@@ -446,3 +446,24 @@ button{background:rgba(15,15,18,.68);border-color:var(--line);border-radius:4px}
 #hud>.aim-reticle.blocked .reticle-ring.outer{border-color:#ff6a4a}
 #hud>.aim-reticle.blocked .reticle-cross::before,#hud>.aim-reticle.blocked .reticle-cross::after{background:#ff6a4a}
 #hud>.aim-reticle>span{font-size:11px;font-weight:600;letter-spacing:.04em;padding:2px 7px;border-radius:3px;background:#0b0e12c4;text-shadow:none;top:calc(var(--aim-radius) + 10px)}
+
+/* PLAN-14: loading screen */
+.loading-screen{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:radial-gradient(circle at 30% 20%,#1d2a26,#06090b 72%);color:#edf0eb;transition:opacity .35s ease;font-family:inherit}
+.loading-screen.out{opacity:0;pointer-events:none}
+.loading-screen.hidden{display:none}
+.loading-screen .ld-card{width:min(520px,88vw);text-align:left}
+.loading-screen h1{margin:0 0 4px;font-size:28px;letter-spacing:.32em;font-weight:800}
+.loading-screen .ld-title{margin:0 0 22px;color:#a5b3ae;font-size:13px;letter-spacing:.12em;text-transform:uppercase;min-height:1em}
+.loading-screen .ld-bar{height:4px;background:#ffffff1f;overflow:hidden}
+.loading-screen .ld-bar i{display:block;height:100%;width:4%;background:linear-gradient(90deg,#8fc8bc,#e8efe9);transition:width .45s ease}
+.loading-screen .ld-stage{margin:10px 0 0;font-size:13px;color:#dfe6e2;letter-spacing:.06em}
+.loading-screen .ld-tip{margin:28px 0 0;padding-top:14px;border-top:1px solid #ffffff1a;color:#a5b3ae;font-size:13px;line-height:1.5}
+.loading-screen .ld-tip:not(:empty)::before{content:'TIP  ';color:#d0bb88;font-weight:700;letter-spacing:.14em}
+/* PLAN-14: reticle-only targeting — the reticle turns amber on an enemy body part; the aim card is a slim bar */
+#hud>.aim-reticle.on-target .reticle-ring.outer{border-color:#ffd54f}
+#hud>.aim-reticle.on-target .reticle-cross::before,#hud>.aim-reticle.on-target .reticle-cross::after{background:#ffd54f}
+#hud>.aim-reticle.on-target>span{color:#ffe08a;background:#1a1408d9;font-size:12px}
+#hud>.target.slim{width:auto;min-width:0;max-width:min(520px,90vw);left:50%;right:auto;transform:translateX(-50%);bottom:172px;top:auto;padding:8px 12px}
+#hud>.target.slim p{margin:0 0 6px;font-size:11px;opacity:.8}
+#hud>.target.slim .tbtns{display:flex;gap:6px;justify-content:center}
+#hud>.target.slim .tbtns .fire{font-weight:700}

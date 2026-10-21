@@ -64,7 +64,7 @@ export function repairCover(m, { spawn, maxGap = REPAIR_GAP, budget = 80, traffi
     return placed;
 }
 
-function tryPiece(m, x, y, target, allowVehicles) {
+export function tryPiece(m, x, y, target, allowVehicles) {
     if (!inMap(m, x, y) || !m.district.contains(x, y)) return null;
     const s = m.store, t = tagAt(m, x, y), g = groundAt(m, x, y);
     if (g !== target.z || s.topSolid(x, y) !== g || m.keep.has(k2(x, y)) || m.district.stallCells.has(k2(x, y))) return null;

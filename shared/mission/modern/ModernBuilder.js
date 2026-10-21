@@ -161,7 +161,11 @@ export const ROOM_FURNITURE = {
     dining: ['booth', 'booth', 'booth', 'counter', 'booth'], galley: ['kitchen', 'fridge', 'island'], warehouse: ['warehouse_rack', 'warehouse_rack', 'pallet_stack', 'pallet_stack', 'drums', 'crates', 'pallets'],
     loading: ['pallets', 'pallet_stack', 'crates'], workshop: ['workbench', 'drums', 'wall_shelf', 'pallet_stack'], lobby: ['reception', 'loveseat'],
     open_office: ['desk_pair', 'desk_pair', 'desk_pair', 'filing'], meeting: ['conference', 'tv'], hall: ['filing'], unit: ['bed', 'tv', 'desk'],
-    barracks: ['bunks', 'bunks', 'lockers', 'bunks'], armory: ['lockers', 'crates', 'drums', 'wall_shelf']
+    barracks: ['bunks', 'bunks', 'lockers', 'bunks'], armory: ['lockers', 'crates', 'drums', 'wall_shelf'],
+    // landmark / civic room kinds (geo imports: GeoPrograms.GEO_PROGRAMS)
+    vault: ['stock_rack', 'crates', 'filing'], gallery: ['counter', 'bookcase', 'counter'], nave: ['booth', 'booth', 'booth', 'booth'],
+    vestry: ['wardrobe', 'bookcase'], chamber: ['conference', 'booth', 'booth'], classroom: ['desk_pair', 'desk_pair', 'bookcase'],
+    reading: ['bookcase', 'bookcase', 'desk', 'bookcase'], ward: ['bed_single', 'bed_single', 'aid_station']
 };
 const PLANTS = new Set(['living', 'lobby', 'office', 'open_office', 'study', 'dining', 'meeting', 'unit']);
 
@@ -172,7 +176,8 @@ const PLANTS = new Set(['living', 'lobby', 'office', 'open_office', 'study', 'di
  * ctx:  { rng, nextRoomId(), rooms: [], hints: {}, decor: [] }
  */
 export function buildModern(store, spec, ctx) {
-    const prog = PROGRAMS[spec.program] || PROGRAMS.house;
+    // spec.programDef: a building may bring its own plan (same shape as a PROGRAMS entry — e.g. a geo landmark)
+    const prog = spec.programDef || PROGRAMS[spec.program] || PROGRAMS.house;
     const { x0, y0, w, d, baseZ } = spec;
     const storeys = Math.max(1, Math.min(3, spec.storeys || 1));
     const wallKey = spec.wall || prog.wall, floorKey = spec.floor || prog.floor;
@@ -391,6 +396,11 @@ export function planRows(IW, ID, prog, spec = {}) {
         }
         return r;
     });
+    // A narrow interior holds at most ⌊(n + 1) / 3⌋ rooms across (two cells each plus a partition): keep that many
+    // rows / rooms instead of letting split() overflow them through the outer wall (real geo footprints are narrow).
+    const fit = n => Math.max(1, Math.floor((n + 1) / 3));
+    rows.splice(fit(ID));
+    rows.forEach((r, i) => { if (r.rooms.length > fit(IW)) rows[i] = { ...r, rooms: r.rooms.slice(0, fit(IW)) }; });
     const vs = split(ID, rows.map(r => r.depth));
     const rooms = [], walls = new Set(), cellRoom = new Map();
     let v = 0;

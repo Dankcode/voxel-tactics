@@ -36,7 +36,7 @@ export function placeCore(b, { seed, avoid = [] } = {}) {
         const score = centre + 2.5 * unit(`${seed}:${b.id}:core:${ci},${cj}`);
         if (!best || score < best.score) best = { ci, cj, score };
     }
-    if (!best) throw Error(`interior.core: ${b.id} has no core position clear of its exits`);
+    if (!best) throw Error(`interior.core: ${b.id} (${b.w}×${b.d}) has no core position clear of its exits ${JSON.stringify(avoid)}`);
     return { ci: best.ci, cj: best.cj, x: 1 + 2 * best.ci, y: 1 + 2 * best.cj, layout: 'v3' };
 }
 

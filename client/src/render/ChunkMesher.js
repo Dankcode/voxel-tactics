@@ -55,6 +55,10 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
     const hides = (x, y, z) => opaque(x, y, z) && !kit(store, x, y, z);   // only full cubes hide a neighbour's face
     const apron = !!options.apron;
     const straight = straightCells(store);       // old buildings: straight edges (BuildingEra.js)               // the map edge continues as an apron: no boundary side faces
+    // PLAN-14: a slab broken by damage keeps a straight section with the building's finish (and its damage decals)
+    // instead of turning into filleted "pillow" tiles: rounding is for authored edges, never for blast holes.
+    const scars = store.scars;
+    const brokenNear = (x, y, z) => scars?.size > 0 && [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]].some(([dx, dy]) => scars.has(`${x + dx},${y + dy},${z}`) || scars.has(`${x + dx},${y + dy},${z + 1}`));
     const W = store.width, D = store.depth;
     const inMap = (x, y) => x >= 0 && y >= 0 && x < W && y < D;
     const aoCorner = (f, x, y, z, dx, dy, dz) => {
@@ -282,7 +286,7 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
                     emitConnectedWater(store,x,y,z,m.key,bufFor(key,renderFor(key)),quad,t,cut);
                     continue;
                 }
-                if (g === 0 && options.rounded !== false && !straight(x, y)) { emitRounded(x, y, z, m, base, jitter * macro, t); continue; }
+                if (g === 0 && options.rounded !== false && !straight(x, y) && !brokenNear(x, y, z)) { emitRounded(x, y, z, m, base, jitter * macro, t); continue; }
                 for (let f = 0; f < 6; f++) {
                     const face = FACES[f];
                     const nx = x + face.n[0], ny = y + face.n[1], nz = z + face.n[2];

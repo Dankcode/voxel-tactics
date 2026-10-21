@@ -1,0 +1,15 @@
+**/node_modules
+**/dist
+.git
+.codex
+.agents
+.wrangler
+.env
+.env.*
+.dev.vars*
+server/data
+output
+docs
+*.log
+.DS_Store
+**/*.test.js

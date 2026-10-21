@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { WEAPONS } from '../../../shared/content/weapons.js';
 import { weaponBuild } from '../../../shared/battle/FireControl.js';
 /** On-screen radius for a projected cone radius: real size, kept visible (≥ 1.5 px) and on screen (≤ 260 px). */
+const PART_NAMES={head:'HEAD',torso:'TORSO',armL:'LEFT ARM',armR:'RIGHT ARM',legs:'LEGS'};
 export function reticleRadius(px){return Math.max(1.5,Math.min(260,px));}
 export function updateReticle(g){
     const el=g.hud.el('.aim-reticle'),u=g.selectedUnit();if(!u||g.mode.kind!=='shoot'||!g.freeAim||g.hud.equipment.open){el.classList.add('hidden');return;}
@@ -14,5 +15,11 @@ export function updateReticle(g){
     // half of them (uniform disc: r·√0.5). No artificial floor: a sniper's pinpoint is a pinpoint.
     const R=reticleRadius(radius);el.style.left=`${x}px`;el.style.top=`${y}px`;g.cutins?.placeAim?.(point);el.style.setProperty('--aim-radius',`${R}px`);el.style.setProperty('--aim-inner',`${(R*Math.SQRT1_2).toFixed(1)}px`);
     const zoom=camera.isPerspectiveCamera?Math.tan(19*Math.PI/180)/Math.tan(camera.fov*Math.PI/360):1;
-    el.querySelector('span').textContent=`${w.name} · ${dist.toFixed(1)} M · ±${(cone).toFixed(2)} M · ${zoom.toFixed(1)}×${g.aim?.settled===false?' · STEADYING':''}${g.aimStance?.blocked?' · BLOCKED':g.aimStance?.muzzle?.step?' · STEP OUT':''}`;
+    // PLAN-14: the reticle is the targeting. On an enemy it names the body part under it and the odds for that part
+    // (and for any hit); otherwise the distance and spread.
+    const pick=g.aimPick&&g.battle.unit(g.aimPick.unitId),odds=pick&&g.isVisible?.(pick)?g.partChance?.(pick,g.aimPick.part):null;
+    el.classList.toggle('on-target',!!odds);
+    const status=`${g.aim?.settled===false?' · STEADYING':''}${g.aimStance?.blocked?' · BLOCKED':g.aimStance?.muzzle?.step?' · STEP OUT':''}`;
+    el.querySelector('span').textContent=odds?`${pick.name.toUpperCase()} · ${PART_NAMES[g.aimPick.part]||g.aimPick.part} ${odds.part}% · ANY HIT ${odds.any}%${status}`
+        :`${w.name} · ${dist.toFixed(1)} M · ±${(cone).toFixed(2)} M · ${zoom.toFixed(1)}×${status}`;
 }

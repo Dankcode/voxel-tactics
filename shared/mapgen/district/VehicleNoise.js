@@ -2,7 +2,9 @@
 //
 //   V(x, y) = fbm(seed, 'vehicles') × (0.5 + slot priority) × pocketWeight(x, y)
 // Each slot group (one lot, one kerb run, one dock row) fills its slots in descending V until it reaches its target
-// occupancy, which depends on the slot kind, the traffic setting and the time of day. Priority encodes real use:
+// occupancy, which depends on the slot kind, the traffic setting and the time of day ('retail': a shopping-centre
+// lot — big and never more than about a third full, and not thinned further at dusk).
+// Priority encodes real use:
 // stalls near the shop door fill first, the front of a driveway before the back. pocketWeight lifts slots on the
 // line of play so parked cars become cover where the fight needs it.
 import { fbm } from '../Fields.js';
@@ -12,7 +14,7 @@ import { registerCells } from './Core.js';
 
 export const OCCUPANCY = Object.freeze({
     stall: [0.35, 0.7], kerb: [0.3, 0.5], driveway: [0.5, 0.85], dock: [0.5, 0.85], salvage: [1, 1], forecourt: [0.4, 0.8],
-    queue: [0.5, 0.8], pump: [0.3, 0.6], site: [1, 1], lane: [0.3, 0.6], 'bus-stop': [1, 1], service: [0.5, 0.8], display: [0.85, 1]
+    queue: [0.5, 0.8], pump: [0.3, 0.6], retail: [0.25, 0.4], site: [1, 1], lane: [0.3, 0.6], 'bus-stop': [1, 1], service: [0.5, 0.8], display: [0.85, 1]
 });
 const TRAFFIC = Object.freeze({ none: 0, light: 0.6, normal: 1, heavy: 1.35 });
 const NIGHT = new Set(['night', 'night-ops', 'dusk']);

@@ -1,4 +1,5 @@
 import { InventoryPrep } from '../ui/InventoryPrep.js';
+import { SOLO_ONLY } from '../net/Hosting.js';
 import { Client } from 'colyseus.js';
 import { CONTENT_CONTRACT } from '../../../shared/session/ContentContract.js';
 import { SQUADS, CLASSES } from '../../../shared/content/units.js';
@@ -11,6 +12,7 @@ let draft=null;try{draft=JSON.parse(sessionStorage.getItem('fireteam.stagingDraf
 root.innerHTML=`<a href="/">← Battle menu</a><p class="eyebrow">Cooperative operations</p><h1>Mission briefing</h1><p>Assign the squad, review the mission, launch immediately.</p><section id="entry"><div class="row"><label>Name <input id="name" value="Player" maxlength="24"></label><label>Server <input id="server" value="${url}"></label></div><div class="row" style="margin-top:16px"><button id="host" class="primary">Host briefing</button><label>Room code <input id="code"></label><button id="join">Join briefing</button></div></section><div id="lobby"></div><section id="equipment" hidden></section><p id="status" role="status"></p>`;
 const status=message=>document.querySelector('#status').textContent=message;
 async function connect(host) {
+    if (SOLO_ONLY) { status('Online co-op is unavailable on this site. Return to the battle menu for solo play.'); return; }
     try {
         const client=new Client(document.querySelector('#server').value);
         const options={name:document.querySelector('#name').value,contract:CONTENT_CONTRACT};
@@ -45,3 +47,8 @@ function render() {
 document.querySelector('#host').onclick=()=>connect(true);document.querySelector('#join').onclick=()=>connect(false);
 
 if(new URLSearchParams(location.search).has('host')){if(draft?.url)document.querySelector('#server').value=draft.url;connect(true);}
+
+if (SOLO_ONLY) {
+    document.querySelector('#entry').hidden = true;
+    status('Online co-op is unavailable on this site. Return to the battle menu for solo play.');
+}

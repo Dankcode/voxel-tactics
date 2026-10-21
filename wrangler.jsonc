@@ -1,0 +1,14 @@
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "voxel-tactics",
+    "compatibility_date": "2026-10-20",
+    "workers_dev": true,
+    "build": {
+        "command": "npm run build:solo"
+    },
+    "assets": {
+        "directory": "./client/dist",
+        "html_handling": "auto-trailing-slash",
+        "not_found_handling": "none"
+    }
+}

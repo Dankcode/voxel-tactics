@@ -1,5 +1,7 @@
 # Xcom2 game: Fireteam (working title)
 
+Cloud hosting: [Cloudflare deployment](docs/CLOUDFLARE.md) (free solo edition; optional paid co-op server).
+
 A 2D-character XCOM 2-style game in the browser with co-op multiplayer and PvP. Repo:
 [Dankcode/Xcom2-game](https://github.com/Dankcode/Xcom2-game); the full history of the earlier local
 `voxel-tactics` repo is in it.

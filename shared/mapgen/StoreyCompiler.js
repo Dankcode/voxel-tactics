@@ -92,7 +92,29 @@ export function compileBuilding(m,b,{roomById=id=>m.ctx.rooms.find(r=>r.id===id)
     // Uniform vertical access (PLAN-04 §5.2): 3–4 storeys get the fire-escape module, 1–2 storey flat roofs a roof ladder.
     const blocked=(x,y)=>m.escapeBlocked?.(x,y)||false;
     const prefer=b.access?.side?[b.access.side]:undefined;
-    if(storeys>=3) {
+    // PLAN-14: the core's last flight climbs from the top floor through a hatch onto the roof; railings guard the hatch
+    // on the roof, open at the top step. Used for tall blocks without a fire escape and for low blocks with no room
+    // for a roof ladder.
+    const roofStair=()=>{
+        const fz=m.G+STOREY*(storeys-1),even=(storeys-1)%2===0;
+        const run=createStairRun({origin:{x:x0+core.x+(even?1:3),y:y0+core.y+(even?0:2)},direction:even?'east':'west',rise:STOREY,baseZ:fz,footprintSet:coreSet});
+            if(!run)throw Error(`compile.stairs: ${b.id} roof flight cannot fit core`);
+            const hole=[run.before,run.cells[0],run.cells[1]];
+            for(const c of hole)store.set(c.x,c.y,top,AIR);
+            for(const c of run.cells){for(let z=fz+1;z<=c.z;z++)store.set(c.x,c.y,z,MAT.stairs_stone);for(let h=1;h<=2;h++)store.set(c.x,c.y,c.z+h,AIR);}
+            out.stairs.push({storey:storeys-1,roof:true,...run});
+            const holeSet=new Set(hole.map(c=>key(c.x,c.y))),railed=[];
+            for(const c of [...hole,run.cells[2]].filter(Boolean))for(const [dx,dy] of [[0,1],[0,-1],[1,0],[-1,0]]){
+                const x=c.x+dx,y=c.y+dy;
+                if(holeSet.has(key(x,y))||run.cells.some(r=>r.x===x&&r.y===y)||(run.after&&run.after.x===x&&run.after.y===y))continue;
+                if(x<=x0||y<=y0||x>=x0+w-1||y>=y0+d-1||!store.isSolid(x,y,top)||store.get(x,y,top+1)!==AIR)continue;
+                store.set(x,y,top+1,MAT.railing);railed.push([x,y]);
+            }
+            const landing=run.after?{x:run.after.x,y:run.after.y,z:top}:{x:run.cells.at(-1).x,y:run.cells.at(-1).y,z:top};
+            const rec={module:'roof_stair',landing,railed};out.roofAccess=rec;out.access.push(rec);
+    };
+    if(storeys>=3&&b.access?.module==='roof_stair') roofStair();
+    else if(storeys>=3) {
         let rec;
         if(b.access?.module==='fire_escape'&&b.access.offset!=null) {
             const params={side:b.access.side,origin:facadeOrigin(out,b.access.side,b.access.offset),datum:m.G,storeys,doors:b.access.doors||{}};
@@ -113,10 +135,15 @@ reserveFireEscape(m,f);
             const cells=roofLadderTemplate(params).cells;for(const c of cells)store.set(c.x,c.y,c.z,c.mat);
             const {x,y}=cells[0];
             rec={module:'roof_ladder',params,x,y,foot:m.G,top,landing:{x:params.origin[0],y:params.origin[1],z:top}};m.reserve(x-2,y-2,x+2,y+2);
-        } else rec=placeRoofLadder(m,out,{prefer,blocked});
-        out.roofAccess=rec;out.access.push(rec);
+        } else {
+            // PLAN-14: merged parcels can leave a low block no blank facade for a ladder: a two-storey block then takes
+            // the roof flight; a single storey keeps an unreachable low roof (exempt from roofsReachable).
+            try { rec=placeRoofLadder(m,out,{prefer,blocked}); } catch(e) { if(storeys>=2){roofStair();rec=null;} else {out.lowRoof=true;rec=null;} }
+        }
+        if(rec){out.roofAccess=rec;out.access.push(rec);}
     }
-    for(const rec of out.access)validateAccessModule(store,rec);
+    for(const rec of out.access)if(rec.module!=='roof_stair')validateAccessModule(store,rec);
+    if(b.wingOf)out.wing=b.wingOf;   // PLAN-14: an attached wing (its low roof need not be reachable)
     dressRoof(m,out);
     if(b.floors.some(f=>f.layout==='v3'))furnishBuilding(m,b,out,{beats:(m.beats||[]).filter(bt=>bt.building===b.id)});
     else for(const f of b.floors) {

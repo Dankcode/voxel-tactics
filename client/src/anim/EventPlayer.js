@@ -77,7 +77,7 @@ export class EventPlayer {
                         const len = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z) * (kind === 'climb' ? 1.6 : 1);
                         if(e.t === 'move') v.animator.play(kind === 'vault' ? 'vault' : kind === 'climb' ? 'climb' : 'run');
                         const steps = Math.max(1, Math.round(len * 6));
-                        const walking = e.t === 'move' && kind === 'walk' && (v.unit.side === 'player' || g.isVisible(v.unit)) && !['wall_strider', 'siege_weaver'].includes(v.unit.type);
+                        const walking = e.t === 'move' && kind === 'walk' && (v.unit.side === 'player' || g.isVisible(v.unit)) && !['wall_strider', 'siege_weaver'].includes(v.unit.type) && !v.unit.drone;
                         if (walking && !stopFootsteps) stopFootsteps = g.audio.play('footsteps', { loop: true, volume: 0.22, rate: this.speed * 1.25 });
                         else if (!walking && stopFootsteps) { stopFootsteps(); stopFootsteps = null; }
                         for (let s = 1; s <= steps; s++) {
@@ -164,7 +164,7 @@ export class EventPlayer {
             }
             case 'explosion': g.audio?.play(explosionSound(e, g.scene.target), { volume: e.of > 1 ? 0.7 / Math.sqrt(e.of) : 0.7 }); fx.explosion(e, e.radius, e.element); g.voxelView?.flush(); if (!(e.of > 1) || e.salvo === e.of - 1) await this.d(0.15); break;   // an airstrike salvo goes off at once
             case 'smoke': fx.syncField(g.battle.field); break;
-            case 'voxels': g.voxelView.flush(); if (g.roadMarks && g.battle && e.changes?.some(c => (c[2] ?? c.z) <= (g.battle.mission?.meta?.streetDatum ?? 1) + 1)) g.roadMarks.build(g.battle.store); break;
+            case 'voxels': g.voxelView.flush(); if (g.roadMarks && g.battle && (g.battle.mission?.visual?.roadPaint || e.changes?.some(c => (c[2] ?? c.z) <= (g.battle.mission?.meta?.streetDatum ?? 1) + 1))) g.roadMarks.build(g.battle.store, g.battle.mission?.visual?.roadPaint); break;
             case 'collapse': g.voxelView.flush(); fx.float(new THREE.Vector3(e.fallen?.[0]?.x ?? 0, e.fallen?.[0]?.to ?? 1, e.fallen?.[0]?.y ?? 0), 'COLLAPSE', '#ffcc66', 22); g.scene.shake = 0.6; await this.d(0.25); break;
             case 'elements': g.voxelView.flush(); fx.syncField(g.battle.field); break;
             case 'door': { const v=this.view(e.unitId); if(e.kicked){v?.animator.play('vault',{restart:true});fx.float(v?.worldPosition()||new THREE.Vector3(),'KICK!','#ffd54f',22);g.scene.shake=.18;await this.d(.3);} g.voxelView.flush(); break; }
@@ -178,7 +178,7 @@ export class EventPlayer {
             }
             case 'disabled': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition().add(new THREE.Vector3(0, 0.4, 0)), `${PART_LABEL[e.part]} disabled`.toUpperCase(), '#ffb74d', 15); break; }
             case 'heal': { const v=this.view(e.unitId); if(v) {v.drawBar(); fx.float(v.worldPosition(),`+${e.amount} HP`,'#5ff2d6',22);} await this.d(0.3); break; }
-            case 'death': { const v = this.view(e.unitId); if (v) { v.animator.play('down'); v.drawBar(); fx.float(v.worldPosition(), v.unit.side === 'player' ? 'KIA' : 'KILLED', '#ff5252', 22); } await this.d(CLIP_HOLD.down); break; }
+            case 'death': { const v = this.view(e.unitId); if (v) { v.animator.play('down'); v.drawBar(); fx.float(v.worldPosition(), v.unit.side === 'player' ? 'KIA' : v.unit.drone ? 'DRONE DOWN' : 'KILLED', '#ff5252', 22); } await this.d(CLIP_HOLD.down); break; }
             case 'extract': { const v = this.view(e.unitId); if (v) { fx.float(v.worldPosition(), e.item ? 'EXTRACTED WITH THE PACKAGE' : 'EXTRACTED', '#5ff2d6', 20); await this.d(0.35); v.setVisible(false); } g.overlays.showObjective(g.battle); break; }
             case 'recover': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition(), `${(e.label || 'item').toUpperCase()} RECOVERED`, '#5ff2d6', 20); g.overlays.showObjective(g.battle); await this.d(0.3); break; }
             case 'drop': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition(), `${(e.label || 'item').toUpperCase()} DROPPED`, '#ffc845', 18); if (e.collapse) g.hud.log(`${e.label || 'The package'} fell with the floor.`); g.overlays.showObjective(g.battle); break; }
@@ -190,6 +190,9 @@ export class EventPlayer {
             case 'discovery': { e.unitIds.forEach(id=>g.discoveryVisible.add(id));g.updateEnemyVisibility();g.hud.banner('ENEMY CONTACT','SCATTERING TO COVER','enemy');g.hud.log('Enemy group spotted — scattering to cover.');await this.d(.5);break; }
             case 'wait': this.view(e.unitId)?.animator.play('idle');break;
             case 'alert': for (const id of e.unitIds) { const v = this.view(id); if (v && g.isVisible(v.unit)) fx.float(v.worldPosition(), '!', '#ff5252', 30); } break;
+            // PLAN-14: enemies that heard a loud sound and go to search it (only the ones you can see show it).
+            case 'heard': { let shown = 0; for (const id of e.unitIds) { const v = this.view(id); if (v && g.isVisible(v.unit) && !v.unit.alerted) { fx.float(v.worldPosition(), '?', '#ffd54f', 28); shown++; } } if (shown) g.hud.log(`${shown} hostile${shown > 1 ? 's' : ''} heard that and ${shown > 1 ? 'are' : 'is'} coming to look.`); break; }
+            case 'scan': { g.sightings.showScan(e); g.hud.log(e.contacts.length ? `Recon Scan: ${e.contacts.length} contact${e.contacts.length > 1 ? 's' : ''} within ${e.range} tiles (approximate positions).` : `Recon Scan: no contacts within ${e.range} tiles.`); await this.d(0.3); break; }
             case 'vision': g.onVision(e.cells);break;
             case 'reveal': g.onReveal(e.roomId); break;
             case 'fall': { const v = this.view(e.unitId); if (v) { v.animator.play('hit', { restart: true }); if (e.to >= 0) v.setCell(v.unit.x, v.unit.y, e.to); } await this.d(0.2); break; }

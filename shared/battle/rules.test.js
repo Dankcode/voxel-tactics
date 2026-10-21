@@ -68,7 +68,7 @@ test('autopilot spends a full movement turn on an affordable tall ladder instead
 });
 
 test('every human character has 30 HP and every gun takes its damage from its caliber', () => {
-    for (const def of [...Object.values(CLASSES), ...Object.values(ENEMIES).filter(def=>!WALKERS[def.id])]) assert.equal(def.hp, UNIT_HP, def.id);
+    for (const def of [...Object.values(CLASSES), ...Object.values(ENEMIES).filter(def=>!WALKERS[def.id]&&!def.drone)]) assert.equal(def.hp, UNIT_HP, def.id);   // PLAN-14: drones are one-hit
     assert.equal(UNIT_HP, 30);
     for (const w of Object.values(WEAPONS).filter(w => w.caliber)) {
         const c = CALIBERS[w.caliber];

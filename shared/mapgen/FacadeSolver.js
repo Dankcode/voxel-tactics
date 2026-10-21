@@ -31,7 +31,7 @@ const GLAZE_PREF = {
     office: 'band', meeting: 'band', bedroom: 'window', unit: 'window', hall: 'window', galley: 'band', barracks: 'window',
     warehouse: 'band', workshop: 'band', loading: 'blank', storeroom: 'blank', armory: 'blank'
 };
-const COMMERCIAL = new Set(['shop', 'diner', 'office']);
+const COMMERCIAL = new Set(['shop', 'diner', 'office', 'bar', 'motel']);   // PLAN-14: bar and motel too
 const family = k => (k === 'window' ? 'w' : k === 'band' ? 'b' : k === 'glazing' ? 'g' : k === 'storefront' ? 's' : 'x');
 
 /** Facade bay slots of a footprint: odd offsets on every side, with the bay cell just inside. */

@@ -29,8 +29,12 @@ export function buildRoofGeometry(store, cx, cy, cz, cut = Infinity, hidden=null
     const pos = [], uvs = [];
     const corner = (vx, vy) => {
         // cells around grid vertex (vx, vy)
-        const around = [col(vx - 1, vy - 1), col(vx, vy - 1), col(vx - 1, vy), col(vx, vy)];
+        const cells = [[vx - 1, vy - 1], [vx, vy - 1], [vx - 1, vy], [vx, vy]];
+        const around = cells.map(([cx, cy]) => col(cx, cy));
         const present = around.filter(Boolean);
+        // PLAN-14: a roof cell blown out by damage is a hole with a straight edge, not a new eave: the roof around it
+        // keeps its height (no dip, no outward lip), so a broken roof stays the same roof with a hole in it.
+        if (store.scars?.size) around.forEach((c, i) => { if (!c && present.some(p => store.scars.has(`${cells[i][0]},${cells[i][1]},${p.top}`))) around[i] = present.find(p => store.scars.has(`${cells[i][0]},${cells[i][1]},${p.top}`)); });
         const base = Math.min(...present.map(c => c.bottom));
         let sum = 0, missing = 0, ox = 0, oy = 0;
         around.forEach((c, i) => {

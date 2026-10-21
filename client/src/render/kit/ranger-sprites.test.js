@@ -28,16 +28,18 @@ test('flat and composited parts share the same anatomical occlusion order',()=>{
 
 test('movement uses only running; downed plays every frame once and holds the settled pose',()=>{
  assert.equal(EVENT_TO_CLIP.move,'run');assert.equal(field.clips.walk,undefined);
- const a=new SpriteAnimator(field,new THREE.Texture());a.play('run');a.update(1/6);assert.equal(a.frame,1);
- a.update(1/6);assert.equal(a.frame,0);
+ // PLAN-14: a four-frame stride (left foot, passing, right foot, passing) that loops back to the first frame.
+ assert.equal(field.clips.run.frames,4);assert.equal(field.clips.run.loop,true);
+ const a=new SpriteAnimator(field,new THREE.Texture());a.play('run');
+ for(const want of [1,2,3,0,1]){a.update(1/field.clips.run.fps+1e-6);assert.equal(a.frame,want);}
  let ends=0;a.play('down',{onEnd:()=>ends++});
  for(let i=0;i<3;i++){a.update(1/8);assert.equal(a.frame,i+1);}
  a.update(1);assert.equal(a.frame,3);assert.equal(a.clip,'down');assert.equal(ends,1);
  a.update(5);assert.equal(a.frame,3);assert.equal(ends,1);
 });
-test('the new atlas covers all clips, eight facings, and 160 named frames',()=>{
- assert.equal(field.columns,20);assert.equal(field.rows,8);assert.equal(field.placeholder,false);
- const list=json('sprite-list.json').frames;assert.equal(list.length,160);
+test('the new atlas covers all clips, eight facings, and 176 named frames',()=>{
+ assert.equal(field.columns,22);assert.equal(field.rows,8);assert.equal(field.placeholder,false);
+ const list=json('sprite-list.json').frames;assert.equal(list.length,176);
  for(const f of field.facings)for(const [clip,c] of Object.entries(field.clips)){
   assert.equal(list.filter(l=>l.facing===f&&l.clip===clip).length,c.frames);
  }

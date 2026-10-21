@@ -13,7 +13,7 @@
 // is chosen, and engagement pockets are pinned into the bay solve as seeds.
 import { solveWaveFunctionCollapse } from '../generation/WaveFunctionCollapse.js';
 import { LOT, BAY } from './KitMetric.js';
-import { LOT_KINDS, BAY_PIECES, PIECE_POOLS, lotKindsFor, objectiveKindFor, groupSize, buildingRect, DISTRICT_WALLS, DISTRICT_PALETTE } from './LotCatalogue.js';
+import { LOT_KINDS, BAY_PIECES, PIECE_POOLS, lotKindsFor, objectiveKindFor, groupSize, buildingRect, DISTRICT_WALLS, DISTRICT_PALETTE, WING_PROGRAM } from './LotCatalogue.js';
 import { plotLot, SIDE_VEC, OPPOSITE } from './PlotCatalogue.js';
 import { fbm, NOISE_LAYERS } from './Fields.js';
 import { hashString } from '../util/Rng.js';
@@ -192,24 +192,77 @@ export function solveLots(plot, districts, fields, seed) {
     return { assignment: Object.fromEntries(assignment), parcels, byLot, tiles };
 }
 
-/** Building records from building parcels: footprint (kit metric), storeys from height intent, district materials. */
+/**
+ * Building records from building parcels: footprint (kit metric), storeys from height intent, district materials.
+ * PLAN-14: each parcel picks one of its kind's footprint variants (never larger than the template, so lot sockets
+ * hold), and a share of parcels are merged with a lower attached wing — a second building record touching the main
+ * block's back or side wall, with its own programme, height and wall material — so blocks read as L, T and stepped
+ * shapes instead of the same box every time.
+ */
 export function placeBuildings(plot, parcels, fields, seed) {
     const out = [];
     for (const p of parcels) {
         const k = LOT_KINDS[p.kind]; if (!k.building) continue;
         const t = k.building, n = noiseAt(seed, 'wear', p.x0 + 8, p.y0 + 8);
-        const slack = (p.front === 'n' || p.front === 's' ? p.w : p.d) - t.along;
-        const shift = slack > 1 ? Math.round((unit(`${seed}:${p.id}:shift`) - 0.5) * 2) : 0;
-        const rect = buildingRect(p.kind, p, p.front, shift);
+        const variants = (!p.objective && t.variants) || [[t.along, t.deep]];
+        const dims = variants[Math.floor(unit(`${seed}:${p.id}:variant`) * variants.length)];
+        const slack = (p.front === 'n' || p.front === 's' ? p.w : p.d) - dims[0];
+        const wantWing = !p.objective && unit(`${seed}:${p.id}:wing`) < 0.75;
+        // A merged parcel pushes the main block to one end so its wing has room beside it.
+        const shift = wantWing && slack >= 5 ? (unit(`${seed}:${p.id}:shift`) < 0.5 ? -slack : slack) : slack > 1 ? Math.round((unit(`${seed}:${p.id}:shift`) - 0.5) * 2) : 0;
+        const rect = buildingRect(p.kind, p, p.front, shift, dims);
         const H = fields.height.mean(rect.x0, rect.y0, rect.x0 + rect.w - 1, rect.y0 + rect.d - 1);
         const [lo, hi] = t.storeys, storeys = p.objective ? hi : Math.max(lo, Math.min(hi, lo + Math.floor(H * (hi - lo + 1.2))));
         const walls = DISTRICT_WALLS[p.district] || DISTRICT_WALLS.commercial;
         const palette = DISTRICT_PALETTE[p.district] || DISTRICT_PALETTE.commercial;
-        out.push({ id: p.objective ? 'objective' : `b${out.length}`, parcel: p.id, kind: p.kind, program: t.program, district: p.district, x0: rect.x0, y0: rect.y0, w: rect.w, d: rect.d,
-            storeys, front: p.front, margins: rect.margins, wall: walls[Math.floor(n * walls.length) % walls.length], roof: 'flat',
-            accent: palette[Math.floor(unit(`${seed}:${p.id}:accent`) * palette.length)], objective: p.objective });
+        const wall = walls[Math.floor(n * walls.length) % walls.length];
+        const main = { id: p.objective ? 'objective' : `b${out.length}`, parcel: p.id, kind: p.kind, program: t.program, district: p.district, x0: rect.x0, y0: rect.y0, w: rect.w, d: rect.d,
+            storeys, front: p.front, margins: rect.margins, wall, roof: 'flat',
+            accent: palette[Math.floor(unit(`${seed}:${p.id}:accent`) * palette.length)], objective: p.objective };
+        out.push(main);
+        if (wantWing) {
+            const wing = planWing(main, p, seed, walls.filter(x => x !== wall)[0] || wall, palette);
+            if (wing) { wing.id = `b${out.length}`; out.push(wing); }
+        }
     }
     return out;
+}
+const odd = v => (v % 2 ? v : v - 1);
+/** An attached wing behind or beside `main` inside parcel `p` (or null when the margins are too tight). */
+function planWing(main, p, seed, wall, palette) {
+    const B = OPPOSITE[main.front], ns = main.front === 'n' || main.front === 's';
+    const perp = ns ? ['w', 'e'] : ['n', 's'];
+    const options = [];
+    // Back wing (T / L): 5–7 deep behind the block (up to the parcel edge when the margin is exactly 5).
+    if (main.margins[B] >= 5) for (const wa of [9, 7]) if (wa <= (ns ? main.w : main.d) - 2) { options.push({ kind: 'back', wd: odd(Math.min(7, main.margins[B] >= 6 ? main.margins[B] - 1 : main.margins[B])), wa }); break; }
+    // Side wing (stepped frontage): 5–7 wide beside the block, set back two cells from the street face.
+    for (const S of perp) if (main.margins[S] >= 5) options.push({ kind: 'side', S, ww: odd(Math.min(7, main.margins[S] >= 6 ? main.margins[S] - 1 : main.margins[S])) });
+    if (!options.length) return null;
+    const o = options[Math.floor(unit(`${seed}:${p.id}:wing-kind`) * options.length)];
+    let x0, y0, w, d, front, touch;
+    if (o.kind === 'back') {
+        const along = ns ? main.w : main.d, at = ['start', 'end', 'mid'][Math.floor(unit(`${seed}:${p.id}:wing-at`) * 3)];
+        const off = at === 'start' ? 0 : at === 'end' ? along - o.wa : (along - o.wa) >> 1;
+        if (ns) { w = o.wa; d = o.wd; x0 = main.x0 + off; y0 = B === 's' ? main.y0 + main.d : main.y0 - d; }
+        else { w = o.wd; d = o.wa; y0 = main.y0 + off; x0 = B === 'e' ? main.x0 + main.w : main.x0 - w; }
+        touch = B;
+        // The wing's door faces whichever free side is wider.
+        const ends = ns ? [['w', x0 - p.x0], ['e', p.x0 + p.w - (x0 + w)]] : [['n', y0 - p.y0], ['s', p.y0 + p.d - (y0 + d)]];
+        front = ends.sort((a, c) => c[1] - a[1])[0][0];
+    } else {
+        const deep = ns ? main.d : main.w, wd = Math.max(5, odd(deep - 2));
+        if (ns) { w = o.ww; d = wd; x0 = o.S === 'e' ? main.x0 + main.w : main.x0 - w; y0 = main.front === 'n' ? main.y0 + (deep - wd) : main.y0; }
+        else { w = wd; d = o.ww; y0 = o.S === 's' ? main.y0 + main.d : main.y0 - d; x0 = main.front === 'w' ? main.x0 + (deep - wd) : main.x0; }
+        touch = o.S; front = main.front;
+    }
+    if (x0 < p.x0 || y0 < p.y0 || x0 + w > p.x0 + p.w || y0 + d > p.y0 + p.d || w < 5 || d < 5) return null;
+    const margins = { n: y0 - p.y0, s: p.y0 + p.d - (y0 + d), w: x0 - p.x0, e: p.x0 + p.w - (x0 + w) };
+    margins[OPPOSITE[touch]] = 0;                    // the party wall against the main block
+    main.margins = { ...main.margins, [touch]: 0 };   // the main block loses that side for doors and access
+    const big = Math.max(w, d) >= 9 && Math.min(w, d) >= 7 && main.storeys >= 3;   // a stair core needs room beside the rooms
+    const storeys = big && unit(`${seed}:${p.id}:wing-h`) < 0.4 ? 2 : 1;
+    return { parcel: p.id, kind: `${p.kind}_wing`, program: WING_PROGRAM[main.program] || 'shop', district: p.district, x0, y0, w, d, storeys, front, margins, wall, roof: 'flat',
+        accent: palette[Math.floor(unit(`${seed}:${p.id}:wing-accent`) * palette.length)], objective: false, wingOf: main.id };
 }
 
 // ------------------------------------------------------------------------------------------------ bays

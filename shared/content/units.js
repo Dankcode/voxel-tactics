@@ -35,7 +35,13 @@ export const ENEMIES = Object.freeze({
     brute: { id: 'brute', name: 'Enforcer', faction: 'syndicate', art: 'brute', hp: UNIT_HP, accuracy: 0.6, mobility: 3.2, will: 6, armor: 'heavy',
         weapons: ['maul'], items: { smoke_pot: 1 }, abilities: [] },
     warden_foe: { id: 'warden_foe', name: 'Riot Guard', faction: 'syndicate', art: 'guard', hp: UNIT_HP, accuracy: 0.62, mobility: 2.8, will: 6, armor: 'plate',
-        weapons: ['musket', 'sword'], items: {}, abilities: ['brace', 'earth_cover'] }
+        weapons: ['musket', 'sword'], items: {}, abilities: ['brace', 'earth_cover'] },
+    // PLAN-14: the drone tech runs search drones ahead of the pod. The drones are unarmed eyes: they sweep toward noise
+    // and last-known positions, everything they see the whole enemy side sees, and one hit brings one down.
+    tech: { id: 'tech', name: 'Drone Tech', faction: 'syndicate', art: 'cultist', hp: UNIT_HP, accuracy: 0.56, mobility: 3, will: 5, armor: 'light',
+        weapons: ['handcannon'], items: { smoke_pot: 1 }, abilities: ['launch_drone'], role: 'Launches and steers search drones (two in the air at most); keeps back and relays what they see.' },
+    search_drone: { id: 'search_drone', name: 'Search Drone', faction: 'syndicate', art: 'drone', drone: true, hp: 1, accuracy: 0, mobility: 4.2, will: 9, armor: 'drone',
+        weapons: [], items: {}, abilities: [], role: 'Unarmed quadcopter. Searches toward noise and last-known positions and spots for every enemy. One hit destroys it.' }
 });
 
 export const ABILITIES = Object.freeze({
@@ -55,7 +61,10 @@ export const ABILITIES = Object.freeze({
     suppress: { id: 'suppress', name: 'Suppressive Fire', wp: 2, ap: 2, text: 'Burst at a visible target; it is Suppressed (accuracy ×0.6) for two own turns.' },
     quick_aim: { id: 'quick_aim', name: 'Snap Shot', wp: 2, ap: 0, text: 'Next shot costs 1 AP less.' },
     deadeye: { id: 'deadeye', name: 'Deadeye', wp: 3, ap: 0, text: 'Next shot has half the spread.' },
-    brace: { id: 'brace', name: 'Shield Wall', wp: 1, ap: 1, text: '+4 armour on every part until your next turn.' }
+    brace: { id: 'brace', name: 'Shield Wall', wp: 1, ap: 1, text: '+4 armour on every part until your next turn.' },
+    // PLAN-14
+    recon_scan: { id: 'recon_scan', name: 'Recon Scan', squad: true, wp: 1, ap: 1, range: 40, radius: 3, cooldown: 3, text: 'Sweep for hostiles within 40 tiles. Each contact shows as a red search circle (3-tile radius) around its approximate position for two rounds, on its floor; the exact tile stays hidden. Any soldier can use it; the squad shares one cooldown of 3 rounds.' },
+    launch_drone: { id: 'launch_drone', name: 'Launch Drone', wp: 0, ap: 1, cooldown: 3, max: 2, text: 'Enemy techs: put a search drone in the air beside them (two at most, one launch every 3 rounds).' }
 });
 
 export const SQUADS = Object.freeze({
@@ -67,7 +76,8 @@ export const ENEMY_PODS = Object.freeze({
     patrol: ['cultist', 'cultist', 'archer'],
     fire: ['pyromancer', 'cultist'],
     guard: ['warden_foe', 'warden_foe', 'archer'],
-    brute: ['brute', 'cultist']
+    brute: ['brute', 'cultist'],
+    tech: ['tech', 'search_drone', 'cultist']
 });
 
 /** Factions (human only for now). Themes pick a faction and flavour the hostile names. */

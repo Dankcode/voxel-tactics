@@ -71,8 +71,11 @@ const inwardBay = (b, e) => [Math.max(0, Math.min(bayGridOf(b.w, b.d).nbx - 1, (
  * module, lip and apron), centred on a bay line, never across an exit; 1–2 storeys get a roof ladder on a blank bay
  * next to a corner. Returns null when no facade fits, and the building is regenerated rather than resized.
  */
-function planAccess(b, exits, W, D) {
+function planAccess(b, exits, W, D, seed = 1) {
     const sides = SIDES.filter(s => s !== b.front).sort((a, c) => b.margins[c] - b.margins[a] || (a === OPPOSITE[b.front] ? -1 : 1));
+    // PLAN-14: fire escapes only on some tall blocks (the objective always keeps one: it is the flank into it); the rest
+    // carry their stair core on up to the roof (a railed roof hatch), so not every building wears the same escape.
+    if (b.storeys >= 3 && !b.objective && unit(`${seed}:${b.id}:escape`) >= 0.35) return { module: 'roof_stair' };
     if (b.storeys >= 3) {
         for (const side of sides) {
             if (b.margins[side] < FIRE_ESCAPE.out + FIRE_ESCAPE.lip + FIRE_ESCAPE.apron) continue;
@@ -87,7 +90,7 @@ function planAccess(b, exits, W, D) {
             const doors = {}; for (let s = 1; s < b.storeys; s++) doors[s] = landingEnd(s) ? 4 : 0;
             return { module: 'fire_escape', side, offset, doors };
         }
-        return null;
+        return { module: 'roof_stair' };   // PLAN-14: no facade fits an escape: the core reaches the roof instead
     }
     for (const side of sides) {
         if (b.margins[side] < 3) continue;
@@ -102,7 +105,7 @@ function planAccess(b, exits, W, D) {
 }
 /** Local facade cells the access module needs solid (roof ladder column) or turns into doors (escape landings). */
 function accessSlots(b, access) {
-    if (!access) return [];
+    if (!access || !access.side) return [];   // PLAN-14: a roof stair has no facade slots
     const at = off => access.side === 'n' ? { x: off, y: 0 } : access.side === 's' ? { x: off, y: b.d - 1 } : access.side === 'w' ? { x: 0, y: off } : { x: b.w - 1, y: off };
     if (access.module === 'roof_ladder') return [at(access.offset)];
     return [0, 4].map(u => at(access.offset + u));
@@ -179,8 +182,8 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
     for (const b of buildings) {
         // Street door first, then the uniform access module, then a back/side door that keeps clear of the module.
         const [street, alley] = planExits(b, seed);
-        b.access = planAccess(b, [street], W, D);
-        if (!b.access && b.storeys >= 3) { repairs.push({ kind: 'storeys-for-access', id: b.id, from: b.storeys, to: 2 }); b.storeys = 2; b.access = planAccess(b, [street], W, D); }
+        b.access = planAccess(b, [street], W, D, seed);
+        if (!b.access && b.storeys >= 3) { repairs.push({ kind: 'storeys-for-access', id: b.id, from: b.storeys, to: 2 }); b.storeys = 2; b.access = planAccess(b, [street], W, D, seed); }
         b.exits = [street];
         if (alley) {
             const span = b.access?.module === 'fire_escape' && b.access.side === alley.side ? [b.access.offset - 2, b.access.offset + 7] : b.access?.side === alley.side ? [b.access.offset - 2, b.access.offset + 2] : null;
@@ -210,7 +213,7 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
     for (const f of play.flanks) for (const p of f.path) protect(p.x, p.y);
     for (const b of buildings) {
         for (const e of b.exits) { const [dx, dy] = SIDE_VEC[e.side]; for (let r = 1; r <= 3; r++) protect(b.x0 + e.x + dx * r, b.y0 + e.y + dy * r, 1); }
-        if (b.access) {
+        if (b.access?.side) {
             const f = SIDE_FRAME[b.access.side], origin = facadeOrigin(b, b.access.side, b.access.offset);
             const span = b.access.module === 'fire_escape' ? [-1, 6, 5] : [-2, 2, 2];
             for (let u = span[0]; u <= span[1]; u++) for (let r = 1; r <= span[2]; r++) protectedCells.add(k2(origin[0] + f.a[0] * u + f.o[0] * r, origin[1] + f.a[1] * u + f.o[1] * r));
@@ -220,7 +223,7 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
     // access modules and the spawn; the tunnel itself may pass under anything)
     const moduleCells = new Set();
     for (let dy = -2; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) moduleCells.add(k2(plot.insertion.x + dx, plot.insertion.y + dy));
-    for (const b of buildings) if (b.access) {
+    for (const b of buildings) if (b.access?.side) {
         const f = SIDE_FRAME[b.access.side], origin = facadeOrigin(b, b.access.side, b.access.offset), span = b.access.module === 'fire_escape' ? [-2, 7, 6] : [-2, 2, 3];
         for (let u = span[0]; u <= span[1]; u++) for (let r = 1; r <= span[2]; r++) moduleCells.add(k2(origin[0] + f.a[0] * u + f.o[0] * r, origin[1] + f.a[1] * u + f.o[1] * r));
     }
@@ -265,7 +268,11 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
         const exitBays = b.exits.map(e => inwardBay(b, e)), slots = accessSlots(b, b.access);
         const escapeBays = b.access?.module === 'fire_escape' ? slots.map(sl => inwardBay(b, sl)) : [];
         let core = null;
-        if (b.storeys >= 2) core = placeCore(b, { seed, avoid: [...exitBays, ...escapeBays] });
+        if (b.storeys >= 2) {
+            // PLAN-14: narrow footprint variants: when the back door blocks every core position, the back door goes.
+            try { core = placeCore(b, { seed, avoid: [...exitBays, ...escapeBays] }); }
+            catch (e) { if (b.exits.length < 2) throw e; b.exits = b.exits.slice(0, 1); repairs.push({ kind: 'drop-back-door', id: b.id }); core = placeCore(b, { seed, avoid: [inwardBay(b, b.exits[0]), ...escapeBays] }); }
+        }
         b.floors = programmes.map(p => solveInteriorPlan(b, p, { seed, core, keepGameplay: [...(p.floor === 0 ? exitBays : []), ...(p.floor > 0 ? escapeBays : [])],
             prior: floorSpecs.find(f => f.building === b.id && f.floor === p.floor) || null }));
         b.facade = solveFacadeV3(b, b.floors, { seed, exits: b.exits, blank: slots });
@@ -567,7 +574,7 @@ export function generateOperation({ plot: family = 'downtown', seed = 1, objecti
 export function siteFromLayout(layout, { family, time, seed }) {
     const W = layout.width, D = layout.depth;
     const n = (x, y) => [Math.min(0.999, Math.max(0.001, x / W)), Math.min(0.999, Math.max(0.001, y / D))];
-    const PROGRAM = { apartment: 'house' };
+    const PROGRAM = { apartment: 'house', motel: 'house', bar: 'diner' };   // PLAN-14 programmes map to the site contract's
     return {
         version: 2, id: layout.id, name: `${PLOT_FAMILIES[family].name} · ${seed}`, theme: PLOT_FAMILIES[family].theme, timeOfDay: time, frame: { width: W, height: D }, plot: family,
         buildings: layout.buildings.map(b => ({ id: b.id, bounds: [...n(b.x0, b.y0), ...n(b.x0 + b.w, b.y0 + b.d)], program: PROGRAM[b.program] || b.program, front: b.front, storeys: b.storeys })),

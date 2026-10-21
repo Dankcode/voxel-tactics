@@ -24,6 +24,7 @@ import { hitChance } from './HitChance.js';
 import { DEFAULT_TUNING } from '../session/Playstyle.js';
 import { B } from '../content/balance.js';
 import { hashString } from '../util/Rng.js';
+import { flushShot, blastCoverValue, FLUSH } from './FlushAi.js';
 
 const dist2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
@@ -112,10 +113,17 @@ export function decideEnemy(battle, u, policy) {
     const depleted = pod.length >= 2 && pod.filter(alive).length * 2 <= pod.length;
     const pushed = known.some(t => dist2(t, u) <= 6) && T.ambush >= 1.15 && u.hp < u.maxHp;
     const hide = (wounded || depleted || outnumbered || pushed) && !(shot && shot.chance >= 55);
+    // Flush (FlushAi): a squad member dug in behind breakable cover that this unit cannot hit well. Break the cover
+    // now when it gives way this action and a pod-mate can take the exposed shot; otherwise it is the fallback below.
+    const flush = !hide && ammoOk && !(shot && shot.chance >= FLUSH.chanceBelow) ? flushShot(battle, u, ranged, threats, { T }) : null;
+    if (flush && flush.breaksNow && flush.follow) return flush.intent;
 
     if (!threats.length) {
         // Nobody known: hold an ambush, or sweep toward the squad's general direction (alerted pods do not idle).
-        if (u.movedThisTurn) return ammoOk && u.ap >= ranged.ap ? overwatchToward(battle, u, ranged, fallbackTarget(battle, u)) : null;
+        if (u.movedThisTurn) return ammoOk && u.ap >= ranged.ap ? overwatchToward(battle, u, ranged, u.investigate ? searchGoal(battle, u) : fallbackTarget(battle, u)) : null;
+        // PLAN-14: a sound to run down comes first — go to its source, then sweep around it.
+        const search = searchMove(battle, u, ammoOk ? ranged.ap : 0);
+        if (search) return search;
         const t = fallbackTarget(battle, u);
         if (!t) return null;
         const tile = enemyTile(battle, u, ranged, [{ u: t.u, x: t.x, y: t.y, z: t.z, ghost: true, age: 9 }], Math.max(1, u.ap + u.moveOnlyAp - (ammoOk ? ranged.ap : 0)), { role, hide: false, T, ammoOk, sweep: t });
@@ -145,6 +153,8 @@ export function decideEnemy(battle, u, policy) {
     // Caught in the open after moving: raise a wall.
     const wall = earthCover(battle, u, known);
     if (wall) return wall;
+    // No shot worth taking and nowhere better to stand: dig them out rather than wait on overwatch.
+    if (flush && u.ap >= battle.shotAp(u, ranged)) return flush.intent;
     if (ammoOk && u.ap >= ranged.ap) return overwatchToward(battle, u, ranged, nearestOf(u, threats));
     if (!ammoOk && canReload) return { type: 'reload', unitId: u.id, weaponId: ranged.id };
     if (shot) return shot.intent;
@@ -381,6 +391,9 @@ export function gadget(battle, u, known, T = DEFAULT_TUNING, role = 'anchor') {
             } else if (t.damage) {
                 const dug = coverAgainst(battle.store, e.x, e.y, e.z, u.x, u.y, u.z) === COVER.FULL ? 1 : 0;
                 score = hit.length + dug * 0.6 * T.flush;
+                // Frag that takes the cover down with it: count the dug-in targets' breakable cover in the blast.
+                const entrenched = known.filter(k => coverAgainst(battle.store, k.x, k.y, k.z, u.x, u.y, u.z) !== COVER.NONE);
+                score += Math.min(1.5, 0.25 * blastCoverValue(battle.store, e, t.radius, t.power || 0, entrenched, u)) * T.flush;
             }
             if (role === 'support') score *= 1.2;
             if (score >= 2.2) plays.push({ score, intent: { type: 'throw', unitId: u.id, itemId: id, to: { x: e.x, y: e.y, z: e.z } } });
@@ -466,4 +479,78 @@ export function smashToward(battle, u, prey) {
         }
     }
     return null;
+}
+
+// ------------------------------------------------------------------------------------------------- PLAN-14 search
+const unitHash = (s) => (hashString(s) >>> 0) / 4294967296;
+/**
+ * Where a unit with a search point (`u.investigate`, set by Battle.noise) should head: the source itself, each pod
+ * member a step or two off it so they spread out; once it has been reached, a sweep point about four tiles around it
+ * that turns every round. Deterministic (hashes of id and round).
+ */
+export function searchGoal(battle, u) {
+    const inv = u.investigate; if (!inv) return null;
+    const r = inv.reached ? 4 : 1.5, a = 2 * Math.PI * unitHash(`${u.id}:search:${inv.reached ? battle.round : 0}`);
+    return { x: Math.round(inv.x + Math.cos(a) * r), y: Math.round(inv.y + Math.sin(a) * r), z: inv.z };
+}
+/** One search move toward searchGoal, keeping `keepAp` for a shot. Never mutates the battle. */
+export function searchMove(battle, u, keepAp = 0) {
+    const goal = searchGoal(battle, u); if (!goal || u.movedThisTurn || hasStatus(u, 'frozen') || u.formationId) return null;
+    const budgetAp = Math.max(1, u.ap + u.moveOnlyAp - keepAp);
+    const search = battle.reach(u, budgetAp * battle.mobility(u));
+    const d = n => Math.hypot(n.x - goal.x, n.y - goal.y) + Math.abs(n.z - goal.z) * 1.5;
+    let best = null, bd = Infinity;
+    for (const n of search.nodes.values()) {
+        if (battle.occupant(n.x, n.y, n.z) && !same(n, u)) continue;
+        if (battle.field?.isBurning?.(n.x, n.y, n.z)) continue;
+        const v = d(n) - (u.drone ? 0 : 0.4 * coverAgainst(battle.store, n.x, n.y, n.z, goal.x, goal.y, goal.z));
+        if (v < bd - 1e-9) { bd = v; best = n; }
+    }
+    if (!best || same(best, u) || d(best) >= d(u) - 0.75) return null;
+    return { type: 'move', unitId: u.id, to: { x: best.x, y: best.y, z: best.z } };
+}
+/** Unalerted pods that heard something walk over to look (before their patrol). */
+export function investigateStep(battle, u) {
+    if (!u.investigate || WALKERS[u.type]) return null;
+    const guns = (u.weapons || []).map(id => WEAPONS[id]).filter(w => w?.kind === 'ballistic');
+    return searchMove(battle, u, guns.length ? Math.min(2, guns[0].ap) : 0);
+}
+/** Drone techs put a drone up whenever they may (validated by the battle: cooldown, two at most, a free tile). */
+export function launchIntent(battle, u) {
+    if (!u.abilities?.includes('launch_drone') || u.ap < 1) return null;
+    const intent = { type: 'ability', unitId: u.id, abilityId: 'launch_drone' };
+    return battle.validate(intent) ? null : intent;
+}
+/**
+ * PLAN-14 search drones: unarmed spotters. With a squad member in view the drone holds that view at a safe distance
+ * (backing off inside 5 tiles); otherwise it runs down the latest sound, then the side's last known positions, then
+ * sweeps a ring around its tech that turns every round.
+ */
+export function decideDrone(battle, u) {
+    if (u.ap + u.moveOnlyAp < 1 || u.movedThisTurn || hasStatus(u, 'frozen')) return null;
+    const seen = battle.enemiesOf(u).filter(p => battle.sees(u, p));
+    const budget = (u.ap + u.moveOnlyAp) * battle.mobility(u);
+    const nodes = () => [...battle.reach(u, budget).nodes.values()].filter(n => !(battle.occupant(n.x, n.y, n.z) && !same(n, u)));
+    if (seen.length) {
+        const near = nearestOf(u, seen);
+        if (dist2(near, u) >= 5) return null;
+        let best = null, bs = -Infinity;
+        for (const n of nodes()) {
+            const d = dist2(n, near); if (d < 5 || d > 10) continue;
+            const s = (battle.sightLine({ x: n.x + .5, y: n.y + .5, h: n.z + 2.5 }, battle.chest(near)) ? 10 : 0) - Math.abs(d - 7);
+            if (s > bs) { bs = s; best = n; }
+        }
+        return best && !same(best, u) ? { type: 'move', unitId: u.id, to: { x: best.x, y: best.y, z: best.z } } : null;
+    }
+    let goal = u.investigate ? searchGoal(battle, u) : null;
+    if (!goal) { const ghost = enemyThreats(battle, u).sort((a, b) => a.age - b.age || dist2(a, u) - dist2(b, u))[0]; if (ghost) goal = { x: ghost.x, y: ghost.y, z: ghost.z }; }
+    if (!goal) {
+        const tech = battle.unit(u.techId), c = tech && alive(tech) ? tech : (u.home || u), a = 2 * Math.PI * unitHash(`${u.id}:sweep:${battle.round}`);
+        goal = { x: Math.round(c.x + Math.cos(a) * 10), y: Math.round(c.y + Math.sin(a) * 10), z: c.z };
+    }
+    const d = n => Math.hypot(n.x - goal.x, n.y - goal.y) + Math.abs(n.z - goal.z);
+    let best = null, bd = Infinity;
+    for (const n of nodes()) { const v = d(n); if (v < bd - 1e-9) { bd = v; best = n; } }
+    if (!best || same(best, u) || bd >= d(u) - 0.75) return null;
+    return { type: 'move', unitId: u.id, to: { x: best.x, y: best.y, z: best.z } };
 }

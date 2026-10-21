@@ -52,7 +52,6 @@ import { WEAPONS, THROWABLES } from '../../shared/content/weapons.js';
 import { reserveAmmo } from '../../shared/inventory/Equipment.js';
 import { ABILITIES } from '../../shared/content/units.js';
 
-const PART_KEYS = { z: 'head', x: 'torso', c: 'armL', v: 'armR', g: 'legs' };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 /**
@@ -110,7 +109,7 @@ export class Game {
     }
 
     // ------------------------------------------------------------------ lifecycle
-    async start(session) {
+    async start(session, { progress = null } = {}) {
         this.audio.stopAll();
         this.audio.active = true;
         this.cameraDirector.end();
@@ -122,7 +121,9 @@ export class Game {
         this.views.clear();
         this.overlays.clearRange(); this.overlays.clearPath(); this.overlays.clearAim(); this.overlays.clearDebugLayer();
         const store = this.battle.store;
+        await progress?.('art');
         await this.libraryReady;
+        await progress?.('world');
         this.scene.setBounds(store.width, store.depth, store.height);
         this.scene.rig.resetTactical();this.scene.syncPassCamera();
         this.scene.setMission(this.battle.mission);
@@ -146,8 +147,9 @@ export class Game {
         this.refreshBuildingView({rebuild:false});
         this.voxelView.rebuildAll();
         this.lanterns.scan(store, this.battle.mission?.visual?.decor);
-        this.roadMarks.setCut(this.cutLevel);this.roadMarks.build(store);
+        this.roadMarks.setCut(this.cutLevel);this.roadMarks.build(store,this.battle.mission?.visual?.roadPaint);
         this.cameraDirector.store = store;
+        await progress?.('squad');
         await Promise.all(this.battle.units.map(u => this.addView(u)));
         this.selected = null; this.mode = { kind: 'move' };
         this.intelOverlaySeq=null;this.overlays.showIntel(this.battle);
@@ -311,7 +313,7 @@ export class Game {
     setMode(m) {
         if (m.kind === 'shoot' && m.weaponId === 'handcannon' && (this.mode.kind !== 'shoot' || this.mode.weaponId !== m.weaponId)) this.audio.play('handgunClick', { volume: 0.5 });
         if (this.cameraDirector.phase === 'prepare') this.cameraDirector.end();
-        this.mode = m;this.aimDrag=null;this.rawAim=null;
+        this.mode = m;this.aimDrag=null;this.rawAim=null;this.aimPick=null;
         if (['throw','gadget','breach'].includes(m.kind)) this.views.get(this.selected)?.flashStatus?.(); this.targetInfo = null;this.freeAim=null;this.freeAimManual=false;this.moveConfirmation=null;this.aim.clear();this.aimStance=null;
         this.aimPointer.setEnabled(m.kind==='shoot');
         this.overlays.clearAim();
@@ -674,13 +676,13 @@ export class Game {
         if (this.debug.onKey(e, key)) return;
         if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) { e.preventDefault(); this.keys.add(key); return; }
         const u = this.selectedUnit();
-        if (this.mode.kind === 'shoot' && PART_KEYS[key] && this.targetInfo) { this.setAimPart(PART_KEYS[key]); return; }
         switch (key) {
             case 'q': this.scene.rotate(-1); break;
             case 'e': this.scene.rotate(1); break;
             case 'pageup': this.changeLevel(1); break;
             case 'pagedown': this.changeLevel(-1); break;
-            case 'tab': e.preventDefault(); if (this.mode.kind === 'shoot') this.cycleTarget(e.shiftKey ? -1 : 1); else this.cycleUnit(e.shiftKey ? -1 : 1); break;
+            // PLAN-14: targets are chosen with the reticle only; Tab always moves on to the next soldier.
+            case 'tab': e.preventDefault(); if (this.mode.kind === 'shoot') this.cancel(); this.cycleUnit(e.shiftKey ? -1 : 1); break;
             case 'enter': case ' ': e.preventDefault(); if (this.mode.kind === 'shoot') this.confirmFire(); else if (key === 'enter') this.endTurn(); break;
             case 'backspace': case 'escape': this.cancel(); break;
             case 'h': case 'home': e.preventDefault(); this.focusUnit(u); this.focusFloor(u); break;
@@ -844,7 +846,7 @@ export class Game {
             this.targetInfo = { key, target, part, byPart, anyHit: any, blocked, friendly, spread, mods, muzzle, lean, distance, cover, flanked: cover === COVER.NONE, ap: this.mode.suppress ? ABILITIES.suppress.ap : this.battle.shotAp(u, w), inRange: distance <= weaponBuild(u,w).maxRange };
         }
         // Target selection re-frames and zooms; body-part changes and free aim keep the current framing.
-        const anchor=partCentre(target,part);this.freeAimManual=false;this.rawAim=null;this.lastTargetId=target.id;
+        const anchor=partCentre(target,part);this.freeAimManual=false;this.rawAim=null;this.lastTargetId=target.id;this.aimPick={unitId:target.id,part};
         if(frame||!this.aim.current||this.cameraDirector.phase!=='prepare'){this.aim.snap(anchor);this.freeAim={...anchor};this.frameAim(u,anchor);}
         else this.aim.setTarget(anchor);
         if(frame)this.cameraDirector.focusTarget(new THREE.Vector3(anchor.x,anchor.h,anchor.y));
@@ -884,6 +886,16 @@ export class Game {
             if(this.targetInfo)this.targetInfo.spread=spread;
         }
     }
+    /** PLAN-14: hit chance for the body part under the reticle (cached per stance, target position and battle step). */
+    partChance(t,part){
+        const u=this.selectedUnit(),w=WEAPONS[this.mode.weaponId];if(!u||!t||!w)return null;
+        const key=`${u.id}:${aimStanceKey(this.aimStance?.muzzle||{})}:${t.id}:${t.x},${t.y},${t.z}:${part}:${w.id}:${this.battle.seq}`;
+        if(this.partChanceCache?.key===key)return this.partChanceCache.value;
+        const {spread}=this.battle.spreadFor(u,w,partCentre(t,part),{target:t});
+        const est=estimateShot(this.battle,u,{unitId:t.id,part},{weapon:w,spread,samples:48});
+        const value={part:Math.round((est.partHit??0)*100),any:Math.round((est.hit??0)*100)};
+        this.partChanceCache={key,value};return value;
+    }
     /** The shot's origin for aiming: the current stance muzzle (lean or step-out), else the shoulder on the unit's tile. */
     aimOrigin(u){const m=this.aimStance?.unitId===u.id?this.aimStance.muzzle:null;return m?{x:m.x,y:m.y,h:m.h}:{x:u.x+.5,y:u.y+.5,h:u.z+2.35};}
     /** The visible hostile whose body the aim point sits on (for target-dependent spread: smoke, darkness, height). */
@@ -915,6 +927,8 @@ export class Game {
             // on the enemy rather than the wall or cover beside them; otherwise it lands on whatever the line meets.
             this.rawAim=step;
             const stick=this.battle?.store&&this.options.aimAssist!==false?stickyAim(this.battle,u,origin,step,{filter:t=>this.isVisible(t)}):null;
+            // PLAN-14: whatever body part sits under the reticle is the part this shot is aimed at (shown on the reticle).
+            this.aimPick=stick?{unitId:stick.unit.id,part:stick.part}:null;
             if(stick){this.aim.setTarget(stick.point);this.lastTargetId=stick.unit.id;}
             else this.aim.setTarget(this.battle?.store?resolveAimPoint(this.battle,u,origin,step,(w?.maxRange??40)+12):step);
             this.freeAimManual=true;
