@@ -16,6 +16,7 @@
 //              make yards, plazas, strips and vehicles but never invent a building
 //   gates      the district gates are evaluated and reported (not enforced: real places break
 //              some gameplay rules, and that is information, not a reason to edit the place)
+import { GEO_PROGRAMS, programForTags } from '../mapgen/geo/GeoPrograms.js';
 import { createMap } from './modern/MapKit.js';
 import { MAT } from '../voxel/Materials.js';
 import { reachable, nodeKey } from '../world/PathSearch.js';
@@ -39,23 +40,23 @@ import { rectifyNetwork, weightedGridAngle, orthogonalizeLine, orthogonalizeRing
 import { buildingContext, streetFurniture } from '../mapgen/geo/GeoContext.js';
 import { dressLandmark, landmarkHeadroom, styleFamily, LANDMARK_MAX_HEIGHT } from '../mapgen/geo/GeoLandmark.js';
 
-export const GEO_GENERATOR_VERSION = 'geo-faithful-3';   // 2: street straightening (full grid) · 3: context (tenants, uses, landmarks), real open land, lot islands
+export const GEO_GENERATOR_VERSION = 'geo-compact-4';   // 4: compact layouts, trade-specific interiors and mapped street-tree ownership
 const k2 = (x, y) => `${x},${y}`;
 const ROAD_CLASS = { motorway: 4, trunk: 4, primary: 3, secondary: 3, tertiary: 2, unclassified: 2, residential: 1, living_street: 1, service: 0 };
 const WALLS = { shop: 'brick', supermarket: 'brick', office: 'concrete_wall', warehouse: 'brick', diner: 'stucco', garage: 'brick', house: 'siding', bank: 'stone', museum: 'stone', chapel: 'stone', civic: 'stone', school: 'brick', library: 'brick', clinic: 'concrete_wall', hotel: 'brick' };
 
 /**
  * opts: { geo (BlenderGIS export), id, name, seed, objectiveName, maxRelief (voxels), rotate ('auto'|radians),
- *         maxStoreys (ModernBuilder supports 3), enforceGates (false),
+ *         maxStoreys (ModernBuilder supports 3), enforceGates (false), layoutScale (0.65–1; default 1),
  *         tagOverrides ({ [osm id]: tags } merged over the export's tags — names and uses OSM leaves blank) }
  */
-export function buildGeoDistrict({ geo, id = 'geo-district', name = 'Geo District', seed = 1, objectiveName = null, tagOverrides = {}, straighten = 'grid', maxRelief = 6, rotate = 'auto', maxStoreys = 3, enforceGates = false, timeOfDay = 'dusk', audit = true, coverRepair = true } = {}) {
+export function buildGeoDistrict({ geo, id = 'geo-district', name = 'Geo District', seed = 1, objectiveName = null, tagOverrides = {}, straighten = 'grid', maxRelief = 6, rotate = 'auto', maxStoreys = 3, enforceGates = false, timeOfDay = 'dusk', audit = true, coverRepair = true, layoutScale = 1 } = {}) {
     if (!geo?.extent) throw Error('geo: a BlenderGIS export is required');
     // frame angle: with straightening, the streets weigh in (length × class) so the smallest correction is left
     const angle = straighten === 'grid' && rotate === 'auto' ? weightedGridAngle([
         ...(geo.highways || []).map(h => ({ h, sp: roadSpec(h.tags || {}, 1) })).filter(o => o.sp && o.h.line?.length >= 2).map(o => ({ pts: o.h.line, w: 1 + o.sp.cls })),
         ...(geo.buildings || []).filter(b => b.ring?.length >= 3).map(b => ({ pts: b.ring, w: 1, closed: true }))]) : rotate;
-    const F = geoFrame(geo, { rotate: angle }), { W, D } = F, report = { theta: F.theta, size: [W, D], buildings: [], dropped: [], storeys: [], roads: [], lots: [], terrain: null, straighten: null };
+    const F = geoFrame(geo, { rotate: angle, layoutScale }), { W, D } = F, report = { layoutScale, areaRatio: layoutScale ** 2, theta: F.theta, size: [W, D], buildings: [], dropped: [], storeys: [], roads: [], lots: [], terrain: null, straighten: null };
     // straighten: the whole source is taken to cells, rectified, and used from here on in cell coordinates
     let G = geo, toC = F.toCell, ptC = F.toCell;
     if (straighten === 'grid') {
@@ -101,15 +102,15 @@ export function buildGeoDistrict({ geo, id = 'geo-district', name = 'Geo Distric
         const centre = [poly.reduce((a, p) => a + p[0], 0) / poly.length, poly.reduce((a, p) => a + p[1], 0) / poly.length];
         const inRetail = Object.keys(t).every(k => ['id', 'building'].includes(k) || k.startsWith('addr:')) && t.building === 'yes' && retailAreas.some(r => insidePoly(centre, r.poly));
         // use: a catalog override first, then the context (the building's own use, or its one tenant), then the old rules
-        const use = !override && info?.use ? info.use : null;
+        const use = programForTags(t, info?.facts) || (!override && info?.use ? info.use : null);
         const program = use?.program || (inRetail ? 'shop' : programFor(t, areaCells * F.cell * F.cell));
         // a strip-centre unit with no height in OSM is one tall storey, not the downtown default of two
-        const storeys = Math.min(maxStoreys, st.observed == null && (inRetail || t.shop || ['shop', 'supermarket', 'diner'].includes(program) && (inRetail || info?.tenants?.length)) ? 1 : st.storeys);
+        const storeys = Math.min(maxStoreys, st.observed == null && (inRetail || t.shop || ['shop', 'supermarket', 'hardware', 'market', 'diner'].includes(program) && (inRetail || info?.tenants?.length)) ? 1 : st.storeys);
         if (st.observed && st.observed !== storeys) report.storeys.push({ osm: b.osm, observed: st.observed, played: storeys });
         const name = t.name || info?.name || null;
         const slug = String(name || `osm-${b.osm}`).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
         const exact = rasterPolygon(poly, W, D).filter(([x, y]) => x >= 1 && y >= 1 && x < W - 1 && y < D - 1);   // centre-inside, for the fidelity audit
-        const mats = info?.materials || {}, def = use?.def || null;
+        const mats = info?.materials || {}, def = use?.def || GEO_PROGRAMS[program] || null;
         const fp = { id: slug, osm: b.osm, name, tags: t, program, def, storeys, observed: st.observed, cells, area: cells.length, poly, exact, info,
             wall: mats.wall || def?.wall || WALLS[program], floor: mats.floor || null, roof: mats.roof || def?.roof || null };
         // one building, several tenants (a strip of shop units): one unit per tenant, cut between their positions
@@ -266,7 +267,7 @@ export function buildGeoDistrict({ geo, id = 'geo-district', name = 'Geo Distric
         const role = roadAt.get(k2(x, y))?.role, land = landAt.get(k2(x, y));
         if (role && role !== 'sidewalk' || !role && !['green', 'plaza', 'yard'].includes(land)) continue;
         if (role === 'sidewalk') tag(m, x, y, 'verge', { force: true });
-        if (plantTree(m, x, y, 'geo:osm/tree')) realTrees++;
+        if (plantTree(m, x, y, role === 'sidewalk' ? 'road:osm/street-tree' : 'geo:osm/tree')) realTrees++;
         if (role === 'sidewalk') tag(m, x, y, 'sidewalk', { force: true });
     }
     report.realTrees = realTrees;
@@ -337,7 +338,7 @@ export function buildGeoDistrict({ geo, id = 'geo-district', name = 'Geo Distric
                 if (cells.filter(([x, y]) => x + ux * 3 < 1 || y + uy * 3 < 1 || x + ux * 3 >= W - 1 || y + uy * 3 >= D - 1).length > 0.3 * cells.length) return -1e9;
                 // shops face their car park or its drive aisle (strip centres front the lot, not the boulevard behind it)
                 // (share of the 24-cell band in front that is car park or drive aisle)
-                const lotFace = ['shop', 'supermarket', 'diner'].includes(f.program) ? cells.reduce((a, [x, y]) => { let n = 0; for (let t = 2; t < 26; t++) { const q = k2(x + ux * t, y + uy * t); if (lotSet.has(q) || roadAt.get(q)?.road.cls === 0) n++; } return a + n / 24; }, 0) / cells.length : 0;
+                const lotFace = ['shop', 'supermarket', 'hardware', 'market', 'diner'].includes(f.program) ? cells.reduce((a, [x, y]) => { let n = 0; for (let t = 2; t < 26; t++) { const q = k2(x + ux * t, y + uy * t); if (lotSet.has(q) || roadAt.get(q)?.road.cls === 0) n++; } return a + n / 24; }, 0) / cells.length : 0;
                 const road = -Math.min(...cells.map(([x, y]) => roadDist(x + dx, y + dy)));
                 // the longest run of car-park frontage is the shopfront (a big box fronts its lot along its long side)
                 // a unit cut from a strip fronts along the strip (n/s when the strip runs along x), never at its end
@@ -476,7 +477,7 @@ export function buildGeoDistrict({ geo, id = 'geo-district', name = 'Geo Distric
     m.lightRoutes = [];
     const result = m.finish({ name, spawns: { player: spawnCells, enemy }, objective, meta: {
         generatorVersion: GEO_GENERATOR_VERSION, theme: 'Geo import', lighting: timeOfDay, timeOfDay, remix,
-        geo: { source: geo.source, crs: geo.crs, origin: geo.origin, extent: geo.extent, rotationDeg: +(F.theta * 180 / Math.PI).toFixed(2), metresPerCell: F.cell, dem: report.terrain },
+        geo: { source: geo.source, crs: geo.crs, origin: geo.origin, extent: geo.extent, rotationDeg: +(F.theta * 180 / Math.PI).toFixed(2), metresPerCell: F.cell, layoutScale, dem: report.terrain },
         report, streetObjects: fill.streetObjects, cutLevels: [4, 7, 10, 13, Infinity], defaultCut: Math.max(...hf.z) + 3,
         designDecisions: ['Real terrain (DEM), streets and building outlines are pinned; the district generator only fills the land the source leaves open.',
             'Outlines are cut into wings at their reflex corners; every wing is planned by the shared interior system and wings join through doorways.',

@@ -34,9 +34,12 @@ export function designProgrammes({ buildings, target, plot, seed, objectiveKind 
     const programs = [];
     for (const b of buildings) {
         const table = PROGRAMMES[b.program] || PROGRAMMES.office, count = roomsFor(b);
+        // Select the building's trade once, so its floors share a coherent identity.
+        const trade = pick(b.program === 'shop' ? ['grocery', 'hardware', 'market'] : ['warehouse', 'packing', 'cold_storage'], `${seed}:${b.id}:trade`);
         for (let floor = 0; floor < b.storeys; floor++) {
             const list = floor === 0 ? table.ground : floor === b.storeys - 1 ? table.top : table.upper;
-            let kinds = list.slice(0, count);
+            let kinds = list.slice(0, count).map(k => k === 'sales' ? trade : k === 'warehouse' ? trade : k);
+            if (b.program === 'warehouse' && count >= 3) kinds[1] = trade === 'packing' ? 'dispatch' : 'packing';
             if (count < 3) kinds = kinds.filter(k => !k.endsWith('*'));
             if (!kinds.length) kinds = [list[0]];
             const seen = new Map();

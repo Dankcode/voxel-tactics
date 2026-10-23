@@ -15,7 +15,7 @@ export const OPPOSITE = Object.freeze({ n: 's', s: 'n', e: 'w', w: 'e' });
  */
 export const PLOT_FAMILIES = Object.freeze({
     downtown: {
-        name: 'Downtown grid', theme: 'Downtown', size: [56, 48], underground: 'subway', times: ['dusk', 'night-ops', 'overcast', 'night', 'day'],
+        name: 'Downtown grid', theme: 'Downtown', size: [48, 40], underground: 'subway', times: ['dusk', 'night-ops', 'overcast', 'night', 'day'],
         districts: { commercial: 4, residential: 1.4, plaza: 1.1 },
         text: 'A main road and a cross street through shops, offices and apartments, with a subway beneath.',
         roads(rng, LW, LD) {
@@ -27,7 +27,7 @@ export const PLOT_FAMILIES = Object.freeze({
         }
     },
     industrial: {
-        name: 'Industrial yard', theme: 'Industrial', size: [56, 48], underground: 'storm-drain', times: ['night', 'night-ops', 'dusk', 'overcast'],
+        name: 'Industrial yard', theme: 'Industrial', size: [48, 40], underground: 'storm-drain', times: ['night', 'night-ops', 'dusk', 'overcast'],
         districts: { industrial: 4, yard: 2, commercial: 0.5 },
         text: 'An access road and a service road around depots, container stacks and loading yards, over a storm drain.',
         roads(rng, LW, LD) {
@@ -38,7 +38,7 @@ export const PLOT_FAMILIES = Object.freeze({
         }
     },
     suburb: {
-        name: 'Suburb close', theme: 'Suburbs', size: [56, 48], underground: 'storm-drain', times: ['dusk', 'day', 'dawn', 'night'],
+        name: 'Suburb close', theme: 'Suburbs', size: [48, 40], underground: 'storm-drain', times: ['dusk', 'day', 'dawn', 'night'],
         districts: { residential: 4, park: 1.3, commercial: 0.5 },
         text: 'A residential road with a cul-de-sac between houses, back gardens and a pocket park, over a storm drain.',
         roads(rng, LW, LD) {

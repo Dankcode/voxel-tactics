@@ -11,7 +11,7 @@ const args = process.argv.slice(2), get = (k, d) => args.includes(k) ? args[args
 const geo = JSON.parse(await readFile(resolve(get('--export')), 'utf8'));
 const out = resolve(get('--out', 'geo-out')); await mkdir(out, { recursive: true });
 const t0 = performance.now();
-const mission = buildGeoDistrict({ geo, id: get('--id', 'geo-district'), name: get('--name', 'Geo District'), objectiveName: get('--objective', null), seed: Number(get('--seed', 1)), straighten: args.includes('--raw') ? null : 'grid', tagOverrides: get('--tags') ? JSON.parse(await readFile(resolve(get('--tags')), 'utf8')) : {} });
+const mission = buildGeoDistrict({ geo, id: get('--id', 'geo-district'), name: get('--name', 'Geo District'), objectiveName: get('--objective', null), seed: Number(get('--seed', 1)), layoutScale: Number(get('--layout-scale', 1)), straighten: args.includes('--raw') ? null : 'grid', tagOverrides: get('--tags') ? JSON.parse(await readFile(resolve(get('--tags')), 'utf8')) : {} });
 const ms = Math.round(performance.now() - t0);
 const s = mission.store, W = s.width, D = s.depth, rep = mission.meta.geoReport;
 // slate: top material colour × hill shade (PPM; convert with any image tool)

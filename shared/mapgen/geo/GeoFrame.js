@@ -26,9 +26,13 @@ export function dominantAngle(rings) {
 
 /**
  * The world → cell transform. opts.rotate: 'auto' | radians | 0.  Returns
- * { W, D, cell, theta, toCell([x, y]) → [cx, cy] (continuous), toWorld([cx, cy]) → [x, y] }.
+ * layoutScale (0.65–1) compresses the source uniformly before rasterisation, keeping the whole extent.
+ * { W, D, cell, layoutScale, theta, toCell([x, y]) → [cx, cy] (continuous), toWorld([cx, cy]) → [x, y] }.
  */
-export function geoFrame(geo, { cell = METRES_PER_CELL, rotate = 'auto', maxCells = 192 } = {}) {
+export function geoFrame(geo, { cell = METRES_PER_CELL, rotate = 'auto', maxCells = 192, layoutScale = 1 } = {}) {
+    if (!Number.isFinite(layoutScale) || layoutScale < 0.65 || layoutScale > 1) throw Error('geo.frame: layoutScale must be between 0.65 and 1');
+    if (!Number.isFinite(cell) || cell <= 0) throw Error('geo.frame: cell must be positive');
+    cell /= layoutScale;
     // the map is the export's `window` when it fetched a padded `extent` (rotate, then crop: no empty corners)
     const E = geo.window || geo.extent, Wm = E.x1 - E.x0, Hm = E.y1 - E.y0, cx0 = (E.x0 + E.x1) / 2, cy0 = (E.y0 + E.y1) / 2;
     const theta = rotate === 'auto' ? dominantAngle((geo.buildings || []).map(b => b.ring).filter(r => r?.length >= 3)) : Number(rotate) || 0;
@@ -43,7 +47,7 @@ export function geoFrame(geo, { cell = METRES_PER_CELL, rotate = 'auto', maxCell
         const rx = i * cell - Wm / 2, ry = Hm / 2 - j * cell, ci = Math.cos(theta), si = Math.sin(theta);
         return [cx0 + rx * ci - ry * si, cy0 + rx * si + ry * ci];
     };
-    return { W, D, cell, theta, toCell, toWorld, extent: E };
+    return { W, D, cell, layoutScale, theta, toCell, toWorld, extent: E };
 }
 
 // ------------------------------------------------------------------------------------------------ rasterisation

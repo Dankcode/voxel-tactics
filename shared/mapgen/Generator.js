@@ -23,7 +23,7 @@ import { hashString } from '../util/Rng.js';
 import { solveWaveFunctionCollapse } from '../generation/WaveFunctionCollapse.js';
 import { buildWithRepair } from './Repair.js';
 
-export const GENERATOR_VERSION = '4.1.0';
+export const GENERATOR_VERSION = '4.2.0';
 const unit = s => (hashString(s) >>> 0) / 4294967296;
 const SIDES = ['n', 'e', 's', 'w'];
 const k2 = (x, y) => `${x},${y}`;

@@ -27,6 +27,7 @@ export function solveFacade(b, floors, seed) {
 
 export const FACADE_KINDS = Object.freeze(['window', 'band', 'storefront', 'glazing', 'door', 'blank', 'vent', 'sign']);
 const GLAZE_PREF = {
+    grocery: 'storefront', market: 'storefront', hardware: 'storefront', packing: 'band', cold_storage: 'band', dispatch: 'band',
     living: 'glazing', dining: 'storefront', sales: 'storefront', lobby: 'glazing', open_office: 'band', kitchen: 'window', study: 'window',
     office: 'band', meeting: 'band', bedroom: 'window', unit: 'window', hall: 'window', galley: 'band', barracks: 'window',
     warehouse: 'band', workshop: 'band', loading: 'blank', storeroom: 'blank', armory: 'blank'
@@ -66,7 +67,7 @@ export function solveFacadeV3(b, floors, { seed = 1, exits = [], blank = [] } = 
         if (!room || room.gameplay === false) dom = ['blank', 'vent'];
         else {
             dom = ['window', 'band', 'blank'];
-            if (['living', 'lobby', 'open_office', 'dining', 'sales', 'unit'].includes(room.kind)) dom.push('glazing');
+            if (['living', 'lobby', 'open_office', 'dining', 'sales', 'grocery', 'market', 'hardware', 'unit'].includes(room.kind)) dom.push('glazing');
             if (s === 0 && sl.side === b.front && COMMERCIAL.has(b.program)) dom.push('storefront', 'sign');
             if (s === 1 && sl.side === b.front && COMMERCIAL.has(b.program)) dom.push('sign');
             if (b.district === 'industrial' || b.program === 'warehouse' || b.program === 'garage') dom.push('vent');

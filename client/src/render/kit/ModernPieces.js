@@ -221,6 +221,43 @@ const furniture = {
         { slot: 'frame', geometry: merge([box(1, 0.75, 0.04), box(1, 0.025, 0.7, 0, 0.0), box(1, 0.04, 0.12, 0, 0.72)]) },
         ...shelvesWithGoods(9, 0.7, [0.02, 0.38])
     ]),
+    market_stall: P({ group: 'furniture', text: 'Market vendor counter with slatted crates and striped front' }, () => [
+        { slot: 'wood', geometry: merge([...legs4(.94, .8, .7, .07), box(1, .08, .86, 0, .7), box(1, .48, .06, 0, .18, .38), ...[-.46, 0, .46].map(x => box(.04, .18, .8, x, .78))]) },
+        { slot: 'goods_a', geometry: merge([box(.3, .12, .55, -.23, .79), box(.3, .18, .55, .23, .79)]) },
+        { slot: 'accent', geometry: merge([-.3, 0, .3].map(x => box(.12, .42, .02, x, .2, .42))) }
+    ]),
+    bakery_case: P({ group: 'furniture', text: 'Glass bakery display with bread trays' }, () => [
+        { slot: 'wood', geometry: box(1, .5, .8) },
+        { slot: 'frame', geometry: merge([box(1, .04, .8, 0, .52), box(1, .04, .8, 0, .94), ...legs4(.96, .76, .42, .035, .54)]) },
+        { slot: 'glass', geometry: merge([box(1, .38, .02, 0, .56, .39), box(1, .02, .76, 0, .96)]) },
+        { slot: 'wood', geometry: merge([-.3, 0, .3].map(x => sb(.18, .12, .42, .05, x, .56))) }
+    ]),
+    chest_freezer: P({ group: 'furniture', text: 'Low chest freezer with split sliding glass lids' }, () => [
+        { slot: 'lacquer', geometry: merge([box(1, .8, .84), box(1, .08, .9, 0, .8)]) },
+        { slot: 'glass', geometry: merge([box(.44, .025, .7, -.24, .89), box(.44, .025, .7, .24, .89)]) },
+        { slot: 'chrome', geometry: box(.03, .04, .76, 0, .88) },
+        { slot: 'accent', geometry: box(.92, .12, .02, 0, .58, .43) }
+    ]),
+    packing_table: P({ group: 'furniture', text: 'Shipping bench with cartons, tape and a parcel scale' }, () => [
+        { slot: 'iron', geometry: merge([...legs4(.94, .74, .68, .06), box(.9, .04, .64, 0, .18)]) },
+        { slot: 'wood', geometry: box(1, .07, .8, 0, .68) },
+        { slot: 'goods_c', geometry: merge([box(.34, .24, .32, -.25, .75), box(.28, .14, .26, .24, .75)]) },
+        { slot: 'chrome', geometry: box(.3, .04, .3, .24, .74) }
+    ]),
+    conveyor: P({ group: 'furniture', text: 'Modular parcel roller conveyor' }, () => [
+        { slot: 'iron', geometry: merge([...legs4(.94, .66, .62, .05), box(1, .1, .05, 0, .61, -.36), box(1, .1, .05, 0, .61, .36)]) },
+        { slot: 'chrome', geometry: merge(Array.from({ length: 6 }, (_, i) => cyl(.045, .045, .64, 8).rotateX(Math.PI / 2).translate(-.42 + i * .168, .67, -.32))) },
+        { slot: 'goods_a', geometry: box(.36, .22, .4, 0, .72) }
+    ]),
+    cable_spool: P({ group: 'furniture', text: 'Timber cable reel, low circular cover' }, () => [
+        { slot: 'wood', geometry: merge([cyl(.46, .46, .08, 12).translate(0, .05, 0), cyl(.46, .46, .08, 12).translate(0, .82, 0)]) },
+        { slot: 'iron', geometry: cyl(.3, .3, .7, 12).translate(0, .12, 0) }
+    ]),
+    parts_bin: P({ group: 'furniture', text: 'Hardware sorting bins in a steel cabinet' }, () => [
+        { slot: 'frame', geometry: merge([box(1, .78, .07, 0, 0, -.4), box(1, .06, .8), box(1, .06, .8, 0, .75)]) },
+        { slot: 'goods_c', geometry: merge(Array.from({ length: 6 }, (_, i) => box(.27, .24, .6, -.32 + i % 3 * .32, .09 + Math.floor(i / 3) * .32, -.02))) },
+        { slot: 'chrome', geometry: merge(Array.from({ length: 6 }, (_, i) => box(.13, .025, .02, -.32 + i % 3 * .32, .23 + Math.floor(i / 3) * .32, .29))) }
+    ]),
     produce_display: P({group:'furniture',text:'Low sloping produce bins, open timber trays'},()=>[
         {slot:'wood',geometry:merge([...legs4(.92,.75,.5,.07),box(1,.08,.85,0,.48),box(1,.1,.85,0,.78),...[-.46,0,.46].map(x=>box(.035,.16,.85,x,.55))])},
         {slot:'goods_a',geometry:merge(Array.from({length:12},(_,i)=>cyl(.075,.075,.1,6).translate(-.36+(i%4)*.24,.6, -.29+Math.floor(i/4)*.27)))},

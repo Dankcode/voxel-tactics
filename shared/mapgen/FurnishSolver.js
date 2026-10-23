@@ -9,7 +9,7 @@
 // where its fight starts. Story beats (the command room's CCTV bank or cash table, an arms cache) are pinned first.
 // A connectivity guard drops any cluster that would split the floor (local repair).
 import { solveWaveFunctionCollapse } from '../generation/WaveFunctionCollapse.js';
-import { FURNITURE_ITEMS, ROOM_FURNITURE, footprintApi, floorComponents, PLANT_ROOMS, YAW_OF } from '../mission/modern/ModernBuilder.js';
+import { FURNITURE_ITEMS, furnitureForRoom, footprintApi, floorComponents, PLANT_ROOMS, YAW_OF } from '../mission/modern/ModernBuilder.js';
 import { MAT, AIR } from '../voxel/Materials.js';
 import { fbm, NOISE_LAYERS } from './Fields.js';
 import { STOREY } from './KitMetric.js';
@@ -29,7 +29,7 @@ export const BEAT_ITEMS = Object.freeze({
     squat: { mat: 'bed', len: 1, dep: 2, h: 1, place: 'wall', piece: (i, j) => (j === 0 ? 'bed_head_single' : 'bed_foot_single') }
 });
 const ITEMS = { ...FURNITURE_ITEMS, ...BEAT_ITEMS };
-const COVER_ITEMS = new Set(['sofa', 'loveseat', 'kitchen', 'island', 'desk', 'desk_pair', 'conference', 'counter', 'reception', 'checkout', 'aisle', 'produce', 'hardware_shelf', 'warehouse_rack', 'stock_rack', 'wall_shelf', 'crates', 'pallet_stack', 'pallets', 'workbench', 'booth', 'bookcase', 'filing', 'wardrobe', 'lockers', 'cctv_bank', 'cash_table', 'arms_cache']);
+const COVER_ITEMS = new Set(['sofa', 'loveseat', 'kitchen', 'island', 'desk', 'desk_pair', 'conference', 'counter', 'reception', 'checkout', 'aisle', 'produce', 'hardware_shelf', 'warehouse_rack', 'stock_rack', 'wall_shelf', 'crates', 'pallet_stack', 'pallets', 'workbench', 'booth', 'bookcase', 'filing', 'wardrobe', 'lockers', 'cctv_bank', 'cash_table', 'arms_cache', 'market_stall', 'bakery_case', 'chest_freezer', 'packing_table', 'conveyor', 'cable_spool', 'parts_bin']);
 const BEAT_FOR = { climax: { office: 'cctv_bank', warehouse: 'cctv_bank', garage: 'cctv_bank', house: 'cash_table', apartment: 'cash_table', shop: 'cash_table', diner: 'cash_table' }, escalation: 'arms_cache' };
 
 /** Wall runs and centre chunks of a room (cells already free of doors, stairs and the core). */
@@ -59,7 +59,7 @@ export function roomSlots(store, room, free, fz) {
         flush();
         for (const s of slots.filter(s => s.side === side)) for (const c of s.cells) claimed.add(k2(...c));
     }
-    // Centre chunks: cells whose four neighbours are all in the room, away from the wall slots.
+    // Centre runs (up to three cells, so shelves and conveyors fit): cells whose four neighbours are all in the room, away from the wall slots.
     const xs = room.cells.map(c => c[0]), ys = room.cells.map(c => c[1]);
     const longX = Math.max(...xs) - Math.min(...xs) >= Math.max(...ys) - Math.min(...ys), along = longX ? [1, 0] : [0, 1];
     const centre = room.cells.filter(([x, y]) => free.has(k2(x, y)) && !claimed.has(k2(x, y)) && Object.values(SIDE).every(([dx, dy]) => inRoom.has(k2(x + dx, y + dy))))
@@ -67,8 +67,12 @@ export function roomSlots(store, room, free, fz) {
     const used = new Set();
     for (const c of centre) {
         if (used.has(k2(...c))) continue;
-        const next = [c[0] + along[0], c[1] + along[1]];
-        const pair = centre.some(o => o[0] === next[0] && o[1] === next[1]) && !used.has(k2(...next)) ? [c, next] : [c];
+        const pair = [c];
+        for (let step = 1; step <= 2; step++) {
+            const p = [c[0] + along[0] * step, c[1] + along[1] * step];
+            if (!centre.some(o => o[0] === p[0] && o[1] === p[1]) || used.has(k2(...p))) break;
+            pair.push(p);
+        }
         for (const p of pair) used.add(k2(...p));
         slots.push({ id: `c${slots.length}`, kind: 'center', cells: pair, along, away: longX ? [0, 1] : [1, 0] });
     }
@@ -131,8 +135,9 @@ export function furnishBuilding(m, b, out, { beats = [], seed = m.seed } = {}) {
                 decor.push({ kind: beat.id === 'climax' ? 'cash_stack' : 'rifle_rack', x, y, z: fz + 1, yaw: 0, room: room.id });
                 report.push({ kind: 'beat', beat: beat.id, item: 'decor', room: room.name });
             }
-            const pool = [...new Set([...(ROOM_FURNITURE[room.kind] || []), ...(beatItem ? [beatItem] : [])])];
-            const order = new Map((ROOM_FURNITURE[room.kind] || []).map((id, i) => [id, i]));
+            const recipe = furnitureForRoom(room, `${seed}:${b.id}`);
+            const pool = [...new Set([...recipe, ...(beatItem ? [beatItem] : [])])];
+            const order = new Map([...new Set(recipe)].map((id, i) => [id, i]));
             const geo = new Map(), domains = new Map(), fixed = new Map();
             for (const slot of slots) {
                 const dom = ['empty'];
@@ -172,7 +177,7 @@ export function furnishBuilding(m, b, out, { beats = [], seed = m.seed } = {}) {
             const chosen = slots.map(sl => ({ sl, t: pick.get(sl.id) })).filter(x => x.t && x.t !== 'empty')
                 .sort((a, c) => (a.t.startsWith(`${beatItem}@`) ? -1 : 0) - (c.t.startsWith(`${beatItem}@`) ? -1 : 0) || (order.get(a.t.split('@')[0]) ?? 9) - (order.get(c.t.split('@')[0]) ?? 9));
             // Each cluster appears as often as the programme lists it (the beat once); WFC picks where, not how many.
-            const allowed = new Map(); for (const id of ROOM_FURNITURE[room.kind] || []) allowed.set(id, (allowed.get(id) || 0) + 1);
+            const allowed = new Map(); for (const id of recipe) allowed.set(id, (allowed.get(id) || 0) + 1);
             if (beatItem) allowed.set(beatItem, 1);
             const count = new Map();
             for (const { sl, t } of chosen) {

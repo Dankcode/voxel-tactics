@@ -1,4 +1,10 @@
-# Geo import — real places at 1:1 (experiment)
+# Geo import — real places at a tactical scale
+
+Catalog maps use `build.layoutScale: 0.8`: 20% shorter distances on each axis and about 36% less ground area.
+The full source extent, street network and relative building placement are retained; room walls, doors, stairs,
+characters and furniture still compile at the regular gameplay grid scale. This is a tactical adaptation, with
+voxel rounding and minimum room sizes, rather than a geometrically exact miniature. Use `layoutScale: 1` for
+faithful comparisons (the default for direct `buildGeoDistrict` calls). Values below 0.65 are rejected.
 
 Rebuild a real map section (OpenStreetMap buildings, streets and car parks plus a DEM) as a playable voxel district.
 Building interiors are planned by the shared parcel interior system (ModernBuilder rooms, stairs, glazing, furniture);
@@ -91,7 +97,7 @@ entry to `shared/mission/generated/GeoCatalog.js`. Play: `?play=<id>&fixture=1&s
 
 | Layer | Rule |
 |---|---|
-| Frame | One uniform scale (0.9 m per cell); rotated by the street (length × class) and wall weighted 4θ mean; cropped to the export's `window` (the Blender stage fetches `pad` metres more on every side, so rotated corners hold data). |
+| Frame | One uniform source scale (0.9 / layoutScale metres per cell); rotated by the street (length × class) and wall weighted 4θ mean; cropped to the export's `window` (the Blender stage fetches `pad` metres more on every side, so rotated corners hold data). |
 | Straighten | (`straighten: 'grid'`, default) GeoRectify: centrelines simplified (junctions pinned), every segment snapped to an axis (30–60° diagonals → an L), shared coordinates solved as weighted least-squares means, parallel carriageways kept in order; buildings, areas and footways rubber-sheeted along; every outline and land-use ring squared to the grid. Streets are rasterised by box distance (square ends and corners), junction squares belong to the longer street, and each street segment is a level plateau, so no slanted edge or diagonal height step is left. The report's `straighten` block is the distortion budget (max/mean shift in cells). |
 | Terrain | DEM → bare ground → whole voxels (1-voxel steps are walkable: `maxStep` 1). Footprints and lots are flattened to plateaus with a 2-cell apron; a relaxation pass keeps every 8-neighbour step ≤ 1. Relief over 6 voxels is compressed and reported. |
 | Streets | OSM centrelines buffered by lanes (3.3 m per lane + 2 m kerb parking; service 3.6 m): carriageway, kerb, 2-cell sidewalk, dashed centre line on two-way streets. Kerb stalls, street trees and lamps follow the local ground. |

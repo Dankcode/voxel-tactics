@@ -33,9 +33,18 @@ export const GEO_PROGRAMS = {
     hotel: { wall: 'brick', floor: 'carpet', wet: 'ceramic', roof: 'flat',
         rows: [{ depth: 0.5, rooms: [{ kind: 'lobby', w: 0.6 }, { kind: 'dining', w: 0.4 }] }, { depth: 0.5, rooms: [{ kind: 'unit', w: 0.5 }, { kind: 'hall', w: 4 }, { kind: 'unit', w: 0.5 }] }],
         upper: { lobby: 'unit', dining: 'unit', unit: 'unit', hall: 'hall' }, entry: 'lobby', back: ['unit'], side: ['dining'], stairs: ['hall'] },
+    market: { wall: 'brick', floor: 'tile_dark', wet: 'ceramic', roof: 'flat',
+        rows: [{ depth: 0.72, rooms: [{ kind: 'market', w: 1 }] }, { depth: 0.28, rooms: [{ kind: 'packing', w: 0.6 }, { kind: 'cold_storage', w: 0.4 }] }],
+        entry: 'market', back: ['packing', 'cold_storage'], side: ['market'] },
+    hardware: { wall: 'brick', floor: 'concrete', wet: 'ceramic', roof: 'flat',
+        rows: [{ depth: 0.65, rooms: [{ kind: 'hardware', w: 1 }] }, { depth: 0.35, rooms: [{ kind: 'workshop', w: 0.55 }, { kind: 'dispatch', w: 0.45 }] }],
+        entry: 'hardware', back: ['dispatch', 'workshop'], side: ['hardware'] },
+    warehouse: { wall: 'siding', floor: 'concrete', wet: 'concrete', roof: 'metal', rollers: true,
+        rows: [{ depth: 0.28, rooms: [{ kind: 'loading', w: 0.65 }, { kind: 'office', w: 0.35 }] }, { depth: 0.72, rooms: [{ kind: 'warehouse', w: 0.65 }, { kind: 'packing', w: 0.35 }] }],
+        entry: 'loading', back: ['warehouse', 'packing'], side: ['warehouse', 'office'], open: [['warehouse', 'packing']] },
     supermarket: { wall: 'brick', floor: 'tile_dark', wet: 'ceramic', roof: 'flat',
-        rows: [{ depth: 0.78, rooms: [{ kind: 'sales', w: 1 }] }, { depth: 0.22, rooms: [{ kind: 'storeroom', w: 0.7 }, { kind: 'office', w: 0.3 }] }],
-        entry: 'sales', back: ['storeroom'], side: ['office'] }
+        rows: [{ depth: 0.78, rooms: [{ kind: 'grocery', w: 1 }] }, { depth: 0.22, rooms: [{ kind: 'storeroom', w: 0.7 }, { kind: 'office', w: 0.3 }] }],
+        entry: 'grocery', back: ['storeroom'], side: ['grocery', 'office'] }
 };
 
 const has = (t, k, re) => t[k] != null && re.test(String(t[k]));
@@ -58,6 +67,9 @@ export function programForTags(t = {}, facts = null) {
     if (has(t, 'amenity', /^(police|fire_station|ranger_station)$/)) return P(t.amenity === 'fire_station' ? 'garage' : 'bunker', 'emergency');
     if (has(t, 'amenity', /^fuel$/)) return P('station', 'fuel');
     if (has(t, 'amenity', /^(restaurant|fast_food|cafe|bar|pub|ice_cream|food_court|biergarten)$/)) return P('diner', 'food');
+    if (has(t, 'amenity', /^marketplace$/) || has(t, 'building', /^marketplace$/)) return P('market', 'market');
+    if (has(t, 'shop', /^(hardware|doityourself)$/)) return P('hardware', 'hardware');
+    if (has(t, 'shop', /^car_repair$/)) return P('garage', 'vehicle repair');
     if (has(t, 'shop', /^(supermarket|wholesale|department_store|hardware|doityourself|furniture|variety_store|general)$/)) return P('supermarket', 'big shop');
     if (t.shop) return P('shop', 'shop');
     if (has(t, 'amenity', /^(pharmacy)$/)) return P('shop', 'pharmacy');

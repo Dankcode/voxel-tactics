@@ -14,6 +14,7 @@ import { solveDressing } from '../../mapgen/DressingSolver.js';
 // Doors: a spanning tree over room adjacency from the entry room, then extra doors until most rooms have two ways
 // in (XCOM breaching). Open-plan pairs (living ↔ kitchen) get a 2-wide opening instead of a door. Furniture is
 // placed with a connectivity guard: every floor cell stays reachable from the entry.
+import { hashString } from '../../util/Rng.js';
 import { MAT, AIR } from '../../voxel/Materials.js';
 import { buildingEra, markBuildingEdges } from '../BuildingEra.js';
 import { createStairRun } from '../../world/StairRun.js';
@@ -98,6 +99,7 @@ export const PROGRAMS = {
 };
 
 const GLAZE = {
+    grocery: 'full', market: 'full', hardware: 'full', packing: 'clerestory', cold_storage: 'none', dispatch: 'clerestory',
     living: 'full', dining: 'full', sales: 'full', lobby: 'full', open_office: 'full', kitchen: 'band', study: 'band',
     office: 'band', meeting: 'band', bedroom: 'punched', unit: 'punched', hall: 'punched', galley: 'band', barracks: 'punched',
     warehouse: 'clerestory', workshop: 'clerestory', loading: 'none', storeroom: 'none', bathroom: 'none', restroom: 'none',
@@ -134,6 +136,13 @@ const ITEMS = {
     bookcase: { mat: 'shelving', len: 2, dep: 1, h: 2, place: 'wall', piece: (i, j, n, h) => (h === 0 ? 'bookcase_lower' : 'bookcase_upper') },
     vanity: { mat: 'cabinet', len: 1, dep: 1, h: 1, place: 'wall', piece: () => 'vanity', decor: (f, add) => { add('toilet', f.beside(1)); add('shower', f.beside(-1)); } },
     washer: { mat: 'appliance', len: 1, dep: 1, h: 1, place: 'wall', piece: () => 'washer' },
+    market_stall: { mat: 'cabinet', len: 2, dep: 1, h: 1, place: 'center', piece: () => 'market_stall' },
+    bakery_case: { mat: 'cabinet', len: 2, dep: 1, h: 1, place: 'wall', piece: () => 'bakery_case' },
+    chest_freezer: { mat: 'appliance', len: 2, dep: 1, h: 1, place: 'center', piece: () => 'chest_freezer' },
+    packing_table: { mat: 'desk', len: 2, dep: 1, h: 1, place: 'center', piece: () => 'packing_table' },
+    conveyor: { mat: 'desk', len: 3, minLen: 2, dep: 1, h: 1, place: 'center', piece: () => 'conveyor' },
+    cable_spool: { mat: 'pallet', len: 1, dep: 1, h: 1, place: 'center', piece: () => 'cable_spool' },
+    parts_bin: { mat: 'cabinet', len: 2, dep: 1, h: 1, place: 'wall', piece: () => 'parts_bin' },
     aisle: { mat: 'shelving', len: 3, dep: 1, h: 2, place: 'center', piece: (i, j, n, h) => (h === 0 ? 'store_shelf_lower' : 'store_shelf_upper') },
     wall_shelf: { mat: 'shelving', len: 3, dep: 1, h: 2, place: 'wall', piece: (i, j, n, h) => (h === 0 ? 'store_shelf_lower' : 'store_shelf_upper') },
     produce: {mat:'shelving',len:2,dep:1,h:1,place:'center',piece:()=> 'produce_display'},
@@ -157,8 +166,14 @@ const ITEMS = {
 export const ROOM_FURNITURE = {
     living: ['sofa', 'tv', 'loveseat'], kitchen: ['kitchen', 'fridge', 'island'], bedroom: ['bed', 'wardrobe'], study: ['desk', 'bookcase'],
     bathroom: ['vanity'], restroom: ['vanity'], bath: ['vanity'], utility: ['washer', 'wall_shelf'],
-    sales: ['aisle', 'produce', 'checkout', 'cooler', 'hardware_shelf'], storeroom: ['stock_rack', 'pallets', 'crates', 'water_drum'], office: ['desk', 'filing', 'loveseat'],
+    sales: ['checkout', 'aisle', 'wall_shelf'], storeroom: ['stock_rack', 'pallets', 'crates', 'water_drum'], office: ['desk', 'filing', 'loveseat'],
     dining: ['booth', 'booth', 'booth', 'counter', 'booth'], galley: ['kitchen', 'fridge', 'island'], warehouse: ['warehouse_rack', 'warehouse_rack', 'pallet_stack', 'pallet_stack', 'drums', 'crates', 'pallets'],
+    grocery: ['checkout', 'produce', 'chest_freezer', 'aisle', 'aisle', 'cooler', 'bakery_case'],
+    market: ['market_stall', 'produce', 'market_stall', 'checkout', 'bakery_case'],
+    hardware: ['checkout', 'hardware_shelf', 'parts_bin', 'cable_spool', 'workbench'],
+    packing: ['packing_table', 'conveyor', 'stock_rack', 'pallets'],
+    cold_storage: ['chest_freezer', 'cooler', 'cooler', 'stock_rack'],
+    dispatch: ['packing_table', 'stock_rack', 'pallet_stack', 'tool_chest'],
     loading: ['pallets', 'pallet_stack', 'crates'], workshop: ['workbench', 'drums', 'wall_shelf', 'pallet_stack'], lobby: ['reception', 'loveseat'],
     open_office: ['desk_pair', 'desk_pair', 'desk_pair', 'filing'], meeting: ['conference', 'tv'], hall: ['filing'], unit: ['bed', 'tv', 'desk'],
     barracks: ['bunks', 'bunks', 'lockers', 'bunks'], armory: ['lockers', 'crates', 'drums', 'wall_shelf'],
@@ -167,6 +182,23 @@ export const ROOM_FURNITURE = {
     vestry: ['wardrobe', 'bookcase'], chamber: ['conference', 'booth', 'booth'], classroom: ['desk_pair', 'desk_pair', 'bookcase'],
     reading: ['bookcase', 'bookcase', 'desk', 'bookcase'], ward: ['bed_single', 'bed_single', 'aid_station']
 };
+// A recipe changes functional clusters, not just their positions. Shared by geo and operation furnishing.
+export const INTERIOR_RECIPES = {
+    office: [['desk', 'filing', 'loveseat'], ['desk', 'server_rack', 'bookcase'], ['desk_pair', 'filing', 'aid_station']],
+    living: [['sofa', 'tv', 'loveseat'], ['loveseat', 'bookcase', 'desk'], ['sofa', 'bookcase', 'tv']],
+    bedroom: [['bed', 'wardrobe'], ['bed_single', 'desk', 'bookcase'], ['bed_single', 'bed_single', 'wardrobe']],
+    dining: [['booth', 'booth', 'counter', 'booth'], ['booth', 'booth', 'bakery_case', 'checkout'], ['counter', 'booth', 'cooler']],
+    warehouse: [['warehouse_rack', 'warehouse_rack', 'packing_table', 'pallet_stack', 'pallets'], ['conveyor', 'packing_table', 'stock_rack', 'crates'], ['warehouse_rack', 'cable_spool', 'parts_bin', 'pallet_stack']],
+    storeroom: [['stock_rack', 'pallets', 'crates'], ['wall_shelf', 'packing_table', 'tool_chest'], ['stock_rack', 'stock_rack', 'pallet_stack']]
+};
+export function furnitureForRoom(room, seed) {
+    const recipes = INTERIOR_RECIPES[room.kind];
+    const base = recipes ? recipes[(hashString(`${seed}:${room.buildingId || ''}:${room.id}:${room.kind}:${room.floorZ || 0}`) >>> 0) % recipes.length] : ROOM_FURNITURE[room.kind] || [];
+    // Big imported halls need more than the tiny-room kit, with one checkout and repeated working bays.
+    if (!['sales', 'storeroom', 'grocery', 'market', 'hardware', 'warehouse', 'packing', 'cold_storage', 'dispatch'].includes(room.kind)) return base;
+    const bays = Math.max(1, Math.min(12, Math.ceil((room.cells?.length || 0) / 100)));
+    return [...base, ...Array.from({ length: bays - 1 }, () => base.filter(id => !['checkout', 'tool_chest', 'bakery_case'].includes(id))).flat()];
+}
 const PLANTS = new Set(['living', 'lobby', 'office', 'open_office', 'study', 'dining', 'meeting', 'unit']);
 
 // ------------------------------------------------------------------------------------------------ build
@@ -445,7 +477,7 @@ export function planRows(IW, ID, prog, spec = {}) {
     };
     // Exterior door slots.
     const exits = [];
-    const hub = new Set(['living', 'sales', 'dining', 'lobby', 'hall', 'loading', 'open_office', 'warehouse', 'workshop']);
+    const hub = new Set(['living', 'sales', 'grocery', 'market', 'hardware', 'packing', 'cold_storage', 'dispatch', 'dining', 'lobby', 'hall', 'loading', 'open_office', 'warehouse', 'workshop']);
     const addExit = (room, side, entry = false) => {
         const r = rooms[room];
         if (!r.gameplay) return false;
@@ -562,7 +594,7 @@ export function furnish(store, { floorSet, rooms, fz, keepFree, obstacles, rng, 
         const wallAt = (x, y) => !roomSet.has(k2(x, y)) && store.isSolid(x, y, fz + 1) && store.get(x, y, fz + 1) !== MAT.door;
         const cap = Math.ceil(room.cells.length * 0.38);
         let used = 0;
-        const list = kits ? kits.get(room).items : (ROOM_FURNITURE[room.kind] || []);
+        const list = kits ? kits.get(room).items : furnitureForRoom(room, rng.next());
         // Long axis of the room (centre items run along it).
         const xs = room.cells.map(c => c[0]), ys = room.cells.map(c => c[1]);
         const longX = Math.max(...xs) - Math.min(...xs) >= Math.max(...ys) - Math.min(...ys);
