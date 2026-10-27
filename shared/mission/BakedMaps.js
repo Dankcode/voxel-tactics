@@ -59,7 +59,7 @@ export function bakedMission(id, seed, { generator, source } = {}) {
 }
 
 /** Browser: fetch and register the bake for a map/seed (resolves false when there is none). */
-export async function preloadBaked(id, seed, { base = '/geo', fetchFn = globalThis.fetch } = {}) {
+export async function preloadBaked(id, seed, { base = '/places', fetchFn = globalThis.fetch } = {}) {
     if (hasBaked(id, seed) || !fetchFn) return hasBaked(id, seed);
     try {
         const res = await fetchFn(`${base}/${id}/baked-s${seed}.json`);

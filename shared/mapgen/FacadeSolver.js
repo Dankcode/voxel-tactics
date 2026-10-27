@@ -32,7 +32,7 @@ const GLAZE_PREF = {
     office: 'band', meeting: 'band', bedroom: 'window', unit: 'window', hall: 'window', galley: 'band', barracks: 'window',
     warehouse: 'band', workshop: 'band', loading: 'blank', storeroom: 'blank', armory: 'blank'
 };
-const COMMERCIAL = new Set(['shop', 'diner', 'office', 'bar', 'motel']);   // PLAN-14: bar and motel too
+const COMMERCIAL = new Set(['shop', 'diner', 'office', 'bar', 'motel', 'corner_store', 'laundromat']);   // PLAN-14: bar and motel too; new parcels: corner store, laundromat
 const family = k => (k === 'window' ? 'w' : k === 'band' ? 'b' : k === 'glazing' ? 'g' : k === 'storefront' ? 's' : 'x');
 
 /** Facade bay slots of a footprint: odd offsets on every side, with the bay cell just inside. */
@@ -70,7 +70,7 @@ export function solveFacadeV3(b, floors, { seed = 1, exits = [], blank = [] } = 
             if (['living', 'lobby', 'open_office', 'dining', 'sales', 'grocery', 'market', 'hardware', 'unit'].includes(room.kind)) dom.push('glazing');
             if (s === 0 && sl.side === b.front && COMMERCIAL.has(b.program)) dom.push('storefront', 'sign');
             if (s === 1 && sl.side === b.front && COMMERCIAL.has(b.program)) dom.push('sign');
-            if (b.district === 'industrial' || b.program === 'warehouse' || b.program === 'garage') dom.push('vent');
+            if (b.district === 'industrial' || b.program === 'warehouse' || b.program === 'garage' || b.program === 'lockup' || b.program === 'laundromat') dom.push('vent');
         }
         domains.set(nid, dom);
     }

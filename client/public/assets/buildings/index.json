@@ -2,52 +2,20 @@
  "format": "voxel-tactics/building-prefab-index@1",
  "prefabs": [
   {
-   "id": "baton-rouge-third-street--demi-nola-blends-smoothie-juice-bar",
-   "place": "baton-rouge-third-street",
-   "name": "Demi Nola Blends Smoothie & Juice Bar",
-   "program": "diner",
-   "storeys": 1,
-   "size": [
-    7,
-    19,
-    6
-   ],
-   "front": "e",
-   "rooms": 3,
-   "file": "/assets/buildings/baton-rouge-third-street/demi-nola-blends-smoothie-juice-bar.json",
-   "generator": "geo-compact-5"
-  },
-  {
    "id": "baton-rouge-third-street--courtyard-baton-rouge-downtown",
    "place": "baton-rouge-third-street",
    "name": "Courtyard Baton Rouge Downtown",
    "program": "hotel",
    "storeys": 2,
    "size": [
-    45,
-    21,
+    56,
+    27,
     9
    ],
    "front": "n",
    "rooms": 10,
    "file": "/assets/buildings/baton-rouge-third-street/courtyard-baton-rouge-downtown.json",
-   "generator": "geo-compact-5"
-  },
-  {
-   "id": "baton-rouge-third-street--helix-steam-mentorship-academy",
-   "place": "baton-rouge-third-street",
-   "name": "Helix Steam Mentorship Academy",
-   "program": "office",
-   "storeys": 2,
-   "size": [
-    24,
-    41,
-    9
-   ],
-   "front": "s",
-   "rooms": 18,
-   "file": "/assets/buildings/baton-rouge-third-street/helix-steam-mentorship-academy.json",
-   "generator": "geo-compact-5"
+   "generator": "place-import-1"
   },
   {
    "id": "baton-rouge-third-street--osm-515634554",
@@ -56,158 +24,46 @@
    "program": "office",
    "storeys": 2,
    "size": [
-    44,
-    29,
+    53,
+    33,
     9
    ],
    "front": "w",
    "rooms": 20,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515634554.json",
-   "generator": "geo-compact-5"
+   "generator": "place-import-1"
   },
   {
-   "id": "baton-rouge-third-street--osm-515634553",
-   "place": "baton-rouge-third-street",
-   "name": "osm-515634553",
-   "program": "office",
-   "storeys": 2,
-   "size": [
-    36,
-    18,
-    9
-   ],
-   "front": "w",
-   "rooms": 10,
-   "file": "/assets/buildings/baton-rouge-third-street/osm-515634553.json",
-   "generator": "geo-compact-5"
-  },
-  {
-   "id": "baton-rouge-third-street--capitol-city-press-building",
-   "place": "baton-rouge-third-street",
-   "name": "Capitol City Press Building",
-   "program": "civic",
-   "storeys": 2,
-   "size": [
-    17,
-    36,
-    9
-   ],
-   "front": "n",
-   "rooms": 18,
-   "file": "/assets/buildings/baton-rouge-third-street/capitol-city-press-building.json",
-   "generator": "geo-compact-5"
-  },
-  {
-   "id": "baton-rouge-third-street--belisle-building",
-   "place": "baton-rouge-third-street",
-   "name": "Belisle Building",
-   "program": "diner",
-   "storeys": 2,
-   "size": [
-    35,
-    14,
-    9
-   ],
-   "front": "e",
-   "rooms": 6,
-   "file": "/assets/buildings/baton-rouge-third-street/belisle-building.json",
-   "generator": "geo-compact-5"
-  },
-  {
-   "id": "baton-rouge-third-street--osm-515634555",
-   "place": "baton-rouge-third-street",
-   "name": "osm-515634555",
-   "program": "office",
-   "storeys": 2,
-   "size": [
-    32,
-    15,
-    9
-   ],
-   "front": "w",
-   "rooms": 10,
-   "file": "/assets/buildings/baton-rouge-third-street/osm-515634555.json",
-   "generator": "geo-compact-5"
-  },
-  {
-   "id": "baton-rouge-third-street--osm-515634557",
-   "place": "baton-rouge-third-street",
-   "name": "osm-515634557",
-   "program": "shop",
-   "storeys": 2,
-   "size": [
-    36,
-    10,
-    9
-   ],
-   "front": "e",
-   "rooms": 6,
-   "file": "/assets/buildings/baton-rouge-third-street/osm-515634557.json",
-   "generator": "geo-compact-5"
-  },
-  {
-   "id": "baton-rouge-third-street--osm-515634552",
-   "place": "baton-rouge-third-street",
-   "name": "osm-515634552",
-   "program": "shop",
-   "storeys": 2,
-   "size": [
-    15,
-    17,
-    9
-   ],
-   "front": "s",
-   "rooms": 6,
-   "file": "/assets/buildings/baton-rouge-third-street/osm-515634552.json",
-   "generator": "geo-compact-5"
-  },
-  {
-   "id": "baton-rouge-third-street--osm-515632946",
-   "place": "baton-rouge-third-street",
-   "name": "osm-515632946",
-   "program": "shop",
-   "storeys": 2,
-   "size": [
-    22,
-    10,
-    9
-   ],
-   "front": "w",
-   "rooms": 6,
-   "file": "/assets/buildings/baton-rouge-third-street/osm-515632946.json",
-   "generator": "geo-compact-5"
-  },
-  {
-   "id": "baton-rouge-third-street--osm-515634568",
-   "place": "baton-rouge-third-street",
-   "name": "osm-515634568",
-   "program": "office",
-   "storeys": 2,
-   "size": [
-    6,
-    23,
-    9
-   ],
-   "front": "n",
-   "rooms": 4,
-   "file": "/assets/buildings/baton-rouge-third-street/osm-515634568.json",
-   "generator": "geo-compact-5"
-  },
-  {
-   "id": "baton-rouge-third-street--the-ambeau-law-firm",
+   "id": "baton-rouge-third-street--osm-515633403",
    "place": "baton-rouge-third-street",
    "name": "The Ambeau Law Firm",
    "program": "office",
    "storeys": 2,
    "size": [
-    7,
-    21,
+    41,
+    26,
     9
    ],
    "front": "e",
    "rooms": 10,
-   "file": "/assets/buildings/baton-rouge-third-street/the-ambeau-law-firm.json",
-   "generator": "geo-compact-5"
+   "file": "/assets/buildings/baton-rouge-third-street/osm-515633403.json",
+   "generator": "place-import-1"
+  },
+  {
+   "id": "baton-rouge-third-street--helix-steam-mentorship-academy",
+   "place": "baton-rouge-third-street",
+   "name": "Helix Steam Mentorship Academy",
+   "program": "office",
+   "storeys": 2,
+   "size": [
+    26,
+    51,
+    9
+   ],
+   "front": "s",
+   "rooms": 20,
+   "file": "/assets/buildings/baton-rouge-third-street/helix-steam-mentorship-academy.json",
+   "generator": "place-import-1"
   },
   {
    "id": "baton-rouge-third-street--osm-515633406",
@@ -216,14 +72,126 @@
    "program": "office",
    "storeys": 2,
    "size": [
-    7,
-    18,
+    40,
+    26,
     9
    ],
    "front": "e",
    "rooms": 10,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515633406.json",
-   "generator": "geo-compact-5"
+   "generator": "place-import-1"
+  },
+  {
+   "id": "baton-rouge-third-street--capitol-city-press-building",
+   "place": "baton-rouge-third-street",
+   "name": "Capitol City Press Building",
+   "program": "civic",
+   "storeys": 2,
+   "size": [
+    24,
+    47,
+    9
+   ],
+   "front": "n",
+   "rooms": 26,
+   "file": "/assets/buildings/baton-rouge-third-street/capitol-city-press-building.json",
+   "generator": "place-import-1"
+  },
+  {
+   "id": "baton-rouge-third-street--osm-515634553",
+   "place": "baton-rouge-third-street",
+   "name": "osm-515634553",
+   "program": "office",
+   "storeys": 2,
+   "size": [
+    44,
+    23,
+    9
+   ],
+   "front": "w",
+   "rooms": 10,
+   "file": "/assets/buildings/baton-rouge-third-street/osm-515634553.json",
+   "generator": "place-import-1"
+  },
+  {
+   "id": "baton-rouge-third-street--osm-515634568",
+   "place": "baton-rouge-third-street",
+   "name": "osm-515634568",
+   "program": "office",
+   "storeys": 2,
+   "size": [
+    32,
+    28,
+    9
+   ],
+   "front": "n",
+   "rooms": 10,
+   "file": "/assets/buildings/baton-rouge-third-street/osm-515634568.json",
+   "generator": "place-import-1"
+  },
+  {
+   "id": "baton-rouge-third-street--osm-515633405",
+   "place": "baton-rouge-third-street",
+   "name": "Demi Nola Blends Smoothie & Juice Bar",
+   "program": "diner",
+   "storeys": 2,
+   "size": [
+    40,
+    21,
+    9
+   ],
+   "front": "e",
+   "rooms": 6,
+   "file": "/assets/buildings/baton-rouge-third-street/osm-515633405.json",
+   "generator": "place-import-1"
+  },
+  {
+   "id": "baton-rouge-third-street--osm-515634555",
+   "place": "baton-rouge-third-street",
+   "name": "osm-515634555",
+   "program": "office",
+   "storeys": 2,
+   "size": [
+    42,
+    19,
+    9
+   ],
+   "front": "w",
+   "rooms": 10,
+   "file": "/assets/buildings/baton-rouge-third-street/osm-515634555.json",
+   "generator": "place-import-1"
+  },
+  {
+   "id": "baton-rouge-third-street--belisle-building",
+   "place": "baton-rouge-third-street",
+   "name": "Belisle Building",
+   "program": "bar",
+   "storeys": 2,
+   "size": [
+    43,
+    18,
+    9
+   ],
+   "front": "w",
+   "rooms": 8,
+   "file": "/assets/buildings/baton-rouge-third-street/belisle-building.json",
+   "generator": "place-import-1"
+  },
+  {
+   "id": "baton-rouge-third-street--osm-515634557",
+   "place": "baton-rouge-third-street",
+   "name": "osm-515634557",
+   "program": "shop",
+   "storeys": 2,
+   "size": [
+    45,
+    12,
+    9
+   ],
+   "front": "e",
+   "rooms": 6,
+   "file": "/assets/buildings/baton-rouge-third-street/osm-515634557.json",
+   "generator": "place-import-1"
   },
   {
    "id": "baton-rouge-third-street--osm-515633402",
@@ -232,30 +200,14 @@
    "program": "shop",
    "storeys": 2,
    "size": [
-    7,
-    17,
+    23,
+    21,
     9
    ],
-   "front": "e",
+   "front": "w",
    "rooms": 6,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515633402.json",
-   "generator": "geo-compact-5"
-  },
-  {
-   "id": "baton-rouge-third-street--osm-515634560",
-   "place": "baton-rouge-third-street",
-   "name": "osm-515634560",
-   "program": "shop",
-   "storeys": 2,
-   "size": [
-    6,
-    14,
-    9
-   ],
-   "front": "n",
-   "rooms": 4,
-   "file": "/assets/buildings/baton-rouge-third-street/osm-515634560.json",
-   "generator": "geo-compact-5"
+   "generator": "place-import-1"
   },
   {
    "id": "baton-rouge-third-street--osm-515633407",
@@ -264,14 +216,30 @@
    "program": "shop",
    "storeys": 2,
    "size": [
-    7,
-    10,
+    41,
+    11,
     9
    ],
    "front": "e",
    "rooms": 6,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515633407.json",
-   "generator": "geo-compact-5"
+   "generator": "place-import-1"
+  },
+  {
+   "id": "baton-rouge-third-street--osm-515634552",
+   "place": "baton-rouge-third-street",
+   "name": "osm-515634552",
+   "program": "shop",
+   "storeys": 2,
+   "size": [
+    18,
+    21,
+    9
+   ],
+   "front": "s",
+   "rooms": 6,
+   "file": "/assets/buildings/baton-rouge-third-street/osm-515634552.json",
+   "generator": "place-import-1"
   },
   {
    "id": "baton-rouge-third-street--osm-515633404",
@@ -280,30 +248,62 @@
    "program": "shop",
    "storeys": 2,
    "size": [
-    7,
-    7,
+    41,
+    8,
     9
    ],
    "front": "e",
    "rooms": 6,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515633404.json",
-   "generator": "geo-compact-5"
+   "generator": "place-import-1"
   },
   {
-   "id": "baton-rouge-third-street--osm-515632950",
+   "id": "baton-rouge-third-street--osm-515632946",
    "place": "baton-rouge-third-street",
-   "name": "osm-515632950",
-   "program": "office",
-   "storeys": 3,
+   "name": "osm-515632946",
+   "program": "shop",
+   "storeys": 2,
    "size": [
+    27,
+    12,
+    9
+   ],
+   "front": "w",
+   "rooms": 6,
+   "file": "/assets/buildings/baton-rouge-third-street/osm-515632946.json",
+   "generator": "place-import-1"
+  },
+  {
+   "id": "baton-rouge-third-street--osm-515634556",
+   "place": "baton-rouge-third-street",
+   "name": "osm-515634556",
+   "program": "shop",
+   "storeys": 2,
+   "size": [
+    47,
+    7,
+    9
+   ],
+   "front": "e",
+   "rooms": 4,
+   "file": "/assets/buildings/baton-rouge-third-street/osm-515634556.json",
+   "generator": "place-import-1"
+  },
+  {
+   "id": "baton-rouge-third-street--osm-515634560",
+   "place": "baton-rouge-third-street",
+   "name": "osm-515634560",
+   "program": "shop",
+   "storeys": 2,
+   "size": [
+    7,
     17,
-    38,
-    12
+    9
    ],
    "front": "n",
-   "rooms": 15,
-   "file": "/assets/buildings/baton-rouge-third-street/osm-515632950.json",
-   "generator": "geo-compact-5"
+   "rooms": 6,
+   "file": "/assets/buildings/baton-rouge-third-street/osm-515634560.json",
+   "generator": "place-import-1"
   },
   {
    "id": "baton-rouge-third-street--fuqua-hardware-store-building",
@@ -312,14 +312,30 @@
    "program": "shop",
    "storeys": 3,
    "size": [
-    35,
-    16,
+    43,
+    19,
     12
    ],
    "front": "e",
    "rooms": 9,
    "file": "/assets/buildings/baton-rouge-third-street/fuqua-hardware-store-building.json",
-   "generator": "geo-compact-5"
+   "generator": "place-import-1"
+  },
+  {
+   "id": "baton-rouge-third-street--osm-515632950",
+   "place": "baton-rouge-third-street",
+   "name": "osm-515632950",
+   "program": "office",
+   "storeys": 3,
+   "size": [
+    13,
+    48,
+    12
+   ],
+   "front": "n",
+   "rooms": 15,
+   "file": "/assets/buildings/baton-rouge-third-street/osm-515632950.json",
+   "generator": "place-import-1"
   },
   {
    "id": "baton-rouge-sherwood-florida--asian-supermarket",
@@ -328,14 +344,14 @@
    "program": "supermarket",
    "storeys": 1,
    "size": [
-    30,
-    34,
+    36,
+    43,
     6
    ],
    "front": "n",
    "rooms": 3,
    "file": "/assets/buildings/baton-rouge-sherwood-florida/asian-supermarket.json",
-   "generator": "geo-compact-5"
+   "generator": "place-import-1"
   },
   {
    "id": "baton-rouge-sherwood-florida--dollar-tree",
@@ -344,30 +360,14 @@
    "program": "supermarket",
    "storeys": 1,
    "size": [
-    27,
     34,
+    43,
     6
    ],
    "front": "n",
    "rooms": 3,
    "file": "/assets/buildings/baton-rouge-sherwood-florida/dollar-tree.json",
-   "generator": "geo-compact-5"
-  },
-  {
-   "id": "baton-rouge-sherwood-florida--vivi-bubble-tea",
-   "place": "baton-rouge-sherwood-florida",
-   "name": "Vivi Bubble Tea",
-   "program": "diner",
-   "storeys": 1,
-   "size": [
-    14,
-    61,
-    6
-   ],
-   "front": "e",
-   "rooms": 3,
-   "file": "/assets/buildings/baton-rouge-sherwood-florida/vivi-bubble-tea.json",
-   "generator": "geo-compact-5"
+   "generator": "place-import-1"
   },
   {
    "id": "baton-rouge-sherwood-florida--baton-wireless",
@@ -376,14 +376,30 @@
    "program": "shop",
    "storeys": 1,
    "size": [
-    14,
-    33,
+    18,
+    59,
     6
    ],
    "front": "e",
    "rooms": 3,
    "file": "/assets/buildings/baton-rouge-sherwood-florida/baton-wireless.json",
-   "generator": "geo-compact-5"
+   "generator": "place-import-1"
+  },
+  {
+   "id": "baton-rouge-sherwood-florida--vivi-bubble-tea",
+   "place": "baton-rouge-sherwood-florida",
+   "name": "Vivi Bubble Tea",
+   "program": "diner",
+   "storeys": 1,
+   "size": [
+    18,
+    58,
+    6
+   ],
+   "front": "e",
+   "rooms": 3,
+   "file": "/assets/buildings/baton-rouge-sherwood-florida/vivi-bubble-tea.json",
+   "generator": "place-import-1"
   },
   {
    "id": "baton-rouge-sherwood-florida--osm-357854325",
@@ -392,14 +408,14 @@
    "program": "shop",
    "storeys": 1,
    "size": [
-    21,
-    19,
+    28,
+    24,
     6
    ],
-   "front": "s",
+   "front": "n",
    "rooms": 3,
    "file": "/assets/buildings/baton-rouge-sherwood-florida/osm-357854325.json",
-   "generator": "geo-compact-5"
+   "generator": "place-import-1"
   },
   {
    "id": "baton-rouge-old-state-capitol--old-state-capitol",
@@ -408,14 +424,14 @@
    "program": "civic",
    "storeys": 2,
    "size": [
-    48,
-    28,
+    60,
+    38,
     9
    ],
    "front": "e",
-   "rooms": 22,
+   "rooms": 32,
    "file": "/assets/buildings/baton-rouge-old-state-capitol/old-state-capitol.json",
-   "generator": "geo-compact-5"
+   "generator": "place-import-1"
   },
   {
    "id": "baton-rouge-old-state-capitol--osm-1177437012",
@@ -425,45 +441,13 @@
    "storeys": 2,
    "size": [
     7,
-    11,
+    13,
     9
    ],
    "front": "e",
    "rooms": 6,
    "file": "/assets/buildings/baton-rouge-old-state-capitol/osm-1177437012.json",
-   "generator": "geo-compact-5"
-  },
-  {
-   "id": "baton-rouge-old-state-capitol--osm-515633824",
-   "place": "baton-rouge-old-state-capitol",
-   "name": "osm-515633824",
-   "program": "office",
-   "storeys": 3,
-   "size": [
-    34,
-    6,
-    12
-   ],
-   "front": "s",
-   "rooms": 6,
-   "file": "/assets/buildings/baton-rouge-old-state-capitol/osm-515633824.json",
-   "generator": "geo-compact-5"
-  },
-  {
-   "id": "baton-rouge-old-state-capitol--osm-515633822",
-   "place": "baton-rouge-old-state-capitol",
-   "name": "osm-515633822",
-   "program": "office",
-   "storeys": 3,
-   "size": [
-    14,
-    7,
-    12
-   ],
-   "front": "s",
-   "rooms": 15,
-   "file": "/assets/buildings/baton-rouge-old-state-capitol/osm-515633822.json",
-   "generator": "geo-compact-5"
+   "generator": "place-import-1"
   },
   {
    "id": "philadelphia-independence-hall--old-city-hall",
@@ -472,30 +456,14 @@
    "program": "civic",
    "storeys": 1,
    "size": [
-    15,
     19,
+    24,
     6
    ],
    "front": "e",
    "rooms": 5,
    "file": "/assets/buildings/philadelphia-independence-hall/old-city-hall.json",
-   "generator": "geo-compact-5"
-  },
-  {
-   "id": "philadelphia-independence-hall--liberty-bell-center",
-   "place": "philadelphia-independence-hall",
-   "name": "Liberty Bell Center",
-   "program": "museum",
-   "storeys": 1,
-   "size": [
-    19,
-    20,
-    6
-   ],
-   "front": "w",
-   "rooms": 6,
-   "file": "/assets/buildings/philadelphia-independence-hall/liberty-bell-center.json",
-   "generator": "geo-compact-5"
+   "generator": "place-import-1"
   },
   {
    "id": "philadelphia-independence-hall--congress-hall",
@@ -504,14 +472,14 @@
    "program": "civic",
    "storeys": 2,
    "size": [
-    14,
-    28,
+    18,
+    35,
     9
    ],
    "front": "w",
    "rooms": 10,
    "file": "/assets/buildings/philadelphia-independence-hall/congress-hall.json",
-   "generator": "geo-compact-5"
+   "generator": "place-import-1"
   },
   {
    "id": "philadelphia-independence-hall--philosophical-hall",
@@ -520,14 +488,14 @@
    "program": "museum",
    "storeys": 2,
    "size": [
-    14,
-    20,
+    18,
+    25,
     9
    ],
    "front": "e",
    "rooms": 8,
    "file": "/assets/buildings/philadelphia-independence-hall/philosophical-hall.json",
-   "generator": "geo-compact-5"
+   "generator": "place-import-1"
   },
   {
    "id": "philadelphia-independence-hall--independence-hall",
@@ -536,14 +504,14 @@
    "program": "civic",
    "storeys": 3,
    "size": [
-    72,
-    21,
+    89,
+    27,
     12
    ],
    "front": "n",
-   "rooms": 57,
+   "rooms": 72,
    "file": "/assets/buildings/philadelphia-independence-hall/independence-hall.json",
-   "generator": "geo-compact-5"
+   "generator": "place-import-1"
   }
  ]
 }

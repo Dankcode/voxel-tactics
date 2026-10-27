@@ -18,7 +18,14 @@ const PROGRAMMES = {
     garage: { ground: ['workshop', 'storeroom', 'office', 'utility*'], upper: ['office', 'storeroom'], top: ['office', 'storeroom'] },
     // PLAN-14 building types, from room kinds the planner and furnisher already know.
     motel: { ground: ['lobby', 'unit', 'unit', 'utility*'], upper: ['unit', 'unit', 'bathroom*'], top: ['unit', 'unit', 'bathroom*'] },
-    bar: { ground: ['dining', 'galley', 'storeroom', 'restroom*'], upper: ['office', 'storeroom', 'unit'], top: ['office', 'unit'] }
+    bar: { ground: ['barroom', 'galley', 'storeroom', 'restroom*'], upper: ['office', 'storeroom', 'unit'], top: ['office', 'unit'] },
+    // new parcels
+    duplex: { ground: ['living', 'living', 'kitchen', 'bathroom*'], upper: ['bedroom', 'bedroom', 'study', 'bathroom*'], top: ['bedroom', 'bedroom', 'bathroom*'] },
+    walkup: { ground: ['lobby', 'unit', 'unit', 'utility*'], upper: ['unit', 'unit', 'kitchen', 'bathroom*'], top: ['unit', 'unit', 'living', 'bathroom*'] },
+    trailer: { ground: ['living', 'bedroom', 'kitchen', 'bathroom*'], upper: ['bedroom'], top: ['bedroom'] },
+    corner_store: { ground: ['convenience', 'storeroom', 'office', 'restroom*'], upper: ['living', 'bedroom', 'kitchen', 'bathroom*'], top: ['living', 'bedroom', 'bathroom*'] },
+    laundromat: { ground: ['laundry', 'office', 'storeroom', 'utility*'], upper: ['office', 'storeroom'], top: ['office', 'storeroom'] },
+    lockup: { ground: ['garage_bay', 'storeroom', 'utility*'], upper: ['storeroom'], top: ['storeroom'] }
 };
 const CODE_A = ['Iron', 'Silent', 'Grey', 'Night', 'Glass', 'Cold', 'Black', 'Copper', 'Ashen', 'Low', 'Broken', 'Last'];
 const CODE_B = ['Ledger', 'Harbor', 'Lantern', 'Viaduct', 'Canopy', 'Signal', 'Gutter', 'Spire', 'Ward', 'Switchyard', 'Crossing', 'Furnace'];

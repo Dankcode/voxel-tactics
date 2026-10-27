@@ -1,5 +1,7 @@
 # PLAN-15: Aim state with peek, free aim, grenade preview, one tool at a time, AP HUD, armour, pod spacing, AI, more realistic maps
 
+> PLAN-16 note: the real-place generator this plan refers to (`GeoDistrict`, `tools/geo`, `client/public/geo`) was removed from this repo. Real places now come from Geo-voxel and are imported by `tools/places` (`shared/mission/PlaceImport.js`); see `docs/PLAN-16-place-import-new-parcels.md`.
+
 Status: implemented 2026-10-27 in the cloud workspace and copied into the local `voxel-tactics` folder (not committed).
 
 **Decisions used.** Leon asked for the implementation without picking options, so the plan's recommended defaults apply:

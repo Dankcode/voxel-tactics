@@ -46,6 +46,9 @@ function tryBridge(m, road, { a, b: bB, c }, across) {
     for (const [wall, inside] of facades) for (let w = -1; w <= 1; w++) {
         const [ix, iy] = at(inside, w);
         if (!s.isSolid(ix, iy, z) || [MAT.stairs_wood, MAT.stairs_stone, MAT.steel_stair].includes(s.get(ix, iy, z + 1))) return null;
+        // never land in a closed room (a bathroom or plant room stays sealed)
+        const closed = (x, y) => { const rid = s.roomAt(x, y, z + 1), room = rid >= 0 ? m.ctx.rooms.find(r => r.id === rid) : null; return !!room && room.gameplay === false; };
+        if (s.get(ix, iy, z + 1) === MAT.door_locked || [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => closed(ix + dx, iy + dy))) return null;
         const [wx, wy] = at(wall, w); if (!s.isSolid(wx, wy, z)) return null;
     }
     const cells = [];

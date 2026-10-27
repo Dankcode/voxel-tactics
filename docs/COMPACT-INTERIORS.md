@@ -55,16 +55,15 @@ clearance, window landings, stair reservations and the floor-connectivity guard 
 ## Tuning and verification
 
 - `shared/mapgen/PlotCatalogue.js`: operation dimensions, in whole lots.
-- `tools/geo/places.json`: per-place `build.layoutScale`; regenerate the catalog with
-  `node tools/geo/geo-pipeline.mjs catalog`. Set 1 for a faithful comparison. Direct geo builds also accept
-  `--layout-scale 0.8`; the supported range is 0.65–1.
+- Real places come from Geo-voxel (its own layout scale and straightening); `tools/places/places.json` holds the
+  game-side options per place (`build`: theme parcels, programme overrides, open land). See `tools/places/README.md`.
 - `shared/mission/modern/ModernBuilder.js`: furniture footprints, recipes, and area-based kit counts.
 - `shared/mapgen/geo/GeoPrograms.js`: source tags and functional room plans.
 
 Generator versions invalidate older bakes; rebake each catalog place with
-`node tools/geo/geo-pipeline.mjs bake <id>` to refresh both playable maps and reusable building prefabs.
+`node tools/places/places.mjs bake <id>` to refresh both playable maps and reusable building prefabs.
 
-Use the shared baseline `http://localhost:2567/?play=operation&plot=downtown&seed=1` and geo fixtures such as
+Use the shared baseline `http://localhost:2567/?play=operation&plot=downtown&seed=1` and real-place fixtures such as
 `http://localhost:2567/?play=baton-rouge-sherwood-florida&fixture=1&seed=1`. Compare multiple seeds for cover,
 room access and subjective pacing. Map shrinking reduces nominal distances; it does not guarantee every
 shortest path shrinks by exactly 20%, because rasterisation and route selection can change.

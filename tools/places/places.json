@@ -1,0 +1,94 @@
+{
+  "format": "voxel-tactics/places@1",
+  "notes": "Every real-place map imported from Geo-voxel, with every parameter the importer uses. tools/places/places.mjs reads this file; PlaceCatalog.js is generated from it. build: PlaceImport options (programs, openLand, lotsToParcels, newBuildings, family, timeOfDay).",
+  "places": [
+    {
+      "bakeSeeds": [
+        1
+      ],
+      "build": {},
+      "id": "baton-rouge-third-street",
+      "name": "Third Street · Baton Rouge",
+      "theme": "Downtown",
+      "objectiveName": "Fuqua Hardware Store Building",
+      "text": "Downtown Baton Rouge built by Geo-voxel from OpenStreetMap and USGS 3DEP: the Third Street storefront row, Florida and 4th Street, the surface lot and the Capitol City Press building.",
+      "source": {
+        "tool": "Geo-voxel",
+        "format": "geo-voxels/layers@1",
+        "file": "out/live-third-street/layers.json",
+        "size": [
+          158,
+          183
+        ],
+        "buildings": 21,
+        "imported": "2026-10-27"
+      }
+    },
+    {
+      "bakeSeeds": [
+        1
+      ],
+      "build": {},
+      "id": "baton-rouge-sherwood-florida",
+      "name": "Sherwood & Florida · Baton Rouge",
+      "theme": "Strip centre",
+      "objectiveName": "Asian Supermarket",
+      "text": "The Sherwood Forest Blvd × Florida Blvd crossing in Baton Rouge, built by Geo-voxel from OpenStreetMap and USGS 3DEP: the divided boulevards and their slip lanes, the Sherwood Plaza car park, the corner pad and the Asian Supermarket / Dollar Tree building at 11244 Florida Blvd.",
+      "source": {
+        "tool": "Geo-voxel",
+        "format": "geo-voxels/layers@1",
+        "file": "out/baton-rouge-sherwood-florida/layers.json",
+        "size": [
+          190,
+          190
+        ],
+        "buildings": 3,
+        "imported": "2026-10-27"
+      }
+    },
+    {
+      "bakeSeeds": [
+        1
+      ],
+      "build": {},
+      "id": "baton-rouge-old-state-capitol",
+      "name": "Old State Capitol · Baton Rouge",
+      "theme": "Landmark",
+      "objectiveName": "Old State Capitol",
+      "text": "Louisiana's Gothic Revival Old State Capitol (1847–52) on North Boulevard, its square and neighbours, built by Geo-voxel from OpenStreetMap, Wikidata and USGS 3DEP.",
+      "source": {
+        "tool": "Geo-voxel",
+        "format": "geo-voxels/layers@1",
+        "file": "out/baton-rouge-old-state-capitol/layers.json",
+        "size": [
+          178,
+          178
+        ],
+        "buildings": 2,
+        "imported": "2026-10-27"
+      }
+    },
+    {
+      "bakeSeeds": [
+        1
+      ],
+      "build": {},
+      "id": "philadelphia-independence-hall",
+      "name": "Independence Hall · Philadelphia",
+      "theme": "Landmark",
+      "objectiveName": "Independence Hall",
+      "text": "Independence Hall (1753) on Chestnut Street and Independence Square, Philadelphia, built by Geo-voxel from OpenStreetMap, Wikidata and USGS 3DEP.",
+      "source": {
+        "tool": "Geo-voxel",
+        "format": "geo-voxels/layers@1",
+        "file": "out/philadelphia-independence-hall/layers.json",
+        "size": [
+          178,
+          178
+        ],
+        "buildings": 4,
+        "imported": "2026-10-27"
+      }
+    }
+  ]
+}

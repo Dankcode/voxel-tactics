@@ -2,17 +2,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { bakePrefab, bakePlacePrefabs, stampPrefab, transformFor } from './BuildingPrefab.js';
 import { createMap } from '../../mission/modern/MapKit.js';
-import { GEO_MAPS } from '../../mission/generated/GeoCatalog.js';
-import { buildPlace } from '../../mission/GeoMaps.js';
+import { PLACE_MAPS } from '../../mission/generated/PlaceCatalog.js';
+import { buildCatalogPlace, placeSource } from '../../mission/PlaceMaps.js';
 import { reachable, nodeKey } from '../../world/PathSearch.js';
 import { AGENT_PROFILES } from '../../world/TraversalRules.js';
 import { bakeMission, registerBaked, bakedMission, clearBaked, fingerprint } from '../../mission/BakedMaps.js';
 import { MAPS } from '../../mission/Maps.js';
-import { placeSource } from '../../mission/GeoMaps.js';
-import { GEO_GENERATOR_VERSION } from '../../mission/GeoDistrict.js';
+import { PLACE_GENERATOR_VERSION } from '../../mission/PlaceImport.js';
 
-const third = GEO_MAPS.find(g => g.id === 'baton-rouge-third-street');
-const mission = buildPlace(third, 1);
+const third = PLACE_MAPS.find(g => g.id === 'baton-rouge-third-street');
+// the real buildings only (the game's parcel fill may add its own on open land)
+const built = buildCatalogPlace(third, 1), mission = { ...built, buildings: built.buildings.filter(b => !b.parcelBuilt) };
 
 test('prefab transform: four rotations come home, sides and yaw turn with the cells', () => {
     const T1 = transformFor([5, 3], { rot: 1 });
@@ -63,7 +63,7 @@ test('prefab: every real building stamps rotated and mirrored into an empty lot 
 
 test('baked map: a bake loads back identical to the live build, and a stale bake is ignored', () => {
     const live = MAPS.find(d => d.id === third.id).build({ seed: 2 });
-    const bake = JSON.parse(JSON.stringify(bakeMission(live, { seed: 2, generator: GEO_GENERATOR_VERSION, source: placeSource(third) })));
+    const bake = JSON.parse(JSON.stringify(bakeMission(live, { seed: 2, generator: PLACE_GENERATOR_VERSION, source: placeSource(third) })));
     clearBaked(); registerBaked(bake);
     const loaded = MAPS.find(d => d.id === third.id).build({ seed: 2 });
     assert.ok(loaded.meta.baked, 'came from the bake');
@@ -72,7 +72,7 @@ test('baked map: a bake loads back identical to the live build, and a stale bake
     assert.deepEqual(loaded.visual.roadPaint, live.visual.roadPaint);
     assert.equal(Object.keys(loaded.visual.hints).length, Object.keys(live.visual.hints).length);
     assert.equal(bakedMission(third.id, 2, { generator: 'older', source: placeSource(third) }), null, 'a bake from another generator version is not used');
-    assert.equal(bakedMission(third.id, 2, { generator: GEO_GENERATOR_VERSION, source: fingerprint('x') }), null, 'nor one of other source data');
+    assert.equal(bakedMission(third.id, 2, { generator: PLACE_GENERATOR_VERSION, source: fingerprint('x') }), null, 'nor one of other source data');
     clearBaked();
 });
 

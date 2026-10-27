@@ -35,7 +35,8 @@ test('a collapse drops the package and the objective zone to the floor that is l
     assert.ok(b.store.surfaces(it.x, it.y).some(c => c.z === it.z && c.headroom >= 2), 'package rests on a floor');
     assert.ok(reachable(b.store, b.unitsOf('player')[0], Infinity, AGENT_PROFILES.player).costs.has(nodeKey(it)), 'package reachable');
     assert.ok(b.log.some(e => e.t === 'drop' && e.collapse));
-    const h = createBattle({ scenario: 'operation', seed: 5, operation: { plot: 'downtown', objective: 'hold' }, debug: true }), z = h.objective.zone, before = z.z;
+    // (seed 6: since the PLAN-16 lot kinds, seed 5's objective block stands against the world-edge wall, which holds it up)
+    const h = createBattle({ scenario: 'operation', seed: 6, operation: { plot: 'downtown', objective: 'hold' }, debug: true }), z = h.objective.zone, before = z.z;
     blowGroundStorey(h, h.mission.buildings.find(B => z.x0 >= B.x0 && z.x1 < B.x0 + B.w && z.y0 >= B.y0 && z.y1 < B.y0 + B.d));
     assert.ok(z.z < before);
     let cells = 0;

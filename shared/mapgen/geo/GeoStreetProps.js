@@ -15,7 +15,7 @@
 import { MAT } from '../../voxel/Materials.js';
 import { tagAt, groundAt, put, registerCells } from '../district/Core.js';
 import { hashString } from '../../util/Rng.js';
-import { distToPolyline } from './GeoFrame.js';
+import { distToPolyline } from './GeoGeometry.js';
 
 const k2 = (x, y) => `${x},${y}`;
 const unit = s => (hashString(s) >>> 0) / 4294967296;

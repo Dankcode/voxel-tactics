@@ -659,9 +659,289 @@ export const MIXES = Object.freeze({
             run(m, [F.at(2, F.V - 3), F.at(3, F.V - 3)], 'barrel_water', 1, `${ctx.origin}/water-butts`);
             plantTree(m, ...F.at(1, 1), `${ctx.origin}/tree`);
         }
+    },
+
+    // ================================================================ new parcels: residential variety
+    'duplex-plot': {
+        name: 'Duplex: two homes, two driveways, a split back yard', U: [20, 28], V: [20, 30], frontage: true, repeat: true, buildings: 1,
+        weights: { suburban: 3, mixed: 1.1, urban: 0.6, retail: 0.2, roadside: 0.2, industrial: 0 }, fill: ['yard', 'lawn'],
+        plan(ctx) {
+            const { F } = ctx, hd = Math.min(10, F.V - 10), hw = F.U - 6;
+            return { b: building(ctx, { u0: 3, v0: 5, uw: hw, vd: hd }, { program: 'duplex', storeys: [1, 2], part: 'duplex', rounded: false }), hd };
+        },
+        dress(ctx, st) {
+            const { F, m } = ctx, back = 5 + st.hd;
+            paint(m, R(ctx, 0, 0, F.U, back), 'lawn', 'yard', { z: ctx.z });
+            for (const du of [0, F.U - 3]) {
+                paint(m, R(ctx, du, 0, 3, back), 'concrete', 'driveway', { z: ctx.z });
+                drive(ctx, du, 3);
+                slot(ctx, du, 1, { kind: 'driveway', priority: 0.7, part: 'driveway' });
+            }
+            frontage(ctx, 'picket', [[0, 3], [F.U - 4, F.U - 1], [Math.floor(F.U / 4) + 1, Math.floor(F.U / 4) + 3], [Math.floor(3 * F.U / 4) - 3, Math.floor(3 * F.U / 4) - 1]]);
+            const yard = R(ctx, 0, back, F.U, F.V - back), mid = Math.floor(F.U / 2);
+            paint(m, yard, 'lawn', 'yard', { z: ctx.z });
+            paint(m, R(ctx, 3, back, 4, 2), 'deck', 'yard', { z: ctx.z }); paint(m, R(ctx, F.U - 7, back, 4, 2), 'deck', 'yard', { z: ctx.z });
+            // one privacy fence down the middle: each home its own yard, a gate at the back so the yards still connect
+            run(m, cellsV(ctx, mid, back + 1, F.V - 1).filter((_, i, a) => i !== a.length - 3), 'privacy_fence', 2, `${ctx.origin}/yard-divider`, { landUse: 'fence' });
+            block(m, R(ctx, 1, F.V - 3, 3, 2), 'siding', 2, `${ctx.origin}/shed`, { roofKey: 'roof_metal', landUse: 'yard' });
+            if (F.V - back >= 9) { const [px, py] = F.at(F.U - 5, F.V - 5), [qx, qy] = F.at(F.U - 3, F.V - 3); playFrame(m, Math.min(px, qx), Math.min(py, qy), `${ctx.origin}/play-set`); }
+            run(m, cellsU(ctx, back + 2, mid - 3, mid - 2), 'bin', 1, `${ctx.origin}/bins`);
+            plantTree(m, ...F.at(mid + 2, F.V - 2), `${ctx.origin}/yard-tree`);
+            fenceEdge(m, ctx.R, F.back, 'privacy', `${ctx.origin}/back-fence`, { gates: [] });
+            for (const side of [F.left, F.right]) fenceEdge(m, yard, side, 'privacy', `${ctx.origin}/side-fence`, { gates: [0.15] });
+        }
+    },
+    'trailer-park': {
+        name: 'Trailer park: mobile homes along a gravel lane', U: [26, 44], V: [24, 38], frontage: true, buildings: 4,
+        weights: { roadside: 2, suburban: 1.2, mixed: 0.8, industrial: 0.6, retail: 0.3, urban: 0 }, fill: ['yard', 'gravel'],
+        plan(ctx) {
+            // a 4-wide lane runs back from the street; trailers stand either side of it, their doors on the lane
+            const { F } = ctx, lane = Math.floor(F.U / 2) - 2, homes = [];
+            for (const [u0, front] of [[Math.max(1, lane - 10), F.right], [lane + 7, F.left]]) {
+                if (u0 + 6 > F.U - 1 || u0 < 1) continue;
+                for (let v = 3, i = 0; v + 12 <= F.V - 2; v += 15, i++) {
+                    const b = building(ctx, { u0, v0: v, uw: 6, vd: 12 }, { program: 'trailer', storeys: 1, part: `home-${front}-${i}`, front, rounded: true, wall: 'siding' });
+                    if (b) homes.push({ b, u0, v, front });
+                }
+            }
+            return { lane, homes };
+        },
+        dress(ctx, st) {
+            const { F, m } = ctx, { lane } = st;
+            paint(m, ctx.R, 'gravel', 'yard', { z: ctx.z });
+            paint(m, R(ctx, lane, 0, 4, F.V - 1), 'asphalt', 'aisle', { z: ctx.z });
+            drive(ctx, lane, 4);
+            frontage(ctx, 'picket', [[lane - 1, lane + 4]]);
+            boundary(ctx, 'chain', { gates: { [F.back]: [0.5] } });
+            for (const h of st.homes) {
+                // a car on the lane side of each home, beside (not on) the door approach; propane on the far side
+                const carU = h.front === F.right ? h.u0 + 7 : h.u0 - 3;
+                if (carU >= 1 && carU + 2 <= F.U - 1) slot(ctx, carU, h.v + 1, { kind: 'driveway', priority: 0.6, part: 'carport' });
+                const farU = h.front === F.right ? h.u0 - 1 : h.u0 + 6;
+                if (farU >= 1 && farU < F.U - 1) run(m, [F.at(farU, h.v + 2), F.at(farU, h.v + 9)], 'barrel_powder', 1, `${ctx.origin}/propane`);
+                paint(m, R(ctx, h.front === F.right ? h.u0 + 6 : h.u0 - 1, h.v + 6, 1, 3), 'deck', 'yard', { z: ctx.z });
+            }
+            plantTree(m, ...F.at(1, F.V - 3), `${ctx.origin}/tree`); plantTree(m, ...F.at(F.U - 2, 2), `${ctx.origin}/tree`);
+            run(m, [F.at(lane + 5, 1)], 'concrete_wall', 2, `${ctx.origin}/park-sign`);
+            const r = R(ctx, lane + 5, F.V - 5, 3, 3); dumpsterEnclosure(m, r.x0, r.y0, F.front, `${ctx.origin}/dumpster-enclosure`);
+        }
+    },
+    'garden-apartments': {
+        name: 'Garden apartments: two walk-ups round a courtyard, parking in front', U: [32, 48], V: [30, 40], frontage: true, holdHost: true, buildings: 2,
+        weights: { suburban: 1.6, urban: 1.2, mixed: 1.2, retail: 0.4, roadside: 0.4, industrial: 0 }, fill: ['yard', 'lawn'],
+        plan(ctx) {
+            const { F } = ctx, w = Math.floor((F.U - 5) / 2), out = [];
+            for (const [i, u0] of [[0, 1], [1, F.U - 1 - w]]) { const b = building(ctx, { u0, v0: 11, uw: w, vd: 11 }, { program: 'walkup', storeys: 2, part: `block-${i}`, rounded: false, wall: 'brick' }); if (b) out.push(b); }
+            return { blocks: out, w };
+        },
+        dress(ctx, st) {
+            const { F, m } = ctx;
+            const lot = parkingLot(m, F, { u0: 0, v0: 0, uw: F.U, vd: 9 }, { origin: `${ctx.origin}/lot`, frontage: ctx.frontage, z: ctx.z, islands: F.U >= 36 });
+            drive(ctx, lot.entry); frontage(ctx, 'low-wall', [[lot.entry - 1, lot.entry + 4]]);
+            paint(m, R(ctx, 0, 9, F.U, 2), 'paving', 'plaza', { z: ctx.z });
+            // the passage between the blocks leads to the courtyard: lawn, paths, brick seat walls, a grill and a maintenance shed
+            const cv = 23, court = R(ctx, 0, cv, F.U, F.V - cv);
+            paint(m, court, 'lawn', 'green', { z: ctx.z });
+            paint(m, R(ctx, Math.floor(F.U / 2) - 1, 9, 2, F.V - 10), 'paving', 'path', { z: ctx.z });
+            paint(m, R(ctx, 2, cv + 1, F.U - 4, 1), 'paving', 'path', { z: ctx.z });
+            run(m, cellsU(ctx, cv + 3, 4, 6), 'brick', 1, `${ctx.origin}/seat-wall`); run(m, cellsU(ctx, cv + 3, F.U - 7, F.U - 5), 'brick', 1, `${ctx.origin}/seat-wall`);
+            run(m, [F.at(Math.floor(F.U / 2) + 3, cv + 4)], 'appliance', 1, `${ctx.origin}/grill`);
+            block(m, R(ctx, F.U - 5, F.V - 4, 3, 3), 'brick', 2, `${ctx.origin}/maintenance-shed`, { roofKey: 'roof_metal', landUse: 'green' });
+            for (const u of [3, F.U - 9, Math.floor(F.U / 2) - 5]) plantTree(m, ...F.at(u, F.V - 3), `${ctx.origin}/court-tree`);
+            const r = R(ctx, 2, F.V - 4, 4, 3); dumpsterEnclosure(m, r.x0, r.y0, F.front, `${ctx.origin}/dumpster-enclosure`);
+            fenceEdge(m, ctx.R, F.back, 'privacy', `${ctx.origin}/rear-fence`, { gates: [0.5] });
+            for (const side of [F.left, F.right]) fenceEdge(m, court, side, 'picket', `${ctx.origin}/court-fence`, { gates: [0.5] });
+            if (ctx.hold) ctx.holdZone(R(ctx, Math.floor(F.U / 2) - 3, cv + 2, 7, Math.min(7, F.V - cv - 3)), 'courtyard');
+        }
+    },
+    'pool-backyard': {
+        name: 'Back yard with a pool, deck and shed', U: [12, 22], V: [12, 22], frontage: false, buildings: 0,
+        weights: { suburban: 1.6, mixed: 0.6, urban: 0.2, retail: 0.1, roadside: 0.1, industrial: 0 }, fill: ['yard', 'lawn'],
+        dress(ctx) {
+            const { F, m } = ctx;
+            paint(m, ctx.R, 'lawn', 'yard', { z: ctx.z });
+            fenceRect(m, ctx.R, 'privacy', `${ctx.origin}/yard-fence`, { gates: { [F.front]: [0.2], [F.back]: [], [F.left]: [], [F.right]: [] } });
+            // paved surround, water, a pool-fence rail with a gate (the water is a hazard, the surround is open)
+            const pw = Math.min(F.U - 6, 8), pd = Math.min(F.V - 7, 6), pu = Math.floor((F.U - pw) / 2), pv = 3;
+            const surround = R(ctx, pu - 1, pv - 1, pw + 2, pd + 2);
+            paint(m, surround, 'paving', 'yard', { z: ctx.z });
+            const water = R(ctx, pu, pv, pw, pd);
+            for (let y = water.y0; y < water.y0 + water.d; y++) for (let x = water.x0; x < water.x0 + water.w; x++) if (canStand(m, x, y)) { m.store.set(x, y, ctx.z, MAT.water); tag(m, x, y, 'yard'); }
+            fenceRect(m, R(ctx, pu - 2, pv - 2, pw + 4, pd + 4), 'rail', `${ctx.origin}/pool-rail`, { gates: { [F.front]: [0.5], [F.back]: [0.5] } });
+            paint(m, R(ctx, 1, F.V - 4, Math.min(6, F.U - 6), 3), 'deck', 'yard', { z: ctx.z });
+            run(m, cellsU(ctx, F.V - 3, 2, 3), 'desk', 1, `${ctx.origin}/patio-table`);
+            block(m, R(ctx, F.U - 4, F.V - 4, 3, 2), 'siding', 2, `${ctx.origin}/shed`, { roofKey: 'roof_metal', landUse: 'yard' });
+            plantTree(m, ...F.at(1, 1), `${ctx.origin}/yard-tree`);
+        }
+    },
+    'garage-house': {
+        name: 'House with a long driveway to a detached garage', U: [14, 20], V: [26, 36], frontage: true, repeat: true, buildings: 2,
+        weights: { suburban: 2.4, mixed: 0.8, urban: 0.2, retail: 0.1, roadside: 0.3, industrial: 0 }, fill: ['yard', 'lawn'],
+        plan(ctx) {
+            const { F } = ctx, hw = F.U - 6, hd = 10;
+            const two = ctx.rng.next() < 0.45 && hw >= 8;
+            const house = building(ctx, { u0: 1, v0: 5, uw: hw, vd: hd }, two ? { program: 'townhouse', storeys: 2, part: 'house' } : { program: ctx.rng.next() < 0.5 ? 'house' : 'bungalow', storeys: 1, part: 'house' });
+            const garage = building(ctx, { u0: F.U - 8, v0: F.V - 9, uw: 7, vd: 7 }, { program: 'lockup', storeys: 1, part: 'garage', rounded: false, wall: 'siding' });
+            return { house, garage, hd };
+        },
+        dress(ctx, st) {
+            const { F, m } = ctx, du = F.U - 4;
+            paint(m, R(ctx, 0, 0, F.U, F.V), 'lawn', 'yard', { z: ctx.z });
+            paint(m, R(ctx, du, 0, 3, F.V - 9), 'concrete', 'driveway', { z: ctx.z });
+            paint(m, R(ctx, F.U - 8, F.V - 13, 7, 4), 'concrete', 'driveway', { z: ctx.z });
+            drive(ctx, du, 3);
+            slot(ctx, du, 1, { kind: 'driveway', priority: 0.6, part: 'driveway' });
+            slot(ctx, F.U - 7, F.V - 13, { len: 4, kind: 'driveway', priority: 0.5, part: 'garage-apron' });
+            frontage(ctx, 'picket', [[Math.floor((F.U - 6) / 2), Math.floor((F.U - 6) / 2) + 1], [du - 1, F.U - 1]]);
+            const back = 5 + st.hd;
+            paint(m, R(ctx, 1, back, 5, 3), 'deck', 'yard', { z: ctx.z });
+            run(m, cellsU(ctx, back + 4, 1, 2), 'barrel_water', 1, `${ctx.origin}/water-butts`);
+            plantTree(m, ...F.at(2, F.V - 3), `${ctx.origin}/yard-tree`);
+            fenceEdge(m, ctx.R, F.back, 'privacy', `${ctx.origin}/back-fence`, { gates: [] });
+            for (const side of [F.left, F.right]) fenceEdge(m, R(ctx, 0, back, F.U, F.V - back), side, 'privacy', `${ctx.origin}/side-fence`, { gates: [0.3] });
+        }
+    },
+
+    // ================================================================ new parcels: service and back of house
+    'loading-dock': {
+        name: 'Loading dock: raised platform, truck bays, pallets and dumpsters', U: [20, 38], V: [14, 26], frontage: false, buildings: 0,
+        weights: { industrial: 2.4, retail: 1.2, urban: 0.8, mixed: 0.8, roadside: 0.6, suburban: 0.1 }, fill: ['apron', 'concrete'],
+        dress(ctx) {
+            const { F, m } = ctx;
+            paint(m, ctx.R, 'concrete', 'apron', { z: ctx.z });
+            // the dock platform along the back: one voxel up, a canopy over it, pallets and cages on it
+            const pd = 3, dock = R(ctx, 1, F.V - pd - 1, F.U - 2, pd);
+            const cells = []; for (let y = dock.y0; y < dock.y0 + dock.d; y++) for (let x = dock.x0; x < dock.x0 + dock.w; x++) if (canStand(m, x, y)) cells.push([x, y]);
+            for (const [x, y] of cells) { put(m, x, y, ctx.z + 1, 'concrete', `${ctx.origin}/dock-platform`); tag(m, x, y, 'apron'); }
+            // steps up at both ends (a 1-voxel rise is a step, but the ends make the route obvious)
+            canopy(m, R(ctx, 1, F.V - pd - 2, F.U - 2, pd + 1), `${ctx.origin}/dock-canopy`, { z: ctx.z });
+            for (let u = 3; u + 1 < F.U - 3; u += 6) { const [x, y] = F.at(u, F.V - 2); if (m.store.isSolid(x, y, ctx.z + 1) && !m.store.isSolid(x, y, ctx.z + 2)) put(m, x, y, ctx.z + 2, 'pallet', `${ctx.origin}/dock-pallets`); }
+            // truck bays backed onto the platform, jersey dividers between them
+            const len = F.V >= 22 ? 10 : 6, v0 = F.V - pd - 1 - len;
+            for (let u = 2, i = 0; u + 2 < F.U - 2 && i < 4; u += 7, i++) {
+                slot(ctx, u, v0, { len, kind: 'dock', types: len >= 10 ? ['semitrailer', 'truck'] : ['truck'], priority: 0.85, part: `dock-bay-${i}` });
+                if (u + 4 < F.U - 2) rowOf(ctx, u + 4, u + 4, F.V - pd - 2, 'jersey', 1, 'bay-divider');
+            }
+            const r = R(ctx, F.U - 5, 1, 3, 3); dumpsterEnclosure(m, r.x0, r.y0, F.back, `${ctx.origin}/dumpster-enclosure`);
+            rowOf(ctx, 1, 2, 1, 'pallet', 2, 'pallet-stack'); rowOf(ctx, 1, 1, 3, 'barrel_powder', 1, 'drums');
+            run(m, [F.at(Math.floor(F.U / 2), 1)], 'steel_post', 2, `${ctx.origin}/light-pole`);
+        }
+    },
+    'service-alley': {
+        name: 'Service alley: dumpsters, grease bins, condensers and meters', U: [12, 40], V: [8, 12], frontage: false, buildings: 0, narrowBonus: 3,
+        weights: { urban: 2, retail: 1.2, mixed: 1, industrial: 0.8, roadside: 0.4, suburban: 0.2 }, fill: ['alley', 'asphalt'],
+        dress(ctx) {
+            const { F, m } = ctx;
+            paint(m, ctx.R, 'asphalt', 'alley', { z: ctx.z });
+            // the back wall side (v high) carries the service clutter; the near side keeps a 3-wide lane for a van
+            const bv = F.V - 2;
+            for (let u = 1; u + 2 < F.U - 1; u += 8) {
+                const [x, y] = F.at(u, bv), [x2, y2] = F.at(u + 1, bv);
+                if (canStand(m, x, y) && canStand(m, x2, y2)) { m.dumpster(Math.min(x, x2), Math.min(y, y2), F.uAxis, groundAt(m, x, y)); registerSolids(m, { x0: Math.min(x, x2), y0: Math.min(y, y2), w: F.uAxis === 'x' ? 2 : 1, d: F.uAxis === 'x' ? 1 : 2 }, `${ctx.origin}/dumpster`); tag(m, x, y, 'utility'); tag(m, x2, y2, 'utility'); }
+                rowOf(ctx, u + 3, u + 3, bv, 'barrel_powder', 1, 'grease-bin');
+                if (u + 5 < F.U - 1) rowOf(ctx, u + 5, u + 6, bv, 'appliance', 2, 'condenser');
+            }
+            for (let u = 4; u < F.U - 1; u += 8) rowOf(ctx, u, u, F.V - 1, 'steel_post', 1, 'meter');
+            if (F.U >= 16) slot(ctx, Math.floor(F.U / 2) - 3, 0, { len: 6, along: 'u', kind: 'service', types: ['truck', 'car'], priority: 0.5, part: 'service-van' });
+            run(m, cellsU(ctx, 1, F.U - 3, F.U - 2), 'bin', 1, `${ctx.origin}/bins`);
+        }
+    },
+
+    // ================================================================ new parcels: commercial infill
+    'corner-store': {
+        name: 'Corner store with a small lot, ice box and propane cage', U: [16, 26], V: [16, 24], frontage: true, buildings: 1,
+        weights: { mixed: 1.8, urban: 1.6, suburban: 1.4, retail: 1.2, roadside: 1, industrial: 0.3 }, fill: ['plaza', 'paving'],
+        plan(ctx) {
+            const { F } = ctx, w = Math.min(14, F.U - 6), d = Math.min(10, F.V - 8);
+            return { b: building(ctx, { u0: 1, v0: F.V - d - 1, uw: w, vd: d }, { program: 'corner_store', storeys: [1, 2], part: 'store', rounded: false }), w, d };
+        },
+        dress(ctx, st) {
+            const { F, m } = ctx, lotV = F.V - st.d - 1;
+            paint(m, R(ctx, 0, 0, F.U, lotV), 'asphalt', 'aisle', { z: ctx.z });
+            // nose-in stalls facing the shopfront, the entry beside them
+            for (let u = 1; u + 2 <= st.w; u += 3) slot(ctx, u, Math.max(0, lotV - 6), { kind: 'stall', priority: 0.6, part: 'stall' });
+            paint(m, R(ctx, 0, lotV - 1, st.w + 1, 1), 'paving', 'plaza', { z: ctx.z });
+            const eu = Math.min(F.U - 5, st.w + 1); drive(ctx, eu, 4); frontage(ctx, 'low-wall', [[eu - 1, eu + 4]]);
+            const cu = st.w + 2;
+            if (cu + 2 < F.U) {
+                // propane cage (chain-link round two drums) and an ice box beside the door side
+                const cage = R(ctx, cu, F.V - 5, 3, 3);
+                fenceRect(m, cage, 'chain', `${ctx.origin}/propane-cage`, { gates: { [F.front]: [], [F.back]: [], [F.left]: [], [F.right]: [] } });
+                run(m, [F.at(cu + 1, F.V - 4)], 'barrel_powder', 1, `${ctx.origin}/propane`);
+                run(m, [F.at(cu, F.V - 7)], 'appliance', 1, `${ctx.origin}/ice-box`);
+            }
+            run(m, [F.at(0, lotV - 1)], 'barrel_water', 1, `${ctx.origin}/water-cooler`);
+            run(m, [F.at(F.U - 2, 1)], 'concrete_wall', 2, `${ctx.origin}/price-sign`);
+            fenceEdge(m, ctx.R, F.back, 'privacy', `${ctx.origin}/rear-fence`, { gates: [0.8] });
+        }
+    },
+    laundromat: {
+        name: 'Laundromat with a front lot and a rear service door', U: [16, 28], V: [18, 28], frontage: true, buildings: 1,
+        weights: { mixed: 1.2, retail: 1.2, urban: 1, suburban: 0.9, roadside: 0.7, industrial: 0.2 }, fill: ['plaza', 'paving'],
+        plan(ctx) {
+            const { F } = ctx, w = Math.min(16, F.U - 2), d = Math.min(11, F.V - 11);
+            return { b: building(ctx, { u0: Math.floor((F.U - w) / 2), v0: F.V - d - 1, uw: w, vd: d }, { program: 'laundromat', storeys: 1, part: 'laundromat', rounded: ctx.rng.next() < 0.5 }), w, d };
+        },
+        dress(ctx, st) {
+            const { F, m } = ctx, lotV = F.V - st.d - 1;
+            const lot = parkingLot(m, F, { u0: 0, v0: 0, uw: F.U, vd: 9 }, { origin: `${ctx.origin}/lot`, frontage: ctx.frontage, z: ctx.z, islands: false });
+            drive(ctx, lot.entry); frontage(ctx, 'low-wall', [[lot.entry - 1, lot.entry + 4]]);
+            paint(m, R(ctx, 0, 9, F.U, lotV - 9), 'paving', 'plaza', { z: ctx.z });
+            run(m, cellsU(ctx, lotV - 1, 1, 2), 'brick', 1, `${ctx.origin}/seat-wall`);
+            run(m, cellsU(ctx, lotV - 1, F.U - 3, F.U - 2), 'bin', 1, `${ctx.origin}/bins`);
+            run(m, [F.at(F.U - 2, F.V - 2)], 'appliance', 2, `${ctx.origin}/dryer-vent`);
+            fenceEdge(m, ctx.R, F.back, 'chain', `${ctx.origin}/rear-fence`, { gates: [0.5] });
+        }
+    },
+    'bar-patio': {
+        name: 'Bar with a fenced patio and a rear lot', U: [18, 30], V: [18, 28], frontage: true, buildings: 1,
+        weights: { urban: 2, roadside: 1.8, mixed: 1.6, retail: 1, suburban: 0.6, industrial: 0.6 }, fill: ['plaza', 'paving'],
+        plan(ctx) {
+            const { F } = ctx, w = Math.min(13, F.U - 8);
+            return { b: building(ctx, { u0: 1, v0: 1, uw: w, vd: 10 }, { program: 'bar', storeys: [1, 2], part: 'bar', rounded: false, wall: 'brick' }), w };
+        },
+        dress(ctx, st) {
+            const { F, m } = ctx, pu = st.w + 2;
+            paint(m, R(ctx, 0, 0, F.U, 1), 'paving', 'plaza', { z: ctx.z });
+            // the patio beside the bar: deck, picnic tables, a low brick wall to the street, string-light posts
+            const patio = R(ctx, pu, 1, F.U - pu - 1, 10);
+            paint(m, patio, 'deck', 'plaza', { z: ctx.z });
+            fenceRect(m, patio, 'low-wall', `${ctx.origin}/patio-wall`, { gates: { [F.front]: [0.5], [F.back]: [0.5], [F.left]: [0.5], [F.right]: [] } });
+            for (let v = 3; v + 1 < 10; v += 3) run(m, cellsU(ctx, v, pu + 2, Math.min(F.U - 3, pu + 4)), 'desk', 1, `${ctx.origin}/picnic-table`);
+            for (const v of [2, 9]) run(m, [F.at(F.U - 3, v)], 'steel_post', 2, `${ctx.origin}/light-post`);
+            // the rear lot
+            const lv = 12;
+            if (F.V - lv >= 9) { const lot = parkingLot(m, F, { u0: 0, v0: lv, uw: F.U, vd: Math.min(14, F.V - lv) }, { origin: `${ctx.origin}/lot`, frontage: false, z: ctx.z, islands: false }); void lot; }
+            const r = R(ctx, 1, lv - 1 < 11 ? 11 : lv - 1, 4, 3); dumpsterEnclosure(m, r.x0, r.y0, F.back, `${ctx.origin}/dumpster-enclosure`);
+            run(m, [F.at(st.w + 1, 11)], 'barrel_powder', 1, `${ctx.origin}/kegs`);
+            fenceEdge(m, ctx.R, F.back, 'privacy', `${ctx.origin}/rear-fence`, { gates: [0.5], gateWidth: 3 });
+        }
+    },
+
+    // ================================================================ new parcels: garages
+    'lockup-garages': {
+        name: 'Lock-up garage court', U: [20, 42], V: [16, 24], frontage: false, buildings: 5,
+        weights: { suburban: 1.2, urban: 1.2, industrial: 1.2, mixed: 1, roadside: 0.4, retail: 0.2 }, fill: ['apron', 'asphalt'],
+        plan(ctx) {
+            // a row of single lock-ups along the back, each 6 wide with its own roller door onto the court
+            const { F } = ctx, n = Math.min(5, Math.floor((F.U - 2) / 6)), u0 = Math.floor((F.U - n * 6) / 2), units = [];
+            for (let i = 0; i < n; i++) { const b = building(ctx, { u0: u0 + i * 6, v0: F.V - 8, uw: 6, vd: 7 }, { program: 'lockup', storeys: 1, part: `unit-${i}`, rounded: false, wall: i % 2 ? 'concrete_wall' : 'brick' }); if (b) units.push({ b, u: u0 + i * 6 }); }
+            return { units };
+        },
+        dress(ctx, st) {
+            const { F, m } = ctx;
+            paint(m, ctx.R, 'asphalt', 'apron', { z: ctx.z });
+            // cars nosed up to some doors; the rest of the court stays open (a killing ground with hard sides)
+            st.units.forEach((u, i) => { if (i % 2 === 0) slot(ctx, u.u + 2, Math.max(0, F.V - 13), { len: 4, kind: 'driveway', priority: 0.5, part: `apron-${i}` }); });
+            rowOf(ctx, 1, 1, 2, 'bin', 1, 'bins');
+            run(m, [F.at(F.U - 2, 1), F.at(F.U - 2, 2)], 'barrel_powder', 1, `${ctx.origin}/oil-drums`);
+            fenceEdge(m, ctx.R, F.back, 'privacy', `${ctx.origin}/rear-fence`, { gates: [] });
+            for (const side of [F.left, F.right]) fenceEdge(m, ctx.R, side, 'chain', `${ctx.origin}/side-fence`, { gates: [0.3] });
+        }
     }
 
 });
+
 export const MIX_IDS = Object.freeze(Object.keys(MIXES));
 export const mixWeight = (id, family) => W(MIXES[id].weights, family);
 

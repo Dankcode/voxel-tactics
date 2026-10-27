@@ -95,6 +95,48 @@ export const PROGRAMS = {
     tower: {
         wall: 'concrete_wall', floor: 'concrete', wet: 'concrete', roof: 'flat',
         rows: [{ depth: 1, rooms: [{ kind: 'hall', w: 1 }] }], entry: 'hall', back: ['hall'], stairs: ['hall'], roofAccess: true
+    },
+    // ---- new parcels (residential variety, commercial infill, garages, back of house)
+    // Duplex: two homes side by side, each with its own front door (frontEach) and back door.
+    duplex: {
+        wall: 'siding', floor: 'oak_floor', wet: 'ceramic', roof: 'flat', frontEach: 'living',
+        rows: [{ depth: 0.55, rooms: [{ kind: 'living', w: 0.5 }, { kind: 'living', w: 0.5 }] },
+            { depth: 0.45, rooms: [{ kind: 'kitchen', w: 0.4 }, { kind: 'bathroom', w: 3 }, { kind: 'kitchen', w: 0.4 }] }],
+        upper: { living: 'bedroom', kitchen: 'bedroom', bathroom: 'bathroom' }, entry: 'living', back: ['kitchen'], stairs: ['living']
+    },
+    // Single-wide mobile home: one row of rooms along a narrow box.
+    trailer: {
+        wall: 'siding', floor: 'carpet', wet: 'ceramic', roof: 'metal',
+        rows: [{ depth: 1, rooms: [{ kind: 'bedroom', w: 0.3 }, { kind: 'living', w: 0.42 }, { kind: 'kitchen', w: 0.28 }] }],
+        entry: 'living', back: ['kitchen', 'bedroom'], side: ['bedroom', 'kitchen']
+    },
+    // Garden-apartment walk-up: a stair hall between two flats in front, two more behind; the same on the floor above.
+    walkup: {
+        wall: 'brick', floor: 'carpet', wet: 'ceramic', roof: 'flat',
+        rows: [{ depth: 0.5, rooms: [{ kind: 'unit', w: 0.5 }, { kind: 'hall', w: 4 }, { kind: 'unit', w: 0.5 }] },
+            { depth: 0.5, rooms: [{ kind: 'kitchen', w: 0.5 }, { kind: 'living', w: 0.5 }] }],
+        upper: { unit: 'unit', hall: 'hall', kitchen: 'bedroom', living: 'unit' }, entry: 'hall', back: ['living', 'kitchen'], side: ['unit'], stairs: ['hall']
+    },
+    // Corner store with a flat over it (the stair is in the back room).
+    corner_store: {
+        wall: 'brick', floor: 'tile_dark', wet: 'ceramic', roof: 'flat',
+        rows: [{ depth: 0.68, rooms: [{ kind: 'convenience', w: 1 }] }, { depth: 0.32, rooms: [{ kind: 'storeroom', w: 0.62 }, { kind: 'office', w: 0.38 }] }],
+        upper: { convenience: 'living', storeroom: 'kitchen', office: 'bedroom' }, entry: 'convenience', back: ['storeroom'], side: ['convenience'], stairs: ['storeroom']
+    },
+    laundromat: {
+        wall: 'stucco', floor: 'ceramic', wet: 'ceramic', roof: 'flat',
+        rows: [{ depth: 0.7, rooms: [{ kind: 'laundry', w: 1 }] }, { depth: 0.3, rooms: [{ kind: 'utility', w: 0.45 }, { kind: 'office', w: 0.55 }] }],
+        entry: 'laundry', back: ['office'], side: ['laundry']
+    },
+    bar: {
+        wall: 'brick', floor: 'oak_floor', wet: 'ceramic', roof: 'flat', dim: ['barroom'],
+        rows: [{ depth: 0.64, rooms: [{ kind: 'barroom', w: 1 }] }, { depth: 0.36, rooms: [{ kind: 'galley', w: 0.42 }, { kind: 'storeroom', w: 0.33 }, { kind: 'restroom', w: 0.25 }] }],
+        upper: { barroom: 'unit', galley: 'office', storeroom: 'storeroom', restroom: 'bathroom' }, entry: 'barroom', back: ['storeroom', 'galley'], side: ['barroom'], stairs: ['storeroom', 'barroom']
+    },
+    // One lock-up (or a detached garage): a single bay behind a roller door.
+    lockup: {
+        wall: 'concrete_wall', floor: 'concrete', wet: 'concrete', roof: 'metal', rollers: true, dim: ['garage_bay'],
+        rows: [{ depth: 1, rooms: [{ kind: 'garage_bay', w: 1 }] }], entry: 'garage_bay', back: [], side: []
     }
 };
 
@@ -103,7 +145,7 @@ const GLAZE = {
     living: 'full', dining: 'full', sales: 'full', lobby: 'full', open_office: 'full', kitchen: 'band', study: 'band',
     office: 'band', meeting: 'band', bedroom: 'punched', unit: 'punched', hall: 'punched', galley: 'band', barracks: 'punched',
     warehouse: 'clerestory', workshop: 'clerestory', loading: 'none', storeroom: 'none', bathroom: 'none', restroom: 'none',
-    bath: 'none', armory: 'none', utility: 'none'
+    bath: 'none', armory: 'none', utility: 'none', laundry: 'full', convenience: 'full', barroom: 'band', garage_bay: 'none'
 };
 const WET = new Set(['kitchen', 'bathroom', 'restroom', 'bath', 'galley']);
 
@@ -161,7 +203,16 @@ const ITEMS = {
     water_drum: { mat: 'barrel_water', len: 1, dep: 1, h: 1, place: 'wall', piece: () => null },
     workbench: { mat: 'desk', len: 2, dep: 1, h: 1, place: 'wall', piece: () => 'workbench' },
     lockers: { mat: 'shelving', len: 2, dep: 1, h: 2, place: 'wall', piece: (i, j, n, h) => (h === 0 ? 'locker_lower' : 'locker_upper') },
-    bunks: { mat: 'bed', len: 1, dep: 2, h: 1, place: 'wall', piece: (i, j) => (j === 0 ? 'bed_head_single' : 'bed_foot_single'), across: true }
+    bunks: { mat: 'bed', len: 1, dep: 2, h: 1, place: 'wall', piece: (i, j) => (j === 0 ? 'bed_head_single' : 'bed_foot_single'), across: true },
+    // new-parcel interiors (existing tile-set pieces)
+    washer_bank: { mat: 'appliance', len: 3, minLen: 2, dep: 1, h: 1, place: 'wall', piece: () => 'washer' },
+    dryer_stack: { mat: 'appliance', len: 2, dep: 1, h: 2, place: 'wall', piece: () => 'washer' },
+    folding_table: { mat: 'desk', len: 2, dep: 1, h: 1, place: 'center', piece: () => 'packing_table' },
+    vending: { mat: 'appliance', len: 1, dep: 1, h: 2, place: 'wall', piece: (i, j, n, h) => (h === 0 ? 'cooler_lower' : 'cooler_upper') },
+    pool_table: { mat: 'desk', len: 2, dep: 1, h: 1, place: 'center', piece: () => 'packing_table', decor: (f, add) => add('floor_lamp', f.beside(-1)) },
+    bar_back: { mat: 'shelving', len: 3, minLen: 2, dep: 1, h: 2, place: 'wall', piece: (i, j, n, h) => (h === 0 ? 'store_shelf_lower' : 'store_shelf_upper') },
+    car_lift: { mat: 'steel_post', len: 1, dep: 1, h: 2, place: 'wall', piece: () => null },
+    tyre_stack: { mat: 'pallet', len: 1, dep: 1, h: 1, place: 'wall', piece: () => 'pallet' }
 };
 export const ROOM_FURNITURE = {
     living: ['sofa', 'tv', 'loveseat'], kitchen: ['kitchen', 'fridge', 'island'], bedroom: ['bed', 'wardrobe'], study: ['desk', 'bookcase'],
@@ -180,7 +231,12 @@ export const ROOM_FURNITURE = {
     // landmark / civic room kinds (geo imports: GeoPrograms.GEO_PROGRAMS)
     vault: ['stock_rack', 'crates', 'filing'], gallery: ['counter', 'bookcase', 'counter'], nave: ['booth', 'booth', 'booth', 'booth'],
     vestry: ['wardrobe', 'bookcase'], chamber: ['conference', 'booth', 'booth'], classroom: ['desk_pair', 'desk_pair', 'bookcase'],
-    reading: ['bookcase', 'bookcase', 'desk', 'bookcase'], ward: ['bed_single', 'bed_single', 'aid_station']
+    reading: ['bookcase', 'bookcase', 'desk', 'bookcase'], ward: ['bed_single', 'bed_single', 'aid_station'],
+    // new parcels: laundromat, corner store, bar, lock-up garage
+    laundry: ['washer_bank', 'dryer_stack', 'folding_table', 'washer_bank', 'vending', 'loveseat'],
+    convenience: ['checkout', 'cooler', 'aisle', 'wall_shelf', 'aisle', 'vending'],
+    barroom: ['counter', 'bar_back', 'booth', 'pool_table', 'booth', 'booth'],
+    garage_bay: ['workbench', 'tool_chest', 'tyre_stack', 'drums', 'car_lift', 'parts_bin']
 };
 // A recipe changes functional clusters, not just their positions. Shared by geo and operation furnishing.
 export const INTERIOR_RECIPES = {
@@ -189,17 +245,20 @@ export const INTERIOR_RECIPES = {
     bedroom: [['bed', 'wardrobe'], ['bed_single', 'desk', 'bookcase'], ['bed_single', 'bed_single', 'wardrobe']],
     dining: [['booth', 'booth', 'counter', 'booth'], ['booth', 'booth', 'bakery_case', 'checkout'], ['counter', 'booth', 'cooler']],
     warehouse: [['warehouse_rack', 'warehouse_rack', 'packing_table', 'pallet_stack', 'pallets'], ['conveyor', 'packing_table', 'stock_rack', 'crates'], ['warehouse_rack', 'cable_spool', 'parts_bin', 'pallet_stack']],
-    storeroom: [['stock_rack', 'pallets', 'crates'], ['wall_shelf', 'packing_table', 'tool_chest'], ['stock_rack', 'stock_rack', 'pallet_stack']]
+    storeroom: [['stock_rack', 'pallets', 'crates'], ['wall_shelf', 'packing_table', 'tool_chest'], ['stock_rack', 'stock_rack', 'pallet_stack']],
+    laundry: [['washer_bank', 'dryer_stack', 'folding_table', 'washer_bank', 'vending', 'loveseat'], ['dryer_stack', 'dryer_stack', 'folding_table', 'washer_bank', 'loveseat'], ['washer_bank', 'washer_bank', 'folding_table', 'folding_table', 'vending']],
+    barroom: [['counter', 'bar_back', 'booth', 'pool_table', 'booth', 'booth'], ['counter', 'bar_back', 'pool_table', 'pool_table', 'booth'], ['counter', 'booth', 'booth', 'booth', 'tv']],
+    garage_bay: [['workbench', 'tool_chest', 'tyre_stack', 'drums', 'car_lift', 'parts_bin'], ['wall_shelf', 'crates', 'pallets', 'tool_chest'], ['workbench', 'car_lift', 'tyre_stack', 'tyre_stack', 'drums']]
 };
 export function furnitureForRoom(room, seed) {
     const recipes = INTERIOR_RECIPES[room.kind];
     const base = recipes ? recipes[(hashString(`${seed}:${room.buildingId || ''}:${room.id}:${room.kind}:${room.floorZ || 0}`) >>> 0) % recipes.length] : ROOM_FURNITURE[room.kind] || [];
     // Big imported halls need more than the tiny-room kit, with one checkout and repeated working bays.
-    if (!['sales', 'storeroom', 'grocery', 'market', 'hardware', 'warehouse', 'packing', 'cold_storage', 'dispatch'].includes(room.kind)) return base;
+    if (!['sales', 'storeroom', 'grocery', 'market', 'hardware', 'warehouse', 'packing', 'cold_storage', 'dispatch', 'laundry', 'convenience'].includes(room.kind)) return base;
     const bays = Math.max(1, Math.min(12, Math.ceil((room.cells?.length || 0) / 100)));
     return [...base, ...Array.from({ length: bays - 1 }, () => base.filter(id => !['checkout', 'tool_chest', 'bakery_case'].includes(id))).flat()];
 }
-const PLANTS = new Set(['living', 'lobby', 'office', 'open_office', 'study', 'dining', 'meeting', 'unit']);
+const PLANTS = new Set(['living', 'lobby', 'office', 'open_office', 'study', 'dining', 'meeting', 'unit', 'laundry']);
 
 // ------------------------------------------------------------------------------------------------ build
 /**
@@ -477,7 +536,7 @@ export function planRows(IW, ID, prog, spec = {}) {
     };
     // Exterior door slots.
     const exits = [];
-    const hub = new Set(['living', 'sales', 'grocery', 'market', 'hardware', 'packing', 'cold_storage', 'dispatch', 'dining', 'lobby', 'hall', 'loading', 'open_office', 'warehouse', 'workshop']);
+    const hub = new Set(['living', 'sales', 'grocery', 'market', 'hardware', 'packing', 'cold_storage', 'dispatch', 'dining', 'lobby', 'hall', 'loading', 'open_office', 'warehouse', 'workshop', 'laundry', 'convenience', 'barroom', 'garage_bay']);
     const addExit = (room, side, entry = false) => {
         const r = rooms[room];
         if (!r.gameplay) return false;
@@ -488,12 +547,18 @@ export function planRows(IW, ID, prog, spec = {}) {
         else if (side === 'left') { if (r.u0 !== 0) return false; v = along(r.v0, r.v1, 0.5) + 1; u = 0; }
         else { if (r.u1 !== IW - 1) return false; v = along(r.v0, r.v1, 0.5) + 1; u = IW + 1; }
         if (exits.some(e => Math.abs(e.u - u) + Math.abs(e.v - v) <= 2)) return false;
-        exits.push({ u, v, room, entry, roller: !!prog.rollers && ['loading', 'warehouse', 'workshop'].includes(rooms[room].kind) && (side === 'front' || side === 'back') });
+        exits.push({ u, v, room, entry, roller: !!prog.rollers && ['loading', 'warehouse', 'workshop', 'garage_bay'].includes(rooms[room].kind) && (side === 'front' || side === 'back') });
         doorCount.set(room, (doorCount.get(room) || 0) + 1);
         return true;
     };
     if (prog.unitsPerFront) rooms.forEach((r, i) => { if (r.kind === 'unit') addExit(i, 'front', i === 0); });
-    else {
+    else if (prog.frontEach) {
+        // one front door per front-row room of this kind (a duplex: each home its own), then their back doors
+        let first = true;
+        rooms.forEach((r, i) => { if (r.kind === prog.frontEach && r.v0 === 0 && addExit(i, 'front', first)) first = false; });
+        if (first) { const i = rooms.findIndex(r => r.gameplay && r.v0 === 0); if (i < 0 || !addExit(i, 'front', true)) throw new Error('Building needs a playable front entry'); }
+        for (const kind of prog.back || []) rooms.forEach((r, i) => { if (r.kind === kind && r.v1 === ID - 1) addExit(i, 'back'); });
+    } else {
         const preferredEntry = rooms.findIndex(r => r.gameplay && r.kind === prog.entry && r.v0 === 0);
         const entryRoom = preferredEntry >= 0 ? preferredEntry : rooms.findIndex(r => r.gameplay && r.v0 === 0);
         if (entryRoom < 0) throw new Error('Building needs a playable front entry');

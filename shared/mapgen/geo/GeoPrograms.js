@@ -5,7 +5,8 @@
 // ROOM_FURNITURE, where the landmark kinds — vault, gallery, nave, vestry, chamber, classroom, reading, ward — live).
 //
 //   rule order: explicit amenity/tourism/shop/office/building values, then the Wikidata "instance of" labels, then
-//   the name, then size (GeoSite.programFor). Every rule names the material set a style or OSM material overrides.
+//   the name. Every rule names the material set a style or OSM material overrides. (An imported place arrives with its
+//   programme already picked by Geo-voxel's uses.js; the GEO_PROGRAMS plans are what the game builds for it.)
 
 /** Landmark and civic plans (rows from the front to the back; w < 1 shares, w ≥ 1 fixed cells). */
 export const GEO_PROGRAMS = {

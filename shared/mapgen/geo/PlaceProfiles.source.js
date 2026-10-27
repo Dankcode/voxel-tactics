@@ -1,5 +1,5 @@
-// PLAN-15: which real places feed which generator family, and the bake itself (used by tools/geo/place-profiles.mjs
-// and by the test that keeps PlaceProfiles.generated.js in step with the catalog).
+// PLAN-15: which real places feed which generator family, and the bake itself (used by tools/places/places.mjs
+// profiles and by the test that keeps PlaceProfiles.generated.js in step with the place catalog).
 import { derivePlaceProfile, themeProfile } from './PlaceProfile.js';
 
 /** Catalog theme → generator family. Landmarks are downtown neighbourhoods; a strip centre is the suburb's shops. */
@@ -9,7 +9,7 @@ export function bakedProfiles(maps) {
     const byFamily = {};
     for (const g of maps) {
         const fam = THEME_FAMILY[g.theme]; if (!fam) continue;
-        (byFamily[fam] ||= []).push(derivePlaceProfile(g.geo, { id: g.id }));
+        (byFamily[fam] ||= []).push(derivePlaceProfile(g.layers, { id: g.id }));
     }
     return Object.fromEntries(Object.entries(byFamily).sort(([a], [b]) => (a < b ? -1 : 1)).map(([f, list]) => [f, themeProfile(list)]));
 }

@@ -266,12 +266,36 @@ reseed. The critic score (`meta.critic`) is informational. Interior partitions o
   the route. `podSpacing` 0 restores the old placement.
 - **Pod members** (`MissionCommon.finalizeMission`): members of one pod stand at least two tiles apart (adjacent only
   as a fallback).
-- **Real places** (`GeoDistrict`, generator `geo-compact-5`): pods follow the insertion → objective line
+- **Real places** (`PlaceImport`, generator `place-import-1`; GeoDistrict before PLAN-16): pods follow the insertion → objective line
   (`Pods.zonedDistrictPods`: objective pod, a building pod at ~⅔, the street pod at ~40 %, the walker near the
   objective's street) instead of the far corner. A building the map edge cuts is kept, clipped at the edge, when at
   least 12 % (and 40 cells) of it is inside (`report.clipped`); only slivers are dropped.
-- **Real data drives generation** (`shared/mapgen/geo/PlaceProfile.js`, baked by `npm run geo:profiles` into
-  `PlaceProfiles.generated.js`): each catalog place feeds its theme's generator family (Downtown / Landmark →
+- **Real data drives generation** (`shared/mapgen/geo/PlaceProfile.js`, baked by `node tools/places/places.mjs profiles`
+  into `PlaceProfiles.generated.js`, from each place's Geo-voxel layers): each catalog place feeds its theme's generator family (Downtown / Landmark →
   downtown, Strip centre → suburb). `placeBuildings` draws storeys from the real distribution for the building's use
   (clamped to the lot kind's range) and picks the footprint variant whose depth ratio is nearest a real one; noise is
   the fallback when a family has no data.
+
+## PLAN-16: real places from Geo-voxel, new parcels
+
+- **Real places are imported, not generated here.** Geo-voxel (the 3D map generator project) fetches OSM, terrain and
+  Wikidata, straightens and rasterises the place and exports `geo-voxels/layers@1` (layers.json, or `layers` inside its
+  map.json). `tools/places/places.mjs import` copies the layers into `client/public/places/<id>/`, adds the place to
+  `tools/places/places.json` and regenerates the catalog (`shared/mission/generated/PlaceCatalog.js`), the place
+  profiles and the bakes. `shared/mission/PlaceImport.js` turns the layers into a mission.
+- **What the game keeps from the place:** terrain (the exported heightfield), streets (land-use R/K/S owned by the
+  nearest centreline), car parks (striped with planted islands), every building (its wing rectangles plus the rest of
+  its outline; tenants become units; landmarks dressed) and Geo-voxel's road-paint plan.
+- **What the game decides:** each building's game type (`gameProgram`: a pub is a `bar`, a laundry a `laundromat`, a
+  convenience shop a `corner_store`, a small garage a `lockup`, a big house a `walkup`), and the open land, which the
+  district parcel fill takes with the place theme's mix weights (`THEME_FAMILY`: Downtown/Landmark → urban, Suburbs →
+  suburban, Strip centre → retail, Industrial, Roadside). The fill may add a few small buildings (`newBuildings`,
+  ≤ 6, ≤ 2 storeys; 0 keeps the place as mapped). Landmark places keep open lawn as grounds (`openLand: 'park'`).
+  `lotsToParcels` hands mapped car parks to the fill. Objective, insertion, cover repair and pods are as before.
+- **New parcels** (district mixes, `MixCatalogue`): residential `duplex-plot`, `trailer-park`, `garden-apartments`,
+  `pool-backyard`, `garage-house`; back of house `loading-dock`, `service-alley`; commercial infill `corner-store`,
+  `laundromat`, `bar-patio`; garages `lockup-garages`. New building programmes with generated interiors
+  (`ModernBuilder.PROGRAMS`): `duplex` (a front door per home), `trailer`, `walkup`, `corner_store` (flat over the
+  shop), `laundromat`, `bar`, `lockup` (roller door), with room kinds `laundry`, `convenience`, `barroom` and
+  `garage_bay` and their furniture. Generated operations field them as lot kinds `duplex`, `walkup`, `trailer`,
+  `corner_store`, `laundromat` and `lockups` (`LotCatalogue`, `OperationDesigner.PROGRAMMES`).

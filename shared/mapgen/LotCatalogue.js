@@ -21,6 +21,14 @@ export const LOT_KINDS = Object.freeze({
     townhouses: { size: [2, 1], districts: ['residential'], w: 1.0, building: { program: 'house', along: 15, deep: 7, front: 1, storeys: [2, 3] }, ground: 'lawn', pool: 'yard_garden' },
     motel: { size: [2, 1], districts: ['commercial', 'yard'], w: 0.5, building: { program: 'motel', along: 15, deep: 7, front: 1, storeys: [1, 2] }, ground: 'concrete', pool: 'yard_paved' },
     bar: { size: [2, 1], districts: ['commercial', 'residential'], w: 0.5, building: { program: 'bar', along: 11, deep: 7, front: 1, storeys: [1, 2], variants: [[11, 7], [9, 7]] }, ground: 'paving', pool: 'yard_paved' },
+    // New parcels: residential variety, commercial infill and garages, with their own generated interiors
+    // (ModernBuilder PROGRAMS + room kinds laundry / convenience / garage_bay, OperationDesigner PROGRAMMES).
+    duplex: { size: [2, 1], districts: ['residential'], w: 0.8, building: { program: 'duplex', along: 15, deep: 7, front: 1, storeys: [1, 2], variants: [[15, 7], [13, 7]] }, ground: 'lawn', pool: 'yard_garden' },
+    walkup: { size: [2, 2], districts: ['residential'], w: 0.7, building: { program: 'walkup', along: 13, deep: 11, front: 2, storeys: [2, 3], variants: [[13, 11], [13, 9], [11, 11]] }, ground: 'lawn', pool: 'yard_garden' },
+    trailer: { size: [2, 1], districts: ['residential', 'yard'], w: 0.35, building: { program: 'trailer', along: 13, deep: 5, front: 2, storeys: [1, 1], variants: [[13, 5], [11, 5]] }, ground: 'gravel', pool: 'yard_garden' },
+    corner_store: { size: [2, 1], districts: ['commercial', 'residential'], w: 0.6, building: { program: 'corner_store', along: 11, deep: 7, front: 1, storeys: [1, 2], variants: [[11, 7], [9, 7]] }, ground: 'paving', pool: 'yard_paved' },
+    laundromat: { size: [2, 1], districts: ['commercial', 'residential'], w: 0.45, building: { program: 'laundromat', along: 13, deep: 7, front: 1, storeys: [1, 1], variants: [[13, 7], [11, 7]] }, ground: 'paving', pool: 'yard_paved' },
+    lockups: { size: [2, 1], districts: ['industrial', 'yard', 'residential'], w: 0.5, building: { program: 'lockup', along: 13, deep: 7, front: 1, storeys: [1, 1], variants: [[13, 7], [11, 7]] }, ground: 'concrete', pool: 'yard_industrial' },
     // ---------------------------------------------------------------- objective parcels (a separate pool, as in XCOM 2)
     objective_office: { size: [2, 2], objective: true, families: ['downtown'], building: { program: 'office', along: 13, deep: 9, front: 1, storeys: [4, 4] }, ground: 'concrete', pool: 'yard_paved' },
     objective_depot: { size: [2, 2], objective: true, families: ['industrial'], building: { program: 'office', along: 13, deep: 9, front: 1, storeys: [3, 3] }, ground: 'concrete', pool: 'yard_industrial' },
@@ -39,7 +47,8 @@ export const LOT_KINDS = Object.freeze({
 });
 
 /** PLAN-14: what the attached lower wing of a merged parcel houses, by the main block's programme. */
-export const WING_PROGRAM = Object.freeze({ office: 'shop', apartment: 'shop', house: 'garage', warehouse: 'garage', shop: 'diner', motel: 'diner', bar: 'shop' });
+export const WING_PROGRAM = Object.freeze({ office: 'shop', apartment: 'shop', house: 'garage', warehouse: 'garage', shop: 'diner', motel: 'diner', bar: 'shop',
+    duplex: 'lockup', walkup: 'laundromat', trailer: 'lockup', corner_store: 'lockup', laundromat: 'corner_store', lockup: 'lockup' });
 
 /** Which district kinds a plot family can field, and which lots may stand in them. */
 export const DISTRICT_KINDS = Object.freeze(['commercial', 'residential', 'industrial', 'yard', 'plaza', 'park']);

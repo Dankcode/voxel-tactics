@@ -34,7 +34,7 @@ export function styleFamily(info) {
     if (info?.landmark && year && year < 1935) return 'classical';
     return null;
 }
-/** Extra height (voxels above the playable roof) a landmark will need — GeoDistrict sizes the map with it. */
+/** Extra height (voxels above the playable roof) a landmark will need — PlaceImport sizes the map with it. */
 export function landmarkHeadroom(info, { storeys, cell = 0.9, storey = 3 }) {
     const partTop = Math.max(0, ...(info?.parts || []).map(p => Math.round(p.maxM / cell)));
     const fam = styleFamily(info), real = Math.max(info?.heightM ? Math.round(info.heightM / cell) : 0, partTop) || null, playable = storeys * storey + 1;
@@ -43,7 +43,7 @@ export function landmarkHeadroom(info, { storeys, cell = 0.9, storey = 3 }) {
 }
 
 /**
- * Dress one built landmark. b: { group, records (wing records), cells ([x, y] footprint), info (GeoContext entry),
+ * Dress one built landmark. b: { group, records (wing records), cells ([x, y] footprint), info ({ tags, facts, landmark, heightM, parts } from the place layers),
  * wall (material key), osmParts ([{ cells, minM, maxM, roofM, roofShape, material }] in map cells) }. Returns a report { style, parts: [...], cappedAt }.
  */
 export function dressLandmark(m, { group, records, cells, info, wall = 'stone', osmParts = [] }) {

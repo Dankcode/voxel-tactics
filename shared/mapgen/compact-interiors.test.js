@@ -1,25 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { geoFrame } from './geo/GeoFrame.js';
 import { programForTags } from './geo/GeoPrograms.js';
 import { furnitureForRoom } from '../mission/modern/ModernBuilder.js';
 import { roomSlots } from './FurnishSolver.js';
 import { VoxelStore } from '../voxel/VoxelStore.js';
-
-test('compact geo layout retains the whole source, relative positions and a reversible transform', () => {
-    const geo = { extent: { x0: -45, x1: 45, y0: -36, y1: 36 } };
-    const full = geoFrame(geo, { rotate: .04 });
-    const compact = geoFrame(geo, { rotate: .04, layoutScale: .8 });
-    assert.deepEqual([compact.W, compact.D], [80, 64]);
-    for (const p of [[-20, 5], [15, -18], [0, 0]]) {
-        const a = full.toCell(p), b = compact.toCell(p), back = compact.toWorld(b);
-        for (let i = 0; i < 2; i++) {
-            assert.ok(Math.abs(b[i] - a[i] * .8) < 1e-9);
-            assert.ok(Math.abs(back[i] - p[i]) < 1e-9);
-        }
-    }
-    for (const layoutScale of [0, .4, 1.1, NaN, Infinity]) assert.throws(() => geoFrame(geo, { layoutScale }));
-});
 
 test('source functions select distinct plans and trade-specific furniture', () => {
     for (const [tags, expected, item] of [
