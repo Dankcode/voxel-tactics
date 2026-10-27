@@ -16,27 +16,31 @@ Measured on seed 1:
 <!-- generated:maps -->
 | id | name | theme | size W×D×H | buildings | rooms | enemies | pods | lighting | cover density | cover gap | killing field | sightline median | lanes | breachability | spawn safe | gates (seed 1) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `park-district` | Civic District | Large districts | 96×72×18 | 6 | 24 | 7 | 3 | overcast | 33% | 5 | 8 | 11.8 | 4 | 92% | yes | PASS |
-| `mall-district` | Market Arcade | Large districts | 96×72×18 | 7 | 29 | 7 | 3 | overcast | 35% | 5 | 7 | 7.5 | 4 | 79% | yes | PASS |
-| `drainage-district` | Drainage Quarter | Large districts | 96×72×18 | 3 | 22 | 7 | 3 | overcast | 32% | 5 | 8 | 7.0 | 4 | 100% | yes | PASS |
-| `suburb-district` | Maple Heights | Large districts | 96×72×18 | 7 | 24 | 7 | 3 | overcast | 29% | 5 | 9 | 11.8 | 4 | 63% | yes | PASS |
-| `downtown-district` | Downtown Core | Large districts | 96×72×18 | 8 | 44 | 7 | 3 | overcast | 40% | 5 | 8 | 7.0 | 4 | 61% | yes | PASS |
-| `dockside-district` | Dockside Yards | Large districts | 96×72×18 | 4 | 16 | 7 | 3 | overcast | 32% | 5 | 8 | 12.8 | 4 | 100% | yes | PASS |
-| `highway-district` | Interstate Strip | Large districts | 96×72×18 | 3 | 15 | 7 | 3 | overcast | 30% | 5 | 7 | 11.8 | 4 | 100% | yes | PASS |
-| `terrace-district` | Hillside Terraces | Large districts | 112×80×22 | 5 | 46 | 7 | 3 | overcast | 31% | 5 | 8 | 8.1 | 4 | 96% | yes | PASS |
-| `sunken-junction` | Sunken Junction | Split-level districts | 64×56×16 | 4 | 10 | 2 | 2 | overcast | 32% | 5 | 8 | 7.4 | 4 | 100% | yes | PASS |
-| `sunken-boulevard` | Sunken Boulevard | Split-level districts | 56×40×16 | 3 | 12 | 2 | 2 | overcast | 34% | 5 | 8 | 5.8 | 4 | 92% | yes | PASS |
+| `park-district` | Civic District | Large districts | 96×72×18 | 6 | 24 | 8 | 4 | overcast | 33% | 5 | 8 | 13.0 | 4 | 92% | yes | PASS |
+| `mall-district` | Market Arcade | Large districts | 96×72×18 | 7 | 29 | 8 | 4 | overcast | 35% | 5 | 7 | 9.2 | 4 | 79% | yes | PASS |
+| `drainage-district` | Drainage Quarter | Large districts | 96×72×18 | 3 | 22 | 8 | 4 | overcast | 32% | 5 | 8 | 8.4 | 4 | 100% | yes | PASS |
+| `suburb-district` | Maple Heights | Large districts | 96×72×18 | 7 | 23 | 8 | 4 | overcast | 29% | 5 | 9 | 12.0 | 4 | 65% | yes | PASS |
+| `downtown-district` | Downtown Core | Large districts | 96×72×18 | 8 | 44 | 8 | 4 | overcast | 39% | 5 | 8 | 8.4 | 4 | 61% | yes | PASS |
+| `dockside-district` | Dockside Yards | Large districts | 96×72×18 | 4 | 16 | 8 | 4 | overcast | 32% | 5 | 8 | 12.9 | 4 | 100% | yes | PASS |
+| `highway-district` | Interstate Strip | Large districts | 96×72×18 | 3 | 15 | 8 | 4 | overcast | 30% | 5 | 7 | 10.5 | 4 | 100% | yes | PASS |
+| `terrace-district` | Hillside Terraces | Large districts | 112×80×22 | 5 | 46 | 8 | 4 | overcast | 31% | 5 | 8 | 9.0 | 4 | 96% | yes | PASS |
+| `sunken-junction` | Sunken Junction | Split-level districts | 64×56×16 | 4 | 10 | 2 | 2 | overcast | 32% | 5 | 8 | 7.8 | 4 | 100% | yes | PASS |
+| `sunken-boulevard` | Sunken Boulevard | Split-level districts | 56×40×16 | 3 | 11 | 2 | 2 | overcast | 34% | 5 | 8 | 6.8 | 4 | 100% | yes | PASS |
 | `freight-terraces` | Freight Terraces | Split-level districts | 56×40×16 | 2 | 8 | 2 | 2 | dusk | 36% | 6 | 6 | 6.4 | 2 | 100% | yes | PASS |
 | `architecture-yard` | Architecture Yard | Training | 48×44×13 | 3 | 24 | 1 | 1 | overcast | 37% | 6 | 7 | 8.1 | 4 | 83% | yes | PASS |
-| `burger-district` | Burger District · Upper-left Parcels | Roadside | 112×56×18 | 3 | 12 | 10 | 7 | day | 34% | 6 | 10 | 14.9 | 4 | 92% | yes | PASS |
-| `cedar-image` | Cedar Close · Image Study | Suburbs | 56×48×18 | 2 | 15 | 7 | 5 | dusk | 50% | 5 | 6 | 8.1 | 4 | 100% | yes | PASS |
+| `baton-rouge-third-street` | Third Street · Baton Rouge | Downtown | 126×147×18 | 24 | 180 | 8 | 4 | dusk | 36% | 6 | 10 | 7.3 | 4 | 82% | yes | PASS |
+| `baton-rouge-sherwood-florida` | Sherwood & Florida · Baton Rouge | Strip centre | 152×152×18 | 5 | 14 | 8 | 4 | dusk | 24% | 6 | 9 | 15.2 | 4 | 93% | yes | PASS |
+| `baton-rouge-old-state-capitol` | Old State Capitol · Baton Rouge | Landmark | 142×142×27 | 6 | 49 | 8 | 4 | dusk | 25% | 4 | 7 | 11.8 | 4 | 78% | yes | PASS |
+| `philadelphia-independence-hall` | Independence Hall · Philadelphia | Landmark | 142×142×52 | 9 | 86 | 8 | 4 | dusk | 27% | 4 | 7 | 9.2 | 4 | 84% | yes | PASS |
+| `burger-district` | Burger District · Upper-left Parcels | Roadside | 112×56×18 | 3 | 12 | 10 | 7 | day | 33% | 6 | 10 | 13.5 | 4 | 92% | yes | PASS |
+| `cedar-image` | Cedar Close · Image Study | Suburbs | 56×48×18 | 2 | 15 | 7 | 5 | dusk | 46% | 5 | 6 | 7.8 | 4 | 100% | yes | PASS |
 | `signal-house` | Signal House | Downtown | 64×48×18 | 1 | 16 | 4 | 3 | overcast | 50% | 5 | 8 | 7.8 | 4 | 100% | yes | PASS |
-| `subway-crossing` | Subway Crossing | Downtown | 64×48×18 | 1 | 8 | 4 | 3 | night-ops | 50% | 4 | 6 | 9.1 | 3 | 100% | yes | PASS |
-| `cedar-close` | Cedar Close | Suburbs | 48×40×12 | 2 | 8 | 7 | 4 | day | 50% | 5 | 5 | 6.4 | 4 | 100% | yes | PASS |
-| `main-street` | Main Street | Downtown | 52×42×14 | 4 | 17 | 8 | 4 | dusk | 52% | 4 | 6 | 7.0 | 4 | 94% | yes | PASS |
-| `harbor-yard` | Harbor Yard | Industrial | 54×44×14 | 2 | 5 | 8 | 4 | night | 39% | 5 | 5 | 7.0 | 2 | 100% | yes | PASS |
-| `route-9` | Route 9 Stop | Roadside | 52×42×12 | 2 | 6 | 7 | 4 | dawn | 37% | 5 | 5 | 8.8 | 4 | 100% | yes | PASS |
-| `proving-grounds` | Training Facility | Training | 60×46×16 | 4 | 17 | 11 | 7 | overcast | 46% | 5 | 5 | 7.3 | 4 | 76% | yes | PASS |
+| `subway-crossing` | Subway Crossing | Downtown | 64×48×18 | 1 | 8 | 4 | 3 | night-ops | 49% | 5 | 6 | 9.5 | 4 | 100% | yes | PASS |
+| `cedar-close` | Cedar Close | Suburbs | 48×40×12 | 2 | 8 | 7 | 4 | day | 48% | 4 | 4 | 6.5 | 4 | 100% | yes | PASS |
+| `main-street` | Main Street | Downtown | 52×42×14 | 4 | 16 | 8 | 4 | dusk | 55% | 4 | 5 | 7.8 | 4 | 100% | yes | PASS |
+| `harbor-yard` | Harbor Yard | Industrial | 54×44×14 | 2 | 5 | 8 | 4 | night | 40% | 5 | 4 | 7.3 | 2 | 100% | yes | PASS |
+| `route-9` | Route 9 Stop | Roadside | 52×42×12 | 2 | 6 | 7 | 4 | dawn | 36% | 5 | 5 | 10.3 | 4 | 100% | yes | PASS |
+| `proving-grounds` | Training Facility | Training | 60×46×16 | 4 | 17 | 11 | 7 | overcast | 45% | 6 | 5 | 6.4 | 4 | 76% | yes | PASS |
 <!-- /generated:maps -->
 
 Every map fights the Syndicate. `lighting` and `defaultCut` (storey cutaway 4) in `meta` are presentation only.
@@ -253,3 +257,21 @@ escape; 1–2 storey flat roof: roof ladder). Failing gates are repaired locally
 reseed. The critic score (`meta.critic`) is informational. Interior partitions on generated buildings are plaster
 (destructible); furniture is placed by WFC per room with a connectivity guard.
 
+## PLAN-15: encounter zones, real-place fidelity and real-data generation
+
+- **Generated operations** (`OperationDesigner.addPocketPods`, `B.podSpacing` = 12): the objective building holds two
+  pods at most (door and last fight); pods take the cover pockets nearest 30 %, 55 % and 78 % of the line of play,
+  each ≥ `podSpacing` (relaxed to 0.75× when nothing fits) from every other pod and ≥ 16 from the insertion; a zone
+  with no pocket gets a post 3 tiles beside the line itself; a picket goes in the side building nearest the middle of
+  the route. `podSpacing` 0 restores the old placement.
+- **Pod members** (`MissionCommon.finalizeMission`): members of one pod stand at least two tiles apart (adjacent only
+  as a fallback).
+- **Real places** (`GeoDistrict`, generator `geo-compact-5`): pods follow the insertion → objective line
+  (`Pods.zonedDistrictPods`: objective pod, a building pod at ~⅔, the street pod at ~40 %, the walker near the
+  objective's street) instead of the far corner. A building the map edge cuts is kept, clipped at the edge, when at
+  least 12 % (and 40 cells) of it is inside (`report.clipped`); only slivers are dropped.
+- **Real data drives generation** (`shared/mapgen/geo/PlaceProfile.js`, baked by `npm run geo:profiles` into
+  `PlaceProfiles.generated.js`): each catalog place feeds its theme's generator family (Downtown / Landmark →
+  downtown, Strip centre → suburb). `placeBuildings` draws storeys from the real distribution for the building's use
+  (clamped to the lot kind's range) and picks the footprint variant whose depth ratio is nearest a real one; noise is
+  the fallback when a family has no data.

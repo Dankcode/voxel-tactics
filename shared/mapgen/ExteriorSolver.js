@@ -11,6 +11,8 @@
 // Guide fields bias every stage through the solver's node weights; WFC still guarantees adjacency. Gameplay fields
 // come first: the line of play, its flanks, the spawn and the underground openings are protected before any piece
 // is chosen, and engagement pockets are pinned into the bay solve as seeds.
+import { PLACE_PROFILES } from './geo/PlaceProfiles.generated.js';
+import { sampleStoreys, pickVariant } from './geo/PlaceProfile.js';
 import { solveWaveFunctionCollapse } from '../generation/WaveFunctionCollapse.js';
 import { LOT, BAY } from './KitMetric.js';
 import { LOT_KINDS, BAY_PIECES, PIECE_POOLS, lotKindsFor, objectiveKindFor, groupSize, buildingRect, DISTRICT_WALLS, DISTRICT_PALETTE, WING_PROGRAM } from './LotCatalogue.js';
@@ -205,14 +207,17 @@ export function placeBuildings(plot, parcels, fields, seed) {
         const k = LOT_KINDS[p.kind]; if (!k.building) continue;
         const t = k.building, n = noiseAt(seed, 'wear', p.x0 + 8, p.y0 + 8);
         const variants = (!p.objective && t.variants) || [[t.along, t.deep]];
-        const dims = variants[Math.floor(unit(`${seed}:${p.id}:variant`) * variants.length)];
+        // PLAN-15: footprints and heights follow the real places of this theme (PlaceProfiles), noise breaks ties.
+        const profile = plot.operation ? PLACE_PROFILES[plot.family] || null : null;
+        const dims = pickVariant(profile, variants, `${seed}:${p.id}:variant`) || variants[Math.floor(unit(`${seed}:${p.id}:variant`) * variants.length)];
         const slack = (p.front === 'n' || p.front === 's' ? p.w : p.d) - dims[0];
         const wantWing = !p.objective && unit(`${seed}:${p.id}:wing`) < 0.75;
         // A merged parcel pushes the main block to one end so its wing has room beside it.
         const shift = wantWing && slack >= 5 ? (unit(`${seed}:${p.id}:shift`) < 0.5 ? -slack : slack) : slack > 1 ? Math.round((unit(`${seed}:${p.id}:shift`) - 0.5) * 2) : 0;
         const rect = buildingRect(p.kind, p, p.front, shift, dims);
         const H = fields.height.mean(rect.x0, rect.y0, rect.x0 + rect.w - 1, rect.y0 + rect.d - 1);
-        const [lo, hi] = t.storeys, storeys = p.objective ? hi : Math.max(lo, Math.min(hi, lo + Math.floor(H * (hi - lo + 1.2))));
+        const [lo, hi] = t.storeys, real = p.objective ? null : sampleStoreys(profile, t.program, t.storeys, `${seed}:${p.id}:storeys`);
+        const storeys = p.objective ? hi : real ?? Math.max(lo, Math.min(hi, lo + Math.floor(H * (hi - lo + 1.2))));
         const walls = DISTRICT_WALLS[p.district] || DISTRICT_WALLS.commercial;
         const palette = DISTRICT_PALETTE[p.district] || DISTRICT_PALETTE.commercial;
         const wall = walls[Math.floor(n * walls.length) % walls.length];

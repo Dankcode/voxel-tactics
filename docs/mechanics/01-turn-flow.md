@@ -154,3 +154,19 @@ match ends the battle with `outcome = { winner, round, reason }` (and an `outcom
 After that every intent is refused with `battle_over`. Without a deadline there is no round limit (the balance sim
 stops at `--rounds`, default 40, and scores a draw). Units have a `down` flag that nothing sets: there is no
 bleed-out, HP 0 is death. Per-map objectives are listed in [11](11-maps-and-level-design.md#objectives).
+
+## PLAN-15: controls and turn end
+
+- **One tool at a time** (`client/src/ui/ToolState.js`): entering any tool (move, aim, throw, gadget, ability,
+  overwatch, mark) closes the gear / formation / breach panels, releases the aiming mouse lock when aiming ends and
+  steps a peeking soldier home. The Gear slot leaves aiming first; with the gear panel open, the number keys pick from it.
+- **Auto end turn** (default on; a one-time settings migration turns old saved `false` on): when no soldier the local
+  player controls can act (AP + move-only AP spent, or on overwatch), a 1.2 s `ALL AP SPENT — ENDING TURN` countdown
+  runs; Esc, a click on it or any new order cancels it.
+- **Status**: the active-soldier card (portrait, name, class, AP pips — blue can act, yellow move only — HP, rounds,
+  gadgets, statuses) is always shown in the squad phase and shrinks to a strip while aiming. The selected soldier
+  carries a name + AP tag and a bobbing beacon (`unitTags`: selected / always / flash), and every change of soldier
+  shows a `▶ NAME · CLASS` call-out. Squad portraits show READY / n AP / WATCH / DONE / KIA and AP pips; hovering one
+  lights that soldier's ring; NEXT ▸ (Tab) jumps to the next ready soldier.
+- **Keys**: W / S change floors (A/D, arrows, screen edges and right-drag pan); while aiming WASD peeks and the arrows
+  nudge the aim.

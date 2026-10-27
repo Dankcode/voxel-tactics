@@ -1,4 +1,5 @@
 import { rasterRoadNetwork,pointInRegion } from './RoadGeometry.js';
+import { B } from '../content/balance.js';
 import { solveReferenceParcels } from './ParcelFormula.js';
 // PLAN-04 — the v3 map generator: plot → guide fields → districts → lots → buildings → line of play → layers →
 // programmes → interiors → facades → bays (cover as WFC) → world edges → dressing. The result is a layout v3 (data:
@@ -260,7 +261,7 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
         for (const c of run?.cells || []) protect(c.x, c.y, 1);
     }
     // ---- design: programmes, objective, beats, pods
-    const design = pinnedDesign || designProgrammes({ buildings, target, plot, seed, objectiveKind, timeOfDay, name, pockets: [] });
+    const design = pinnedDesign || designProgrammes({ buildings, target, plot, seed, objectiveKind, timeOfDay, name, pockets: [], spread: !!plot.operation });
     // ---- interiors and facades
     for (const b of buildings) {
         const programmes = design.programs.filter(p => p.building === b.id).sort((a, c) => a.floor - c.floor);
@@ -288,7 +289,7 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
     const sight = sightlineField(W, D, (x, y) => !blocked(x, y));
     fields.sight = (x, y) => sight.get(x, y);
     const { pins, pockets } = planPockets(play.main.path, bayGrid, { seed: `${plot.family}:${seed}` });
-    if (!pinnedDesign) addPocketPods(design, pockets.filter(p => Math.hypot(p.x - plot.insertion.x, p.y - plot.insertion.y) >= 16), seed);
+    if (!pinnedDesign) addPocketPods(design, pockets.filter(p => Math.hypot(p.x - plot.insertion.x, p.y - plot.insertion.y) >= 16), seed, { buildings, target, insertion: plot.insertion, route: play.main.path, spacing: plot.operation ? B.podSpacing : 0 });   // PLAN-15 encounter zones
     // The street drop goes where no pod will see it: early on the tunnel, as far as possible from every pod.
     if (layers) {
         const pods = [...design.encounters.filter(e => e.at).map(e => ({ ...e.at, own: null })), ...design.encounters.filter(e => !e.at).map(e => { const b = buildings.find(x => x.id === e.building); return b ? { x: b.x0 + b.w / 2, y: b.y0 + b.d / 2, own: b } : null; }).filter(Boolean)];
@@ -557,6 +558,7 @@ export function generateOperation({ plot: family = 'downtown', seed = 1, objecti
         const s = (seed + attempt * 7919) >>> 0;
         try {
             const plot = createPlot(family, s);
+            plot.operation = true;   // PLAN-15: player maps — real-place profiles and spread pods (fixture maps keep their old rules)
             const time = timeOfDay || plot.times[Math.floor(unit(`${family}:${seed}:time`) * plot.times.length)];
             const { layout, design, context } = solveLayoutV3(plot, { seed: s, objectiveKind: objective, timeOfDay: time, id: 'operation', name: null });
             if (attempt) layout.repairs.push({ kind: 'reseed-operation', from: seed, attempt, reason: last?.message?.slice(0, 160) });

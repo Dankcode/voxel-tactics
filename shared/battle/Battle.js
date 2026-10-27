@@ -34,6 +34,7 @@ import { estimateShot, chooseMuzzle, occupiedBy, sampleCone, traceProjectile, ai
 import { Formations } from './Formations.js';
 import { validateDebug, applyDebug } from './DebugOps.js';
 import { createObjective, inZone, extractionOpen } from './Objectives.js';
+import { isPeekCell } from './Peek.js';
 
 export const REJECT = Object.freeze(['not_your_turn', 'not_your_unit', 'unit_down', 'no_ap', 'unreachable', 'occupied', 'no_ammo', 'out_of_range',
     'no_item', 'no_target', 'bad_intent', 'no_will', 'battle_over', 'no_door', 'not_adjacent', 'formation_invalid', 'not_in_zone', 'formation_blocked']);
@@ -296,9 +297,11 @@ export class Battle {
                     const target = this.unit(intent.aim.unitId);
                     if (!target || !alive(target) || !this.visibleTo(u.side).has(target.id)) return 'no_target';
                 }
-                const p = aimPointOf(this, intent.aim);
+                // PLAN-15 peek: a shot may leave from a tile the shooter leans out to (Peek.js).
+                if (intent.from && !isPeekCell(this, u, intent.from)) return 'bad_intent';
+                const p = aimPointOf(this, intent.aim), o = intent.from || u;
                 if(!p||![p.x,p.y,p.h].every(Number.isFinite))return 'bad_intent';
-                if (Math.hypot(p.x - u.x - 0.5, p.y - u.y - 0.5) > weaponBuild(u,w).maxRange) return 'out_of_range';
+                if (Math.hypot(p.x - o.x - 0.5, p.y - o.y - 0.5) > weaponBuild(u,w).maxRange) return 'out_of_range';
                 return null;
             }
             case 'melee': {
@@ -740,6 +743,21 @@ export class Battle {
         const w = WEAPONS[intent.weaponId || u.weapon];
         u.ap -= this.shotAp(u, w);
         u.buffs.quickAim = false;
+        // PLAN-15 peek: step out to the peek tile (exposed: known overwatch may fire at it), shoot from there, step back.
+        const home = { x: u.x, y: u.y, z: u.z }, from = intent.from && (intent.from.x !== u.x || intent.from.y !== u.y || intent.from.z !== u.z) ? { x: intent.from.x, y: intent.from.y, z: intent.from.z } : null;
+        if (from) {
+            this.emit({ t: 'peek', unitId: u.id, from: home, to: from });
+            Object.assign(u, from);
+            this.checkReactions(u, [home, from]);
+            if (!alive(u)) { this.checkOutcome(); return; }
+        }
+        this.fireShot(u, w, intent);
+        if (from && alive(u)) {
+            const back = this.occupant(home.x, home.y, home.z);
+            if (!back || back === u) { Object.assign(u, home); this.emit({ t: 'peekBack', unitId: u.id, from, to: home }); }
+        }
+    }
+    fireShot(u, w, intent) {
         const targetIds = intent.aim.unitId ? [intent.aim.unitId] : [];
         { const aimPoint=aimPointOf(this,intent.aim),t0=intent.aim.unitId?this.unit(intent.aim.unitId):null; this.emit({ t: 'cutin', unitId: u.id, kind: w.cutIn || 'shot', weaponId: w.id, targetIds,aimPoint,muzzle:chooseMuzzle(this.store,u,aimPoint,{occupied:occupiedBy(this,u)}),...(u.side==='enemy'&&t0?{chance:hitChance(this,u,t0,w).chance}:{}) }); }
         this.fireWeapon(u, w, intent.aim, { fireMode:intent.fireMode });
@@ -867,7 +885,9 @@ export class Battle {
         if (t.god) amount = 0;
         const p = t.parts[part] || t.parts.torso;
         const armor = Math.max(0, partArmor(t, part) - pierce);
-        let dmg = Math.max(0, Math.round(amount) - armor);
+        // PLAN-15: armour reduces a projectile but never cancels it (B.armorMinDamage of the round always gets through).
+        const raw = Math.round(amount);
+        let dmg = Math.max(0, raw - armor, raw > 0 ? Math.ceil(raw * (B.armorMinDamage || 0)) : 0);
         if (element === 'pyro' && hasStatus(t, 'wet')) dmg = Math.max(0, dmg - 1);
         if (shred) p.armor = Math.max(0, p.armor - shred);
         if (dmg > 0) {
@@ -978,17 +998,54 @@ export class Battle {
         if (changes.length) this.emit({ t: 'voxels', changes });
         this.checkFalls();
     }
+    /** How a blast `e` reaches unit `u`: null when out of reach, else { dmg (before armour), shielded }. Pure. */
+    blastHit(e, u) {
+        const c = WALKERS[u.type]?occupiedCells(u).map(p=>({x:p.x+.5,y:p.y+.5,h:p.z+1.3})).concat([this.chest(u)]).sort((a,c)=>Math.hypot(a.x-e.x,a.y-e.y,a.h-e.h)-Math.hypot(c.x-e.x,c.y-e.y,c.h-e.h))[0]:this.chest(u);
+        const clustered = this.formations.isClustered(u);
+        const r = e.radius + (clustered ? B.clusteredRadiusBonus : 0);
+        const d = Math.hypot(c.x - e.x, c.y - e.y, (c.h - e.h) * 0.8);
+        if (d > r + 0.5) return null;
+        const shielded = castRay(this.store, { x: e.x, y: e.y, h: e.h + 0.2 }, c, { blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile !== 'pass' }).hit;
+        const dmg = Math.round((e.damage || 0) * Math.max(0.25, 1 - d / (r + 0.5)) * (clustered ? B.clusteredDamageMult : 1) * (shielded ? 0.5 : 1));
+        return { dmg, shielded };
+    }
+    /**
+     * PLAN-15 grenade preview (pure): where a throw at `to` really goes off (the wall it hits, if the arc is blocked),
+     * how far it may scatter, the floor tiles the blast reaches and the units it would hurt (after armour).
+     */
+    throwPreview(u, itemId, to) {
+        const t = THROWABLES[itemId]; if (!t || !to) return null;
+        const arc = this.throwArc(u, to);
+        const centre = t.placed ? { x: to.x + 0.5, y: to.y + 0.5, h: (to.z ?? u.z) + 1.5 } : (arc.ok ? arc.land : (arc.blockedAt || arc.land));
+        const dist = Math.hypot(to.x - u.x, to.y - u.y);
+        const scatter = t.placed ? 0 : dist * Math.tan(3.2 * Math.PI / 180) / Math.max(0.3, accuracyMult(u));
+        const R = t.radius || 0, cells = [], seen = new Set();
+        const blocks = (s, x, y, z) => materialById(s.get(x, y, z)).projectile !== 'pass';
+        for (let dy = -Math.ceil(R); dy <= Math.ceil(R); dy++) for (let dx = -Math.ceil(R); dx <= Math.ceil(R); dx++) {
+            const x = Math.floor(centre.x) + dx, y = Math.floor(centre.y) + dy;
+            if (!this.store.inBounds(x, y, 0)) continue;
+            const surf = this.store.surfaceNear(x, y, Math.floor(centre.h - 1)); if (!surf || Math.abs(surf.z + 1 - centre.h) > R + 0.5) continue;
+            const p = { x: x + 0.5, y: y + 0.5, h: surf.z + 1.2 };
+            if (Math.hypot(p.x - centre.x, p.y - centre.y, (p.h - centre.h) * 0.8) > R + 0.25) continue;
+            if (castRay(this.store, { x: centre.x, y: centre.y, h: centre.h + 0.2 }, p, { blocks }).hit) continue;
+            const k = `${x},${y},${surf.z}`; if (seen.has(k)) continue; seen.add(k);
+            cells.push({ x, y, z: surf.z });
+        }
+        const units = [];
+        if (!t.smoke) for (const v of this.units.filter(alive)) {
+            const h = this.blastHit({ ...centre, radius: R, damage: t.damage }, v); if (!h) continue;
+            const armor = Math.max(0, partArmor(v, 'torso') - Math.ceil(partArmor(v, 'torso') / 2));
+            const dmg = h.dmg > 0 ? Math.max(h.dmg - armor, Math.ceil(h.dmg * (B.armorMinDamage || 0))) : 0;
+            units.push({ id: v.id, side: v.side, dmg, shielded: h.shielded, kill: dmg >= v.hp });
+        }
+        return { arc, centre, blocked: !t.placed && !arc.ok && !!arc.blockedAt, scatter: +scatter.toFixed(2), radius: R, cells, units, smoke: !!t.smoke };
+    }
     blastUnits(e, by, item = null) {
         for (const u of this.units.filter(alive)) {
             if (e.excludeUnits?.includes(u.id)) continue;
-            const c = WALKERS[u.type]?occupiedCells(u).map(p=>({x:p.x+.5,y:p.y+.5,h:p.z+1.3})).concat([this.chest(u)]).sort((a,c)=>Math.hypot(a.x-e.x,a.y-e.y,a.h-e.h)-Math.hypot(c.x-e.x,c.y-e.y,c.h-e.h))[0]:this.chest(u);
-            const clustered = this.formations.isClustered(u);
-            const r = e.radius + (clustered ? B.clusteredRadiusBonus : 0);
-            const d = Math.hypot(c.x - e.x, c.y - e.y, (c.h - e.h) * 0.8);
-            if (d > r + 0.5) continue;
-            const shielded = castRay(this.store, { x: e.x, y: e.y, h: e.h + 0.2 }, c, { blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile !== 'pass' }).hit;
-            let dmg = (e.damage || 0) * Math.max(0.25, 1 - d / (r + 0.5)) * (clustered ? B.clusteredDamageMult : 1) * (shielded ? 0.5 : 1);
-            dmg = Math.round(dmg);
+            const hit = this.blastHit(e, u);
+            if (!hit) continue;
+            const dmg = hit.dmg;
             if (dmg > 0) {
                 const dealt = this.dealDamage(u, 'torso', dmg, { pierce: Math.ceil(partArmor(u, 'torso') / 2), shred: e.shred || 0, element: e.element, source: by });
                 if (item && this.stats.throwables[item]) this.stats.throwables[item].unitDamage += dealt;
@@ -1309,18 +1366,27 @@ export class Battle {
         if(!enemies.length)return;
         enemies.forEach(e=>{e.scattered=true;e.alerted=true;e.overwatch=null;});
         this.emit({t:'discovery',group,unitIds:enemies.map(e=>e.id)});
+        // PLAN-15 scamper: cover against every soldier the pod can see (not only the nearest), and members spread out —
+        // a tile next to where a pod-mate is heading is worth less.
+        const taken=[];
         for(const e of enemies) {
             const target=this.unitsOf('player').sort((a,b)=>this.distance(e,a)-this.distance(e,b)||(a.id<b.id?-1:a.id>b.id?1:0))[0];
             if(!target)continue;
+            const watchers=this.unitsOf('player').filter(p=>alive(p)&&this.distance(p,e)<=B.sightRange+6);
             const room=this.roomOf(e);
             const search=reachable(this.store,{x:e.x,y:e.y,z:e.z},6,PROFILE,{vault:false,blocked:c=>{
                 const o=this.occupant(c.x,c.y,c.z),r=this.store.roomAt(c.x,c.y,c.z+1);
                 return (o&&o.id!==e.id)||this.store.get(c.x,c.y,c.z+1)===MAT.door||(r>=0&&r!==room&&!this.revealedRooms.has(r));
             }});
-            const score=c=>coverAgainst(this.store,c.x,c.y,c.z,target.x,target.y,target.z)*10+Math.min(10,this.distance(c,target))-.2*(search.costs.get(nodeKey(c))||0);
+            const score=c=>{
+                let cover=coverAgainst(this.store,c.x,c.y,c.z,target.x,target.y,target.z)*10;
+                for(const p of watchers)if(p!==target&&coverAgainst(this.store,c.x,c.y,c.z,p.x,p.y,p.z)===COVER.NONE)cover-=6;
+                const crowd=taken.filter(t=>t.z===c.z&&Math.max(Math.abs(t.x-c.x),Math.abs(t.y-c.y))<2).length;
+                return cover+Math.min(10,this.distance(c,target))-.2*(search.costs.get(nodeKey(c))||0)-crowd*8;
+            };
             const candidates=[...search.nodes.values()].filter(c=>(c.x!==e.x||c.y!==e.y||c.z!==e.z)&&this.distance(c,target)>2)
                 .sort((a,b)=>score(b)-score(a)||a.z-b.z||a.y-b.y||a.x-b.x);
-            const dest=candidates[0];if(!dest)continue;
+            const dest=candidates[0];if(!dest)continue;taken.push(dest);
             const path=pathTo(search,nodeKey(dest)),walked=[path[0]],kinds=[];
             const event=this.emit({t:'move',unitId:e.id,path:walked,kinds,ap:0,scatter:true});
             for(let i=1;i<path.length&&alive(e);i++) {

@@ -20,6 +20,7 @@ function arena({ squad = ['grenadier'], players = [{ x: 3, y: 20, z: 1 }], enemi
 test('a loud sound sends pods that heard it to search the source; a quiet one only reaches close by', () => {
     const b = arena({ enemies: [{ type: 'cultist', pos: { x: 34, y: 20, z: 1 }, group: 0 }, { type: 'cultist', pos: { x: 35, y: 21, z: 1 }, group: 0 }] });
     const p = b.unit('p0'), [e0, e1] = [b.unit('e0'), b.unit('e1')];
+    p.god = true;   // PLAN-15: lighter armour — this test is about the search, not whether a lone soldier survives it
     b.noise(20, 20, 1, 4, p);                       // footsteps-quiet, 14 tiles away
     assert.equal(e0.investigate ?? null, null);
     b.noise(20, 20, 1, 12, p);                      // a gunshot: heard out to 21 tiles, alerts within 12

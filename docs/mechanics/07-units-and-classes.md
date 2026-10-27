@@ -13,13 +13,15 @@ Data: `shared/content/units.js` (classes, Syndicate types, abilities, squads), `
 | `grenadier` | Grenadier | squad | 30 | 12/30/12/17 | 0.85 | 2.5 (2.9 -0.4) | 6 | `heavy` | Assault Rifle | Frag Grenade ×2, Concussion Grenade ×1 | Water Sense, Water Mend, Demolition, Suppressive Fire |
 | `marksman` | Sharpshooter | squad | 30 | 12/30/12/17 | 1 | 3.1 (3.1) | 7 | `light` | Sniper Rifle, Sidearm | Smoke Grenade ×1, Cryo Canister ×1 | Scout Drone, Snap Shot, Deadeye |
 | `warden` | Breacher | squad | 30 | 12/30/12/17 | 0.88 | 2.5 (2.9 -0.4) | 7 | `plate` | Suppressed Carbine, Combat Knife | Breaching Charge ×2, Extinguisher Grenade ×1 | Quiet Cut, Shield Wall, Rally |
-| `wall_strider` | Wall Strider | Syndicate | 60 | 24/60/24/33 | 0.7 | 2.4 (2.6 -0.2) | 6 | `medium` | AK Rifle, Combat Knife | — | — |
+| `wall_strider` | Wall Strider | Syndicate | 60 | 24/60/24/33 | 0.7 | 2.4 (2.6 -0.2) | 6 | `medium` | Strider Claws | — | Wall Smash |
 | `siege_weaver` | Siege Weaver | Syndicate | 90 | 36/90/36/50 | 0.65 | 1.4 (1.8 -0.4) | 8 | `heavy` | Assault Rifle | — | — |
-| `cultist` | Gunman | Syndicate | 30 | 12/30/12/17 | 0.55 | 3 (3) | 4 | `light` | AK Rifle, Combat Knife | Incendiary Grenade ×1 | — |
-| `archer` | Lookout | Syndicate | 30 | 12/30/12/17 | 0.64 | 3.2 (3.2) | 4 | `hide` | Marksman Rifle | — | — |
+| `cultist` | Gunman | Syndicate | 30 | 12/30/12/17 | 0.55 | 3 (3) | 4 | `light` | AK Rifle, Combat Knife | Incendiary Grenade ×1, Extinguisher Grenade ×1 | — |
+| `archer` | Lookout | Syndicate | 30 | 12/30/12/17 | 0.64 | 3.2 (3.2) | 4 | `hide` | Marksman Rifle | Cryo Canister ×1, Smoke Grenade ×1 | — |
 | `pyromancer` | Arsonist | Syndicate | 30 | 12/30/12/17 | 0.68 | 2.8 (2.8) | 6 | `light` | Flamethrower | Incendiary Grenade ×2 | — |
-| `brute` | Enforcer | Syndicate | 30 | 12/30/12/17 | 0.6 | 2.8 (3.2 -0.4) | 6 | `heavy` | Sledgehammer | — | — |
-| `warden_foe` | Riot Guard | Syndicate | 30 | 12/30/12/17 | 0.62 | 2.4 (2.8 -0.4) | 6 | `plate` | AK Rifle, Combat Knife | — | Shield Wall |
+| `brute` | Enforcer | Syndicate | 30 | 12/30/12/17 | 0.6 | 2.8 (3.2 -0.4) | 6 | `heavy` | Sledgehammer | Smoke Grenade ×1 | — |
+| `warden_foe` | Riot Guard | Syndicate | 30 | 12/30/12/17 | 0.62 | 2.4 (2.8 -0.4) | 6 | `plate` | AK Rifle, Combat Knife | — | Shield Wall, Earth Cover |
+| `tech` | Drone Tech | Syndicate | 30 | 12/30/12/17 | 0.56 | 3 (3) | 5 | `light` | Sidearm | Smoke Grenade ×1 | Launch Drone |
+| `search_drone` | Search Drone | Syndicate | 1 | 1/1/1/1 | 0 | 4.2 (4.2) | 9 | `drone` |  | — | — |
 <!-- /generated:units -->
 
 - **HP**: every character, squad and Syndicate, has **30** (`UNIT_HP`). It is one pool. Each body part also has its
@@ -47,11 +49,12 @@ Data: `shared/content/units.js` (classes, Syndicate types, abilities, squads), `
 <!-- generated:armor -->
 | armour | head | torso | arm L | arm R | legs | mobility (tiles/AP) |
 |---|---|---|---|---|---|---|
-| `light` | 0 | 2 | 0 | 0 | 1 | 0 |
-| `medium` | 1 | 3 | 2 | 2 | 2 | -0.2 |
-| `heavy` | 2 | 4 | 3 | 3 | 3 | -0.4 |
-| `hide` | 0 | 1 | 0 | 0 | 0 | 0 |
-| `plate` | 3 | 6 | 4 | 4 | 4 | -0.4 |
+| `light` | 0 | 1 | 0 | 0 | 0 | 0 |
+| `medium` | 1 | 2 | 1 | 1 | 1 | -0.2 |
+| `heavy` | 1 | 2 | 1 | 1 | 2 | -0.4 |
+| `hide` | 0 | 0 | 0 | 0 | 0 | 0 |
+| `plate` | 1 | 3 | 2 | 2 | 2 | -0.4 |
+| `drone` | 0 | 0 | 0 | 0 | 0 | 0 |
 <!-- /generated:armor -->
 
 ## Abilities
@@ -59,14 +62,15 @@ Data: `shared/content/units.js` (classes, Syndicate types, abilities, squads), `
 <!-- generated:abilities -->
 | id | name | Will | AP | text (from data) | who has it |
 |---|---|---|---|---|---|
-| `killstreak_strike` | Commander Strike | 0 | 0 | Ready at the start of the mission and again 10 rounds after each use. A destructive blast at the marked location; allies are vulnerable too. |  |
+| `killstreak_strike` | Airstrike | 0 | 0 | Ready at the start of the mission and again 10 rounds after each use. Three bombs fall together somewhere inside the marked 15 x 9 rectangle (long side along your facing; each blast stays inside it). Craters stay one level deep on open ground; buildings lose up to two storeys. Damages allies too. |  |
 | `seismic_sense` | Seismic Sense | 1 | 1 | Share grounded enemy contacts within 14 tiles and two levels, through walls. Contacts are snapshots. | Assault |
 | `water_sense` | Water Sense | 1 | 1 | Share contacts within 14 tiles near water, through walls. Contacts are snapshots. | Grenadier |
 | `scout_drone` | Scout Drone | 1 | 1 | Scout from a tile within 18. Drone sees 10 tiles through clear sight. Enemies detect within 2; Drone Hunters within 8. Recast to reposition. | Sharpshooter |
 | `quiet_cut` | Quiet Cut | 1 | 1 | Remove two wall voxels within 3 without noise. Enemy sight can still expose you. | Breacher |
-| `carpet_bomb` | Carpet Bomb | 0 | 1 | Three circular craters, radius 3. Damages allies too. Recharges after 10 of your turns. |  |
-| `orbital_laser` | Orbital Laser | 0 | 1 | Cut an east-west line, 17 tiles long and 3 wide. Damages allies too. Recharges after 10 of your turns. |  |
-| `earth_cover` | Earth Cover | 2 | 1 | Raise destructible half cover on an empty visible tile within 6. Persists until destroyed. | Assault |
+| `carpet_bomb` | Airstrike | 0 | 1 | Three heavy bombs fall together somewhere inside the marked 15 x 9 rectangle (long side along your facing; each blast stays inside it). Craters stay one level deep on open ground; buildings lose up to two storeys. Damages allies too. Recharges after 10 of your turns. |  |
+| `orbital_laser` | Orbital Laser | 0 | 1 | Cut a 33-tile line, 5 wide, along your facing: everything standing in it is destroyed down to the ground floor. Damages allies too. Recharges after 10 of your turns. |  |
+| `earth_cover` | Earth Cover | 2 | 1 | Raise destructible half cover on an empty visible tile within 6. Persists until destroyed. | Assault, Riot Guard |
+| `smash` | Wall Smash | 0 | 1 | Walker monsters: tear through walls and cover within 3 tiles of the body, two storeys high, battering anyone behind. | Wall Strider |
 | `water_mend` | Water Mend | 2 | 1 | Restore 8 HP to a visible living ally within 6 and extinguish burning. Disabled limbs stay disabled. | Grenadier |
 | `dash` | Sprint | 2 | 0 | +1 AP that can only be spent moving. | Assault |
 | `rally` | Rally | 2 | 1 | Allies within 6 lose 25 stress and gain 1 WP. | Breacher |
@@ -75,6 +79,8 @@ Data: `shared/content/units.js` (classes, Syndicate types, abilities, squads), `
 | `quick_aim` | Snap Shot | 2 | 0 | Next shot costs 1 AP less. | Sharpshooter |
 | `deadeye` | Deadeye | 3 | 0 | Next shot has half the spread. | Sharpshooter |
 | `brace` | Shield Wall | 1 | 1 | +4 armour on every part until your next turn. | Breacher, Riot Guard |
+| `recon_scan` | Recon Scan | 1 | 1 | Sweep for hostiles within 40 tiles. Each contact shows as a red search circle (3-tile radius) around its approximate position for two rounds, on its floor; the exact tile stays hidden. Any soldier can use it; the squad shares one cooldown of 3 rounds. |  |
+| `launch_drone` | Launch Drone | 0 | 1 | Enemy techs: put a search drone in the air beside them (two at most, one launch every 3 rounds). | Drone Tech |
 <!-- /generated:abilities -->
 
 What the code actually does (`Battle.doAbility`; Will and AP are paid when the intent is applied):
@@ -147,6 +153,7 @@ usable abilities in practice.
 | `fire` | Arsonist, Gunman |
 | `guard` | Riot Guard, Riot Guard, Lookout |
 | `brute` | Enforcer, Gunman |
+| `tech` | Drone Tech, Search Drone, Gunman |
 <!-- /generated:squads -->
 
 Squad members spawn on the map's player spawn points in order (`mission.spawns.player[i % n]`) and take call signs

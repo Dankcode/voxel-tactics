@@ -9,7 +9,7 @@ export const AMMO = Object.freeze({
 const item=(id,name,slot,w,h,weight,extra={})=>({id,name,short:name,width:w,height:h,weight,slot,category:'Gear',...extra});
 export const GEAR = Object.freeze(Object.fromEntries([
     item('helmet_patrol','Patrol helmet','helmet',2,2,1.2,{protection:{head:1}}),
-    item('helmet_heavy','Ballistic helmet','helmet',2,2,2.3,{protection:{head:3},move:-0.1}),
+    item('helmet_heavy','Ballistic helmet','helmet',2,2,2.3,{protection:{head:2},move:-0.1}),
     item('armor_light','Recon armor','armor',3,3,3.5,{protection:ARMOR.light,move:0.3}),
     item('armor_medium','Plate carrier','armor',3,3,7.2,{protection:ARMOR.medium}),
     item('armor_heavy','Assault armor','armor',3,4,11.5,{protection:ARMOR.heavy}),

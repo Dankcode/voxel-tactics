@@ -160,7 +160,7 @@ export class Overlays {
             this.shields.add(s);
         }
     }
-    clearAim() { const owned=new Set();for (const c of [...this.aim.children]) { this.aim.remove(c); c.geometry?.dispose?.();if(c.userData.watch || c.userData.ownedMaterial)owned.add(c.material); }for(const m of owned)m.dispose();this.watchPreview=null; }
+    clearAim() { const owned=new Set();for (const c of [...this.aim.children]) { this.aim.remove(c); c.geometry?.dispose?.();if(c.userData.watch || c.userData.ownedMaterial)owned.add(c.material); }for(const m of owned){m.map?.dispose?.();m.dispose();}this.watchPreview=null; }
     /** Accuracy cone: lines from the muzzle to a ring of radius r at the aim point. */
     /** PLAN-12: the aim is one line from the muzzle to the aim point (no spray cone, rings or spokes). */
     showCone(muzzle, aimPoint, spreadDeg) {
@@ -187,6 +187,49 @@ export class Overlays {
             this.aim.add(ring, disc);
         }
     }
+    /**
+     * PLAN-15 grenade preview (pv from Battle.throwPreview): a bold arc, a pulsing detonation ring where it really goes
+     * off (the wall it hits when blocked, with a red ✕), the floor tiles the blast reaches, a dashed scatter ring, and a
+     * marker with the expected damage over every unit in the blast (red: hostile, amber: friendly).
+     */
+    showThrowPreview(pv, { unitPos = () => null, inRange = true } = {}) {
+        this.clearAim();
+        if (!pv) return;
+        const own = m => { m.userData.ownedMaterial = true; return m; };
+        const col = !inRange ? ZONE.red : pv.smoke ? 0xb9c4cc : 0xff8a3d;
+        if (pv.arc?.points?.length && inRange) {
+            const pts = pv.arc.points.map(p => new THREE.Vector3(p.x, p.h, p.y));
+            const m = new THREE.Mesh(ribbonGeometry(pts, 0.09, true), glowMaterial(0xffb347, 0.95));
+            m.material.depthTest = false; m.renderOrder = 20; this.aim.add(own(m));
+            for (let i = 4; i < pts.length - 2; i += 6) { const d = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), glowMaterial(0xffe0b0, 0.9)); d.material.depthTest = false; d.renderOrder = 21; d.position.copy(pts[i]); this.aim.add(own(d)); }
+        }
+        if (!inRange) return;
+        const c = pv.centre, at = new THREE.Vector3(c.x, c.h, c.y);
+        if (pv.cells?.length) {
+            const tiles = tileMesh(pv.cells, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.3, depthTest: false, depthWrite: false, toneMapped: false, side: THREE.DoubleSide }));
+            tiles.renderOrder = 18; this.aim.add(own(tiles));
+        }
+        const ringCol = pv.blocked ? ZONE.red : col;
+        const ring = new THREE.Mesh(new THREE.RingGeometry(Math.max(0.1, pv.radius - 0.14), pv.radius, 56).rotateX(-Math.PI / 2), glowMaterial(ringCol, 0.95));
+        ring.material.depthTest = false; ring.renderOrder = 20; ring.position.copy(at).setY(c.h - 0.1); ring.userData.pulse = true; this.aim.add(own(ring));
+        if (pv.scatter > 0.2) {
+            const sc = new THREE.Mesh(new THREE.RingGeometry(pv.radius + pv.scatter - 0.05, pv.radius + pv.scatter, 56, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.35, depthTest: false, depthWrite: false, toneMapped: false, side: THREE.DoubleSide }));
+            sc.position.copy(ring.position); sc.renderOrder = 19; this.aim.add(own(sc));
+        }
+        // A short pillar marks the burst point so its height reads against walls and floors.
+        const pillar = new THREE.Line(new THREE.BufferGeometry().setFromPoints([at.clone().setY(c.h - 0.1), at.clone().setY(c.h + 1.8)]), new THREE.LineBasicMaterial({ color: ringCol, transparent: true, opacity: 0.8, depthTest: false, toneMapped: false }));
+        pillar.renderOrder = 20; this.aim.add(own(pillar));
+        if (pv.blocked) {
+            for (const a of [Math.PI / 4, -Math.PI / 4]) { const bar = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 0.08), new THREE.MeshBasicMaterial({ color: ZONE.red, depthTest: false, toneMapped: false })); bar.position.copy(at); bar.rotation.set(0, 0, a); bar.renderOrder = 22; this.aim.add(own(bar)); }
+        }
+        for (const hit of pv.units || []) {
+            const p = unitPos(hit.id); if (!p) continue;
+            const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: damageTag(hit.kill ? 'KILL' : `~${hit.dmg}`, hit.side === 'player' ? '#ffcf5a' : '#ff5a4a'), depthTest: false, transparent: true, toneMapped: false }));
+            spr.scale.set(0.9, 0.45, 1); spr.position.copy(p).add(new THREE.Vector3(0, 2.75, 0)); spr.renderOrder = 23; spr.userData.ownedMaterial = true; this.aim.add(spr);
+        }
+    }
+    /** Pulse the detonation ring of a grenade preview (called every frame). */
+    pulse(time) { for (const c of this.aim.children) if (c.userData.pulse) { const k = 1 + Math.sin(time * 6) * 0.05; c.scale.set(k, 1, k); } }
     showIntel(battle) {
         for(const child of [...this.intelGroup.children]){this.intelGroup.remove(child);child.geometry?.dispose();child.material?.dispose();}
         const add=(c,drone)=>{
@@ -319,6 +362,13 @@ export class Overlays {
     }
 }
 
+/** PLAN-15: a small canvas tag ("~10", "KILL") for the grenade preview. */
+function damageTag(text, color) {
+    const c = document.createElement('canvas'); c.width = 128; c.height = 64; const g = c.getContext('2d');
+    g.fillStyle = 'rgba(8,10,14,0.82)'; g.fillRect(8, 10, 112, 44); g.strokeStyle = color; g.lineWidth = 4; g.strokeRect(8, 10, 112, 44);
+    g.fillStyle = color; g.font = 'bold 30px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 64, 33);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
 function frameGeometry(w) {
     // Square outline on a tile top (four thin quads).
     const pos = [], idx = [];

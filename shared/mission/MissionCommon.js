@@ -18,28 +18,35 @@ export function finalizeMission({ id, name, store, rooms, buildings, spawns, rng
     });
     const search = reachable(store, player[0], Infinity, AGENT_PROFILES.player);
     const reach = p => search.costs.has(nodeKey(p));
-    const nearestReachable = (p) => {
+    const nearestReachable = (p, ok = () => true, maxD = Infinity) => {
         let best = null, bd = Infinity;
         for (const n of search.nodes.values()) {
-            if (occupied.has(key(n))) continue;
+            if (occupied.has(key(n)) || !ok(n)) continue;
             const d = Math.hypot(n.x - p.x, n.y - p.y) + Math.abs(n.z - (p.z ?? n.z)) * 2;
-            if (d < bd) { bd = d; best = n; }
+            if (d < bd && d <= maxD) { bd = d; best = n; }
         }
         return best;
     };
+    // PLAN-15: members of one pod stand a couple of tiles apart (XCOM 2 pods spread over their post), not shoulder
+    // to shoulder; the old adjacent placement is only the fallback.
+    const podCells = new Map();
+    const spaced = (c, group) => !(podCells.get(group ?? 0) || []).some(o => o.z === c.z && Math.max(Math.abs(o.x - c.x), Math.abs(o.y - c.y)) < 2);
     objective = resolveObjective(objective, { id, store, buildings, rng, player, reach, occupied, key });
     const enemy = [];
     for (const spec of spawns.enemy) {
         let pos = null;
         if (spec.pos) pos = spec.pos;
-        else if (spec.at) { const s = store.surfaceNear(spec.at.x, spec.at.y, spec.at.z ?? Infinity); pos = s ? { x: spec.at.x, y: spec.at.y, z: s.z } : null; }
+        else if (spec.at) {
+            const s = store.surfaceNear(spec.at.x, spec.at.y, spec.at.z ?? Infinity); pos = s ? { x: spec.at.x, y: spec.at.y, z: s.z } : null;
+            if (pos && (occupied.has(key(pos)) || !spaced(pos, spec.group))) pos = nearestReachable(pos, n => spaced(n, spec.group) && Math.abs(n.z - pos.z) <= 1, 5) || pos;
+        }
         else if (spec.room) {
             const b = buildings.find(b => b.id === spec.room.building);
             const list = b?.rooms.filter(r => r.gameplay !== false && r.storey === (spec.room.storey ?? 0)) || [];
             const room = roomFor(list, spec.room);
             if (room) {
                 const cells = rng.shuffle(room.cells.map(([x, y]) => ({ x, y, z: room.floorZ })));
-                pos = cells.find(c => reach(c) && !occupied.has(key(c))) || null;
+                pos = cells.find(c => reach(c) && !occupied.has(key(c)) && spaced(c, spec.group)) || cells.find(c => reach(c) && !occupied.has(key(c))) || null;
             }
         } else if (spec.roof) {
             const b = buildings.find(b => b.id === spec.roof);
@@ -59,6 +66,7 @@ export function finalizeMission({ id, name, store, rooms, buildings, spawns, rng
         }
         if (!pos) continue;
         occupied.add(key(pos));
+        if (!podCells.has(spec.group ?? 0)) podCells.set(spec.group ?? 0, []); podCells.get(spec.group ?? 0).push(pos);
         enemy.push({ type: spec.type, group: spec.group ?? 0, pos, facing: spec.facing || 's' });
     }
     if (secure) secureSpawns(store, player, enemy, search, occupied, key);

@@ -140,8 +140,8 @@ with an RNG seeded from the shooter, its tile, the aim point and the spread (it 
 
 Per projectile that hits a part:
 
-1. Effective armour = max(0, part armour (+4 while `braced`) − weapon `pierce`).
-2. `FireControl.projectileDamage` chooses close/far damage and distributes shotgun shell damage across pellets. Damage = max(0, round(projectile damage) − effective armour); −1 more if the hit is `pyro` and the target is `wet`.
+1. Effective armour = max(0, part armour (+2 while `braced`; PLAN-15, was +4) − weapon `pierce`).
+2. `FireControl.projectileDamage` chooses close/far damage and distributes shotgun shell damage across pellets. Damage = max(round(projectile damage) − effective armour, ceil(round(projectile damage) × `B.armorMinDamage`)) — PLAN-15: armour reduces a projectile but never cancels it (default floor 0.5); −1 more if the hit is `pyro` and the target is `wet`.
    For guns, damage and pierce are the round's ([calibers](#ammunition-calibers)).
 3. `shred` then permanently lowers that part's armour.
 4. The damage comes off the part's HP **and** the unit's HP (the torso gauge mirrors unit HP). The unit dies at
@@ -157,7 +157,7 @@ Per projectile that hits a part:
 
 There are **no crits, grazes or dodges**. Debug god mode sets damage to 0.
 
-Human characters have 30 HP (`UNIT_HP`); constructs can have more. Within five tiles, AR rounds do 10 damage, high-caliber rounds 30, and a shotgun shell distributes 30 total across its pellets. Beyond five tiles the respective values are 5, 10, and 5. Armor and penetration apply after this selection. For example, a close 5.56 hit against plate torso armor 6 with pierce 2 deals 6 damage; a close .338 hit against the same torso deals 29. Helmet equipment supplies head protection separately from body armor.
+Human characters have 30 HP (`UNIT_HP`); constructs can have more. Within five tiles, AR rounds do 10 damage, high-caliber rounds 30, and a shotgun shell distributes 30 total across its pellets. Beyond five tiles the respective values are 5, 10, and 5. Armor and penetration apply after this selection. For example (PLAN-15 table), a close 5.56 hit against plate torso armour 3 with pierce 2 deals 9 damage (braced: 7); a 12-gauge pellet (4) against plate still deals 2; a close .338 hit deals 30. Helmet equipment supplies head protection separately from body armor.
 
 ## Overwatch
 
@@ -219,6 +219,7 @@ weapon tooltip (`Hud.js`) shows name · round · shot AP · damage (× projectil
 | id | name | AP | dmg | pierce | shred | knockback | noise | `reach` (unused) | `voxel` (unused) |
 |---|---|---|---|---|---|---|---|---|---|
 | `sword` | Combat Knife | 1 | 10 | 2 | — | — | 4 | 1.5 | 1 |
+| `strider_claws` | Strider Claws | 1 | 16 | 4 | 1 | 2 tiles | 12 | 2 | 20 |
 | `maul` | Sledgehammer | 2 | 16 | 3 | 1 | 2 tiles | 8 | 1.5 | 4 |
 <!-- /generated:melee -->
 
@@ -230,11 +231,12 @@ roll. The Sledgehammer knocks the target 2 tiles away. Melee deals no voxel dama
 <!-- generated:armor -->
 | armour | head | torso | arm L | arm R | legs | mobility (tiles/AP) |
 |---|---|---|---|---|---|---|
-| `light` | 0 | 2 | 0 | 0 | 1 | 0 |
-| `medium` | 1 | 3 | 2 | 2 | 2 | -0.2 |
-| `heavy` | 2 | 4 | 3 | 3 | 3 | -0.4 |
-| `hide` | 0 | 1 | 0 | 0 | 0 | 0 |
-| `plate` | 3 | 6 | 4 | 4 | 4 | -0.4 |
+| `light` | 0 | 1 | 0 | 0 | 0 | 0 |
+| `medium` | 1 | 2 | 1 | 1 | 1 | -0.2 |
+| `heavy` | 1 | 2 | 1 | 1 | 2 | -0.4 |
+| `hide` | 0 | 0 | 0 | 0 | 0 | 0 |
+| `plate` | 1 | 3 | 2 | 2 | 2 | -0.4 |
+| `drone` | 0 | 0 | 0 | 0 | 0 | 0 |
 <!-- /generated:armor -->
 
 ## Throwables
@@ -272,7 +274,8 @@ For every living unit (friend or foe) with its chest point at 3D distance d (Δh
 - Radius r = item radius, **+1 if the unit is clustered** (2+ allies within 2 tiles, [09](09-formations.md)).
 - Hit if d ≤ r + 0.5. Damage = round(damage × max(0.25, 1 − d ÷ (r + 0.5)) × 1.25 if clustered × 0.5 if a `block` or `shatter`
   voxel lies between the centre and the chest).
-- Applied to the torso with pierce = ceil(torso armour ÷ 2) (braced armour included) and the item's shred.
+- Applied to the torso with pierce = ceil(torso armour ÷ 2) (braced armour included), the armour floor and the item's shred.
+- **Preview** (PLAN-15, `Battle.throwPreview`, pure): the same arc, detonation point (the wall the arc hits when blocked), scatter radius, the floor tiles the blast reaches (line of blast from the centre) and each unit's damage after armour — what the throw overlay draws.
 - Element statuses apply even when the damage rounds to 0; knockback, if any, pushes away from the centre.
 
 ## PLAN-09: rolled hit chance for overwatch and NPC shots
@@ -281,3 +284,24 @@ Overwatch reactions (both sides) and every NPC shot now roll an XCOM 2-style per
 (`shared/battle/HitChance.js:hitChance`): aim (accuracy × 80) + range + height − cover/smoke/darkness ± statuses,
 × 0.7 on overwatch, crits on flanked targets (×1.5 damage). Player shots keep free aim. Table and rules:
 [../PLAN-09-intel-ai-hit-chance-monsters.md](../PLAN-09-intel-ai-hit-chance-monsters.md) §1.
+
+## PLAN-15: aiming as its own state
+
+- **Peek** (`shared/battle/Peek.js`): while aiming, WASD leans the shooter up to `B.peekRange` tiles (default 1, 0 = off)
+  from its tile, camera-relative, one tile per press. Peek tiles are on the same storey, standable, unoccupied and
+  reached by plain walking (no doors, vaults, ladders or drops). The shot intent carries `from`; `Battle.validate`
+  rejects any other tile (`bad_intent`). `doShoot` emits `peek`, moves the shooter to the tile, runs overwatch
+  reactions for that step (the soldier is exposed: known overwatch fires, reaction shots use the peek tile's cover),
+  fires (leans and step-outs still apply from the peek tile), then steps back home (`peekBack`). A soldier killed on
+  the peek tile stays there. The reticle line shows the peek tile's cover (`peekExposure`) and any known overwatch.
+  Esc steps back from a peek before it leaves aiming.
+- **Free aim / assist** (`options.aimAssist`): `light` (default) slows the mouse to 0.55× while the aim line passes
+  through or within 1.2° / 0.35 tiles of a visible hostile (`aimFriction`) and never moves the aim point; the body
+  part is whatever hitbox the line passes through (`partUnderRay`). `strong` is the old PLAN-11 snap (`stickyAim`);
+  `off` has neither.
+- **Shotgun reticle**: corner brackets for the pellet pattern (capped at 120 px, `WIDE` past it), eight fixed pellet
+  marks, a range band (`EFFECTIVE` ≤ range, `FALLOFF` ≤ max range, `OUT OF RANGE`) and the expected pellets and
+  damage on the hostile under it.
+- **Aim camera** (`CameraDirector.track`): wall tests always run from the current shooter (home or peek); the
+  shoulder pulls in continuously and then tries 0.6 tiles higher; the camera is never placed inside a solid voxel; the
+  x-ray cut keeps a cell for 0.4 s after it stops blocking, so fast swings do not flash walls back in.

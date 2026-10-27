@@ -149,8 +149,9 @@ test('noise and sightings feed the enemy intel deterministically; searching the 
 });
 
 test('pods split into anchor, flanker and support roles', () => {
+    // PLAN-15: roles come from the pod plan (gadget holder supports, the widest member flanks), not from id order.
     const b = arena({ enemies: ['cultist', 'cultist', 'archer'].map((type, i) => ({ type, pos: { x: 8 + i * 2, y: 4, z: 1 }, group: 2, alerted: true })) });
-    assert.deepEqual(['e0', 'e1', 'e2'].map(id => podRole(b, b.unit(id))), ['anchor', 'flanker', 'support']);
+    assert.deepEqual(['e0', 'e1', 'e2'].map(id => podRole(b, b.unit(id))).sort(), ['anchor', 'flanker', 'support']);
 });
 
 test('the enemy side plays whole turns with the new brain without errors', () => {

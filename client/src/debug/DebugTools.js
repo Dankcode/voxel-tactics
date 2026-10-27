@@ -70,6 +70,12 @@ export class DebugTools {
         this.game.hud?.refresh();
     }
     toggle() { this.enable(!this.enabled); }
+    /** PLAN-15 AI log: one line per AI intent (kept even when the panel is closed, last 120). */
+    aiLog(u, intent, role = null) {
+        (this.aiLines ||= []).push({ round: this.game.battle?.round, side: u.side, name: u.name, group: u.group, role, type: intent.type, why: intent.why });
+        if (this.aiLines.length > 120) this.aiLines.shift();
+        if (this.enabled && this.tab === 'ai') this.render();
+    }
     release() { this.paused = false; const r = this.stepResolvers; this.stepResolvers = []; r.forEach(f => f()); }
     waitStep() { return new Promise(r => this.stepResolvers.push(r)); }
     step() { const r = this.stepResolvers.shift(); if (r) r(); }
@@ -227,7 +233,7 @@ export class DebugTools {
     render() {
         if (!this.enabled || !this.battle) return;
         const g = this.game, b = this.battle;
-        const tabs = ['world', 'units', 'turn', 'view', 'mission'].map(t => `<button data-d="tab" data-arg="${t}" class="${this.tab === t ? 'on' : ''}">${t}</button>`).join('');
+        const tabs = ['world', 'units', 'turn', 'ai', 'view', 'mission'].map(t => `<button data-d="tab" data-arg="${t}" class="${this.tab === t ? 'on' : ''}">${t}</button>`).join('');
         let body = '';
         if (this.tab === 'world') {
             body = `<div class="grid">${TOOLS.map(([id, label, key]) => `<button data-d="tool" data-arg="${id}" class="${this.tool === id ? 'on' : ''}">${label}${key ? ` <kbd>${key}</kbd>` : ''}</button>`).join('')}</div>
@@ -250,6 +256,11 @@ export class DebugTools {
                 <div class="row"><button data-d="pause" class="${this.paused ? 'on' : ''}">${this.paused ? 'AI paused' : 'Pause AI'}</button><button data-d="step">Step AI action <kbd>F9</kbd></button><button data-d="auto" class="${g.autoPlayer ? 'on' : ''}">Autoplay squad: ${g.autoPlayer ? 'ON' : 'off'}</button></div>
                 <div class="row"><button data-d="speed">Playback ×${g.player.speed}</button><button data-d="alert">Alert all pods</button></div>
                 <p class="hint">With "control enemy side" on, enemy units can be selected and ordered like your own during the enemy phase.</p>`;
+        } else if (this.tab === 'ai') {
+            // PLAN-15: why every NPC did what it did, with its pod, role and the pod's focus target.
+            const plans = Object.entries(b.podPlans || {}).filter(([, p]) => p.round === b.round);
+            body = `<p class="hint">Pod plans this round: ${plans.length ? plans.map(([gid, p]) => `pod ${gid} → focus <b>${esc(b.unit(p.focusId)?.name || '—')}</b> (${Object.entries(p.roles).map(([id, r]) => `${esc(b.unit(id)?.name || id)}: ${r}`).join(', ')})`).join(' · ') : 'none yet'}</p>
+                <table class="units"><tr><th>rd</th><th>unit</th><th>pod / role</th><th>intent</th><th>why</th></tr>${(this.aiLines || []).slice(-40).reverse().map(l => `<tr class="${l.side}"><td>${l.round}</td><td>${esc(l.name)}</td><td>${l.group ?? ''} ${l.role || ''}</td><td>${esc(l.type)}</td><td>${esc(l.why || '')}</td></tr>`).join('')}</table>`;
         } else if (this.tab === 'view') {
             body = `<div class="row"><button data-d="fog" class="${g.fog ? 'on' : ''}">Fog of war: ${g.fog ? 'on' : 'off'}</button><button data-d="reveal">Reveal all rooms</button><button data-d="shadows">Shadows: ${g.scene.renderer.shadowMap.enabled ? 'on' : 'off'}</button></div>
                 <h5>Overlays</h5><div class="row">${OVERLAYS.map(([id, l]) => `<button data-d="overlay" data-arg="${id}" class="${this.overlay === id ? 'on' : ''}">${l}</button>`).join('')}</div>

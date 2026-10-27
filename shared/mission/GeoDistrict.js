@@ -27,7 +27,8 @@ import { addStall, parkingLot, plantTree } from '../mapgen/district/Props.js';
 import { remixParameters } from '../mapgen/DistrictRemix.js';
 import { repairCover, tryPiece, REPAIR_GAP } from '../mapgen/district/CoverRepair.js';
 import { coverAt, COVER } from '../voxel/Cover.js';
-import { districtPods } from '../mapgen/district/Pods.js';
+import { districtPods, zonedDistrictPods } from '../mapgen/district/Pods.js';
+import { B } from '../content/balance.js';
 import { STOREY } from './modern/ModernBuilder.js';
 import { geoFrame, groundModel, heightfield, plateauAndRelax, rasterPolygon, polygonArea, distToPolyline } from '../mapgen/geo/GeoFrame.js';
 import { buildFootprint, cleanMask, resolveParty, footprintIoU, largestRectangle, closeDeadExits } from '../mapgen/geo/GeoBuildings.js';
@@ -40,7 +41,7 @@ import { rectifyNetwork, weightedGridAngle, orthogonalizeLine, orthogonalizeRing
 import { buildingContext, streetFurniture } from '../mapgen/geo/GeoContext.js';
 import { dressLandmark, landmarkHeadroom, styleFamily, LANDMARK_MAX_HEIGHT } from '../mapgen/geo/GeoLandmark.js';
 
-export const GEO_GENERATOR_VERSION = 'geo-compact-4';   // 4: compact layouts, trade-specific interiors and mapped street-tree ownership
+export const GEO_GENERATOR_VERSION = 'geo-compact-5';   // 5 (PLAN-15): edge-clipped buildings kept, pods along the insertion → objective line; 4: compact layouts, trade-specific interiors and mapped street-tree ownership
 const k2 = (x, y) => `${x},${y}`;
 const ROAD_CLASS = { motorway: 4, trunk: 4, primary: 3, secondary: 3, tertiary: 2, unclassified: 2, residential: 1, living_street: 1, service: 0 };
 const WALLS = { shop: 'brick', supermarket: 'brick', office: 'concrete_wall', warehouse: 'brick', diner: 'stucco', garage: 'brick', house: 'siding', bank: 'stone', museum: 'stone', chapel: 'stone', civic: 'stone', school: 'brick', library: 'brick', clinic: 'concrete_wall', hotel: 'brick' };
@@ -96,7 +97,11 @@ export function buildGeoDistrict({ geo, id = 'geo-district', name = 'Geo Distric
         if (info?.floors && !b.tags['building:levels'] && !b.tags.height) b.tags['building:levels'] = String(Math.round(info.floors));
         const poly = b.ring.map(toC), areaCells = polygonArea(poly);
         let cells = rasterPolygon(poly, W, D, { grow: 0.3 }).filter(([x, y]) => x >= 1 && y >= 1 && x < W - 1 && y < D - 1);
-        if (cells.length < 0.4 * areaCells) { report.dropped.push({ osm: b.osm, reason: `outside map (${Math.round(100 * cells.length / Math.max(1, areaCells))}% inside)` }); continue; }
+        // PLAN-15: a building the map edge cuts through is kept, clipped at the edge (XCOM maps run their street fronts
+        // off the board), when a useful part of it is inside; only slivers are dropped.
+        const share = cells.length / Math.max(1, areaCells);
+        if (share < 0.12 || cells.length < 40) { report.dropped.push({ osm: b.osm, reason: `outside map (${Math.round(100 * share)}% inside)` }); continue; }
+        if (share < 0.85) (report.clipped ||= []).push({ osm: b.osm, inside: +share.toFixed(2) });
         cells = cleanMask(cells);
         const t = b.tags || {}, st = storeysFromTags(t, 2);
         const centre = [poly.reduce((a, p) => a + p[0], 0) / poly.length, poly.reduce((a, p) => a + p[1], 0) / poly.length];
@@ -457,7 +462,11 @@ export function buildGeoDistrict({ geo, id = 'geo-district', name = 'Geo Distric
     const objRec = m.buildings.find(b => b.group === objB?.id && b.wing === 0);
     if (objRec) { far.splice(far.indexOf(objRec), 1); far.unshift(objRec); }
     const street = (() => { const c = [...roadAt.entries()].filter(([, v]) => v.role === 'road').map(([k]) => k.split(',').map(Number)).sort((a, b) => Math.hypot(a[0] - oc[0], a[1] - oc[1]) - Math.hypot(b[0] - oc[0], b[1] - oc[1]))[0]; return c ? { x: c[0], y: c[1], z: groundAt(m, c[0], c[1]) } : null; })();
-    const enemy = districtPods(far, { fallback: [street, street].filter(Boolean), street });
+    // PLAN-15: pods spread along the insertion → objective line (XCOM 2 encounter zones), not piled in the far corner.
+    const roadCells = [...roadAt.entries()].filter(([, v]) => v.role === 'road').map(([k]) => { const [x, y] = k.split(',').map(Number); return { x, y, z: groundAt(m, x, y) }; }).filter((c, i) => i % 3 === 0);
+    const enemy = (B.podSpacing ?? 0) > 0 && objRec
+        ? zonedDistrictPods(m.buildings, { spawn, goal: { x: objRec.x0 + objRec.w / 2, y: objRec.y0 + objRec.d / 2 }, objective: objRec, roadCells, spacing: B.podSpacing, fallback: [street, street].filter(Boolean) })
+        : districtPods(far, { fallback: [street, street].filter(Boolean), street });
     const objective = { kind: 'eliminate', text: objB ? `Clear the Syndicate out of ${objB.name || 'the block'} and the buildings around it.` : 'Clear the block.' };
     const lamps = [];
     for (const r of roads) if (r.cls >= 1) {

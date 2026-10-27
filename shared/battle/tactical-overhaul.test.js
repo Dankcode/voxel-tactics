@@ -59,8 +59,8 @@ test('the test arsenal carries every throwable, all guns, ammo, and a usable spa
 });
 test('equipment swaps preserve carried items and keep helmet protection separate from body armor',()=>{
  const b=arena(),u=b.unit('p0');u.inventory=[{id:'helmet',itemId:'helmet_heavy',x:0,y:0,rotated:false},{id:'vest',itemId:'armor_light',x:2,y:0,rotated:false}];
- const weight=carryWeight(u);assert.equal(equipCargo(u,{from:'backpack',itemId:'helmet'},true),null);assert.equal(u.parts.head.armor,3);
- assert.equal(equipCargo(u,{from:'backpack',itemId:'vest'},true),null);assert.equal(u.parts.torso.armor,2);assert.equal(u.parts.head.armor,3);assert.equal(carryWeight(u),weight);assert.equal(validateLoadout(u),null);
+ const weight=carryWeight(u);assert.equal(equipCargo(u,{from:'backpack',itemId:'helmet'},true),null);assert.equal(u.parts.head.armor,2);   // PLAN-15 lighter table
+ assert.equal(equipCargo(u,{from:'backpack',itemId:'vest'},true),null);assert.equal(u.parts.torso.armor,1);assert.equal(u.parts.head.armor,2);assert.equal(carryWeight(u),weight);assert.equal(validateLoadout(u),null);
  assert.ok(u.inventory.some(s=>s.itemId==='armor_heavy'));assert.ok(u.inventory.some(s=>s.itemId==='helmet_patrol'));
 });
 test('wearing a stored rig preserves both containers and their contents without cloning ammo',()=>{

@@ -14,6 +14,10 @@ export const BALANCE = {
     aiPursuitPerTile: { value: 1.6, min: 0.5, max: 3 },           // score lost per tile still between a pursuer and its target
     aiHideWhenOutnumbered: { value: 0, min: 0, max: 1 },          // 1 = the old PLAN-09 habit of hiding whenever outnumbered
     aiPatrolRadius: { value: 6, min: 0, max: 12 },                // tiles an unalerted pod wanders from its post (0 = stand still)
+    // PLAN-15. Hand-tuned; the sim only reports them.
+    peekRange: { value: 1, min: 0, max: 2 },                      // tiles a soldier may lean out of cover while aiming (0 = off)
+    armorMinDamage: { value: 0.5, min: 0, max: 1 },               // every projectile deals at least this share of its damage through armour
+    podSpacing: { value: 12, min: 0, max: 24 },                   // tiles between enemy pods on generated maps (0 = old placement)
     darkSpreadMult: { value:1.25,min:1,max:2 },
     dimRoomSpreadMult: { value: 1.25, min: 1, max: 2 },
     smokeSpreadMult: { value: 1.6, min: 1, max: 3 },

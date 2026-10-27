@@ -97,3 +97,22 @@ Observations:
 - Voxels destroyed per battle rose from 14 (before PLAN-07) to 31–57.
 - Shipped values: AR 1.0°, Marksman 0.6°, Carbine 0.8°, AK 1.0°, Pistol 1.4°, Sniper 0.3°, Shotgun 4°; district pods
   3 + 2 + 2 (`shared/mapgen/district/Pods.js`). Raw output: re-run with the command above.
+
+## PLAN-15 armour (hand-tuned starting values)
+
+Armour was too strong: a braced Riot Guard (plate torso 6 + Brace 4) took 2 damage from a 5.56 round, and buckshot
+pellets did nothing against heavy or plate. The new table (head / torso / arms / legs) is light 0/1/0/0, hide 0/0/0/0,
+medium 1/2/1/1, heavy 1/2/1/2, plate 1/3/2/2; Brace gives +2; the ballistic helmet gives 2. Every projectile deals at
+least `B.armorMinDamage` (0.5) of its damage through armour. Torso damage per hit, all projectiles landing:
+
+| weapon | plate before | plate + brace before | plate now | heavy before → now |
+|---|---|---|---|---|
+| AR 5.56 (3-round burst) | 18 | 6 | 27 | 24 → 30 |
+| AK 7.62×39 | 6 | 2 | 9 | 8 → 10 |
+| Sidearm 9 mm | 4 | 1 | 7 | 6 → 8 |
+| Shotgun (8 pellets) | 0 | 0 | 16 | 0 → 16 |
+| Sniper .338 | 29 | 25 | 30 | 30 → 30 |
+
+The soldiers' armour uses the same table (gear `protection` points at `ARMOR`). Not auto-tuned; re-run `npm run sim`
+to read the effect.
+

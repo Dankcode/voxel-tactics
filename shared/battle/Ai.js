@@ -13,6 +13,8 @@ import { inZone, extractionOpen, objectiveGoal } from './Objectives.js';
 import { reserveAmmo } from '../inventory/Equipment.js';
 import { decideEnemy, enemyThreats, patrolStep, decideDrone, investigateStep, launchIntent } from './EnemyAi.js';
 import { DEFAULT_TUNING } from '../session/Playstyle.js';
+import { B } from '../content/balance.js';
+import { planRole, ROLE_ORDER } from './PodPlanner.js';
 
 export const DEFAULT_POLICY = Object.freeze({ formations: false, breach: true, grenadeMinTargets: 2, shootThreshold: 0.9, samples: 24 });
 
@@ -40,7 +42,9 @@ export function runAiSide(battle, side, policy = DEFAULT_POLICY, { maxActions = 
 /** Turn order for AI units: formation leaders first, so members follow the group move before acting themselves. */
 export function aiOrder(battle, side) {
     const lead = u => { const f = battle.formations.of(u); return f && f.leaderId === u.id ? 0 : f ? 2 : 1; };
-    return battle.unitsOf(side).map((u, i) => ({ u, i, k: lead(u) })).sort((a, b) => a.k - b.k || a.i - b.i).map(x => x.u);
+    // PLAN-15: inside the enemy phase a pod's support acts first (breaks cover / smokes), then its flanker, then anchors.
+    const role = u => side === 'enemy' ? (ROLE_ORDER[planRole(battle, u)] ?? 1) : 0;
+    return battle.unitsOf(side).map((u, i) => ({ u, i, k: lead(u), r: role(u) })).sort((a, b) => a.k - b.k || a.r - b.r || a.i - b.i).map(x => x.u);
 }
 
 function knownEnemies(battle, u) {
@@ -172,7 +176,7 @@ function bestShot(battle, u, w, known, policy) {
             const aim = { unitId: e.id, part };
             const { spread } = battle.spreadFor(u, w, { x: e.x + 0.5, y: e.y + 0.5, h: e.z + 2 }, { target: e });
             const est = estimateShot(battle, u, aim, { weapon: w, spread, samples: policy.samples });
-            const perHit = Math.max(0, w.damage - Math.max(0, partArmor(e, part) - w.pierce));
+            const perHit = Math.max(0, w.damage - Math.max(0, partArmor(e, part) - w.pierce), Math.ceil(w.damage * (B.armorMinDamage || 0)));
             let value = est.hit * w.projectiles * perHit / Math.max(1, w.ap) - est.friendly * 10;
             if (value * Math.max(1, w.ap) >= e.hp) value *= 1.5;                    // likely kill
             if (!best || value > best.value) best = { value, intent: { type: 'shoot', unitId: u.id, weaponId: w.id, aim } };

@@ -314,3 +314,40 @@ export function stickyAim(battle, shooter, origin, point, { filter = null, maxDe
     }
     return best;
 }
+
+/**
+ * PLAN-15 free aim: the hostile body part the aim line actually passes through (hitboxes, not the nearest centre),
+ * or null. `point` is where the line is aimed; the line is extended a little past it.
+ */
+export function partUnderRay(battle, shooter, origin, point, { filter = null } = {}) {
+    const dv = [point.x - origin.x, point.y - origin.y, point.h - origin.h], L = Math.hypot(...dv);
+    if (L < 1e-6) return null;
+    const d = dv.map(c => c / L);
+    let best = null;
+    for (const t of battle.units) {
+        if (!alive(t) || t.side === shooter.side || (filter && !filter(t))) continue;
+        const hit = rayUnit(origin, d, t, L + 1.5, battle.store);
+        if (hit && (!best || hit.t < best.t)) best = { unit: t, part: hit.part, t: hit.t };
+    }
+    return best;
+}
+/**
+ * PLAN-15 aim assist "light": friction, never a snap. Returns the sensitivity multiplier for the next mouse motion:
+ * `factor` while the aim line passes through, or within `deg` / `offset` of, a visible hostile; else 1.
+ */
+export function aimFriction(battle, shooter, origin, point, { filter = null, deg = 1.2, offset = 0.35, factor = 0.55 } = {}) {
+    if (partUnderRay(battle, shooter, origin, point, { filter })) return factor;
+    const dv = [point.x - origin.x, point.y - origin.y, point.h - origin.h], L = Math.hypot(...dv);
+    if (L < 1e-6) return 1;
+    const d = dv.map(c => c / L);
+    for (const t of battle.units) {
+        if (!alive(t) || t.side === shooter.side || (filter && !filter(t))) continue;
+        for (const part of ['torso', 'head']) {
+            const c = partCentre(t, part), v = [c.x - origin.x, c.y - origin.y, c.h - origin.h], along = v[0] * d[0] + v[1] * d[1] + v[2] * d[2];
+            if (along <= 0.5) continue;
+            const off = Math.hypot(v[0] - d[0] * along, v[1] - d[1] * along, v[2] - d[2] * along);
+            if (off <= Math.max(offset, along * Math.tan(deg * Math.PI / 180))) return factor;
+        }
+    }
+    return 1;
+}

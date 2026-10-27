@@ -86,12 +86,12 @@ normal explosion and chain rules ([05](05-destruction.md#explosive-materials)).
 |---|---|---|---|
 | `burning` | 2 | dotPerRound: 3; removes: — | fire |
 | `wet` | 2 | removes: burning | water |
-| `chilled` | 2 | maxStacks: 2; apPerStack: -1 | cold |
-| `frozen` | 1 | rooted: true | cold |
+| `chilled` | 2 | maxStacks: 2 | cold |
+| `frozen` | 1 | rooted: true; apPenalty: -2 | cold |
 | `stunned` | 1 | apPenalty: -2 | concussion |
 | `bleeding` | 3 | dotPerRound: 2 | wound |
 | `suppressed` | 1 | accuracyMult: 0.6 | fear |
-| `braced` | 1 | armorBonus: 4 | buff |
+| `braced` | 1 | armorBonus: 2 | buff |
 | `staggered` | 1 | accuracyMult: 0.8; untilOwnTurn: true | move |
 | `surprised` | 1 | apPenalty: -1; noReaction: true | breach |
 | `panicked` | 1 | apMult: 0.5; noAbilities: true | stress |

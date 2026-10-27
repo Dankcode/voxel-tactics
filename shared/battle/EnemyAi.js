@@ -25,6 +25,9 @@ import { DEFAULT_TUNING } from '../session/Playstyle.js';
 import { B } from '../content/balance.js';
 import { hashString } from '../util/Rng.js';
 import { flushShot, blastCoverValue, FLUSH } from './FlushAi.js';
+import { planRole, planFocus } from './PodPlanner.js';
+/** PLAN-15: every NPC intent carries a short reason (shown in the F1 AI log; Battle ignores it). */
+const why = (intent, text) => { if (intent && !intent.why) intent.why = text; return intent; };
 
 const dist2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
@@ -48,6 +51,8 @@ export function enemyThreats(battle, u) {
 
 /** Pod role from the unit's place in its group: anchor, flanker or support. Deterministic. */
 export function podRole(battle, u) {
+    // PLAN-15: the pod plan assigns roles from the situation (gadget holder supports, the widest member flanks).
+    const planned = planRole(battle, u); if (planned) return planned;
     const pod = battle.units.filter(o => o.side === u.side && (o.group ?? 0) === (u.group ?? 0) && !WALKERS[o.type]).map(o => o.id).sort();
     const i = pod.indexOf(u.id);
     if (pod.length < 2) return 'anchor';
@@ -55,6 +60,10 @@ export function podRole(battle, u) {
 }
 
 export function decideEnemy(battle, u, policy) {
+    const intent = decideEnemyCore(battle, u, policy);
+    return why(intent, intent ? `${intent.type}` : null);
+}
+function decideEnemyCore(battle, u, policy) {
     const T = tuningOf(battle);
     if (WALKERS[u.type]) return decideMonster(battle, u);
     const threats = enemyThreats(battle, u), known = threats.filter(t => !t.ghost);
@@ -66,15 +75,15 @@ export function decideEnemy(battle, u, policy) {
     // Melee specialists: strike when adjacent, else close in through cover, smoke first if they would be caught open.
     if (!ranged && melee) {
         const adj = known.find(t => cheb(t, u) <= 1 && Math.abs(t.z - u.z) <= 1);
-        if (adj && u.ap >= melee.ap) return { type: 'melee', unitId: u.id, weaponId: melee.id, targetId: adj.u.id, part: 'torso' };
+        if (adj && u.ap >= melee.ap) return why({ type: 'melee', unitId: u.id, weaponId: melee.id, targetId: adj.u.id, part: 'torso' }, 'melee: adjacent');
         const g = gadget(battle, u, known, T, role);
         if (g) return g;
         const target = nearestOf(u, threats) || fallbackTarget(battle, u);
         if (!target) return null;
         const step = approachCovered(battle, u, target, Math.max(0, u.ap - melee.ap), threats);
-        return step ? moveIntent(battle, u, step) : null;
+        return step ? why(moveIntent(battle, u, step), 'melee: close in through cover') : null;
     }
-    if (!ranged) return gadget(battle, u, known, T, role);
+    if (!ranged) return why(gadget(battle, u, known, T, role), 'gadget: no gun');
 
     const ammoOk = (u.ammo[ranged.id] ?? 0) >= 1;
     const canReload = !ranged.boltAction && reserveAmmo(u, ranged) > 0 && u.ap >= ranged.reloadAp;
@@ -83,14 +92,14 @@ export function decideEnemy(battle, u, policy) {
     const shotAp = battle.shotAp(u, ranged);
 
     // Gadgets and elements before anything else: they set up the shots.
-    if (known.length) { const g = gadget(battle, u, known, T, role); if (g) return g; }
+    if (known.length) { const g = gadget(battle, u, known, T, role); if (g) return why(g, `${role}: ${g.type === 'throw' ? 'grenade' : g.type} before the shots`); }
     if (!ammoOk && canReload) return { type: 'reload', unitId: u.id, weaponId: ranged.id };
 
     const shot = ammoOk && u.ap >= shotAp ? bestEnemyShot(battle, u, ranged, known) : null;
     const canMoveAndShoot = u.ap + u.moveOnlyAp - shotAp >= 1;
     // XCOM habit: take a good shot; with a bad one, reposition first if there is AP for both.
     if (shot && (shot.chance >= 70 || shot.kill && shot.chance >= 45 || (!canMoveAndShoot && shot.chance >= 30) || (u.movedThisTurn && shot.chance >= 30)))
-        return shot.intent;
+        return why(shot.intent, `shot ${shot.chance}%${shot.kill ? ' (kill)' : ''}${shot.focus ? ' on pod focus' : ''}`);
 
     // Formation members hold their slots (enemy formations are rare, kept for parity with the squad AI).
     // Formation members: the leader's group move carries them; get back into the slot if left behind, then cover.
@@ -116,14 +125,14 @@ export function decideEnemy(battle, u, policy) {
     // Flush (FlushAi): a squad member dug in behind breakable cover that this unit cannot hit well. Break the cover
     // now when it gives way this action and a pod-mate can take the exposed shot; otherwise it is the fallback below.
     const flush = !hide && ammoOk && !(shot && shot.chance >= FLUSH.chanceBelow) ? flushShot(battle, u, ranged, threats, { T }) : null;
-    if (flush && flush.breaksNow && flush.follow) return flush.intent;
+    if (flush && flush.breaksNow && flush.follow) return why(flush.intent, 'flush: break the cover for a pod-mate');
 
     if (!threats.length) {
         // Nobody known: hold an ambush, or sweep toward the squad's general direction (alerted pods do not idle).
         if (u.movedThisTurn) return ammoOk && u.ap >= ranged.ap ? overwatchToward(battle, u, ranged, u.investigate ? searchGoal(battle, u) : fallbackTarget(battle, u)) : null;
         // PLAN-14: a sound to run down comes first — go to its source, then sweep around it.
         const search = searchMove(battle, u, ammoOk ? ranged.ap : 0);
-        if (search) return search;
+        if (search) return why(search, 'search: running down a sound');
         const t = fallbackTarget(battle, u);
         if (!t) return null;
         const tile = enemyTile(battle, u, ranged, [{ u: t.u, x: t.x, y: t.y, z: t.z, ghost: true, age: 9 }], Math.max(1, u.ap + u.moveOnlyAp - (ammoOk ? ranged.ap : 0)), { role, hide: false, T, ammoOk, sweep: t });
@@ -139,23 +148,23 @@ export function decideEnemy(battle, u, policy) {
         const fullAp = u.ap + u.moveOnlyAp;
         if (!hide && target && fullAp > budgetAp && (!best || best.offense < B.aiDashIfOffenseBelow) && !(shot && shot.chance >= 30)) {
             const dash = enemyTile(battle, u, ranged, threats, fullAp, { role, hide: false, T, ammoOk, pursue: target, detail: true });
-            if (dash && !same(dash.n, u) && dist2(dash.n, target) < dist2(u, target) - 1) return moveIntent(battle, u, dash.n);
+            if (dash && !same(dash.n, u) && dist2(dash.n, target) < dist2(u, target) - 1) return why(moveIntent(battle, u, dash.n), `dash: best reachable offense ${Math.round((best?.offense ?? 0) * 100)}% < ${Math.round(B.aiDashIfOffenseBelow * 100)}%`);
         }
-        if (best && !same(best.n, u)) return moveIntent(battle, u, best.n);
+        if (best && !same(best.n, u)) return why(moveIntent(battle, u, best.n), `${role}: ${hide ? 'fall back' : 'reposition'} (offense ${Math.round((best.offense ?? 0) * 100)}%, danger ${(best.danger ?? 0).toFixed(2)})`);
     }
-    if (shot && shot.chance >= 30) return shot.intent;
+    if (shot && shot.chance >= 30) return why(shot.intent, `shot ${shot.chance}% after moving`);
     // Moved, still no shot and AP left: keep closing instead of parking on overwatch out of range or out of sight.
     if (!hide && target && u.movedThisTurn && u.ap + u.moveOnlyAp >= 1 && (dist2(u, target) > ranged.range || !shot)) {
         const keep = ammoOk && u.ap - shotAp >= 0 && u.ap + u.moveOnlyAp - shotAp >= 1 ? shotAp : 0;
         const step = enemyTile(battle, u, ranged, threats, Math.max(1, u.ap + u.moveOnlyAp - keep), { role, hide: false, T, ammoOk, pursue: target, detail: true });
-        if (step && !same(step.n, u) && dist2(step.n, target) < dist2(u, target) - 1) return moveIntent(battle, u, step.n);
+        if (step && !same(step.n, u) && dist2(step.n, target) < dist2(u, target) - 1) return why(moveIntent(battle, u, step.n), 'pursue: still no shot');
     }
     // Caught in the open after moving: raise a wall.
     const wall = earthCover(battle, u, known);
-    if (wall) return wall;
+    if (wall) return why(wall, 'caught in the open: raise cover');
     // No shot worth taking and nowhere better to stand: dig them out rather than wait on overwatch.
-    if (flush && u.ap >= battle.shotAp(u, ranged)) return flush.intent;
-    if (ammoOk && u.ap >= ranged.ap) return overwatchToward(battle, u, ranged, nearestOf(u, threats));
+    if (flush && u.ap >= battle.shotAp(u, ranged)) return why(flush.intent, 'flush: dig them out');
+    if (ammoOk && u.ap >= ranged.ap) return why(overwatchToward(battle, u, ranged, nearestOf(u, threats)), 'overwatch: no shot, nowhere better');
     if (!ammoOk && canReload) return { type: 'reload', unitId: u.id, weaponId: ranged.id };
     if (shot) return shot.intent;
     return null;
@@ -182,19 +191,22 @@ function overwatchToward(battle, u, w, t) {
 /** Best shot by XCOM hit chance and expected damage. */
 export function bestEnemyShot(battle, u, w, known) {
     let best = null;
+    const focus = planFocus(battle, u);   // PLAN-15: pods fire on one agreed target
     for (const t of known) {
         const e = t.u;
         if (dist2(e, u) > w.maxRange) continue;
         if (!battle.sees(u, e)) continue;
         const hc = hitChance(battle, u, e, w);
-        const perHit = Math.max(0, w.damage - Math.max(0, partArmor(e, 'torso') - w.pierce));
+        const perHit = Math.max(0, w.damage - Math.max(0, partArmor(e, 'torso') - w.pierce), Math.ceil(w.damage * (B.armorMinDamage || 0)));
         const expect = hc.chance / 100 * w.projectiles * perHit * (1 + hc.crit / 100 * (B.critDamageMult - 1));
         const kill = w.projectiles * perHit * (hc.crit > 0 ? B.critDamageMult : 1) >= e.hp;
         // A frozen, wet or flanked target is worth extra; a friendly in the line of fire is not worth it.
         let value = expect / Math.max(1, w.ap) * (kill ? 1.6 : 1) * (hasStatus(e, 'frozen') ? 1.3 : 1);
         const friendly = battle.unitsOf(u.side).some(o => o.id !== u.id && segDist(u, e, o) < 0.7 && dist2(o, u) < dist2(e, u));
         if (friendly) value *= 0.2;
-        if (!best || value > best.value) best = { value, chance: hc.chance, crit: hc.crit, kill, intent: { type: 'shoot', unitId: u.id, weaponId: w.id, aim: { unitId: e.id, part: 'torso' } } };
+        if (focus && e.id === focus) value *= 1.35;
+        if (e.hp < e.maxHp) value *= 1.15;   // finish the wounded
+        if (!best || value > best.value) best = { value, chance: hc.chance, crit: hc.crit, kill, intent: { type: 'shoot', unitId: u.id, weaponId: w.id, aim: { unitId: e.id, part: 'torso' } }, focus: e.id === focus };
     }
     return best && best.value > 0.05 ? best : null;
 }
@@ -220,8 +232,12 @@ export function enemyTile(battle, u, w, threats, budgetAp, { role = 'anchor', hi
     const flankK = role === 'flanker' ? 1.8 : role === 'support' ? 0.6 : 1;
     const want = role === 'support' ? w.range * 0.85 : role === 'flanker' ? w.range * 0.5 : w.range * 0.7;
     const scored = [];
-    for (let i = 0; i < nodes.length; i += stride) {
+    // PLAN-15: big searches are sampled by stride, but a tile with cover toward the nearest threat is always scored
+    // (striding used to skip the only covered tiles).
+    const lead = threats.length ? threats.reduce((a, t) => (dist2(t, u) < dist2(a, u) ? t : a), threats[0]) : null;
+    for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i];
+        if (stride > 1 && i % stride && !(lead && coverAgainst(battle.store, n.x, n.y, n.z, lead.x, lead.y, lead.z) !== COVER.NONE)) continue;
         if (battle.occupant(n.x, n.y, n.z) && !same(n, u)) continue;
         let s = 0;
         for (const t of threats) {

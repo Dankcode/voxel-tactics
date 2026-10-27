@@ -56,10 +56,12 @@ export const THROWABLES = Object.freeze({
 });
 
 export const ARMOR = Object.freeze({
-    light: { head: 0, torso: 2, armL: 0, armR: 0, legs: 1, mobility: 0 },
-    medium: { head: 1, torso: 3, armL: 2, armR: 2, legs: 2, mobility: -0.2 },
-    heavy: { head: 2, torso: 4, armL: 3, armR: 3, legs: 3, mobility: -0.4 },
-    hide: { head: 0, torso: 1, armL: 0, armR: 0, legs: 0, mobility: 0 },
-    plate: { head: 3, torso: 6, armL: 4, armR: 4, legs: 4, mobility: -0.4 },
+    // PLAN-15: lighter table (was light 0/2/0/0/1, medium 1/3/2/2/2, heavy 2/4/3/3/3, hide 0/1/0/0/0, plate 3/6/4/4/4);
+    // with B.armorMinDamage armour reduces each projectile but never cancels it. Starting values — tune by hand.
+    light: { head: 0, torso: 1, armL: 0, armR: 0, legs: 0, mobility: 0 },
+    medium: { head: 1, torso: 2, armL: 1, armR: 1, legs: 1, mobility: -0.2 },
+    heavy: { head: 1, torso: 2, armL: 1, armR: 1, legs: 2, mobility: -0.4 },
+    hide: { head: 0, torso: 0, armL: 0, armR: 0, legs: 0, mobility: 0 },
+    plate: { head: 1, torso: 3, armL: 2, armR: 2, legs: 2, mobility: -0.4 },
     drone: { head: 0, torso: 0, armL: 0, armR: 0, legs: 0, mobility: 0 }   // PLAN-14: search drones — one hit
 });

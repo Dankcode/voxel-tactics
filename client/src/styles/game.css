@@ -467,3 +467,34 @@ button{background:rgba(15,15,18,.68);border-color:var(--line);border-radius:4px}
 #hud>.target.slim p{margin:0 0 6px;font-size:11px;opacity:.8}
 #hud>.target.slim .tbtns{display:flex;gap:6px;justify-content:center}
 #hud>.target.slim .tbtns .fire{font-weight:700}
+
+/* ---------------------------------------------------------------- PLAN-15: active soldier, AP, selection, auto end */
+#hud>.unitcard{position:absolute;left:50%;bottom:150px;transform:translateX(-50%);display:flex;gap:9px;align-items:center;padding:5px 12px 5px 6px;min-width:0;max-width:420px;background:linear-gradient(90deg,#0a0d12e6,#0a0d12c0);border:1px solid #ffffff22;border-left:3px solid #5ff2d6;border-radius:6px;pointer-events:none;z-index:20;text-shadow:0 1px 4px #000}
+#hud>.unitcard img{width:40px;height:40px;object-fit:contain;border-radius:50%;border:2px solid #5ff2d6;background:radial-gradient(ellipse at bottom,#33414b80,transparent 75%)}
+.unitcard .uc-main{display:flex;flex-direction:column;gap:3px;min-width:0}.unitcard{background:linear-gradient(90deg,#0a0d12d0,#0a0d1290)!important}
+.unitcard .uc-name{display:flex;gap:8px;align-items:baseline;font-size:13px}.unitcard .uc-name b{color:#5ff2d6;letter-spacing:.06em;text-transform:uppercase}.unitcard .uc-name span{font-size:10px;color:#b9c2c9}.unitcard .uc-name strong{font-size:9px;letter-spacing:.14em;color:#ffcf5a;margin-left:auto}
+.unitcard .uc-ap{display:flex;gap:6px;align-items:center}.unitcard .uc-ap i{width:13px;height:13px;border-radius:50%;border:2px solid #4fd3ff66;background:transparent;box-shadow:0 0 0 1px #000a}.unitcard .uc-ap i.ap{background:#4fd3ff;border-color:#c9f2ff;box-shadow:0 0 10px #4fd3ffaa}.unitcard .uc-ap i.move{background:#ffcf5a;border-color:#fff0c2}.unitcard .uc-ap span{font-size:15px;font-weight:700;letter-spacing:.08em;color:#fff;margin-left:4px}
+.unitcard .uc-hp{display:flex;gap:8px;align-items:center;font-size:11px}.unitcard .uc-hp .segbar{display:flex;gap:2px}.unitcard .uc-hp .segbar i{width:5px;height:5px;background:#ffffff22}.unitcard .uc-hp.ok .segbar i.on{background:#7ee08a}.unitcard .uc-hp.mid .segbar i.on{background:#ffcf5a}.unitcard .uc-hp.low .segbar i.on{background:#ff6a5c}
+.unitcard .uc-kit{display:flex;gap:9px;align-items:center;font-size:10px;color:#d6dbe0;flex-wrap:wrap}.unitcard .uc-kit span{display:inline-flex;gap:3px;align-items:center}.unitcard .uc-kit svg{width:13px;height:13px}.unitcard .uc-kit small{color:#9aa3ab}.unitcard .uc-kit em{font-style:normal;font-size:9px;padding:1px 4px;background:#ffcf5a22;color:#ffcf5a;text-transform:uppercase}
+#hud>.unitcard.compact{bottom:auto;top:84px;left:50%;min-width:0;padding:4px 10px 4px 4px}#hud>.unitcard.compact img{width:30px;height:30px}#hud>.unitcard.compact .uc-hp .segbar,#hud>.unitcard.compact .uc-kit em{display:none}#hud>.unitcard.compact .uc-main{flex-direction:row;gap:12px;align-items:center}
+#hud>.unit-callout{position:absolute;left:50%;top:18%;transform:translate(-50%,-6px);opacity:0;pointer-events:none;display:flex;gap:10px;align-items:baseline;padding:6px 26px;background:linear-gradient(90deg,#04101a00,#04101ae6 20%,#04101ae6 80%,#04101a00);transition:opacity .2s,transform .2s;z-index:30}
+#hud>.unit-callout.show{opacity:1;transform:translate(-50%,0)}#hud>.unit-callout b{font-size:20px;letter-spacing:.18em;color:#5ff2d6;text-transform:uppercase}#hud>.unit-callout span{font-size:11px;letter-spacing:.24em;color:#c8d2d8;text-transform:uppercase}
+#hud>.autoend{position:absolute;left:50%;top:30%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 30px;background:#0b0f15ee;border:1px solid #ffcf5a88;border-radius:6px;color:#ffcf5a;z-index:40;cursor:pointer}
+#hud>.autoend b{font-size:15px;letter-spacing:.2em}#hud>.autoend i{display:block;height:3px;width:100%;background:#ffcf5a;align-self:flex-start}#hud>.autoend small{font-size:10px;color:#c9c9cf;letter-spacing:.1em}
+.squad-head .badge{font-size:9px!important;letter-spacing:.12em!important;padding:1px 5px;border-radius:2px}.squad-head.ready .badge{color:#0b1622!important;background:#5ff2d6}.squad-head.partial .badge{color:#4fd3ff!important}.squad-head.watch .badge{color:#ffcf5a!important}.squad-head.spent .badge{color:#8d929a!important}
+.squad-head.spent img{opacity:.45;filter:grayscale(.6)}.squad-head .pips{display:flex;gap:3px}.squad-head .pips i{width:7px;height:7px;border-radius:50%;background:#ffffff22}.squad-head .pips i.on{background:#4fd3ff;box-shadow:0 0 5px #4fd3ff}
+.squad-head.sel img{border:3px solid #5ff2d6!important;box-shadow:0 0 16px #5ff2d6aa;transform:scale(1.12)!important}.squad-head.sel b{color:#5ff2d6}
+.squad .next-ready{background:transparent;border:1px solid #ffffff40;font-size:9px;letter-spacing:.16em;padding:4px 8px;color:#e8e8ee}.squad .next-ready:hover{border-color:#5ff2d6;color:#5ff2d6}
+.target .peek-line{font-size:11px;letter-spacing:.06em;margin-bottom:6px}.target .peek-line b{color:#5ff2d6}.target .peek-line.half b{color:#ffcf5a}.target .peek-line.exposed b{color:#ff6a5c}.target .peek-line button{font-size:9px;padding:2px 6px;margin-left:4px}
+/* PLAN-15 shotgun pattern reticle */
+#hud>.aim-reticle.pattern .reticle-ring.outer{border-radius:6px;border-style:solid;border-color:transparent;box-shadow:none;background:
+ linear-gradient(#fff,#fff) top left/14px 2px no-repeat,linear-gradient(#fff,#fff) top left/2px 14px no-repeat,
+ linear-gradient(#fff,#fff) top right/14px 2px no-repeat,linear-gradient(#fff,#fff) top right/2px 14px no-repeat,
+ linear-gradient(#fff,#fff) bottom left/14px 2px no-repeat,linear-gradient(#fff,#fff) bottom left/2px 14px no-repeat,
+ linear-gradient(#fff,#fff) bottom right/14px 2px no-repeat,linear-gradient(#fff,#fff) bottom right/2px 14px no-repeat}
+#hud>.aim-reticle.pattern.falloff .reticle-ring.outer{filter:sepia(1) saturate(5) hue-rotate(-10deg)}#hud>.aim-reticle.pattern.out .reticle-ring.outer{filter:sepia(1) saturate(8) hue-rotate(-50deg)}
+#hud>.aim-reticle .pellets{position:absolute;left:0;top:0;width:0;height:0}#hud>.aim-reticle .pellets i{position:absolute;width:4px;height:4px;margin:-2px 0 0 -2px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px #000b}
+#hud>.aim-reticle:not(.pattern) .pellets{display:none}
+#hud>.aim-reticle .band{position:absolute;left:0;top:calc(var(--aim-radius) * -1 - 18px);transform:translateX(-50%);font-size:8px;letter-spacing:.16em;white-space:nowrap;text-shadow:0 1px 4px #000}
+#hud>.aim-reticle:not(.pattern) .band{display:none}#hud>.aim-reticle .band.effective{color:#5ff2d6}#hud>.aim-reticle .band.falloff{color:#ffcf5a}#hud>.aim-reticle .band.out{color:#ff6a5c}
+#hud.panel-open>.unitcard{display:none}
