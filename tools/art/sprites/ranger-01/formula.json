@@ -59,12 +59,12 @@
         "arms": {
           "trigger": {
             "shoulder": [
-              0.45,
-              0.54
+              0.48500000000000004,
+              0.5750000000000001
             ],
             "elbow": [
-              0.4867774479989126,
-              0.8109529216025124
+              0.48810059047807575,
+              0.822376402854803
             ],
             "wrist": [
               0.5591500779069006,
@@ -93,12 +93,12 @@
           },
           "support": {
             "shoulder": [
-              0.46,
-              0.54
+              0.465,
+              0.515
             ],
             "elbow": [
-              0.5712805566271267,
-              0.7609555069860249
+              0.553848032676746,
+              0.7318816905929864
             ],
             "wrist": [
               0.7130217050941389,
@@ -133,12 +133,12 @@
         "jointRadii": {},
         "limbRadii": {
           "upper": [
-            0.095,
-            0.065
+            0.071,
+            0.052
           ],
           "forearm": [
-            0.066,
-            0.045
+            0.052,
+            0.035
           ]
         },
         "handAxis": [
@@ -182,38 +182,38 @@
           "rect": [
             0,
             0,
-            512,
-            565
+            627,
+            646
           ],
           "start": [
-            330,
-            125
+            363.65999999999997,
+            131.67
           ],
           "end": [
-            260,
-            450
+            326.04,
+            551.76
           ],
-          "sourceWidth": 285,
+          "sourceWidth": 326.04,
           "stage": "front",
           "anatomicalSide": "right"
         },
         {
           "id": "support-upper",
           "rect": [
-            512,
+            627,
             0,
-            1024,
-            565
+            1254,
+            646
           ],
           "start": [
-            700,
-            125
+            877.8,
+            131.67
           ],
           "end": [
-            750,
-            450
+            940.5,
+            551.76
           ],
-          "sourceWidth": 285,
+          "sourceWidth": 326.04,
           "stage": "back",
           "anatomicalSide": "left"
         },
@@ -221,19 +221,19 @@
           "id": "trigger-forearm",
           "rect": [
             0,
-            565,
-            512,
-            1100
+            652,
+            627,
+            1254
           ],
           "start": [
-            280,
-            650
+            357.39,
+            708.5099999999999
           ],
           "end": [
-            375,
-            1010
+            426.36,
+            1116.06
           ],
-          "sourceWidth": 230,
+          "sourceWidth": 263.34,
           "stage": "front",
           "anatomicalSide": "right",
           "order": 2
@@ -241,20 +241,20 @@
         {
           "id": "support-forearm",
           "rect": [
-            512,
-            565,
-            1024,
-            1100
+            627,
+            652,
+            1254,
+            1254
           ],
           "start": [
-            745,
-            650
+            921.6899999999999,
+            708.5099999999999
           ],
           "end": [
-            670,
-            1010
+            827.64,
+            1116.06
           ],
-          "sourceWidth": 230,
+          "sourceWidth": 263.34,
           "stage": "front",
           "anatomicalSide": "left"
         },
@@ -330,7 +330,7 @@
         }
       ],
       "bodySource": "aim-torso-only.png",
-      "sectionsSource": "aim-remake-parts.png",
+      "sectionsSource": "aim-sleeves-v4.png",
       "anatomy": {
         "left": {
           "upper": "support-upper",
@@ -665,5 +665,24 @@
       0.98
     ],
     "worldHeight": 2.4
+  },
+  "proportionAudit": {
+    "method": "Blender mathutils two-bone placement; measured torso sockets; projected lengths are not physical limb lengths",
+    "canvas": 768,
+    "lengthsPixels": {
+      "trigger": [
+        190,
+        178
+      ],
+      "support": [
+        180,
+        190
+      ]
+    },
+    "reference": "FM 3-22.9 shoulder stock and hand contact figures",
+    "upperToForearmRatio": {
+      "trigger": 1.0674157303370786,
+      "support": 0.9473684210526315
+    }
   }
 }
