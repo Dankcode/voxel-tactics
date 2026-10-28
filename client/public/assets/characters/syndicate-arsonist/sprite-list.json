@@ -1,0 +1,445 @@
+{
+  "scale": 1.213389121338912,
+  "frames": [
+    {
+      "facing": "s",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 0,
+        "top": 0,
+        "width": 198,
+        "height": 252
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 0,
+        "top": 252,
+        "width": 198,
+        "height": 225
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 0,
+        "top": 238,
+        "width": 222,
+        "height": 219
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 0,
+        "top": 477,
+        "width": 198,
+        "height": 276
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 0,
+        "top": 753,
+        "width": 198,
+        "height": 239
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 198,
+        "top": 0,
+        "width": 199,
+        "height": 252
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 198,
+        "top": 252,
+        "width": 199,
+        "height": 225
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 222,
+        "top": 238,
+        "width": 222,
+        "height": 219
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 198,
+        "top": 477,
+        "width": 199,
+        "height": 276
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 198,
+        "top": 753,
+        "width": 199,
+        "height": 239
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 397,
+        "top": 0,
+        "width": 198,
+        "height": 252
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 397,
+        "top": 252,
+        "width": 198,
+        "height": 225
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 444,
+        "top": 238,
+        "width": 221,
+        "height": 219
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 397,
+        "top": 477,
+        "width": 198,
+        "height": 276
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 397,
+        "top": 753,
+        "width": 198,
+        "height": 239
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 595,
+        "top": 0,
+        "width": 198,
+        "height": 252
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 595,
+        "top": 252,
+        "width": 198,
+        "height": 225
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 665,
+        "top": 238,
+        "width": 222,
+        "height": 219
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 595,
+        "top": 477,
+        "width": 198,
+        "height": 276
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 595,
+        "top": 753,
+        "width": 198,
+        "height": 239
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 793,
+        "top": 0,
+        "width": 198,
+        "height": 252
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 793,
+        "top": 252,
+        "width": 198,
+        "height": 225
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 887,
+        "top": 238,
+        "width": 222,
+        "height": 219
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 793,
+        "top": 477,
+        "width": 198,
+        "height": 276
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 793,
+        "top": 753,
+        "width": 198,
+        "height": 239
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 991,
+        "top": 0,
+        "width": 199,
+        "height": 252
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 991,
+        "top": 252,
+        "width": 199,
+        "height": 225
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 1109,
+        "top": 238,
+        "width": 222,
+        "height": 219
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 991,
+        "top": 477,
+        "width": 199,
+        "height": 276
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 991,
+        "top": 753,
+        "width": 199,
+        "height": 239
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 1190,
+        "top": 0,
+        "width": 198,
+        "height": 252
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 1190,
+        "top": 252,
+        "width": 198,
+        "height": 225
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 1331,
+        "top": 238,
+        "width": 221,
+        "height": 219
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 1190,
+        "top": 477,
+        "width": 198,
+        "height": 276
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 1190,
+        "top": 753,
+        "width": 198,
+        "height": 239
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 1388,
+        "top": 0,
+        "width": 198,
+        "height": 252
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 1388,
+        "top": 252,
+        "width": 198,
+        "height": 225
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 1552,
+        "top": 238,
+        "width": 222,
+        "height": 219
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 1388,
+        "top": 477,
+        "width": 198,
+        "height": 276
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/arsonist.png",
+      "rect": {
+        "left": 1388,
+        "top": 753,
+        "width": 198,
+        "height": 239
+      }
+    }
+  ]
+}

@@ -1,0 +1,445 @@
+{
+  "scale": 1.1507936507936507,
+  "frames": [
+    {
+      "facing": "s",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 0,
+        "top": 0,
+        "width": 198,
+        "height": 266
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 0,
+        "top": 266,
+        "width": 198,
+        "height": 234
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 0,
+        "top": 0,
+        "width": 222,
+        "height": 238
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 0,
+        "top": 500,
+        "width": 198,
+        "height": 297
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 0,
+        "top": 797,
+        "width": 198,
+        "height": 195
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 198,
+        "top": 0,
+        "width": 199,
+        "height": 266
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 198,
+        "top": 266,
+        "width": 199,
+        "height": 234
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 222,
+        "top": 0,
+        "width": 222,
+        "height": 238
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 198,
+        "top": 500,
+        "width": 199,
+        "height": 297
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 198,
+        "top": 797,
+        "width": 199,
+        "height": 195
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 397,
+        "top": 0,
+        "width": 198,
+        "height": 266
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 397,
+        "top": 266,
+        "width": 198,
+        "height": 234
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 444,
+        "top": 0,
+        "width": 221,
+        "height": 238
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 397,
+        "top": 500,
+        "width": 198,
+        "height": 297
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 397,
+        "top": 797,
+        "width": 198,
+        "height": 195
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 595,
+        "top": 0,
+        "width": 198,
+        "height": 266
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 595,
+        "top": 266,
+        "width": 198,
+        "height": 234
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 665,
+        "top": 0,
+        "width": 222,
+        "height": 238
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 595,
+        "top": 500,
+        "width": 198,
+        "height": 297
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 595,
+        "top": 797,
+        "width": 198,
+        "height": 195
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 793,
+        "top": 0,
+        "width": 198,
+        "height": 266
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 793,
+        "top": 266,
+        "width": 198,
+        "height": 234
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 887,
+        "top": 0,
+        "width": 222,
+        "height": 238
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 793,
+        "top": 500,
+        "width": 198,
+        "height": 297
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 793,
+        "top": 797,
+        "width": 198,
+        "height": 195
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 991,
+        "top": 0,
+        "width": 199,
+        "height": 266
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 991,
+        "top": 266,
+        "width": 199,
+        "height": 234
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 1109,
+        "top": 0,
+        "width": 222,
+        "height": 238
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 991,
+        "top": 500,
+        "width": 199,
+        "height": 297
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 991,
+        "top": 797,
+        "width": 199,
+        "height": 195
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 1190,
+        "top": 0,
+        "width": 198,
+        "height": 266
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 1190,
+        "top": 266,
+        "width": 198,
+        "height": 234
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 1331,
+        "top": 0,
+        "width": 221,
+        "height": 238
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 1190,
+        "top": 500,
+        "width": 198,
+        "height": 297
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 1190,
+        "top": 797,
+        "width": 198,
+        "height": 195
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 1388,
+        "top": 0,
+        "width": 198,
+        "height": 266
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 1388,
+        "top": 266,
+        "width": 198,
+        "height": 234
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 1552,
+        "top": 0,
+        "width": 222,
+        "height": 238
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 1388,
+        "top": 500,
+        "width": 198,
+        "height": 297
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/lookout.png",
+      "rect": {
+        "left": 1388,
+        "top": 797,
+        "width": 198,
+        "height": 195
+      }
+    }
+  ]
+}

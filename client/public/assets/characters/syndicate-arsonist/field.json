@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "character": "syndicate-arsonist",
+  "placeholder": false,
+  "image": "field.png",
+  "normal": "field-normal.png",
+  "lightingMask": "field-lighting.png",
+  "frameWidth": 256,
+  "frameHeight": 320,
+  "columns": 5,
+  "rows": 8,
+  "facings": [
+    "s",
+    "sw",
+    "w",
+    "nw",
+    "n",
+    "ne",
+    "e",
+    "se"
+  ],
+  "anchor": [
+    0.5,
+    0.03125
+  ],
+  "worldHeight": 2.4,
+  "clips": {
+    "idle": {
+      "column": 0,
+      "frames": 1,
+      "fps": 1,
+      "loop": true
+    },
+    "run": {
+      "column": 1,
+      "frames": 2,
+      "fps": 6,
+      "loop": true
+    },
+    "aim": {
+      "column": 3,
+      "frames": 1,
+      "fps": 1,
+      "loop": true
+    },
+    "fire": {
+      "column": 3,
+      "frames": 1,
+      "fps": 8,
+      "loop": false
+    },
+    "down": {
+      "column": 4,
+      "frames": 1,
+      "fps": 1,
+      "loop": false
+    },
+    "throw": {
+      "column": 0,
+      "frames": 1,
+      "fps": 5,
+      "loop": false
+    },
+    "hit": {
+      "column": 3,
+      "frames": 1,
+      "fps": 5,
+      "loop": false
+    },
+    "stacked": {
+      "column": 0,
+      "frames": 1,
+      "fps": 5,
+      "loop": true
+    },
+    "hunker": {
+      "column": 0,
+      "frames": 1,
+      "fps": 5,
+      "loop": true
+    },
+    "vault": {
+      "column": 0,
+      "frames": 1,
+      "fps": 5,
+      "loop": false
+    },
+    "climb": {
+      "column": 0,
+      "frames": 1,
+      "fps": 5,
+      "loop": true
+    }
+  },
+  "notes": "Eight directions; illustrated idle, two run poses, aim and settled down. Secondary actions use held poses; no invented animation frames."
+}

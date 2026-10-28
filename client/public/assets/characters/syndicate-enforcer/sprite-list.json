@@ -1,0 +1,445 @@
+{
+  "scale": 1.3181818181818181,
+  "frames": [
+    {
+      "facing": "s",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 0,
+        "top": 0,
+        "width": 198,
+        "height": 230
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 0,
+        "top": 230,
+        "width": 198,
+        "height": 202
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 0,
+        "top": 432,
+        "width": 198,
+        "height": 200
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 0,
+        "top": 632,
+        "width": 198,
+        "height": 230
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 0,
+        "top": 862,
+        "width": 198,
+        "height": 130
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 198,
+        "top": 0,
+        "width": 199,
+        "height": 230
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 198,
+        "top": 230,
+        "width": 199,
+        "height": 202
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 198,
+        "top": 432,
+        "width": 199,
+        "height": 200
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 198,
+        "top": 632,
+        "width": 199,
+        "height": 230
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 198,
+        "top": 862,
+        "width": 199,
+        "height": 130
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 397,
+        "top": 0,
+        "width": 198,
+        "height": 230
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 397,
+        "top": 230,
+        "width": 198,
+        "height": 202
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 397,
+        "top": 432,
+        "width": 198,
+        "height": 200
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 397,
+        "top": 632,
+        "width": 198,
+        "height": 230
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 397,
+        "top": 862,
+        "width": 198,
+        "height": 130
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 595,
+        "top": 0,
+        "width": 198,
+        "height": 230
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 595,
+        "top": 230,
+        "width": 198,
+        "height": 202
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 595,
+        "top": 432,
+        "width": 198,
+        "height": 200
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 595,
+        "top": 632,
+        "width": 198,
+        "height": 230
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 595,
+        "top": 862,
+        "width": 198,
+        "height": 130
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 793,
+        "top": 0,
+        "width": 198,
+        "height": 230
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 793,
+        "top": 230,
+        "width": 198,
+        "height": 202
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 793,
+        "top": 432,
+        "width": 198,
+        "height": 200
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 793,
+        "top": 632,
+        "width": 198,
+        "height": 230
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 793,
+        "top": 862,
+        "width": 198,
+        "height": 130
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 991,
+        "top": 0,
+        "width": 199,
+        "height": 230
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 991,
+        "top": 230,
+        "width": 199,
+        "height": 202
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 991,
+        "top": 432,
+        "width": 199,
+        "height": 200
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 991,
+        "top": 632,
+        "width": 199,
+        "height": 230
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 991,
+        "top": 862,
+        "width": 199,
+        "height": 130
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 1190,
+        "top": 0,
+        "width": 198,
+        "height": 230
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 1190,
+        "top": 230,
+        "width": 198,
+        "height": 202
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 1190,
+        "top": 432,
+        "width": 198,
+        "height": 200
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 1190,
+        "top": 632,
+        "width": 198,
+        "height": 230
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 1190,
+        "top": 862,
+        "width": 198,
+        "height": 130
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 1388,
+        "top": 0,
+        "width": 198,
+        "height": 230
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 1388,
+        "top": 230,
+        "width": 198,
+        "height": 202
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 1388,
+        "top": 432,
+        "width": 198,
+        "height": 200
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 1388,
+        "top": 632,
+        "width": 198,
+        "height": 230
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/enforcer.png",
+      "rect": {
+        "left": 1388,
+        "top": 862,
+        "width": 198,
+        "height": 130
+      }
+    }
+  ]
+}

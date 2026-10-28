@@ -281,6 +281,13 @@ def bake_heroes():
         uv=lambda a:[a[0]*k+ox,a[1]*k+oy]
         p['bodySource']=spec['bodySource'];p['cropEdges']=[];p['muzzle']=uv(p['muzzle'])
         p['worldHeight']=spec['worldHeight'];p['anchor']=spec['anchor'];r=p['rig']
+        if p.get('puppet'):
+            for form in p['puppet']['keyforms'].values():
+                for key in form.values():
+                    for joint in ['shoulder','elbow']:key[joint]=uv(key[joint])
+                    for part in ['upper','forearm']:key[part]['bend']*=k
+                    for channel in key['parameters'].values():
+                        for sign in channel:channel[sign]=[v*k for v in channel[sign]]
         for key in ['stock','grip','support']:r[key]=uv(r[key])
         r['handAxis']=[uv(a) for a in r['handAxis']]
         r['gunView']['referenceMuzzle']=uv(r['gunView']['referenceMuzzle'])
@@ -300,7 +307,7 @@ def bake_heroes():
             write_png(os.path.join(OUT,filename),a)
             write_png(os.path.join(OUT,name+'-'+id+'-normal.png'),normal)
             write_png(os.path.join(OUT,name+'-'+id+'-lighting.png'),mask)
-            return {'image':filename,'normal':name+'-'+id+'-normal.png','lightingMask':name+'-'+id+'-lighting.png'}
+            return {'image':filename,'normal':name+'-'+id+'-normal.png','lightingMask':name+'-'+id+'-lighting.png','bounds':[int(v) for v in bounds(a)]}
         def emit(id,a,stage,bone=None,order=None):
             layer={'id':id,**files(id,a),'stage':stage}
             if bone:layer['bone']=bone
@@ -365,6 +372,7 @@ def bake_heroes():
         write_png(os.path.join(OUT,name+'-albedo.png'),preview)
         layers.insert(1,{'id':'gun','gun':True,'zIndex':p.get('layerZ',{}).get('gun',100)})
         poses[name]={'character':'ranger-01','version':3,'placeholder':False,'width':w,'height':h,'screenHeight':.72,'maxWidthShare':p.get('maxWidthShare',.42),'cropEdges':p.get('cropEdges',[]),'muzzle':p['muzzle'],'layers':layers,'rig':p['rig'],'anatomy':p.get('anatomy'),'lighting':'albedo-normal-response-mask','gun':True,'sections':'complete-independent-paintings'}
+        if p.get('puppet'):poses[name]['puppet']=p['puppet']
         if 'anchor' in p:poses[name].update(anchor=p['anchor'],worldHeight=p['worldHeight'])
     with open(os.path.join(os.path.dirname(CONFIG),'rig-image-audit.json'),'w') as f:json.dump(contact_audit,f,indent=2)
     base=poses['aim']

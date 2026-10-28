@@ -1,0 +1,445 @@
+{
+  "scale": 1.228813559322034,
+  "frames": [
+    {
+      "facing": "s",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 0,
+        "top": 0,
+        "width": 198,
+        "height": 242
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 0,
+        "top": 242,
+        "width": 198,
+        "height": 221
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 0,
+        "top": 684,
+        "width": 222,
+        "height": 203
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 0,
+        "top": 463,
+        "width": 198,
+        "height": 306
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 0,
+        "top": 769,
+        "width": 198,
+        "height": 223
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 198,
+        "top": 0,
+        "width": 199,
+        "height": 242
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 198,
+        "top": 242,
+        "width": 199,
+        "height": 221
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 222,
+        "top": 684,
+        "width": 222,
+        "height": 203
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 198,
+        "top": 463,
+        "width": 199,
+        "height": 306
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 198,
+        "top": 769,
+        "width": 199,
+        "height": 223
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 397,
+        "top": 0,
+        "width": 198,
+        "height": 242
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 397,
+        "top": 242,
+        "width": 198,
+        "height": 221
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 444,
+        "top": 684,
+        "width": 221,
+        "height": 203
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 397,
+        "top": 463,
+        "width": 198,
+        "height": 306
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 397,
+        "top": 769,
+        "width": 198,
+        "height": 223
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 595,
+        "top": 0,
+        "width": 198,
+        "height": 242
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 595,
+        "top": 242,
+        "width": 198,
+        "height": 221
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 665,
+        "top": 684,
+        "width": 222,
+        "height": 203
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 595,
+        "top": 463,
+        "width": 198,
+        "height": 306
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 595,
+        "top": 769,
+        "width": 198,
+        "height": 223
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 793,
+        "top": 0,
+        "width": 198,
+        "height": 242
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 793,
+        "top": 242,
+        "width": 198,
+        "height": 221
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 887,
+        "top": 684,
+        "width": 222,
+        "height": 203
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 793,
+        "top": 463,
+        "width": 198,
+        "height": 306
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 793,
+        "top": 769,
+        "width": 198,
+        "height": 223
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 991,
+        "top": 0,
+        "width": 199,
+        "height": 242
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 991,
+        "top": 242,
+        "width": 199,
+        "height": 221
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 1109,
+        "top": 684,
+        "width": 222,
+        "height": 203
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 991,
+        "top": 463,
+        "width": 199,
+        "height": 306
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 991,
+        "top": 769,
+        "width": 199,
+        "height": 223
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 1190,
+        "top": 0,
+        "width": 198,
+        "height": 242
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 1190,
+        "top": 242,
+        "width": 198,
+        "height": 221
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 1331,
+        "top": 684,
+        "width": 221,
+        "height": 203
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 1190,
+        "top": 463,
+        "width": 198,
+        "height": 306
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 1190,
+        "top": 769,
+        "width": 198,
+        "height": 223
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 1388,
+        "top": 0,
+        "width": 198,
+        "height": 242
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 1388,
+        "top": 242,
+        "width": 198,
+        "height": 221
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 1552,
+        "top": 684,
+        "width": 222,
+        "height": 203
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 1388,
+        "top": 463,
+        "width": 198,
+        "height": 306
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/tech.png",
+      "rect": {
+        "left": 1388,
+        "top": 769,
+        "width": 198,
+        "height": 223
+      }
+    }
+  ]
+}

@@ -20,6 +20,12 @@
       "image": "aim-body.png",
       "normal": "aim-body-normal.png",
       "lightingMask": "aim-body-lighting.png",
+      "bounds": [
+        0,
+        45,
+        502,
+        768
+      ],
       "stage": "back",
       "order": 5,
       "zIndex": 20
@@ -34,6 +40,12 @@
       "image": "aim-trigger-upper.png",
       "normal": "aim-trigger-upper-normal.png",
       "lightingMask": "aim-trigger-upper-lighting.png",
+      "bounds": [
+        322,
+        390,
+        432,
+        677
+      ],
       "stage": "front",
       "bone": "trigger-upper",
       "anatomicalSide": "right",
@@ -45,6 +57,12 @@
       "image": "aim-support-upper.png",
       "normal": "aim-support-upper-normal.png",
       "lightingMask": "aim-support-upper-lighting.png",
+      "bounds": [
+        309,
+        350,
+        469,
+        599
+      ],
       "stage": "back",
       "bone": "support-upper",
       "anatomicalSide": "left",
@@ -56,6 +74,12 @@
       "image": "aim-trigger-forearm.png",
       "normal": "aim-trigger-forearm-normal.png",
       "lightingMask": "aim-trigger-forearm-lighting.png",
+      "bounds": [
+        355,
+        422,
+        455,
+        655
+      ],
       "stage": "front",
       "bone": "trigger-forearm",
       "anatomicalSide": "right",
@@ -67,6 +91,12 @@
       "image": "aim-support-forearm.png",
       "normal": "aim-support-forearm-normal.png",
       "lightingMask": "aim-support-forearm-lighting.png",
+      "bounds": [
+        403,
+        375,
+        585,
+        585
+      ],
       "stage": "front",
       "bone": "support-forearm",
       "anatomicalSide": "left",
@@ -78,6 +108,12 @@
       "image": "aim-trigger-hand.png",
       "normal": "aim-trigger-hand-normal.png",
       "lightingMask": "aim-trigger-hand-lighting.png",
+      "bounds": [
+        412,
+        406,
+        490,
+        476
+      ],
       "stage": "front",
       "bone": "trigger-hand",
       "anatomicalSide": "right",
@@ -87,12 +123,24 @@
         "sniper": {
           "image": "aim-trigger-hand-sniper.png",
           "normal": "aim-trigger-hand-sniper-normal.png",
-          "lightingMask": "aim-trigger-hand-sniper-lighting.png"
+          "lightingMask": "aim-trigger-hand-sniper-lighting.png",
+          "bounds": [
+            410,
+            402,
+            493,
+            477
+          ]
         },
         "shotgun": {
           "image": "aim-trigger-hand-shotgun.png",
           "normal": "aim-trigger-hand-shotgun-normal.png",
-          "lightingMask": "aim-trigger-hand-shotgun-lighting.png"
+          "lightingMask": "aim-trigger-hand-shotgun-lighting.png",
+          "bounds": [
+            411,
+            406,
+            492,
+            477
+          ]
         }
       }
     },
@@ -101,6 +149,12 @@
       "image": "aim-trigger-fingers.png",
       "normal": "aim-trigger-fingers-normal.png",
       "lightingMask": "aim-trigger-fingers-lighting.png",
+      "bounds": [
+        420,
+        406,
+        445,
+        431
+      ],
       "stage": "back",
       "bone": "trigger-hand",
       "anatomicalSide": "right",
@@ -111,12 +165,24 @@
         "sniper": {
           "image": "aim-trigger-fingers-sniper.png",
           "normal": "aim-trigger-fingers-sniper-normal.png",
-          "lightingMask": "aim-trigger-fingers-sniper-lighting.png"
+          "lightingMask": "aim-trigger-fingers-sniper-lighting.png",
+          "bounds": [
+            418,
+            401,
+            445,
+            429
+          ]
         },
         "shotgun": {
           "image": "aim-trigger-fingers-shotgun.png",
           "normal": "aim-trigger-fingers-shotgun-normal.png",
-          "lightingMask": "aim-trigger-fingers-shotgun-lighting.png"
+          "lightingMask": "aim-trigger-fingers-shotgun-lighting.png",
+          "bounds": [
+            421,
+            405,
+            447,
+            431
+          ]
         }
       }
     },
@@ -125,6 +191,12 @@
       "image": "aim-support-hand.png",
       "normal": "aim-support-hand-normal.png",
       "lightingMask": "aim-support-hand-lighting.png",
+      "bounds": [
+        510,
+        327,
+        598,
+        431
+      ],
       "stage": "back",
       "bone": "support-hand",
       "anatomicalSide": "left",
@@ -134,12 +206,24 @@
         "sniper": {
           "image": "aim-support-hand-sniper.png",
           "normal": "aim-support-hand-sniper-normal.png",
-          "lightingMask": "aim-support-hand-sniper-lighting.png"
+          "lightingMask": "aim-support-hand-sniper-lighting.png",
+          "bounds": [
+            510,
+            327,
+            598,
+            431
+          ]
         },
         "shotgun": {
           "image": "aim-support-hand-shotgun.png",
           "normal": "aim-support-hand-shotgun-normal.png",
-          "lightingMask": "aim-support-hand-shotgun-lighting.png"
+          "lightingMask": "aim-support-hand-shotgun-lighting.png",
+          "bounds": [
+            510,
+            327,
+            598,
+            431
+          ]
         }
       }
     },
@@ -148,6 +232,12 @@
       "image": "aim-support-fingers.png",
       "normal": "aim-support-fingers-normal.png",
       "lightingMask": "aim-support-fingers-lighting.png",
+      "bounds": [
+        534,
+        329,
+        606,
+        379
+      ],
       "stage": "front",
       "bone": "support-hand",
       "anatomicalSide": "left",
@@ -158,12 +248,24 @@
         "sniper": {
           "image": "aim-support-fingers-sniper.png",
           "normal": "aim-support-fingers-sniper-normal.png",
-          "lightingMask": "aim-support-fingers-sniper-lighting.png"
+          "lightingMask": "aim-support-fingers-sniper-lighting.png",
+          "bounds": [
+            534,
+            329,
+            606,
+            379
+          ]
         },
         "shotgun": {
           "image": "aim-support-fingers-shotgun.png",
           "normal": "aim-support-fingers-shotgun-normal.png",
-          "lightingMask": "aim-support-fingers-shotgun-lighting.png"
+          "lightingMask": "aim-support-fingers-shotgun-lighting.png",
+          "bounds": [
+            534,
+            329,
+            606,
+            379
+          ]
         }
       }
     }
@@ -189,12 +291,12 @@
     "arms": {
       "trigger": {
         "shoulder": [
-          0.515,
-          0.59
+          0.48500000000000004,
+          0.5750000000000001
         ],
         "elbow": [
-          0.48105969536433985,
-          0.8061009445172292
+          0.48810059047807575,
+          0.822376402854803
         ],
         "wrist": [
           0.5591500779069006,
@@ -217,7 +319,7 @@
           0.6017643235841313
         ],
         "elbowDirection": [
-          0.6,
+          0.15,
           1
         ]
       },
@@ -227,8 +329,8 @@
           0.515
         ],
         "elbow": [
-          0.5566942691802979,
-          0.7136044502258301
+          0.553848032676746,
+          0.7318816905929864
         ],
         "wrist": [
           0.7130217050941389,
@@ -327,6 +429,372 @@
   "lighting": "albedo-normal-response-mask",
   "gun": true,
   "sections": "complete-independent-paintings",
+  "puppet": {
+    "version": 1,
+    "technique": "authored-2d-warp",
+    "meshDivisions": 32,
+    "range": {
+      "yaw": 0.3,
+      "pitch": 0.2,
+      "recoil": 0.025
+    },
+    "keyforms": {
+      "rifle": {
+        "trigger": {
+          "shoulder": [
+            0.505,
+            0.565
+          ],
+          "elbow": [
+            0.61,
+            0.73
+          ],
+          "upper": {
+            "bend": 0.006,
+            "width": [
+              1,
+              0.94,
+              0.95
+            ]
+          },
+          "forearm": {
+            "bend": -0.005,
+            "width": [
+              0.95,
+              1,
+              1
+            ]
+          },
+          "parameters": {
+            "aimX": {
+              "negative": [
+                -0.012,
+                0.003
+              ],
+              "positive": [
+                0.012,
+                -0.003
+              ]
+            },
+            "aimY": {
+              "negative": [
+                0.008,
+                0.016
+              ],
+              "positive": [
+                -0.008,
+                -0.016
+              ]
+            },
+            "recoil": {
+              "negative": [
+                0,
+                0
+              ],
+              "positive": [
+                -0.012,
+                0.005
+              ]
+            }
+          }
+        },
+        "support": {
+          "shoulder": [
+            0.465,
+            0.525
+          ],
+          "elbow": [
+            0.575,
+            0.69
+          ],
+          "upper": {
+            "bend": 0.006,
+            "width": [
+              1,
+              0.94,
+              0.95
+            ]
+          },
+          "forearm": {
+            "bend": -0.005,
+            "width": [
+              0.95,
+              1,
+              1
+            ]
+          },
+          "parameters": {
+            "aimX": {
+              "negative": [
+                -0.012,
+                0.003
+              ],
+              "positive": [
+                0.012,
+                -0.003
+              ]
+            },
+            "aimY": {
+              "negative": [
+                0.008,
+                0.035
+              ],
+              "positive": [
+                -0.008,
+                -0.016
+              ]
+            },
+            "recoil": {
+              "negative": [
+                0,
+                0
+              ],
+              "positive": [
+                -0.012,
+                0.012
+              ]
+            }
+          }
+        }
+      },
+      "sniper": {
+        "trigger": {
+          "shoulder": [
+            0.505,
+            0.565
+          ],
+          "elbow": [
+            0.65,
+            0.7
+          ],
+          "upper": {
+            "bend": 0.006,
+            "width": [
+              1,
+              0.94,
+              0.95
+            ]
+          },
+          "forearm": {
+            "bend": -0.005,
+            "width": [
+              0.95,
+              1,
+              1
+            ]
+          },
+          "parameters": {
+            "aimX": {
+              "negative": [
+                -0.012,
+                0.003
+              ],
+              "positive": [
+                0.012,
+                -0.003
+              ]
+            },
+            "aimY": {
+              "negative": [
+                0.008,
+                0.016
+              ],
+              "positive": [
+                -0.008,
+                -0.016
+              ]
+            },
+            "recoil": {
+              "negative": [
+                0,
+                0
+              ],
+              "positive": [
+                -0.012,
+                0.005
+              ]
+            }
+          }
+        },
+        "support": {
+          "shoulder": [
+            0.465,
+            0.525
+          ],
+          "elbow": [
+            0.6,
+            0.66
+          ],
+          "upper": {
+            "bend": 0.006,
+            "width": [
+              1,
+              0.94,
+              0.95
+            ]
+          },
+          "forearm": {
+            "bend": -0.005,
+            "width": [
+              0.95,
+              1,
+              1
+            ]
+          },
+          "parameters": {
+            "aimX": {
+              "negative": [
+                -0.012,
+                0.003
+              ],
+              "positive": [
+                0.012,
+                -0.003
+              ]
+            },
+            "aimY": {
+              "negative": [
+                0.008,
+                0.035
+              ],
+              "positive": [
+                -0.008,
+                -0.016
+              ]
+            },
+            "recoil": {
+              "negative": [
+                0,
+                0
+              ],
+              "positive": [
+                -0.012,
+                0.012
+              ]
+            }
+          }
+        }
+      },
+      "shotgun": {
+        "trigger": {
+          "shoulder": [
+            0.505,
+            0.565
+          ],
+          "elbow": [
+            0.66,
+            0.685
+          ],
+          "upper": {
+            "bend": 0.006,
+            "width": [
+              1,
+              0.94,
+              0.95
+            ]
+          },
+          "forearm": {
+            "bend": -0.005,
+            "width": [
+              0.95,
+              1,
+              1
+            ]
+          },
+          "parameters": {
+            "aimX": {
+              "negative": [
+                -0.012,
+                0.003
+              ],
+              "positive": [
+                0.012,
+                -0.003
+              ]
+            },
+            "aimY": {
+              "negative": [
+                0.008,
+                0.016
+              ],
+              "positive": [
+                -0.008,
+                -0.016
+              ]
+            },
+            "recoil": {
+              "negative": [
+                0,
+                0
+              ],
+              "positive": [
+                -0.012,
+                0.005
+              ]
+            }
+          }
+        },
+        "support": {
+          "shoulder": [
+            0.465,
+            0.525
+          ],
+          "elbow": [
+            0.615,
+            0.65
+          ],
+          "upper": {
+            "bend": 0.006,
+            "width": [
+              1,
+              0.94,
+              0.95
+            ]
+          },
+          "forearm": {
+            "bend": -0.005,
+            "width": [
+              0.95,
+              1,
+              1
+            ]
+          },
+          "parameters": {
+            "aimX": {
+              "negative": [
+                -0.012,
+                0.003
+              ],
+              "positive": [
+                0.012,
+                -0.003
+              ]
+            },
+            "aimY": {
+              "negative": [
+                0.008,
+                0.035
+              ],
+              "positive": [
+                -0.008,
+                -0.016
+              ]
+            },
+            "recoil": {
+              "negative": [
+                0,
+                0
+              ],
+              "positive": [
+                -0.012,
+                0.012
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
   "worldAim": {
     "character": "ranger-01",
     "version": 3,
@@ -346,6 +814,12 @@
         "image": "world-aim-body.png",
         "normal": "world-aim-body-normal.png",
         "lightingMask": "world-aim-body-lighting.png",
+        "bounds": [
+          114,
+          12,
+          493,
+          757
+        ],
         "stage": "back",
         "order": 5,
         "zIndex": 20
@@ -360,6 +834,12 @@
         "image": "world-aim-trigger-upper.png",
         "normal": "world-aim-trigger-upper-normal.png",
         "lightingMask": "world-aim-trigger-upper-lighting.png",
+        "bounds": [
+          360,
+          168,
+          410,
+          297
+        ],
         "stage": "front",
         "bone": "trigger-upper",
         "anatomicalSide": "right",
@@ -371,6 +851,12 @@
         "image": "world-aim-support-upper.png",
         "normal": "world-aim-support-upper-normal.png",
         "lightingMask": "world-aim-support-upper-lighting.png",
+        "bounds": [
+          355,
+          150,
+          426,
+          262
+        ],
         "stage": "back",
         "bone": "support-upper",
         "anatomicalSide": "left",
@@ -382,6 +868,12 @@
         "image": "world-aim-trigger-forearm.png",
         "normal": "world-aim-trigger-forearm-normal.png",
         "lightingMask": "world-aim-trigger-forearm-lighting.png",
+        "bounds": [
+          375,
+          183,
+          420,
+          287
+        ],
         "stage": "front",
         "bone": "trigger-forearm",
         "anatomicalSide": "right",
@@ -393,6 +885,12 @@
         "image": "world-aim-support-forearm.png",
         "normal": "world-aim-support-forearm-normal.png",
         "lightingMask": "world-aim-support-forearm-lighting.png",
+        "bounds": [
+          397,
+          161,
+          479,
+          256
+        ],
         "stage": "front",
         "bone": "support-forearm",
         "anatomicalSide": "left",
@@ -404,6 +902,12 @@
         "image": "world-aim-trigger-hand.png",
         "normal": "world-aim-trigger-hand-normal.png",
         "lightingMask": "world-aim-trigger-hand-lighting.png",
+        "bounds": [
+          401,
+          175,
+          436,
+          207
+        ],
         "stage": "front",
         "bone": "trigger-hand",
         "anatomicalSide": "right",
@@ -413,12 +917,24 @@
           "sniper": {
             "image": "world-aim-trigger-hand-sniper.png",
             "normal": "world-aim-trigger-hand-sniper-normal.png",
-            "lightingMask": "world-aim-trigger-hand-sniper-lighting.png"
+            "lightingMask": "world-aim-trigger-hand-sniper-lighting.png",
+            "bounds": [
+              400,
+              173,
+              437,
+              207
+            ]
           },
           "shotgun": {
             "image": "world-aim-trigger-hand-shotgun.png",
             "normal": "world-aim-trigger-hand-shotgun-normal.png",
-            "lightingMask": "world-aim-trigger-hand-shotgun-lighting.png"
+            "lightingMask": "world-aim-trigger-hand-shotgun-lighting.png",
+            "bounds": [
+              400,
+              175,
+              437,
+              207
+            ]
           }
         }
       },
@@ -427,6 +943,12 @@
         "image": "world-aim-trigger-fingers.png",
         "normal": "world-aim-trigger-fingers-normal.png",
         "lightingMask": "world-aim-trigger-fingers-lighting.png",
+        "bounds": [
+          404,
+          175,
+          416,
+          187
+        ],
         "stage": "back",
         "bone": "trigger-hand",
         "anatomicalSide": "right",
@@ -437,12 +959,24 @@
           "sniper": {
             "image": "world-aim-trigger-fingers-sniper.png",
             "normal": "world-aim-trigger-fingers-sniper-normal.png",
-            "lightingMask": "world-aim-trigger-fingers-sniper-lighting.png"
+            "lightingMask": "world-aim-trigger-fingers-sniper-lighting.png",
+            "bounds": [
+              404,
+              173,
+              416,
+              185
+            ]
           },
           "shotgun": {
             "image": "world-aim-trigger-fingers-shotgun.png",
             "normal": "world-aim-trigger-fingers-shotgun-normal.png",
-            "lightingMask": "world-aim-trigger-fingers-shotgun-lighting.png"
+            "lightingMask": "world-aim-trigger-fingers-shotgun-lighting.png",
+            "bounds": [
+              405,
+              175,
+              417,
+              187
+            ]
           }
         }
       },
@@ -451,6 +985,12 @@
         "image": "world-aim-support-hand.png",
         "normal": "world-aim-support-hand-normal.png",
         "lightingMask": "world-aim-support-hand-lighting.png",
+        "bounds": [
+          445,
+          140,
+          484,
+          187
+        ],
         "stage": "back",
         "bone": "support-hand",
         "anatomicalSide": "left",
@@ -460,12 +1000,24 @@
           "sniper": {
             "image": "world-aim-support-hand-sniper.png",
             "normal": "world-aim-support-hand-sniper-normal.png",
-            "lightingMask": "world-aim-support-hand-sniper-lighting.png"
+            "lightingMask": "world-aim-support-hand-sniper-lighting.png",
+            "bounds": [
+              445,
+              140,
+              484,
+              187
+            ]
           },
           "shotgun": {
             "image": "world-aim-support-hand-shotgun.png",
             "normal": "world-aim-support-hand-shotgun-normal.png",
-            "lightingMask": "world-aim-support-hand-shotgun-lighting.png"
+            "lightingMask": "world-aim-support-hand-shotgun-lighting.png",
+            "bounds": [
+              445,
+              140,
+              484,
+              187
+            ]
           }
         }
       },
@@ -474,6 +1026,12 @@
         "image": "world-aim-support-fingers.png",
         "normal": "world-aim-support-fingers-normal.png",
         "lightingMask": "world-aim-support-fingers-lighting.png",
+        "bounds": [
+          455,
+          140,
+          488,
+          163
+        ],
         "stage": "front",
         "bone": "support-hand",
         "anatomicalSide": "left",
@@ -484,12 +1042,24 @@
           "sniper": {
             "image": "world-aim-support-fingers-sniper.png",
             "normal": "world-aim-support-fingers-sniper-normal.png",
-            "lightingMask": "world-aim-support-fingers-sniper-lighting.png"
+            "lightingMask": "world-aim-support-fingers-sniper-lighting.png",
+            "bounds": [
+              455,
+              140,
+              488,
+              163
+            ]
           },
           "shotgun": {
             "image": "world-aim-support-fingers-shotgun.png",
             "normal": "world-aim-support-fingers-shotgun-normal.png",
-            "lightingMask": "world-aim-support-fingers-shotgun-lighting.png"
+            "lightingMask": "world-aim-support-fingers-shotgun-lighting.png",
+            "bounds": [
+              455,
+              140,
+              488,
+              163
+            ]
           }
         }
       }
@@ -515,12 +1085,12 @@
       "arms": {
         "trigger": {
           "shoulder": [
-            0.51175,
-            0.2555
+            0.4982500000000001,
+            0.24875000000000003
           ],
           "elbow": [
-            0.496476862913953,
-            0.35274542503275313
+            0.4996452657151341,
+            0.3600693812846613
           ],
           "wrist": [
             0.5316175350581054,
@@ -543,7 +1113,7 @@
             0.2607939456128591
           ],
           "elbowDirection": [
-            0.6,
+            0.15,
             1
           ]
         },
@@ -553,8 +1123,8 @@
             0.22175
           ],
           "elbow": [
-            0.5305124211311341,
-            0.31112200260162354
+            0.5292316147045357,
+            0.3193467607668439
           ],
           "wrist": [
             0.6008597672923626,
@@ -653,6 +1223,372 @@
     "lighting": "albedo-normal-response-mask",
     "gun": true,
     "sections": "complete-independent-paintings",
+    "puppet": {
+      "version": 1,
+      "technique": "authored-2d-warp",
+      "meshDivisions": 32,
+      "range": {
+        "yaw": 0.3,
+        "pitch": 0.2,
+        "recoil": 0.025
+      },
+      "keyforms": {
+        "rifle": {
+          "trigger": {
+            "shoulder": [
+              0.50725,
+              0.24424999999999997
+            ],
+            "elbow": [
+              0.5545,
+              0.3185
+            ],
+            "upper": {
+              "bend": 0.0027,
+              "width": [
+                1,
+                0.94,
+                0.95
+              ]
+            },
+            "forearm": {
+              "bend": -0.0022500000000000003,
+              "width": [
+                0.95,
+                1,
+                1
+              ]
+            },
+            "parameters": {
+              "aimX": {
+                "negative": [
+                  -0.0054,
+                  0.00135
+                ],
+                "positive": [
+                  0.0054,
+                  -0.00135
+                ]
+              },
+              "aimY": {
+                "negative": [
+                  0.0036000000000000003,
+                  0.007200000000000001
+                ],
+                "positive": [
+                  -0.0036000000000000003,
+                  -0.007200000000000001
+                ]
+              },
+              "recoil": {
+                "negative": [
+                  0,
+                  0
+                ],
+                "positive": [
+                  -0.0054,
+                  0.0022500000000000003
+                ]
+              }
+            }
+          },
+          "support": {
+            "shoulder": [
+              0.4892500000000001,
+              0.22625
+            ],
+            "elbow": [
+              0.5387500000000001,
+              0.3005
+            ],
+            "upper": {
+              "bend": 0.0027,
+              "width": [
+                1,
+                0.94,
+                0.95
+              ]
+            },
+            "forearm": {
+              "bend": -0.0022500000000000003,
+              "width": [
+                0.95,
+                1,
+                1
+              ]
+            },
+            "parameters": {
+              "aimX": {
+                "negative": [
+                  -0.0054,
+                  0.00135
+                ],
+                "positive": [
+                  0.0054,
+                  -0.00135
+                ]
+              },
+              "aimY": {
+                "negative": [
+                  0.0036000000000000003,
+                  0.015750000000000004
+                ],
+                "positive": [
+                  -0.0036000000000000003,
+                  -0.007200000000000001
+                ]
+              },
+              "recoil": {
+                "negative": [
+                  0,
+                  0
+                ],
+                "positive": [
+                  -0.0054,
+                  0.0054
+                ]
+              }
+            }
+          }
+        },
+        "sniper": {
+          "trigger": {
+            "shoulder": [
+              0.50725,
+              0.24424999999999997
+            ],
+            "elbow": [
+              0.5725,
+              0.305
+            ],
+            "upper": {
+              "bend": 0.0027,
+              "width": [
+                1,
+                0.94,
+                0.95
+              ]
+            },
+            "forearm": {
+              "bend": -0.0022500000000000003,
+              "width": [
+                0.95,
+                1,
+                1
+              ]
+            },
+            "parameters": {
+              "aimX": {
+                "negative": [
+                  -0.0054,
+                  0.00135
+                ],
+                "positive": [
+                  0.0054,
+                  -0.00135
+                ]
+              },
+              "aimY": {
+                "negative": [
+                  0.0036000000000000003,
+                  0.007200000000000001
+                ],
+                "positive": [
+                  -0.0036000000000000003,
+                  -0.007200000000000001
+                ]
+              },
+              "recoil": {
+                "negative": [
+                  0,
+                  0
+                ],
+                "positive": [
+                  -0.0054,
+                  0.0022500000000000003
+                ]
+              }
+            }
+          },
+          "support": {
+            "shoulder": [
+              0.4892500000000001,
+              0.22625
+            ],
+            "elbow": [
+              0.55,
+              0.28700000000000003
+            ],
+            "upper": {
+              "bend": 0.0027,
+              "width": [
+                1,
+                0.94,
+                0.95
+              ]
+            },
+            "forearm": {
+              "bend": -0.0022500000000000003,
+              "width": [
+                0.95,
+                1,
+                1
+              ]
+            },
+            "parameters": {
+              "aimX": {
+                "negative": [
+                  -0.0054,
+                  0.00135
+                ],
+                "positive": [
+                  0.0054,
+                  -0.00135
+                ]
+              },
+              "aimY": {
+                "negative": [
+                  0.0036000000000000003,
+                  0.015750000000000004
+                ],
+                "positive": [
+                  -0.0036000000000000003,
+                  -0.007200000000000001
+                ]
+              },
+              "recoil": {
+                "negative": [
+                  0,
+                  0
+                ],
+                "positive": [
+                  -0.0054,
+                  0.0054
+                ]
+              }
+            }
+          }
+        },
+        "shotgun": {
+          "trigger": {
+            "shoulder": [
+              0.50725,
+              0.24424999999999997
+            ],
+            "elbow": [
+              0.5770000000000001,
+              0.29825
+            ],
+            "upper": {
+              "bend": 0.0027,
+              "width": [
+                1,
+                0.94,
+                0.95
+              ]
+            },
+            "forearm": {
+              "bend": -0.0022500000000000003,
+              "width": [
+                0.95,
+                1,
+                1
+              ]
+            },
+            "parameters": {
+              "aimX": {
+                "negative": [
+                  -0.0054,
+                  0.00135
+                ],
+                "positive": [
+                  0.0054,
+                  -0.00135
+                ]
+              },
+              "aimY": {
+                "negative": [
+                  0.0036000000000000003,
+                  0.007200000000000001
+                ],
+                "positive": [
+                  -0.0036000000000000003,
+                  -0.007200000000000001
+                ]
+              },
+              "recoil": {
+                "negative": [
+                  0,
+                  0
+                ],
+                "positive": [
+                  -0.0054,
+                  0.0022500000000000003
+                ]
+              }
+            }
+          },
+          "support": {
+            "shoulder": [
+              0.4892500000000001,
+              0.22625
+            ],
+            "elbow": [
+              0.5567500000000001,
+              0.28250000000000003
+            ],
+            "upper": {
+              "bend": 0.0027,
+              "width": [
+                1,
+                0.94,
+                0.95
+              ]
+            },
+            "forearm": {
+              "bend": -0.0022500000000000003,
+              "width": [
+                0.95,
+                1,
+                1
+              ]
+            },
+            "parameters": {
+              "aimX": {
+                "negative": [
+                  -0.0054,
+                  0.00135
+                ],
+                "positive": [
+                  0.0054,
+                  -0.00135
+                ]
+              },
+              "aimY": {
+                "negative": [
+                  0.0036000000000000003,
+                  0.015750000000000004
+                ],
+                "positive": [
+                  -0.0036000000000000003,
+                  -0.007200000000000001
+                ]
+              },
+              "recoil": {
+                "negative": [
+                  0,
+                  0
+                ],
+                "positive": [
+                  -0.0054,
+                  0.0054
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
     "anchor": [
       0.4,
       0.98
@@ -682,6 +1618,12 @@
           "image": "aim-body.png",
           "normal": "aim-body-normal.png",
           "lightingMask": "aim-body-lighting.png",
+          "bounds": [
+            0,
+            45,
+            502,
+            768
+          ],
           "stage": "back",
           "order": 5,
           "zIndex": 20
@@ -696,6 +1638,12 @@
           "image": "aim-trigger-upper.png",
           "normal": "aim-trigger-upper-normal.png",
           "lightingMask": "aim-trigger-upper-lighting.png",
+          "bounds": [
+            322,
+            390,
+            432,
+            677
+          ],
           "stage": "front",
           "bone": "trigger-upper",
           "anatomicalSide": "right",
@@ -707,6 +1655,12 @@
           "image": "aim-support-upper.png",
           "normal": "aim-support-upper-normal.png",
           "lightingMask": "aim-support-upper-lighting.png",
+          "bounds": [
+            309,
+            350,
+            469,
+            599
+          ],
           "stage": "back",
           "bone": "support-upper",
           "anatomicalSide": "left",
@@ -718,6 +1672,12 @@
           "image": "aim-trigger-forearm.png",
           "normal": "aim-trigger-forearm-normal.png",
           "lightingMask": "aim-trigger-forearm-lighting.png",
+          "bounds": [
+            355,
+            422,
+            455,
+            655
+          ],
           "stage": "front",
           "bone": "trigger-forearm",
           "anatomicalSide": "right",
@@ -729,6 +1689,12 @@
           "image": "aim-support-forearm.png",
           "normal": "aim-support-forearm-normal.png",
           "lightingMask": "aim-support-forearm-lighting.png",
+          "bounds": [
+            403,
+            375,
+            585,
+            585
+          ],
           "stage": "front",
           "bone": "support-forearm",
           "anatomicalSide": "left",
@@ -740,6 +1706,12 @@
           "image": "aim-trigger-hand.png",
           "normal": "aim-trigger-hand-normal.png",
           "lightingMask": "aim-trigger-hand-lighting.png",
+          "bounds": [
+            412,
+            406,
+            490,
+            476
+          ],
           "stage": "front",
           "bone": "trigger-hand",
           "anatomicalSide": "right",
@@ -749,12 +1721,24 @@
             "sniper": {
               "image": "aim-trigger-hand-sniper.png",
               "normal": "aim-trigger-hand-sniper-normal.png",
-              "lightingMask": "aim-trigger-hand-sniper-lighting.png"
+              "lightingMask": "aim-trigger-hand-sniper-lighting.png",
+              "bounds": [
+                410,
+                402,
+                493,
+                477
+              ]
             },
             "shotgun": {
               "image": "aim-trigger-hand-shotgun.png",
               "normal": "aim-trigger-hand-shotgun-normal.png",
-              "lightingMask": "aim-trigger-hand-shotgun-lighting.png"
+              "lightingMask": "aim-trigger-hand-shotgun-lighting.png",
+              "bounds": [
+                411,
+                406,
+                492,
+                477
+              ]
             }
           }
         },
@@ -763,6 +1747,12 @@
           "image": "aim-trigger-fingers.png",
           "normal": "aim-trigger-fingers-normal.png",
           "lightingMask": "aim-trigger-fingers-lighting.png",
+          "bounds": [
+            420,
+            406,
+            445,
+            431
+          ],
           "stage": "back",
           "bone": "trigger-hand",
           "anatomicalSide": "right",
@@ -773,12 +1763,24 @@
             "sniper": {
               "image": "aim-trigger-fingers-sniper.png",
               "normal": "aim-trigger-fingers-sniper-normal.png",
-              "lightingMask": "aim-trigger-fingers-sniper-lighting.png"
+              "lightingMask": "aim-trigger-fingers-sniper-lighting.png",
+              "bounds": [
+                418,
+                401,
+                445,
+                429
+              ]
             },
             "shotgun": {
               "image": "aim-trigger-fingers-shotgun.png",
               "normal": "aim-trigger-fingers-shotgun-normal.png",
-              "lightingMask": "aim-trigger-fingers-shotgun-lighting.png"
+              "lightingMask": "aim-trigger-fingers-shotgun-lighting.png",
+              "bounds": [
+                421,
+                405,
+                447,
+                431
+              ]
             }
           }
         },
@@ -787,6 +1789,12 @@
           "image": "aim-support-hand.png",
           "normal": "aim-support-hand-normal.png",
           "lightingMask": "aim-support-hand-lighting.png",
+          "bounds": [
+            510,
+            327,
+            598,
+            431
+          ],
           "stage": "back",
           "bone": "support-hand",
           "anatomicalSide": "left",
@@ -796,12 +1804,24 @@
             "sniper": {
               "image": "aim-support-hand-sniper.png",
               "normal": "aim-support-hand-sniper-normal.png",
-              "lightingMask": "aim-support-hand-sniper-lighting.png"
+              "lightingMask": "aim-support-hand-sniper-lighting.png",
+              "bounds": [
+                510,
+                327,
+                598,
+                431
+              ]
             },
             "shotgun": {
               "image": "aim-support-hand-shotgun.png",
               "normal": "aim-support-hand-shotgun-normal.png",
-              "lightingMask": "aim-support-hand-shotgun-lighting.png"
+              "lightingMask": "aim-support-hand-shotgun-lighting.png",
+              "bounds": [
+                510,
+                327,
+                598,
+                431
+              ]
             }
           }
         },
@@ -810,6 +1830,12 @@
           "image": "aim-support-fingers.png",
           "normal": "aim-support-fingers-normal.png",
           "lightingMask": "aim-support-fingers-lighting.png",
+          "bounds": [
+            534,
+            329,
+            606,
+            379
+          ],
           "stage": "front",
           "bone": "support-hand",
           "anatomicalSide": "left",
@@ -820,12 +1846,24 @@
             "sniper": {
               "image": "aim-support-fingers-sniper.png",
               "normal": "aim-support-fingers-sniper-normal.png",
-              "lightingMask": "aim-support-fingers-sniper-lighting.png"
+              "lightingMask": "aim-support-fingers-sniper-lighting.png",
+              "bounds": [
+                534,
+                329,
+                606,
+                379
+              ]
             },
             "shotgun": {
               "image": "aim-support-fingers-shotgun.png",
               "normal": "aim-support-fingers-shotgun-normal.png",
-              "lightingMask": "aim-support-fingers-shotgun-lighting.png"
+              "lightingMask": "aim-support-fingers-shotgun-lighting.png",
+              "bounds": [
+                534,
+                329,
+                606,
+                379
+              ]
             }
           }
         }
@@ -851,12 +1889,12 @@
         "arms": {
           "trigger": {
             "shoulder": [
-              0.515,
-              0.59
+              0.48500000000000004,
+              0.5750000000000001
             ],
             "elbow": [
-              0.48105969536433985,
-              0.8061009445172292
+              0.48810059047807575,
+              0.822376402854803
             ],
             "wrist": [
               0.5591500779069006,
@@ -879,7 +1917,7 @@
               0.6017643235841313
             ],
             "elbowDirection": [
-              0.6,
+              0.15,
               1
             ]
           },
@@ -889,8 +1927,8 @@
               0.515
             ],
             "elbow": [
-              0.5566942691802979,
-              0.7136044502258301
+              0.553848032676746,
+              0.7318816905929864
             ],
             "wrist": [
               0.7130217050941389,
@@ -989,6 +2027,372 @@
       "lighting": "albedo-normal-response-mask",
       "gun": true,
       "sections": "complete-independent-paintings",
+      "puppet": {
+        "version": 1,
+        "technique": "authored-2d-warp",
+        "meshDivisions": 32,
+        "range": {
+          "yaw": 0.3,
+          "pitch": 0.2,
+          "recoil": 0.025
+        },
+        "keyforms": {
+          "rifle": {
+            "trigger": {
+              "shoulder": [
+                0.505,
+                0.565
+              ],
+              "elbow": [
+                0.61,
+                0.73
+              ],
+              "upper": {
+                "bend": 0.006,
+                "width": [
+                  1,
+                  0.94,
+                  0.95
+                ]
+              },
+              "forearm": {
+                "bend": -0.005,
+                "width": [
+                  0.95,
+                  1,
+                  1
+                ]
+              },
+              "parameters": {
+                "aimX": {
+                  "negative": [
+                    -0.012,
+                    0.003
+                  ],
+                  "positive": [
+                    0.012,
+                    -0.003
+                  ]
+                },
+                "aimY": {
+                  "negative": [
+                    0.008,
+                    0.016
+                  ],
+                  "positive": [
+                    -0.008,
+                    -0.016
+                  ]
+                },
+                "recoil": {
+                  "negative": [
+                    0,
+                    0
+                  ],
+                  "positive": [
+                    -0.012,
+                    0.005
+                  ]
+                }
+              }
+            },
+            "support": {
+              "shoulder": [
+                0.465,
+                0.525
+              ],
+              "elbow": [
+                0.575,
+                0.69
+              ],
+              "upper": {
+                "bend": 0.006,
+                "width": [
+                  1,
+                  0.94,
+                  0.95
+                ]
+              },
+              "forearm": {
+                "bend": -0.005,
+                "width": [
+                  0.95,
+                  1,
+                  1
+                ]
+              },
+              "parameters": {
+                "aimX": {
+                  "negative": [
+                    -0.012,
+                    0.003
+                  ],
+                  "positive": [
+                    0.012,
+                    -0.003
+                  ]
+                },
+                "aimY": {
+                  "negative": [
+                    0.008,
+                    0.035
+                  ],
+                  "positive": [
+                    -0.008,
+                    -0.016
+                  ]
+                },
+                "recoil": {
+                  "negative": [
+                    0,
+                    0
+                  ],
+                  "positive": [
+                    -0.012,
+                    0.012
+                  ]
+                }
+              }
+            }
+          },
+          "sniper": {
+            "trigger": {
+              "shoulder": [
+                0.505,
+                0.565
+              ],
+              "elbow": [
+                0.65,
+                0.7
+              ],
+              "upper": {
+                "bend": 0.006,
+                "width": [
+                  1,
+                  0.94,
+                  0.95
+                ]
+              },
+              "forearm": {
+                "bend": -0.005,
+                "width": [
+                  0.95,
+                  1,
+                  1
+                ]
+              },
+              "parameters": {
+                "aimX": {
+                  "negative": [
+                    -0.012,
+                    0.003
+                  ],
+                  "positive": [
+                    0.012,
+                    -0.003
+                  ]
+                },
+                "aimY": {
+                  "negative": [
+                    0.008,
+                    0.016
+                  ],
+                  "positive": [
+                    -0.008,
+                    -0.016
+                  ]
+                },
+                "recoil": {
+                  "negative": [
+                    0,
+                    0
+                  ],
+                  "positive": [
+                    -0.012,
+                    0.005
+                  ]
+                }
+              }
+            },
+            "support": {
+              "shoulder": [
+                0.465,
+                0.525
+              ],
+              "elbow": [
+                0.6,
+                0.66
+              ],
+              "upper": {
+                "bend": 0.006,
+                "width": [
+                  1,
+                  0.94,
+                  0.95
+                ]
+              },
+              "forearm": {
+                "bend": -0.005,
+                "width": [
+                  0.95,
+                  1,
+                  1
+                ]
+              },
+              "parameters": {
+                "aimX": {
+                  "negative": [
+                    -0.012,
+                    0.003
+                  ],
+                  "positive": [
+                    0.012,
+                    -0.003
+                  ]
+                },
+                "aimY": {
+                  "negative": [
+                    0.008,
+                    0.035
+                  ],
+                  "positive": [
+                    -0.008,
+                    -0.016
+                  ]
+                },
+                "recoil": {
+                  "negative": [
+                    0,
+                    0
+                  ],
+                  "positive": [
+                    -0.012,
+                    0.012
+                  ]
+                }
+              }
+            }
+          },
+          "shotgun": {
+            "trigger": {
+              "shoulder": [
+                0.505,
+                0.565
+              ],
+              "elbow": [
+                0.66,
+                0.685
+              ],
+              "upper": {
+                "bend": 0.006,
+                "width": [
+                  1,
+                  0.94,
+                  0.95
+                ]
+              },
+              "forearm": {
+                "bend": -0.005,
+                "width": [
+                  0.95,
+                  1,
+                  1
+                ]
+              },
+              "parameters": {
+                "aimX": {
+                  "negative": [
+                    -0.012,
+                    0.003
+                  ],
+                  "positive": [
+                    0.012,
+                    -0.003
+                  ]
+                },
+                "aimY": {
+                  "negative": [
+                    0.008,
+                    0.016
+                  ],
+                  "positive": [
+                    -0.008,
+                    -0.016
+                  ]
+                },
+                "recoil": {
+                  "negative": [
+                    0,
+                    0
+                  ],
+                  "positive": [
+                    -0.012,
+                    0.005
+                  ]
+                }
+              }
+            },
+            "support": {
+              "shoulder": [
+                0.465,
+                0.525
+              ],
+              "elbow": [
+                0.615,
+                0.65
+              ],
+              "upper": {
+                "bend": 0.006,
+                "width": [
+                  1,
+                  0.94,
+                  0.95
+                ]
+              },
+              "forearm": {
+                "bend": -0.005,
+                "width": [
+                  0.95,
+                  1,
+                  1
+                ]
+              },
+              "parameters": {
+                "aimX": {
+                  "negative": [
+                    -0.012,
+                    0.003
+                  ],
+                  "positive": [
+                    0.012,
+                    -0.003
+                  ]
+                },
+                "aimY": {
+                  "negative": [
+                    0.008,
+                    0.035
+                  ],
+                  "positive": [
+                    -0.008,
+                    -0.016
+                  ]
+                },
+                "recoil": {
+                  "negative": [
+                    0,
+                    0
+                  ],
+                  "positive": [
+                    -0.012,
+                    0.012
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
       "worldAim": {
         "character": "ranger-01",
         "version": 3,
@@ -1008,6 +2412,12 @@
             "image": "world-aim-body.png",
             "normal": "world-aim-body-normal.png",
             "lightingMask": "world-aim-body-lighting.png",
+            "bounds": [
+              114,
+              12,
+              493,
+              757
+            ],
             "stage": "back",
             "order": 5,
             "zIndex": 20
@@ -1022,6 +2432,12 @@
             "image": "world-aim-trigger-upper.png",
             "normal": "world-aim-trigger-upper-normal.png",
             "lightingMask": "world-aim-trigger-upper-lighting.png",
+            "bounds": [
+              360,
+              168,
+              410,
+              297
+            ],
             "stage": "front",
             "bone": "trigger-upper",
             "anatomicalSide": "right",
@@ -1033,6 +2449,12 @@
             "image": "world-aim-support-upper.png",
             "normal": "world-aim-support-upper-normal.png",
             "lightingMask": "world-aim-support-upper-lighting.png",
+            "bounds": [
+              355,
+              150,
+              426,
+              262
+            ],
             "stage": "back",
             "bone": "support-upper",
             "anatomicalSide": "left",
@@ -1044,6 +2466,12 @@
             "image": "world-aim-trigger-forearm.png",
             "normal": "world-aim-trigger-forearm-normal.png",
             "lightingMask": "world-aim-trigger-forearm-lighting.png",
+            "bounds": [
+              375,
+              183,
+              420,
+              287
+            ],
             "stage": "front",
             "bone": "trigger-forearm",
             "anatomicalSide": "right",
@@ -1055,6 +2483,12 @@
             "image": "world-aim-support-forearm.png",
             "normal": "world-aim-support-forearm-normal.png",
             "lightingMask": "world-aim-support-forearm-lighting.png",
+            "bounds": [
+              397,
+              161,
+              479,
+              256
+            ],
             "stage": "front",
             "bone": "support-forearm",
             "anatomicalSide": "left",
@@ -1066,6 +2500,12 @@
             "image": "world-aim-trigger-hand.png",
             "normal": "world-aim-trigger-hand-normal.png",
             "lightingMask": "world-aim-trigger-hand-lighting.png",
+            "bounds": [
+              401,
+              175,
+              436,
+              207
+            ],
             "stage": "front",
             "bone": "trigger-hand",
             "anatomicalSide": "right",
@@ -1075,12 +2515,24 @@
               "sniper": {
                 "image": "world-aim-trigger-hand-sniper.png",
                 "normal": "world-aim-trigger-hand-sniper-normal.png",
-                "lightingMask": "world-aim-trigger-hand-sniper-lighting.png"
+                "lightingMask": "world-aim-trigger-hand-sniper-lighting.png",
+                "bounds": [
+                  400,
+                  173,
+                  437,
+                  207
+                ]
               },
               "shotgun": {
                 "image": "world-aim-trigger-hand-shotgun.png",
                 "normal": "world-aim-trigger-hand-shotgun-normal.png",
-                "lightingMask": "world-aim-trigger-hand-shotgun-lighting.png"
+                "lightingMask": "world-aim-trigger-hand-shotgun-lighting.png",
+                "bounds": [
+                  400,
+                  175,
+                  437,
+                  207
+                ]
               }
             }
           },
@@ -1089,6 +2541,12 @@
             "image": "world-aim-trigger-fingers.png",
             "normal": "world-aim-trigger-fingers-normal.png",
             "lightingMask": "world-aim-trigger-fingers-lighting.png",
+            "bounds": [
+              404,
+              175,
+              416,
+              187
+            ],
             "stage": "back",
             "bone": "trigger-hand",
             "anatomicalSide": "right",
@@ -1099,12 +2557,24 @@
               "sniper": {
                 "image": "world-aim-trigger-fingers-sniper.png",
                 "normal": "world-aim-trigger-fingers-sniper-normal.png",
-                "lightingMask": "world-aim-trigger-fingers-sniper-lighting.png"
+                "lightingMask": "world-aim-trigger-fingers-sniper-lighting.png",
+                "bounds": [
+                  404,
+                  173,
+                  416,
+                  185
+                ]
               },
               "shotgun": {
                 "image": "world-aim-trigger-fingers-shotgun.png",
                 "normal": "world-aim-trigger-fingers-shotgun-normal.png",
-                "lightingMask": "world-aim-trigger-fingers-shotgun-lighting.png"
+                "lightingMask": "world-aim-trigger-fingers-shotgun-lighting.png",
+                "bounds": [
+                  405,
+                  175,
+                  417,
+                  187
+                ]
               }
             }
           },
@@ -1113,6 +2583,12 @@
             "image": "world-aim-support-hand.png",
             "normal": "world-aim-support-hand-normal.png",
             "lightingMask": "world-aim-support-hand-lighting.png",
+            "bounds": [
+              445,
+              140,
+              484,
+              187
+            ],
             "stage": "back",
             "bone": "support-hand",
             "anatomicalSide": "left",
@@ -1122,12 +2598,24 @@
               "sniper": {
                 "image": "world-aim-support-hand-sniper.png",
                 "normal": "world-aim-support-hand-sniper-normal.png",
-                "lightingMask": "world-aim-support-hand-sniper-lighting.png"
+                "lightingMask": "world-aim-support-hand-sniper-lighting.png",
+                "bounds": [
+                  445,
+                  140,
+                  484,
+                  187
+                ]
               },
               "shotgun": {
                 "image": "world-aim-support-hand-shotgun.png",
                 "normal": "world-aim-support-hand-shotgun-normal.png",
-                "lightingMask": "world-aim-support-hand-shotgun-lighting.png"
+                "lightingMask": "world-aim-support-hand-shotgun-lighting.png",
+                "bounds": [
+                  445,
+                  140,
+                  484,
+                  187
+                ]
               }
             }
           },
@@ -1136,6 +2624,12 @@
             "image": "world-aim-support-fingers.png",
             "normal": "world-aim-support-fingers-normal.png",
             "lightingMask": "world-aim-support-fingers-lighting.png",
+            "bounds": [
+              455,
+              140,
+              488,
+              163
+            ],
             "stage": "front",
             "bone": "support-hand",
             "anatomicalSide": "left",
@@ -1146,12 +2640,24 @@
               "sniper": {
                 "image": "world-aim-support-fingers-sniper.png",
                 "normal": "world-aim-support-fingers-sniper-normal.png",
-                "lightingMask": "world-aim-support-fingers-sniper-lighting.png"
+                "lightingMask": "world-aim-support-fingers-sniper-lighting.png",
+                "bounds": [
+                  455,
+                  140,
+                  488,
+                  163
+                ]
               },
               "shotgun": {
                 "image": "world-aim-support-fingers-shotgun.png",
                 "normal": "world-aim-support-fingers-shotgun-normal.png",
-                "lightingMask": "world-aim-support-fingers-shotgun-lighting.png"
+                "lightingMask": "world-aim-support-fingers-shotgun-lighting.png",
+                "bounds": [
+                  455,
+                  140,
+                  488,
+                  163
+                ]
               }
             }
           }
@@ -1177,12 +2683,12 @@
           "arms": {
             "trigger": {
               "shoulder": [
-                0.51175,
-                0.2555
+                0.4982500000000001,
+                0.24875000000000003
               ],
               "elbow": [
-                0.496476862913953,
-                0.35274542503275313
+                0.4996452657151341,
+                0.3600693812846613
               ],
               "wrist": [
                 0.5316175350581054,
@@ -1205,7 +2711,7 @@
                 0.2607939456128591
               ],
               "elbowDirection": [
-                0.6,
+                0.15,
                 1
               ]
             },
@@ -1215,8 +2721,8 @@
                 0.22175
               ],
               "elbow": [
-                0.5305124211311341,
-                0.31112200260162354
+                0.5292316147045357,
+                0.3193467607668439
               ],
               "wrist": [
                 0.6008597672923626,
@@ -1315,6 +2821,372 @@
         "lighting": "albedo-normal-response-mask",
         "gun": true,
         "sections": "complete-independent-paintings",
+        "puppet": {
+          "version": 1,
+          "technique": "authored-2d-warp",
+          "meshDivisions": 32,
+          "range": {
+            "yaw": 0.3,
+            "pitch": 0.2,
+            "recoil": 0.025
+          },
+          "keyforms": {
+            "rifle": {
+              "trigger": {
+                "shoulder": [
+                  0.50725,
+                  0.24424999999999997
+                ],
+                "elbow": [
+                  0.5545,
+                  0.3185
+                ],
+                "upper": {
+                  "bend": 0.0027,
+                  "width": [
+                    1,
+                    0.94,
+                    0.95
+                  ]
+                },
+                "forearm": {
+                  "bend": -0.0022500000000000003,
+                  "width": [
+                    0.95,
+                    1,
+                    1
+                  ]
+                },
+                "parameters": {
+                  "aimX": {
+                    "negative": [
+                      -0.0054,
+                      0.00135
+                    ],
+                    "positive": [
+                      0.0054,
+                      -0.00135
+                    ]
+                  },
+                  "aimY": {
+                    "negative": [
+                      0.0036000000000000003,
+                      0.007200000000000001
+                    ],
+                    "positive": [
+                      -0.0036000000000000003,
+                      -0.007200000000000001
+                    ]
+                  },
+                  "recoil": {
+                    "negative": [
+                      0,
+                      0
+                    ],
+                    "positive": [
+                      -0.0054,
+                      0.0022500000000000003
+                    ]
+                  }
+                }
+              },
+              "support": {
+                "shoulder": [
+                  0.4892500000000001,
+                  0.22625
+                ],
+                "elbow": [
+                  0.5387500000000001,
+                  0.3005
+                ],
+                "upper": {
+                  "bend": 0.0027,
+                  "width": [
+                    1,
+                    0.94,
+                    0.95
+                  ]
+                },
+                "forearm": {
+                  "bend": -0.0022500000000000003,
+                  "width": [
+                    0.95,
+                    1,
+                    1
+                  ]
+                },
+                "parameters": {
+                  "aimX": {
+                    "negative": [
+                      -0.0054,
+                      0.00135
+                    ],
+                    "positive": [
+                      0.0054,
+                      -0.00135
+                    ]
+                  },
+                  "aimY": {
+                    "negative": [
+                      0.0036000000000000003,
+                      0.015750000000000004
+                    ],
+                    "positive": [
+                      -0.0036000000000000003,
+                      -0.007200000000000001
+                    ]
+                  },
+                  "recoil": {
+                    "negative": [
+                      0,
+                      0
+                    ],
+                    "positive": [
+                      -0.0054,
+                      0.0054
+                    ]
+                  }
+                }
+              }
+            },
+            "sniper": {
+              "trigger": {
+                "shoulder": [
+                  0.50725,
+                  0.24424999999999997
+                ],
+                "elbow": [
+                  0.5725,
+                  0.305
+                ],
+                "upper": {
+                  "bend": 0.0027,
+                  "width": [
+                    1,
+                    0.94,
+                    0.95
+                  ]
+                },
+                "forearm": {
+                  "bend": -0.0022500000000000003,
+                  "width": [
+                    0.95,
+                    1,
+                    1
+                  ]
+                },
+                "parameters": {
+                  "aimX": {
+                    "negative": [
+                      -0.0054,
+                      0.00135
+                    ],
+                    "positive": [
+                      0.0054,
+                      -0.00135
+                    ]
+                  },
+                  "aimY": {
+                    "negative": [
+                      0.0036000000000000003,
+                      0.007200000000000001
+                    ],
+                    "positive": [
+                      -0.0036000000000000003,
+                      -0.007200000000000001
+                    ]
+                  },
+                  "recoil": {
+                    "negative": [
+                      0,
+                      0
+                    ],
+                    "positive": [
+                      -0.0054,
+                      0.0022500000000000003
+                    ]
+                  }
+                }
+              },
+              "support": {
+                "shoulder": [
+                  0.4892500000000001,
+                  0.22625
+                ],
+                "elbow": [
+                  0.55,
+                  0.28700000000000003
+                ],
+                "upper": {
+                  "bend": 0.0027,
+                  "width": [
+                    1,
+                    0.94,
+                    0.95
+                  ]
+                },
+                "forearm": {
+                  "bend": -0.0022500000000000003,
+                  "width": [
+                    0.95,
+                    1,
+                    1
+                  ]
+                },
+                "parameters": {
+                  "aimX": {
+                    "negative": [
+                      -0.0054,
+                      0.00135
+                    ],
+                    "positive": [
+                      0.0054,
+                      -0.00135
+                    ]
+                  },
+                  "aimY": {
+                    "negative": [
+                      0.0036000000000000003,
+                      0.015750000000000004
+                    ],
+                    "positive": [
+                      -0.0036000000000000003,
+                      -0.007200000000000001
+                    ]
+                  },
+                  "recoil": {
+                    "negative": [
+                      0,
+                      0
+                    ],
+                    "positive": [
+                      -0.0054,
+                      0.0054
+                    ]
+                  }
+                }
+              }
+            },
+            "shotgun": {
+              "trigger": {
+                "shoulder": [
+                  0.50725,
+                  0.24424999999999997
+                ],
+                "elbow": [
+                  0.5770000000000001,
+                  0.29825
+                ],
+                "upper": {
+                  "bend": 0.0027,
+                  "width": [
+                    1,
+                    0.94,
+                    0.95
+                  ]
+                },
+                "forearm": {
+                  "bend": -0.0022500000000000003,
+                  "width": [
+                    0.95,
+                    1,
+                    1
+                  ]
+                },
+                "parameters": {
+                  "aimX": {
+                    "negative": [
+                      -0.0054,
+                      0.00135
+                    ],
+                    "positive": [
+                      0.0054,
+                      -0.00135
+                    ]
+                  },
+                  "aimY": {
+                    "negative": [
+                      0.0036000000000000003,
+                      0.007200000000000001
+                    ],
+                    "positive": [
+                      -0.0036000000000000003,
+                      -0.007200000000000001
+                    ]
+                  },
+                  "recoil": {
+                    "negative": [
+                      0,
+                      0
+                    ],
+                    "positive": [
+                      -0.0054,
+                      0.0022500000000000003
+                    ]
+                  }
+                }
+              },
+              "support": {
+                "shoulder": [
+                  0.4892500000000001,
+                  0.22625
+                ],
+                "elbow": [
+                  0.5567500000000001,
+                  0.28250000000000003
+                ],
+                "upper": {
+                  "bend": 0.0027,
+                  "width": [
+                    1,
+                    0.94,
+                    0.95
+                  ]
+                },
+                "forearm": {
+                  "bend": -0.0022500000000000003,
+                  "width": [
+                    0.95,
+                    1,
+                    1
+                  ]
+                },
+                "parameters": {
+                  "aimX": {
+                    "negative": [
+                      -0.0054,
+                      0.00135
+                    ],
+                    "positive": [
+                      0.0054,
+                      -0.00135
+                    ]
+                  },
+                  "aimY": {
+                    "negative": [
+                      0.0036000000000000003,
+                      0.015750000000000004
+                    ],
+                    "positive": [
+                      -0.0036000000000000003,
+                      -0.007200000000000001
+                    ]
+                  },
+                  "recoil": {
+                    "negative": [
+                      0,
+                      0
+                    ],
+                    "positive": [
+                      -0.0054,
+                      0.0054
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
         "anchor": [
           0.4,
           0.98

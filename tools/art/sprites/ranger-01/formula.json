@@ -330,7 +330,7 @@
         }
       ],
       "bodySource": "aim-torso-only.png",
-      "sectionsSource": "aim-sleeves-v4.png",
+      "sectionsSource": "aim-sleeves-v5.png",
       "anatomy": {
         "left": {
           "upper": "support-upper",
@@ -364,6 +364,372 @@
         "support-forearm": 60,
         "trigger-upper": 70,
         "trigger-forearm": 80
+      },
+      "puppet": {
+        "version": 1,
+        "technique": "authored-2d-warp",
+        "meshDivisions": 32,
+        "range": {
+          "yaw": 0.3,
+          "pitch": 0.2,
+          "recoil": 0.025
+        },
+        "keyforms": {
+          "rifle": {
+            "trigger": {
+              "shoulder": [
+                0.505,
+                0.565
+              ],
+              "elbow": [
+                0.61,
+                0.73
+              ],
+              "upper": {
+                "bend": 0.006,
+                "width": [
+                  1,
+                  0.94,
+                  0.95
+                ]
+              },
+              "forearm": {
+                "bend": -0.005,
+                "width": [
+                  0.95,
+                  1,
+                  1
+                ]
+              },
+              "parameters": {
+                "aimX": {
+                  "negative": [
+                    -0.012,
+                    0.003
+                  ],
+                  "positive": [
+                    0.012,
+                    -0.003
+                  ]
+                },
+                "aimY": {
+                  "negative": [
+                    0.008,
+                    0.016
+                  ],
+                  "positive": [
+                    -0.008,
+                    -0.016
+                  ]
+                },
+                "recoil": {
+                  "negative": [
+                    0,
+                    0
+                  ],
+                  "positive": [
+                    -0.012,
+                    0.005
+                  ]
+                }
+              }
+            },
+            "support": {
+              "shoulder": [
+                0.465,
+                0.525
+              ],
+              "elbow": [
+                0.575,
+                0.69
+              ],
+              "upper": {
+                "bend": 0.006,
+                "width": [
+                  1,
+                  0.94,
+                  0.95
+                ]
+              },
+              "forearm": {
+                "bend": -0.005,
+                "width": [
+                  0.95,
+                  1,
+                  1
+                ]
+              },
+              "parameters": {
+                "aimX": {
+                  "negative": [
+                    -0.012,
+                    0.003
+                  ],
+                  "positive": [
+                    0.012,
+                    -0.003
+                  ]
+                },
+                "aimY": {
+                  "negative": [
+                    0.008,
+                    0.035
+                  ],
+                  "positive": [
+                    -0.008,
+                    -0.016
+                  ]
+                },
+                "recoil": {
+                  "negative": [
+                    0,
+                    0
+                  ],
+                  "positive": [
+                    -0.012,
+                    0.012
+                  ]
+                }
+              }
+            }
+          },
+          "sniper": {
+            "trigger": {
+              "shoulder": [
+                0.505,
+                0.565
+              ],
+              "elbow": [
+                0.65,
+                0.7
+              ],
+              "upper": {
+                "bend": 0.006,
+                "width": [
+                  1,
+                  0.94,
+                  0.95
+                ]
+              },
+              "forearm": {
+                "bend": -0.005,
+                "width": [
+                  0.95,
+                  1,
+                  1
+                ]
+              },
+              "parameters": {
+                "aimX": {
+                  "negative": [
+                    -0.012,
+                    0.003
+                  ],
+                  "positive": [
+                    0.012,
+                    -0.003
+                  ]
+                },
+                "aimY": {
+                  "negative": [
+                    0.008,
+                    0.016
+                  ],
+                  "positive": [
+                    -0.008,
+                    -0.016
+                  ]
+                },
+                "recoil": {
+                  "negative": [
+                    0,
+                    0
+                  ],
+                  "positive": [
+                    -0.012,
+                    0.005
+                  ]
+                }
+              }
+            },
+            "support": {
+              "shoulder": [
+                0.465,
+                0.525
+              ],
+              "elbow": [
+                0.6,
+                0.66
+              ],
+              "upper": {
+                "bend": 0.006,
+                "width": [
+                  1,
+                  0.94,
+                  0.95
+                ]
+              },
+              "forearm": {
+                "bend": -0.005,
+                "width": [
+                  0.95,
+                  1,
+                  1
+                ]
+              },
+              "parameters": {
+                "aimX": {
+                  "negative": [
+                    -0.012,
+                    0.003
+                  ],
+                  "positive": [
+                    0.012,
+                    -0.003
+                  ]
+                },
+                "aimY": {
+                  "negative": [
+                    0.008,
+                    0.035
+                  ],
+                  "positive": [
+                    -0.008,
+                    -0.016
+                  ]
+                },
+                "recoil": {
+                  "negative": [
+                    0,
+                    0
+                  ],
+                  "positive": [
+                    -0.012,
+                    0.012
+                  ]
+                }
+              }
+            }
+          },
+          "shotgun": {
+            "trigger": {
+              "shoulder": [
+                0.505,
+                0.565
+              ],
+              "elbow": [
+                0.66,
+                0.685
+              ],
+              "upper": {
+                "bend": 0.006,
+                "width": [
+                  1,
+                  0.94,
+                  0.95
+                ]
+              },
+              "forearm": {
+                "bend": -0.005,
+                "width": [
+                  0.95,
+                  1,
+                  1
+                ]
+              },
+              "parameters": {
+                "aimX": {
+                  "negative": [
+                    -0.012,
+                    0.003
+                  ],
+                  "positive": [
+                    0.012,
+                    -0.003
+                  ]
+                },
+                "aimY": {
+                  "negative": [
+                    0.008,
+                    0.016
+                  ],
+                  "positive": [
+                    -0.008,
+                    -0.016
+                  ]
+                },
+                "recoil": {
+                  "negative": [
+                    0,
+                    0
+                  ],
+                  "positive": [
+                    -0.012,
+                    0.005
+                  ]
+                }
+              }
+            },
+            "support": {
+              "shoulder": [
+                0.465,
+                0.525
+              ],
+              "elbow": [
+                0.615,
+                0.65
+              ],
+              "upper": {
+                "bend": 0.006,
+                "width": [
+                  1,
+                  0.94,
+                  0.95
+                ]
+              },
+              "forearm": {
+                "bend": -0.005,
+                "width": [
+                  0.95,
+                  1,
+                  1
+                ]
+              },
+              "parameters": {
+                "aimX": {
+                  "negative": [
+                    -0.012,
+                    0.003
+                  ],
+                  "positive": [
+                    0.012,
+                    -0.003
+                  ]
+                },
+                "aimY": {
+                  "negative": [
+                    0.008,
+                    0.035
+                  ],
+                  "positive": [
+                    -0.008,
+                    -0.016
+                  ]
+                },
+                "recoil": {
+                  "negative": [
+                    0,
+                    0
+                  ],
+                  "positive": [
+                    -0.012,
+                    0.012
+                  ]
+                }
+              }
+            }
+          }
+        }
       }
     }
   },
@@ -683,6 +1049,7 @@
     "upperToForearmRatio": {
       "trigger": 1.0674157303370786,
       "support": 0.9473684210526315
-    }
+    },
+    "status": "Legacy source registration only; runtime anatomy is authored in puppet.keyforms, without IK."
   }
 }

@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { constrainGunPose } from './SpriteArmRig.js';
+import { puppetPose, deformPuppetMesh } from './SpritePuppetRig.js';
 import { gunCelRamp, gunCelMaterial, gunInkMaterial } from './SpriteGunMaterial.js';
 
 export function spriteGunParts(weaponId) {
@@ -155,12 +156,18 @@ export class SpriteWeapon {
         this.flatCamera.position.z = 10;
         const gunZ=this.art.layers.find(l=>l.gun)?.zIndex ?? 100;
         for (const layer of layers) {
-            const geometry = new THREE.PlaneGeometry(this.art.width, this.art.height);
-            geometry.translate(this.art.width / 2, -this.art.height / 2, 0);
+            const deformable=this.art.puppet&&layer.bone&&!layer.bone.endsWith('hand');
+            const divisions=deformable?(this.art.puppet.meshDivisions||32):1;
+            const [x0,y0,x1,y1]=deformable&&layer.bounds?layer.bounds:[0,0,this.art.width,this.art.height];
+            const geometry = new THREE.PlaneGeometry(x1-x0, y1-y0,divisions,divisions);
+            geometry.translate((x0+x1)/2, -(y0+y1)/2, 0);
+            const uv=geometry.attributes.uv;
+            for(let i=0;i<uv.count;i++)uv.setXY(i,(x0+uv.getX(i)*(x1-x0))/this.art.width,1-(y1-uv.getY(i)*(y1-y0))/this.art.height);
             const material = paintedMaterial(...layer.maps), mesh = new THREE.Mesh(geometry, material);
             mesh.matrixAutoUpdate = false; mesh.renderOrder = spriteLayerOrder(layer);
             (spriteLayerOrder(layer) < gunZ ? this.backScene : this.frontScene).add(mesh);
-            this.cards.push({ mesh, layer }); this.resources.push(geometry, material);
+            mesh.frustumCulled=false;
+            this.cards.push({ mesh, layer, source:deformable?geometry.attributes.position.array.slice():null }); this.resources.push(geometry, material);
         }
         this.hemi = new THREE.HemisphereLight(); this.sun = new THREE.DirectionalLight(); this.fill = new THREE.DirectionalLight();
         this.scene.add(this.hemi, this.sun, this.sun.target, this.fill, this.fill.target);
@@ -218,10 +225,15 @@ export class SpriteWeapon {
                 ...(this.triggerContact?{trigger:this.project(this.triggerContact)}:{})}
                 : {stock:this.art.rig.stock,grip:this.art.rig.grip,support:this.art.rig.support,muzzle:this.art.muzzle};
         };
-        const solved=constrainGunPose(sample,{yaw,pitch,recoil},this.art.rig,this.art.width,this.art.height);
-        const targets=solved.targets,transforms=solved.arms.transforms;
+        const puppet=this.art.puppet;
+        // Clamp only the authored parameter domain. No automatic anatomy, reach solve or elbow flipping.
+        const input=puppet?{yaw:THREE.MathUtils.clamp(yaw,-puppet.range.yaw,puppet.range.yaw),pitch:THREE.MathUtils.clamp(pitch,-puppet.range.pitch,puppet.range.pitch),recoil:THREE.MathUtils.clamp(recoil,0,puppet.range.recoil)}:{yaw,pitch,recoil};
+        const solved=puppet?{input,targets:sample(input)}:constrainGunPose(sample,input,this.art.rig,this.art.width,this.art.height);
+        if(puppet)solved.arms=puppetPose(this.art,solved.targets,this.config.family,input);
+        const targets=solved.targets,transforms=puppet?solved.arms.handTransforms:solved.arms.transforms;
         this.rigPose=solved;
-        for (const { mesh, layer } of this.cards) {
+        for (const { mesh, layer, source } of this.cards) {
+            if(source){deformPuppetMesh(mesh.geometry,source,solved.arms.deformers[layer.bone]);mesh.matrix.identity();mesh.material.uniforms.boneRotation.value.set(1,0);continue;}
             const m = transforms[layer.bone] || [1, 0, 0, 1, 0, 0], [a, b, c, d, x, y] = m;
             mesh.matrix.set(a, -c, 0, x, -b, d, 0, -y, 0, 0, 1, 0, 0, 0, 0, 1);
             const n = Math.max(.00001, Math.hypot(a, b)); mesh.material.uniforms.boneRotation.value.set(a / n, -b / n);
@@ -231,6 +243,16 @@ export class SpriteWeapon {
         this.renderer.clearDepth(); this.renderer.render(this.scene, this.camera);
         this.renderer.clearDepth(); this.renderer.render(this.frontScene, this.flatCamera);
         this.targets = targets; return targets;
+    }
+    setPuppetWireframe(enabled){
+        for(const card of this.cards.filter(c=>c.source)){
+            if(enabled&&!card.wire){
+                const material=new THREE.MeshBasicMaterial({color:card.layer.bone.startsWith('trigger')?0xffc26a:0x77dfd2,wireframe:true,transparent:true,opacity:.3,depthTest:false,depthWrite:false});
+                const wire=new THREE.Mesh(card.mesh.geometry,material);wire.renderOrder=card.mesh.renderOrder+.1;wire.frustumCulled=false;card.mesh.parent.add(wire);card.wire=wire;this.resources.push(material);
+            }
+            if(card.wire)card.wire.visible=enabled;
+        }
+        this.update(this.last);
     }
     dispose() {
         this.disposed = true;

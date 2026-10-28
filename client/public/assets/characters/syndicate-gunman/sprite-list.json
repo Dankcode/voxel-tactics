@@ -1,0 +1,445 @@
+{
+  "scale": 1.2663755458515285,
+  "frames": [
+    {
+      "facing": "s",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 0,
+        "top": 0,
+        "width": 198,
+        "height": 235
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 0,
+        "top": 235,
+        "width": 198,
+        "height": 221
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 0,
+        "top": 456,
+        "width": 198,
+        "height": 227
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 0,
+        "top": 683,
+        "width": 198,
+        "height": 217
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 0,
+        "top": 900,
+        "width": 198,
+        "height": 92
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 198,
+        "top": 0,
+        "width": 199,
+        "height": 235
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 198,
+        "top": 235,
+        "width": 199,
+        "height": 221
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 198,
+        "top": 456,
+        "width": 199,
+        "height": 227
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 198,
+        "top": 683,
+        "width": 199,
+        "height": 217
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 198,
+        "top": 900,
+        "width": 199,
+        "height": 92
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 397,
+        "top": 0,
+        "width": 198,
+        "height": 235
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 397,
+        "top": 235,
+        "width": 198,
+        "height": 221
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 397,
+        "top": 456,
+        "width": 198,
+        "height": 227
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 397,
+        "top": 683,
+        "width": 198,
+        "height": 217
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 397,
+        "top": 900,
+        "width": 198,
+        "height": 92
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 595,
+        "top": 0,
+        "width": 198,
+        "height": 235
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 595,
+        "top": 235,
+        "width": 198,
+        "height": 221
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 595,
+        "top": 456,
+        "width": 198,
+        "height": 227
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 595,
+        "top": 683,
+        "width": 198,
+        "height": 217
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 595,
+        "top": 900,
+        "width": 198,
+        "height": 92
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 793,
+        "top": 0,
+        "width": 198,
+        "height": 235
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 793,
+        "top": 235,
+        "width": 198,
+        "height": 221
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 793,
+        "top": 456,
+        "width": 198,
+        "height": 227
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 793,
+        "top": 683,
+        "width": 198,
+        "height": 217
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 793,
+        "top": 900,
+        "width": 198,
+        "height": 92
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 991,
+        "top": 0,
+        "width": 199,
+        "height": 235
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 991,
+        "top": 235,
+        "width": 199,
+        "height": 221
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 991,
+        "top": 456,
+        "width": 199,
+        "height": 227
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 991,
+        "top": 683,
+        "width": 199,
+        "height": 217
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 991,
+        "top": 900,
+        "width": 199,
+        "height": 92
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 1190,
+        "top": 0,
+        "width": 198,
+        "height": 235
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 1190,
+        "top": 235,
+        "width": 198,
+        "height": 221
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 1190,
+        "top": 456,
+        "width": 198,
+        "height": 227
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 1190,
+        "top": 683,
+        "width": 198,
+        "height": 217
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 1190,
+        "top": 900,
+        "width": 198,
+        "height": 92
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 1388,
+        "top": 0,
+        "width": 198,
+        "height": 235
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 1388,
+        "top": 235,
+        "width": 198,
+        "height": 221
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 1388,
+        "top": 456,
+        "width": 198,
+        "height": 227
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 1388,
+        "top": 683,
+        "width": 198,
+        "height": 217
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/gunman.png",
+      "rect": {
+        "left": 1388,
+        "top": 900,
+        "width": 198,
+        "height": 92
+      }
+    }
+  ]
+}

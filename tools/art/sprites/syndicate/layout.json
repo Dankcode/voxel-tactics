@@ -1,0 +1,139 @@
+{
+  "version": 1,
+  "style": "Painted tactical anime; charcoal, slate and vermilion enemy identifiers",
+  "facings": [
+    "s",
+    "sw",
+    "w",
+    "nw",
+    "n",
+    "ne",
+    "e",
+    "se"
+  ],
+  "roles": {
+    "gunman": {
+      "name": "Gunman",
+      "art": "syndicate-gunman",
+      "source": "gunman.png",
+      "cuts": [
+        0,
+        235,
+        456,
+        683,
+        900,
+        992
+      ],
+      "rows": {
+        "idle": 0,
+        "runA": 1,
+        "runB": 2,
+        "aim": 3,
+        "down": 4
+      }
+    },
+    "lookout": {
+      "name": "Lookout",
+      "art": "syndicate-lookout",
+      "source": "lookout.png",
+      "cuts": [
+        0,
+        266,
+        500,
+        797,
+        992
+      ],
+      "rows": {
+        "idle": 0,
+        "runA": 1,
+        "aim": 2,
+        "down": 3
+      },
+      "strideRow": 0
+    },
+    "arsonist": {
+      "name": "Arsonist",
+      "art": "syndicate-arsonist",
+      "source": "arsonist.png",
+      "cuts": [
+        0,
+        252,
+        477,
+        753,
+        992
+      ],
+      "rows": {
+        "idle": 0,
+        "runA": 1,
+        "aim": 2,
+        "down": 3
+      },
+      "strideRow": 1
+    },
+    "enforcer": {
+      "name": "Enforcer",
+      "art": "syndicate-enforcer",
+      "source": "enforcer.png",
+      "cuts": [
+        0,
+        230,
+        432,
+        632,
+        862,
+        992
+      ],
+      "rows": {
+        "idle": 0,
+        "runA": 1,
+        "runB": 2,
+        "aim": 3,
+        "down": 4
+      }
+    },
+    "guard": {
+      "name": "Riot Guard",
+      "art": "syndicate-guard",
+      "source": "guard.png",
+      "cuts": [
+        0,
+        262,
+        497,
+        798,
+        992
+      ],
+      "rows": {
+        "idle": 0,
+        "runA": 1,
+        "aim": 2,
+        "down": 3
+      },
+      "strideRow": 2
+    },
+    "tech": {
+      "name": "Drone Tech",
+      "art": "syndicate-tech",
+      "source": "tech.png",
+      "cuts": [
+        0,
+        242,
+        463,
+        769,
+        992
+      ],
+      "rows": {
+        "idle": 0,
+        "runA": 1,
+        "aim": 2,
+        "down": 3
+      },
+      "strideRow": 3
+    }
+  },
+  "strideCuts": [
+    0,
+    238,
+    457,
+    684,
+    887
+  ]
+}

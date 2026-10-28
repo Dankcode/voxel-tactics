@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { dropAt } from '../render/Ground.js';
 import { SpriteAnimator } from '../anim/SpriteAnimator.js';
 import { FACING_VEC } from '../../../shared/battle/Units.js';
+import { characterArtId } from './CharacterArt.js';
 
 const loader = new THREE.TextureLoader();
 const atlasCache = new Map();
@@ -18,10 +19,10 @@ export function unitSpriteMaterial(texture, normal) {
         roughness:.95, metalness:0, transparent:true, alphaTest:.35, side:THREE.DoubleSide, toneMapped:false });
 }
 export async function loadCharacterArt(art) {
-    art = 'ranger-01'; // One illustrated identity shared by every human character.
+    art = characterArtId(art);
     if (atlasCache.has(art)) return atlasCache.get(art);
     const p = (async () => {
-        const base = '/assets/characters/ranger-01/';
+        const base = `/assets/characters/${art}/`;
         const [field, cutin] = await Promise.all([fetch(base + 'field.json').then(r => r.json()), fetch(base + 'cutin.json').then(r => r.json())]);
         const image = await new Promise((res, rej) => loader.load(base + field.image, res, undefined, rej));
         image.colorSpace = THREE.SRGBColorSpace;

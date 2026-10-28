@@ -1,0 +1,445 @@
+{
+  "scale": 1.1068702290076335,
+  "frames": [
+    {
+      "facing": "s",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 0,
+        "top": 0,
+        "width": 198,
+        "height": 262
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 0,
+        "top": 262,
+        "width": 198,
+        "height": 235
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 0,
+        "top": 457,
+        "width": 222,
+        "height": 227
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 0,
+        "top": 497,
+        "width": 198,
+        "height": 301
+      }
+    },
+    {
+      "facing": "s",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 0,
+        "top": 798,
+        "width": 198,
+        "height": 194
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 198,
+        "top": 0,
+        "width": 199,
+        "height": 262
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 198,
+        "top": 262,
+        "width": 199,
+        "height": 235
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 222,
+        "top": 457,
+        "width": 222,
+        "height": 227
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 198,
+        "top": 497,
+        "width": 199,
+        "height": 301
+      }
+    },
+    {
+      "facing": "sw",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 198,
+        "top": 798,
+        "width": 199,
+        "height": 194
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 397,
+        "top": 0,
+        "width": 198,
+        "height": 262
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 397,
+        "top": 262,
+        "width": 198,
+        "height": 235
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 444,
+        "top": 457,
+        "width": 221,
+        "height": 227
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 397,
+        "top": 497,
+        "width": 198,
+        "height": 301
+      }
+    },
+    {
+      "facing": "w",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 397,
+        "top": 798,
+        "width": 198,
+        "height": 194
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 595,
+        "top": 0,
+        "width": 198,
+        "height": 262
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 595,
+        "top": 262,
+        "width": 198,
+        "height": 235
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 665,
+        "top": 457,
+        "width": 222,
+        "height": 227
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 595,
+        "top": 497,
+        "width": 198,
+        "height": 301
+      }
+    },
+    {
+      "facing": "nw",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 595,
+        "top": 798,
+        "width": 198,
+        "height": 194
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 793,
+        "top": 0,
+        "width": 198,
+        "height": 262
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 793,
+        "top": 262,
+        "width": 198,
+        "height": 235
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 887,
+        "top": 457,
+        "width": 222,
+        "height": 227
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 793,
+        "top": 497,
+        "width": 198,
+        "height": 301
+      }
+    },
+    {
+      "facing": "n",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 793,
+        "top": 798,
+        "width": 198,
+        "height": 194
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 991,
+        "top": 0,
+        "width": 199,
+        "height": 262
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 991,
+        "top": 262,
+        "width": 199,
+        "height": 235
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 1109,
+        "top": 457,
+        "width": 222,
+        "height": 227
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 991,
+        "top": 497,
+        "width": 199,
+        "height": 301
+      }
+    },
+    {
+      "facing": "ne",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 991,
+        "top": 798,
+        "width": 199,
+        "height": 194
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 1190,
+        "top": 0,
+        "width": 198,
+        "height": 262
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 1190,
+        "top": 262,
+        "width": 198,
+        "height": 235
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 1331,
+        "top": 457,
+        "width": 221,
+        "height": 227
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 1190,
+        "top": 497,
+        "width": 198,
+        "height": 301
+      }
+    },
+    {
+      "facing": "e",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 1190,
+        "top": 798,
+        "width": 198,
+        "height": 194
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "idle",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 1388,
+        "top": 0,
+        "width": 198,
+        "height": 262
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "runA",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 1388,
+        "top": 262,
+        "width": 198,
+        "height": 235
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "runB",
+      "source": "tools/art/sprites/syndicate/source/opposite-stride.png",
+      "rect": {
+        "left": 1552,
+        "top": 457,
+        "width": 222,
+        "height": 227
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "aim",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 1388,
+        "top": 497,
+        "width": 198,
+        "height": 301
+      }
+    },
+    {
+      "facing": "se",
+      "pose": "down",
+      "source": "tools/art/sprites/syndicate/source/guard.png",
+      "rect": {
+        "left": 1388,
+        "top": 798,
+        "width": 198,
+        "height": 194
+      }
+    }
+  ]
+}

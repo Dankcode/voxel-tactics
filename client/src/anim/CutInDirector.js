@@ -131,7 +131,7 @@ export class CutInDirector {
             fig.style.height = `${Math.round((art.cutin.screenHeight || 0.6) * 100 * (o.units.length > 1 ? 0.8 : 1))}vh`;
             fig.style.aspectRatio = `${art.cutin.width} / ${art.cutin.height}`;
             const content = paintFigure(fig, art);
-            const weapon = new SpriteWeapon(content, art.cutin, o.units[i], o.weaponId || o.units[i].weapon, this.cameraDirector.scene, art.base);
+            const weapon = art.cutin.bakedWeapon ? null : new SpriteWeapon(content, art.cutin, o.units[i], o.weaponId || o.units[i].weapon, this.cameraDirector.scene, art.base);
             weapons.push(weapon);
             // Animate the complete rig together so gloves never drift off the gun.
             const presentation = document.createElement('div'); presentation.className = 'sprite-presentation';
@@ -169,7 +169,7 @@ export class CutInDirector {
                     l.img.style.transform = `translateX(${x}%) scale(${scale})`;
                 }
                 if (this.cameraDirector.active) this.cameraDirector.apply(s.dolly ?? 0);
-                for (const weapon of weapons) weapon.update({ recoil: (s.flash || 0) * .012 });
+                for (const weapon of weapons) weapon?.update({ recoil: (s.flash || 0) * .012 });
                 place();
                 if (cur.t >= timeline.duration) { resolve(); return; }
                 requestAnimationFrame(step);
@@ -179,7 +179,7 @@ export class CutInDirector {
         // Keep the action camera through tracer/skill playback; EventPlayer returns to tactics when the queue drains.
         this.cameraDirector.hidden = new Set();
         document.body.classList.remove('cutin-active');
-        weapons.forEach(w => w.dispose());
+        weapons.forEach(w => w?.dispose());
         el.remove();
         if (this.current === cur) this.current = null;
     }

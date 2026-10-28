@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "character": "syndicate-gunman",
+  "placeholder": false,
+  "width": 512,
+  "height": 640,
+  "screenHeight": 0.62,
+  "muzzle": [
+    0.92,
+    0.48
+  ],
+  "gun": false,
+  "bakedWeapon": true,
+  "layers": [
+    {
+      "id": "body",
+      "image": "cutin.png",
+      "stage": "front",
+      "zIndex": 20
+    }
+  ],
+  "variants": {
+    "left": {
+      "mirror": true,
+      "muzzle": [
+        0.08,
+        0.48
+      ]
+    }
+  }
+}

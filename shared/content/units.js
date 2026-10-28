@@ -38,7 +38,7 @@ export const ENEMIES = Object.freeze({
         weapons: ['musket', 'sword'], items: {}, abilities: ['brace', 'earth_cover'] },
     // PLAN-14: the drone tech runs search drones ahead of the pod. The drones are unarmed eyes: they sweep toward noise
     // and last-known positions, everything they see the whole enemy side sees, and one hit brings one down.
-    tech: { id: 'tech', name: 'Drone Tech', faction: 'syndicate', art: 'cultist', hp: UNIT_HP, accuracy: 0.56, mobility: 3, will: 5, armor: 'light',
+    tech: { id: 'tech', name: 'Drone Tech', faction: 'syndicate', art: 'tech', hp: UNIT_HP, accuracy: 0.56, mobility: 3, will: 5, armor: 'light',
         weapons: ['handcannon'], items: { smoke_pot: 1 }, abilities: ['launch_drone'], role: 'Launches and steers search drones (two in the air at most); keeps back and relays what they see.' },
     search_drone: { id: 'search_drone', name: 'Search Drone', faction: 'syndicate', art: 'drone', drone: true, hp: 1, accuracy: 0, mobility: 4.2, will: 9, armor: 'drone',
         weapons: [], items: {}, abilities: [], role: 'Unarmed quadcopter. Searches toward noise and last-known positions and spots for every enemy. One hit destroys it.' }

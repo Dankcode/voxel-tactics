@@ -1,2 +1,3 @@
-// The UI head is cut from the same illustrated ranger as the field and shoulder sprites.
-export function portraitSrc() { return '/assets/characters/ranger-01/portrait.png'; }
+import { characterArtId } from '../units/CharacterArt.js';
+// Portraits and field sprites resolve through the same identity map.
+export function portraitSrc(unit) { return `/assets/characters/${characterArtId(unit?.art || unit?.type)}/portrait.png`; }
