@@ -10,7 +10,7 @@ const out={};
 for (const [pname,art] of [['aim',cutin]]) {
   out[pname]={width:art.width,height:art.height,guns:{}};
   for (const [gname,kit] of Object.entries(guns.assemblies)) {
-    const cam=new THREE.OrthographicCamera(),stock=gunPoint(kit.stock);fitGunPose(cam,art.rig,stock,art.width/art.height);
+    const cam=new THREE.OrthographicCamera(),stock=gunPoint(kit.stock);fitGunPose(cam,{...art.rig,...(art.sideView?.rig||{})},stock,art.width/art.height);
     const px=p=>{const q=gunPoint(p).project(cam);return [(q.x+1)/2*art.width,(1-q.y)/2*art.height];};
     const parts={};
     for (const name of kit.parts){const [a,b]=guns.parts[name].bounds;const pts=[];for(const x of [a[0],b[0]])for(const y of [a[1],b[1]])for(const z of [a[2],b[2]])pts.push(px([x,y,z]));parts[name]=pts;}

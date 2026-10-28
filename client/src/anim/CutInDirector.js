@@ -29,6 +29,12 @@ export const BAR_SHARE = 0.11;
 export function backshotPlacement(cutin, aim, view, { bars = BAR_SHARE, scale = 1, fit = true } = {}) {
     const [u, v] = cutin.muzzle || DEFAULT_MUZZLE;
     const aspect = (cutin.width || 512) / (cutin.height || 768);
+    if (cutin.crosshair) {
+        // Over-the-shoulder perspective art: the bore converges on `crosshair` (art fractions), placed on the aim point.
+        const [cx, cy] = cutin.crosshair, x = cutin.mirror ? 1 - cx : cx;
+        const height = (cutin.screenHeight || 1) * view.height * scale, width = height * aspect;
+        return { left: aim.x - x * width, top: aim.y - cy * height, width, height, origin: `${(x * 100).toFixed(1)}% ${(cy * 100).toFixed(1)}%` };
+    }
     const floorY = view.height * (1 - bars);
     let height = (cutin.screenHeight || 0.6) * view.height * scale;
     if (fit && v < 1) height = Math.max(height, (floorY - aim.y) / (1 - v));
@@ -149,7 +155,8 @@ export class CutInDirector {
             const cutin = arts[0].cutin, liveMuzzle = weapons[0]?.targets?.muzzle;
             const muzzle = liveMuzzle ? [cutin.mirror ? 1 - liveMuzzle[0] : liveMuzzle[0], liveMuzzle[1]] : cutin.muzzle;
             const pl = backshotPlacement({ ...cutin, muzzle }, aim, view), fig = figures.firstChild;
-            layerEls[0].img.style.transformOrigin = `${muzzle[0]*100}% ${muzzle[1]*100}%`;
+            const pivot = cutin.crosshair ? [cutin.mirror ? 1 - cutin.crosshair[0] : cutin.crosshair[0], cutin.crosshair[1]] : muzzle;
+            layerEls[0].img.style.transformOrigin = `${pivot[0]*100}% ${pivot[1]*100}%`;
             Object.assign(fig.style, { left: `${pl.left}px`, top: `${pl.top}px`, width: `${pl.width}px`, height: `${pl.height}px` });
             const ch = el.querySelector('.cutin-crosshair'); ch.style.left = `${aim.x}px`; ch.style.top = `${aim.y}px`; ch.style.display = aim.behind ? 'none' : 'block';
         };

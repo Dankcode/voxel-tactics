@@ -6,14 +6,14 @@ The Ranger aiming pose uses a custom in-game 2D puppet inspired by VTuber workfl
 
 1. Reuse `npm run dev` at port 2567; open `/sprite-parts.html`.
 2. Choose rifle, sniper or shotgun and close-up or world view. Expand **Edit puppet mesh**. Drag S/E anchors or change the shoulder/elbow sliders. Sleeve bend and three width controls deform the mesh; **Show mesh** reveals its tessellation.
-3. Under **Aim / recoil keyforms**, adjust elbow offsets at each parameter extreme. Use yaw, pitch and recoil to review the interpolation. Hands remain pinned to the gun, and the torso stays fixed. World-view edits are converted back into the same close-up coordinate system.
+3. Under **Aim / recoil keyforms**, adjust elbow offsets at each parameter extreme. Use yaw, pitch and recoil to review the interpolation. Hands remain pinned to the gun, and the torso stays fixed. World-view edits are converted back into unscaled source coordinates. The perspective shoulder pose and the orthographic world pose now have independent drafts and exports.
 4. **Save locally** persists only the editor preview in this browser. **Export rig** downloads `ranger-puppet.json`. Apply it from the repository root:
 
    ```sh
    node tools/art/apply_puppet.mjs /absolute/path/to/ranger-puppet.json
    ```
 
-   The command validates the schema, then updates the source formula and all runtime close-up, world and mirrored variants. It does not rebake or replace the paintings. Reload the game after applying.
+   The command validates the schema and updates the selected source pose and its runtime variants. For a world-view export use `node tools/art/apply_puppet.mjs /absolute/path/to/ranger-world-puppet.json --world`. The current perspective shoulder pose keeps its world pose separate in `poses.aim.sideView`. It does not rebake or replace the paintings. Reload the game after applying.
 5. **Reset rig** restores the version loaded from the game and removes the local draft. Part labels are saved separately; **Export labels** downloads them. The SVG sheet contains separate editable image and text elements; PNG is the flattened review sheet. Both sheets contain 34 entries, including world-pose and weapon-specific hand fragments.
 
 The basic controls are intentionally bounded, but arbitrary combinations can still produce unattractive anatomy. Review the silhouette and hand contact for all weapons and both view sizes before applying a new rig.
@@ -45,4 +45,4 @@ node --test client/src/render/kit/sprite-puppet.test.js client/src/render/kit/en
 npm run build
 ```
 
-The new puppet tests cover actual projected gun contacts, sleeve pins, mesh orientation at parameter corners, interpolation continuity and world configuration. The old IK tests cover the legacy fallback only. Use the shared downtown seed-1 baseline for gameplay review.
+The new puppet tests cover actual projected gun contacts, sleeve pins, mesh orientation at parameter corners, interpolation continuity and world configuration. The old IK tests cover the retained orthographic registration only. Perspective puppet tests use the runtime `aimGunCamera` and the parameter ranges from the active manifest. Use the shared downtown seed-1 baseline for gameplay review.

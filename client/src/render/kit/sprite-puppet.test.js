@@ -1,21 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import * as THREE from 'three';
 import {puppetPose,warpPuppetPoint,scalePuppet,validatePuppet} from '../../anim/SpritePuppetRig.js';
-import {fitGunPose,gunPoint,gunPoseSample} from '../../anim/SpriteWeapon.js';
+import {aimGunCamera,gunPoint,gunPoseSample} from '../../anim/SpriteWeapon.js';
 const read=p=>JSON.parse(fs.readFileSync(new URL(p,import.meta.url)));
 const art=read('../../../public/assets/characters/ranger-01/cutin.json');
+const formula=read('../../../../tools/art/sprites/ranger-01/formula.json');
 const kit=read('../../../public/assets/weapons/ranger-preview/gun-kit.json');
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-5,`${a} != ${b}`);
-function sample(a,family,input){const gun=kit.assemblies[family],camera=new THREE.OrthographicCamera();fitGunPose(camera,a.rig,gunPoint(gun.stock),a.width/a.height);const targets=gunPoseSample(a,gun,camera,input).targets;return {targets,pose:puppetPose(a,targets,family,input)};}
+function sample(a,family,input){const gun=kit.assemblies[family],camera=aimGunCamera(a.rig,gunPoint(gun.stock),a.width/a.height);const targets=gunPoseSample(a,gun,camera,input).targets;return {targets,pose:puppetPose(a,targets,family,input)};}
 test('authored puppet is installed in every runtime aiming variant',()=>{
  validatePuppet(art.puppet);assert.deepEqual(art.variants.left.puppet,art.puppet);
- assert.deepEqual(art.worldAim.puppet,scalePuppet(art.puppet,.45,[.28,-.01]));
+ assert.deepEqual(art.worldAim.puppet,scalePuppet(formula.poses.aim.sideView?.puppet||art.puppet,formula.worldAim.scale,formula.worldAim.offset));
  const invalid=structuredClone(art.puppet);invalid.keyforms.rifle.trigger.elbow[0]=NaN;assert.throws(()=>validatePuppet(invalid));
 });
 test('all weapon/range corners keep hands, elbows and sleeve endpoints connected',()=>{
- for(const a of [art,art.worldAim])for(const family of Object.keys(kit.assemblies))for(const yaw of [-.3,0,.3])for(const pitch of [-.2,0,.2])for(const recoil of [0,.025]){
+ for(const a of [art,art.worldAim])for(const family of Object.keys(kit.assemblies))for(const yaw of [-a.puppet.range.yaw,0,a.puppet.range.yaw])for(const pitch of [-a.puppet.range.pitch,0,a.puppet.range.pitch])for(const recoil of [0,a.puppet.range.recoil]){
   const {targets,pose}=sample(a,family,{yaw,pitch,recoil});
   for(const [side,j]of Object.entries(pose.joints)){
    const target=targets[side==='trigger'?'grip':'support'];near(j.palm.x,target[0]*a.width);near(j.palm.y,target[1]*a.height);
@@ -27,7 +27,7 @@ test('all weapon/range corners keep hands, elbows and sleeve endpoints connected
  }
 });
 test('deforming the mesh bends interior vertices while keeping pins fixed, without folded cells',()=>{
- for(const family of Object.keys(kit.assemblies))for(const yaw of [-.3,.3])for(const pitch of [-.2,.2])for(const recoil of [0,.025]){
+ for(const family of Object.keys(kit.assemblies))for(const yaw of [-art.puppet.range.yaw,art.puppet.range.yaw])for(const pitch of [-art.puppet.range.pitch,art.puppet.range.pitch])for(const recoil of [0,.025]){
   const {pose}=sample(art,family,{yaw,pitch,recoil});
   for(const [bone,d]of Object.entries(pose.deformers)){
    const [x0,y0,x1,y1]=art.layers.find(l=>l.bone===bone).bounds,n=32;

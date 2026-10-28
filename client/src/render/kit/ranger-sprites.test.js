@@ -9,6 +9,10 @@ import { fitGunPose, gunPoint, spriteGunParts, gunPoseSample, sortedSpriteLayers
 import { sideCutin, CutInDirector } from '../../anim/CutInDirector.js';
 const json = name => JSON.parse(readFileSync(new URL(`../../../public/assets/characters/ranger-01/${name}`,import.meta.url)));
 const field=json('field.json'), cutin=json('cutin.json');
+// The old rigid-IK regressions use the retained orthographic registration, not the perspective puppet.
+const sourceFormula=JSON.parse(readFileSync(new URL('../../../../tools/art/sprites/ranger-01/formula.json',import.meta.url)));
+const sideView=sourceFormula.poses.aim.sideView;
+const legacy=sideView?{...cutin,muzzle:sideView.muzzle,rig:{...cutin.rig,...sideView.rig}}:cutin;
 const near=(a,b,epsilon=1e-5)=>assert.ok(Math.abs(a-b)<epsilon,`${a} != ${b}`);
 const apply=(m,p)=>({x:m[0]*p.x+m[2]*p.y+m[4],y:m[1]*p.x+m[3]*p.y+m[5]});
 
@@ -62,7 +66,7 @@ test('source assemblies retain physical scale and gloves follow their actual 3D 
  const guns=JSON.parse(readFileSync(new URL('../../../public/assets/weapons/ranger-preview/gun-kit.json',import.meta.url)));
  for(const [name,part] of Object.entries(guns.parts))assert.deepEqual(part.scale,[1,1,1],name);
  assert.equal(guns.assemblies.sniper.parts.filter(n=>n.includes('scope')).length,1);
- for(const art of [cutin]){
+ for(const art of [legacy]){
   let height;
   for(const kit of Object.values(guns.assemblies)){
    near(kit.measuredLengthMetres,kit.referenceLengthMetres,.001);
@@ -83,13 +87,13 @@ test('source assemblies retain physical scale and gloves follow their actual 3D 
 
 test('missing sidearm and melee assets do not masquerade as an unrelated rifle',()=>{for(const id of ['handcannon','firelance','sword','maul'])assert.equal(spriteGunParts(id),null);});
 
-test('remade shooting arms bend below the wrists throughout the live inertia range',()=>{
+test('legacy side-view shooting arms bend below the wrists throughout the live inertia range',()=>{
  const guns=JSON.parse(readFileSync(new URL('../../../public/assets/weapons/ranger-preview/gun-kit.json',import.meta.url)));
  for(const gun of Object.values(guns.assemblies)){
-  const camera=new THREE.OrthographicCamera();fitGunPose(camera,cutin.rig,gunPoint(gun.stock),1);
-  const sample=input=>gunPoseSample(cutin,gun,camera,input).targets;
+  const camera=new THREE.OrthographicCamera();fitGunPose(camera,legacy.rig,gunPoint(gun.stock),1);
+  const sample=input=>gunPoseSample(legacy,gun,camera,input).targets;
   for(const yaw of [-.12,0,.12])for(const pitch of [-.09,0,.09])for(const recoil of [0,.025]){
-   const pose=constrainGunPose(sample,{yaw,pitch,recoil},cutin.rig,768,768);
+   const pose=constrainGunPose(sample,{yaw,pitch,recoil},legacy.rig,768,768);
    for(const j of Object.values(pose.arms.joints)){
     assert.ok(j.elbow.y>Math.max(j.shoulder.y,j.wrist.y)+50,'elbow stays below the shoulder and hand instead of folding across the neck');
     assert.ok(j.wrist.y>j.palm.y,'wrist enters the glove from below');
@@ -99,10 +103,10 @@ test('remade shooting arms bend below the wrists throughout the live inertia ran
 });
 
 // Exercise the actual stock-fixed projection and workspace constraint, not only palm pinning.
-test('full aiming range and recoil preserve both wrists, every bone length, stock contact and mirroring',()=>{
+test('legacy IK aiming range and recoil preserve both wrists, every bone length, stock contact and mirroring',()=>{
  const guns=JSON.parse(readFileSync(new URL('../../../public/assets/weapons/ranger-preview/gun-kit.json',import.meta.url)));
  let samples=0;
- for(const art of [cutin,sideCutin(cutin,'left')])for(const gun of Object.values(guns.assemblies)){
+ for(const art of [legacy,{...legacy,mirror:true}])for(const gun of Object.values(guns.assemblies)){
   const camera=new THREE.OrthographicCamera(),stock=gunPoint(gun.stock);fitGunPose(camera,art.rig,stock,art.width/art.height);
   const sample=input=>gunPoseSample(art,gun,camera,input).targets;
   const rest=sample({});
@@ -175,7 +179,7 @@ test('game gun meshes cut source triangle cost by at least half without losing n
 });
 
 test('support wrists remain below the barrel and pistol-grip placement cannot twist the support glove',()=>{
- for(const art of [cutin]){
+ for(const art of [legacy]){
   const rig=art.rig,targets={stock:rig.handAxis[0],muzzle:rig.handAxis[1],grip:rig.grip,support:rig.support};
   const first=armRigPose(rig,targets,art.width,art.height);
   const moved=armRigPose(rig,{...targets,grip:[targets.grip[0]+.03,targets.grip[1]-.04]},art.width,art.height);
@@ -189,19 +193,19 @@ test('support wrists remain below the barrel and pistol-grip placement cannot tw
 });
 
 test('gloves come per gun family and every variant file exists',()=>{
- for(const art of [cutin])for(const id of ['trigger-hand','trigger-fingers','support-hand','support-fingers']){
+ for(const art of [legacy])for(const id of ['trigger-hand','trigger-fingers','support-hand','support-fingers']){
   const l=art.layers.find(x=>x.id===id);assert.ok(l,id);
   for(const fam of ['sniper','shotgun']){const v=l.variants?.[fam];assert.ok(v,`${id} ${fam}`);
    for(const k of ['image','normal','lightingMask'])readFileSync(new URL(`../../../public/assets/characters/ranger-01/${v[k]}`,import.meta.url));}
  }
  // The thumb sits behind the gun and the support fingers in front of it.
- for(const art of [cutin]){
+ for(const art of [legacy]){
   assert.equal(art.layers.find(l=>l.id==='support-fingers').stage,'front');assert.equal(art.layers.find(l=>l.id==='support-hand').stage,'back');
   assert.equal(art.layers.find(l=>l.id==='trigger-hand').stage,'front');assert.equal(art.layers.find(l=>l.id==='trigger-fingers').stage,'back');
  }
 });
 test('every pose has exactly one left and right arm; occlusion fragments belong to those same hands',()=>{
- for(const art of [cutin,sideCutin(cutin,'left')]){
+ for(const art of [legacy,{...legacy,mirror:true}]){
   assert.deepEqual(Object.keys(art.anatomy).sort(),['left','right']);
   for(const [side,limb] of Object.entries(art.anatomy)){
    for(const kind of ['upper','forearm','hand']){
@@ -225,7 +229,7 @@ test('field frames keep one scale per source sheet; only oversized frames shrink
 
 test('the trigger finger rests on top of the trigger guard and its contact point follows the gun',()=>{
  const guns=JSON.parse(readFileSync(new URL('../../../public/assets/weapons/ranger-preview/gun-kit.json',import.meta.url)));
- for(const art of [cutin]){
+ for(const art of [legacy]){
   const contact=art.rig.triggerContact,tip=art.rig.arms.trigger.fingertip;assert.ok(contact?.rifle&&contact.sniper&&contact.shotgun);assert.ok(tip);
   const gun=guns.assemblies.rifle,camera=new THREE.OrthographicCamera(),stock=gunPoint(gun.stock);fitGunPose(camera,art.rig,stock,art.width/art.height);
   // Exact at rest. (In the over-the-shoulder pose the gripping hand sits under the upper arm, so only its rest

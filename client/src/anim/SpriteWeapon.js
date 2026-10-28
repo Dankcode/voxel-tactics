@@ -33,6 +33,24 @@ export function fitSpriteGunCamera(camera, spec, stock, support, aspect) {
     return camera;
 }
 
+/** The aim pose's gun camera. `gunView.projection: 'perspective'` is the over-the-shoulder view: a camera behind the
+ * shoulder in gun space (metres, glTF axes) looking down the bore, cropped to the card. `card` is the card's square in
+ * the full frame's pixels, so the bore converges on the frame centre (`crosshair` in the manifest). Without it the pose
+ * keeps the legacy orthographic side fit. */
+export function aimGunCamera(rig, stock, aspect) {
+    const view = rig.gunView;
+    if (view?.projection !== 'perspective') return fitGunPose(new THREE.OrthographicCamera(), rig, stock, aspect);
+    const [fw, fh] = view.frame, [x, y, w, h] = view.card;
+    const camera = new THREE.PerspectiveCamera(view.verticalFovDeg, fw / fh, view.near ?? .02, view.far ?? 60);
+    // Every gun's butt sits in the same shoulder pocket: shift the view by this stock's offset from the seat.
+    const seat = view.seat ? stock.clone().sub(new THREE.Vector3().fromArray(view.seat)) : new THREE.Vector3();
+    camera.position.fromArray(view.position).add(seat); camera.up.set(0, 1, 0);
+    camera.lookAt(new THREE.Vector3().fromArray(view.lookAt).add(seat));
+    camera.setViewOffset(fw, fh, x, y, w, h);
+    camera.updateMatrixWorld(true);
+    return camera;
+}
+
 /** One camera scale per pose, shared by all guns. A 1.18m rifle stays longer than a .705m carbine. */
 export function fitGunPose(camera, rig, stock, aspect) {
     const view = rig.gunView;
@@ -149,8 +167,7 @@ export class SpriteWeapon {
         // Trigger finger contact (top of the trigger guard), gun space; the glove's index fingertip is registered on it.
         const contact = this.art.rig.triggerContact?.[this.config.family];
         this.triggerContact = contact ? gunPoint(contact) : null;
-        this.camera = new THREE.OrthographicCamera();
-        fitGunPose(this.camera, this.art.rig, this.stock, this.art.width / this.art.height);
+        this.camera = aimGunCamera(this.art.rig, this.stock, this.art.width / this.art.height);
         this.buttRaise=this.art.rig.buttRaiseDegrees??8;
         this.flatCamera = new THREE.OrthographicCamera(0, this.art.width, 0, -this.art.height, .01, 20);
         this.flatCamera.position.z = 10;

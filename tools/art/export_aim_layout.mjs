@@ -1,7 +1,7 @@
 // Export the exact runtime 2D puppet vertices and authored parameter shapes for Blender.
 import fs from 'node:fs';
 import * as THREE from 'three';
-import {fitGunPose,gunPoint,gunPoseSample} from '../../client/src/anim/SpriteWeapon.js';
+import {aimGunCamera,gunPoint,gunPoseSample} from '../../client/src/anim/SpriteWeapon.js';
 import {puppetPose,warpPuppetPoint} from '../../client/src/anim/SpritePuppetRig.js';
 const art=JSON.parse(fs.readFileSync('client/public/assets/characters/ranger-01/cutin.json'));
 const kit=JSON.parse(fs.readFileSync('client/public/assets/weapons/ranger-preview/gun-kit.json'));
@@ -10,14 +10,15 @@ const jsonLength=buffer.readUInt32LE(12),gltf=JSON.parse(buffer.subarray(20,20+j
 function accessor(index){const a=gltf.accessors[index],v=gltf.bufferViews[a.bufferView],size={SCALAR:1,VEC3:3}[a.type],bytes={5123:2,5125:4,5126:4}[a.componentType];return Array.from({length:a.count},(_,i)=>Array.from({length:size},(_,j)=>{const at=(v.byteOffset||0)+(a.byteOffset||0)+i*(v.byteStride||size*bytes)+j*bytes;return a.componentType===5126?bin.readFloatLE(at):bytes===2?bin.readUInt16LE(at):bin.readUInt32LE(at)}));}
 const layouts={};
 for(const [family,assembly]of Object.entries(kit.assemblies)){
- const camera=new THREE.OrthographicCamera();fitGunPose(camera,art.rig,gunPoint(assembly.stock),1);
+ const camera=aimGunCamera(art.rig,gunPoint(assembly.stock),1);
  const pose=gunPoseSample(art,assembly,camera),arms=puppetPose(art,pose.targets,family),meshes=[];
  for(const node of gltf.nodes.filter(n=>assembly.parts.includes(n.name)))for(const p of gltf.meshes[node.mesh].primitives){
   const vertices=accessor(p.attributes.POSITION).map(v=>{const q=new THREE.Vector3(...v).applyMatrix4(pose.matrix).project(camera);return [(q.x+1)/2,(q.y+1)/2,-q.z];});
   const indices=accessor(p.indices).flat(),faces=[];for(let i=0;i<indices.length;i+=3)faces.push(indices.slice(i,i+3));
   meshes.push({name:node.name,vertices,faces});
  }
- const forms={neutral:{},aimXNegative:{yaw:-.3},aimXPositive:{yaw:.3},aimYNegative:{pitch:-.2},aimYPositive:{pitch:.2},recoil:{recoil:.025}};
+ const range=art.puppet.range;
+ const forms={neutral:{},aimXNegative:{yaw:-range.yaw},aimXPositive:{yaw:range.yaw},aimYNegative:{pitch:-range.pitch},aimYPositive:{pitch:range.pitch},recoil:{recoil:range.recoil}};
  const samples=Object.fromEntries(Object.entries(forms).map(([name,input])=>[name,puppetPose(art,gunPoseSample(art,assembly,camera,input).targets,family,input)]));
  const cards=art.layers.filter(l=>l.image).map(layer=>{
   const l={...layer,...layer.variants?.[family]},deform=!!arms.deformers[l.bone],n=deform?art.puppet.meshDivisions:1;

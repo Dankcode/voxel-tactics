@@ -278,6 +278,11 @@ def bake_heroes():
     # with a complete full-body painting instead of a screen-edge torso crop.
     if formula.get('worldAim'):
         spec=formula['worldAim'];p=copy.deepcopy(formula['poses']['aim']);k=spec['scale'];ox,oy=spec['offset']
+        # The close-up may use the over-the-shoulder perspective view; the world pose keeps the side view it was painted for.
+        side=p.pop('sideView',None);p.pop('crosshair',None);p.pop('screenHeight',None)
+        if side:
+            p['muzzle']=side['muzzle'];p['rig'].update(copy.deepcopy(side['rig']))
+            if 'puppet' in side:p['puppet']=copy.deepcopy(side['puppet'])
         uv=lambda a:[a[0]*k+ox,a[1]*k+oy]
         p['bodySource']=spec['bodySource'];p['cropEdges']=[];p['muzzle']=uv(p['muzzle'])
         p['worldHeight']=spec['worldHeight'];p['anchor']=spec['anchor'];r=p['rig']
@@ -371,8 +376,9 @@ def bake_heroes():
         for layer in sorted(layers,key=lambda l:l.get('zIndex',(0 if l['stage']=='back' else 100)+l['order'])):preview=over(preview,images[layer['id']])
         write_png(os.path.join(OUT,name+'-albedo.png'),preview)
         layers.insert(1,{'id':'gun','gun':True,'zIndex':p.get('layerZ',{}).get('gun',100)})
-        poses[name]={'character':'ranger-01','version':3,'placeholder':False,'width':w,'height':h,'screenHeight':.72,'maxWidthShare':p.get('maxWidthShare',.42),'cropEdges':p.get('cropEdges',[]),'muzzle':p['muzzle'],'layers':layers,'rig':p['rig'],'anatomy':p.get('anatomy'),'lighting':'albedo-normal-response-mask','gun':True,'sections':'complete-independent-paintings'}
+        poses[name]={'character':'ranger-01','version':3,'placeholder':False,'width':w,'height':h,'screenHeight':p.get('screenHeight',.72),'maxWidthShare':p.get('maxWidthShare',.42),'cropEdges':p.get('cropEdges',[]),'muzzle':p['muzzle'],'layers':layers,'rig':p['rig'],'anatomy':p.get('anatomy'),'lighting':'albedo-normal-response-mask','gun':True,'sections':'complete-independent-paintings'}
         if p.get('puppet'):poses[name]['puppet']=p['puppet']
+        if p.get('crosshair'):poses[name]['crosshair']=p['crosshair']
         if 'anchor' in p:poses[name].update(anchor=p['anchor'],worldHeight=p['worldHeight'])
     with open(os.path.join(os.path.dirname(CONFIG),'rig-image-audit.json'),'w') as f:json.dump(contact_audit,f,indent=2)
     base=poses['aim']

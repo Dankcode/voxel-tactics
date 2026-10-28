@@ -31,16 +31,21 @@ test('there is no cut-in mode that skips the back shot', () => {
     assert.deepEqual(CUTIN_MODES, ['always']);
 });
 
-test('committed cropped ranger cut-in meets the letterbox on either shoulder',()=>{
+test('Ranger shoulder placement respects the authored convergence point and lower crop',()=>{
     const ranger=art('ranger-01');
     for(const viewport of [{width:1280,height:720},{width:600,height:800}])for(const shoulder of ['right','left']){
-        const c=sideCutin(ranger,shoulder);
-        const placements=[backshotPlacement(c,{x:viewport.width/2,y:viewport.height/2},viewport)];
-        for(const p of placements){
+        const c=sideCutin(ranger,shoulder),aim={x:viewport.width/2,y:viewport.height/2},p=backshotPlacement(c,aim,viewport);
+        if(c.crosshair){
+            const x=c.mirror?1-c.crosshair[0]:c.crosshair[0];
+            assert.ok(Math.abs(p.left+x*p.width-aim.x)<1e-6);
+            assert.ok(Math.abs(p.top+c.crosshair[1]*p.height-aim.y)<1e-6);
+            assert.equal(p.height,c.screenHeight*viewport.height);
+            assert.ok(p.top+p.height>=viewport.height*(1-BAR_SHARE),'torso continues below the letterbox');
+        }else{
             assert.equal(c.mirror?p.left+p.width:p.left,c.mirror?viewport.width:0,'no hard torso cut inside the scene');
-            assert.ok(p.top>=0,'helmet stays inside viewport');
+            assert.equal(p.top+p.height,viewport.height*(1-BAR_SHARE));
         }
-        assert.equal(placements[0].top+placements[0].height,viewport.height*(1-BAR_SHARE));
+        assert.ok(p.top>=0,'helmet stays inside viewport');
     }
 });
 
