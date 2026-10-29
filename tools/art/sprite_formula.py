@@ -273,6 +273,8 @@ def over(back,front):
     return np.concatenate([rgb,alpha],axis=2)
 
 def bake_heroes():
+    if os.path.exists(os.path.join(os.path.dirname(CONFIG),'static-backshot.json')):
+        raise RuntimeError('The layered backshot is retired. Use node tools/art/build_static_backshot.mjs for the new single painting.')
     formula=json.load(open(CONFIG));poses={};contact_audit={}
     # The world pose reuses the remade limb paintings at a smaller authored scale,
     # with a complete full-body painting instead of a screen-edge torso crop.

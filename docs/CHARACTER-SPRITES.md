@@ -1,5 +1,7 @@
 # Ranger sprite pack
 
+**Current backshot (2026-10-29):** the puppet is retired. A completely new single static soldier painting follows the supplied screenshot, with only the gun swappable. See [SPRITE-AUTHORING.md](SPRITE-AUTHORING.md). The arm/puppet authoring sections below document the archived implementation.
+
 Player units use `ranger-01`. The six human enemy roles use separate `syndicate-*` packs, selected through `CharacterArt.js`. Field units and UI portraits share that identity mapping. The character is painted 2D artwork on flat cards; only the gun is a 3D model. Mechanical walkers retain their existing separate renderer.
 
 Open the shared game at http://localhost:2567/?play=operation&plot=downtown&seed=1. Edit the active puppet at http://localhost:2567/sprite-parts.html and review enemies at http://localhost:2567/enemy-sprites.html. See [SPRITE-AUTHORING.md](SPRITE-AUTHORING.md) for the export workflow.

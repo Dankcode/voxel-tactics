@@ -1,0 +1,36 @@
+{
+  "source": "backshot-static-reference-remake.png",
+  "poseReference": "static-backshot-pose-reference.png",
+  "muzzle": [
+    0.4,
+    0.53
+  ],
+  "rig": {
+    "stock": [
+      0.29,
+      0.64
+    ],
+    "grip": [
+      0.35,
+      0.6
+    ],
+    "support": [
+      0.38,
+      0.55
+    ],
+    "buttRaiseDegrees": 0,
+    "gunView": {
+      "cameraPosition": [
+        0.65,
+        0.12,
+        1.5
+      ],
+      "referenceMuzzle": [
+        0.4,
+        0.53
+      ],
+      "referenceLengthMetres": 0.705
+    }
+  },
+  "technique": "One newly generated static soldier painting; Blender right-arm capture used only to inspect prior anatomy. Final generation used only the user pose image, with textual cel-shaded style. No old sprite pixels are reused."
+}

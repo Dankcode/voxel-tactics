@@ -4,8 +4,8 @@ import fs from 'node:fs';
 import {puppetPose,warpPuppetPoint,scalePuppet,validatePuppet} from '../../anim/SpritePuppetRig.js';
 import {aimGunCamera,gunPoint,gunPoseSample} from '../../anim/SpriteWeapon.js';
 const read=p=>JSON.parse(fs.readFileSync(new URL(p,import.meta.url)));
-const art=read('../../../public/assets/characters/ranger-01/cutin.json');
-const formula=read('../../../../tools/art/sprites/ranger-01/formula.json');
+const art=read('../../../../tools/art/archive/ranger-puppet/cutin.json');
+const formula=read('../../../../tools/art/archive/ranger-puppet/formula.json');
 const kit=read('../../../public/assets/weapons/ranger-preview/gun-kit.json');
 const near=(a,b)=>assert.ok(Math.abs(a-b)<1e-5,`${a} != ${b}`);
 function sample(a,family,input){const gun=kit.assemblies[family],camera=aimGunCamera(a.rig,gunPoint(gun.stock),a.width/a.height);const targets=gunPoseSample(a,gun,camera,input).targets;return {targets,pose:puppetPose(a,targets,family,input)};}

@@ -6,7 +6,7 @@ import {WorldAimSprite,worldAimGeometry,worldAimSide} from '../../anim/WorldAimS
 import {CutInDirector} from '../../anim/CutInDirector.js';
 import {fitGunPose,gunPoint,gunPoseSample} from '../../anim/SpriteWeapon.js';
 import {armRigPose} from '../../anim/SpriteArmRig.js';
-const art=JSON.parse(readFileSync(new URL('../../../public/assets/characters/ranger-01/cutin.json',import.meta.url))).worldAim;
+const art=JSON.parse(readFileSync(new URL('../../../../tools/art/archive/ranger-puppet/cutin.json',import.meta.url))).worldAim;
 
 test('world aim has a complete body and both shoulders keep the foot anchor at the unit origin',()=>{
  assert.ok(art);assert.deepEqual(art.cropEdges,[]);assert.equal(art.worldHeight,2.4);

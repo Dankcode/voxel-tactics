@@ -29,6 +29,10 @@ export const BAR_SHARE = 0.11;
 export function backshotPlacement(cutin, aim, view, { bars = BAR_SHARE, scale = 1, fit = true } = {}) {
     const [u, v] = cutin.muzzle || DEFAULT_MUZZLE;
     const aspect = (cutin.width || 512) / (cutin.height || 768);
+    if(cutin.staticPose){
+        const height=(cutin.screenHeight||1)*view.height*scale;
+        return {left:0,top:view.height*(1-bars)-height,width:height*aspect,height,origin:'0% 100%'};
+    }
     if (cutin.crosshair) {
         // Over-the-shoulder perspective art: the bore converges on `crosshair` (art fractions), placed on the aim point.
         const [cx, cy] = cutin.crosshair, x = cutin.mirror ? 1 - cx : cx;
@@ -88,18 +92,34 @@ export class CutInDirector {
         if(!view||view.model)return;
         const token=this.aiming={unitId:unit.id,weaponId,shoulder,view};
         const loaded=await loadCharacterArt(unit.art);
-        if(this.aiming!==token||!loaded.cutin.worldAim)return;
+        if(this.aiming!==token)return;
+        if(loaded.cutin.staticPose){
+            token.art=loaded.cutin;
+            token.figure=document.createElement('div');token.figure.className='static-aimshot';
+            Object.assign(token.figure.style,{position:'fixed',pointerEvents:'none',zIndex:'3'});
+            const content=paintFigure(token.figure,loaded);
+            (document.getElementById('aimshot-layer')||this.root).appendChild(token.figure);
+            token.weapon=new SpriteWeapon(content,loaded.cutin,unit,weaponId,this.cameraDirector.scene,loaded.base);
+            this.placeAim();return;
+        }
+        if(!loaded.cutin.worldAim)return;
         token.world=new WorldAimSprite(view,loaded.cutin.worldAim,weaponId,loaded.base);
     }
     placeAim(target) {
-        const a=this.aiming;if(!a?.world?.ready)return;
+        const a=this.aiming;
+        if(a?.figure){
+            const p=backshotPlacement(a.art,null,viewport(),{bars:0});
+            Object.assign(a.figure.style,{left:p.left+'px',top:p.top+'px',width:p.width+'px',height:p.height+'px'});
+            a.weapon.update();this.cameraDirector.hidden=new Set([a.unitId]);return;
+        }
+        if(!a?.world?.ready)return;
         const camera=this.cameraDirector.scene.camera;
         a.worldSide=worldAimSide(camera,a.view.pos,target,a.worldSide||a.shoulder);
         a.world.update(camera,a.worldSide);
         this.cameraDirector.hidden=new Set([a.unitId]);
     }
     endAim() {
-        this.aiming?.world?.dispose();this.aiming=null;
+        this.aiming?.world?.dispose();this.aiming?.weapon?.dispose();this.aiming?.figure?.remove();this.aiming=null;
         if(!this.current)this.cameraDirector.hidden=new Set();
     }
     skip() { if (this.current) this.current.t = this.current.timeline.duration; }

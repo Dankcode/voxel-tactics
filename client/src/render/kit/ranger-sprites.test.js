@@ -8,9 +8,9 @@ import { solveArm, boneMatrix, armTransforms, armRigPose, constrainGunPose } fro
 import { fitGunPose, gunPoint, spriteGunParts, gunPoseSample, sortedSpriteLayers } from '../../anim/SpriteWeapon.js';
 import { sideCutin, CutInDirector } from '../../anim/CutInDirector.js';
 const json = name => JSON.parse(readFileSync(new URL(`../../../public/assets/characters/ranger-01/${name}`,import.meta.url)));
-const field=json('field.json'), cutin=json('cutin.json');
+const field=json('field.json'), cutin=JSON.parse(readFileSync(new URL('../../../../tools/art/archive/ranger-puppet/cutin.json',import.meta.url)));
 // The old rigid-IK regressions use the retained orthographic registration, not the perspective puppet.
-const sourceFormula=JSON.parse(readFileSync(new URL('../../../../tools/art/sprites/ranger-01/formula.json',import.meta.url)));
+const sourceFormula=JSON.parse(readFileSync(new URL('../../../../tools/art/archive/ranger-puppet/formula.json',import.meta.url)));
 const sideView=sourceFormula.poses.aim.sideView;
 const legacy=sideView?{...cutin,muzzle:sideView.muzzle,rig:{...cutin.rig,...sideView.rig}}:cutin;
 const near=(a,b,epsilon=1e-5)=>assert.ok(Math.abs(a-b)<epsilon,`${a} != ${b}`);
@@ -196,7 +196,7 @@ test('gloves come per gun family and every variant file exists',()=>{
  for(const art of [legacy])for(const id of ['trigger-hand','trigger-fingers','support-hand','support-fingers']){
   const l=art.layers.find(x=>x.id===id);assert.ok(l,id);
   for(const fam of ['sniper','shotgun']){const v=l.variants?.[fam];assert.ok(v,`${id} ${fam}`);
-   for(const k of ['image','normal','lightingMask'])readFileSync(new URL(`../../../public/assets/characters/ranger-01/${v[k]}`,import.meta.url));}
+   for(const k of ['image','normal','lightingMask'])readFileSync(new URL(`../../../../tools/art/archive/ranger-puppet/${v[k]}`,import.meta.url));}
  }
  // The thumb sits behind the gun and the support fingers in front of it.
  for(const art of [legacy]){

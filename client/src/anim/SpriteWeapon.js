@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { constrainGunPose } from './SpriteArmRig.js';
-import { puppetPose, deformPuppetMesh } from './SpritePuppetRig.js';
+import { puppetPose, deformPuppetMesh, swapWeights, swapDeformer } from './SpritePuppetRig.js';
 import { gunCelRamp, gunCelMaterial, gunInkMaterial } from './SpriteGunMaterial.js';
 
 export function spriteGunParts(weaponId) {
@@ -76,11 +76,24 @@ export function barrelButtMatrix(camera, assembly, degrees = 8) {
 }
 
 export function gunPoseSample(art, assembly, camera, input={}, degrees=art.rig.buttRaiseDegrees??8) {
+    if(art.staticPose)input={};
     const rest=barrelButtMatrix(camera,assembly,degrees);
     const seatedStock=gunPoint(assembly.stock).applyMatrix4(rest);
     const matrix=gunPivotMatrix(seatedStock,input).multiply(rest);
     const uv=p=>{const q=gunPoint(p).applyMatrix4(matrix).project(camera);return[(q.x+1)/2,(1-q.y)/2];};
-    return {matrix,targets:{stock:uv(assembly.stock),grip:uv(assembly.grip),support:uv(assembly.support),muzzle:uv(assembly.muzzle)}};
+    const far=p=>contactDepth(camera,gunPoint(p).applyMatrix4(matrix));
+    return {matrix,targets:{stock:uv(assembly.stock),grip:uv(assembly.grip),support:uv(assembly.support),muzzle:uv(assembly.muzzle)},
+        depths:{stock:far(assembly.stock),grip:far(assembly.grip),support:far(assembly.support),muzzle:far(assembly.muzzle)}};
+}
+/** Camera-space distance (metres along the view axis) of a world point; painted cards use it as their depth. */
+export function contactDepth(camera, point) {
+    camera.updateMatrixWorld(true);
+    return -point.clone().applyMatrix4(camera.matrixWorldInverse).z;
+}
+/** Depth-buffer value [0, 1] of a view distance for the gun's perspective camera, so cards and the gun share one buffer. */
+export function cardDepth01(camera, distance) {
+    const n = camera.near, f = camera.far;
+    return ((f + n) / (f - n) - 2 * f * n / ((f - n) * distance)) * .5 + .5;
 }
 
 let kit;
@@ -98,18 +111,59 @@ function loadTexture(url, colour = false) {
     }));
     return textures.get(url);
 }
-function paintedMaterial(map, normal, mask) {
-    return new THREE.ShaderMaterial({ transparent: true, depthTest: false, depthWrite: false, toneMapped: false,
-        uniforms: { map: { value: map }, normalMap: { value: normal }, response: { value: mask },
+/** Painted card material. Legacy: flat paint order. `depth`: the card writes gl_FragDepth in the gun camera's
+ * perspective depth (`near`/`far`) so cards and the 3D gun share one depth buffer; the opaque core (alpha ≥ .5) writes
+ * depth and `edge` re-draws only the soft rim with depth writes off. `mask`: stencil-only pass of a clipping mask.
+ * `clip`: {bits, mode} stencil test against the masks. `uniforms` shares one uniform set between a card's passes. */
+function paintedMaterial(map, normal, mask, opts = {}) {
+    const defines = {};
+    if (opts.depth) defines.DEPTH_MODE = 1;
+    if (opts.depth && opts.edge) defines.EDGE_PASS = 1;
+    if (opts.depth && opts.depthMap) defines.DEPTH_MAP = 1;
+    if (opts.mask) defines.MASK_PASS = 1;
+    const uniforms = opts.uniforms || { map: { value: map }, normalMap: { value: normal }, response: { value: mask },
             sun: { value: new THREE.Vector3(.3, .8, .6) }, sunColour: { value: new THREE.Color() },
             sky: { value: new THREE.Color() }, ground: { value: new THREE.Color() },
             fill: { value: new THREE.Color() }, fillDir: { value: new THREE.Vector3() },
             localLight: { value: new THREE.Color(0) }, localDir: { value: new THREE.Vector3(0, 0, 1) },
-            boneRotation: { value: new THREE.Vector2(1, 0) } },
-        vertexShader: `varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+            boneRotation: { value: new THREE.Vector2(1, 0) }, opacity: { value: 1 },
+            near: { value: opts.near ?? .02 }, far: { value: opts.far ?? 60 },
+            depthMap: { value: opts.depthMap || null }, depthRange: { value: new THREE.Vector2(...(opts.depthRange || [1, 1])) } };
+    const material = new THREE.ShaderMaterial({ transparent: true, toneMapped: false, defines, uniforms,
+        depthTest: !!opts.depth && !opts.mask, depthWrite: !!opts.depth && !opts.edge && !opts.mask, depthFunc: THREE.LessEqualDepth,
+        vertexShader: `varying vec2 vUv;
+            #ifdef DEPTH_MODE
+            attribute float depth; varying float vDepth;
+            #endif
+            void main(){vUv=uv;
+            #ifdef DEPTH_MODE
+            vDepth=depth;
+            #endif
+            gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
         fragmentShader: `uniform sampler2D map,normalMap,response; uniform vec3 sun,sunColour,sky,ground,fill,fillDir,localLight,localDir;
-            uniform vec2 boneRotation; varying vec2 vUv;
-            void main(){ vec4 albedo=texture2D(map,vUv); if(albedo.a<.005)discard;
+            uniform vec2 boneRotation; uniform float opacity; varying vec2 vUv;
+            #ifdef DEPTH_MODE
+            uniform float near,far; varying float vDepth;
+            #ifdef DEPTH_MAP
+            uniform sampler2D depthMap; uniform vec2 depthRange;
+            #endif
+            #endif
+            void main(){ vec4 albedo=texture2D(map,vUv); albedo.a*=opacity; if(albedo.a<.005)discard;
+                #ifdef MASK_PASS
+                if(albedo.a<.5)discard; gl_FragColor=vec4(0.); return;
+                #endif
+                #ifdef DEPTH_MODE
+                #ifdef EDGE_PASS
+                if(albedo.a>=.5)discard;
+                #else
+                if(albedo.a<.5)discard;
+                #endif
+                float d=vDepth;
+                #ifdef DEPTH_MAP
+                d+=mix(depthRange.x,depthRange.y,texture2D(depthMap,vUv).r);
+                #endif
+                gl_FragDepth=((far+near)/(far-near)-2.*far*near/((far-near)*max(d,near)))*.5+.5;
+                #endif
                 vec3 n=normalize(texture2D(normalMap,vUv).xyz*2.-1.);
                 n.xy=mat2(boneRotation.x,boneRotation.y,-boneRotation.y,boneRotation.x)*n.xy;
                 vec3 m=texture2D(response,vUv).rgb;
@@ -119,6 +173,12 @@ function paintedMaterial(map, normal, mask) {
                 // Keep the painted interior independent of scene exposure; only the mask's rim responds.
                 #include <colorspace_fragment>
             }` });
+    if (opts.mask) Object.assign(material, { colorWrite: false, stencilWrite: true, stencilWriteMask: opts.mask, stencilRef: opts.mask,
+        stencilFunc: THREE.AlwaysStencilFunc, stencilZPass: THREE.ReplaceStencilOp });
+    else if (opts.clip) Object.assign(material, { stencilWrite: true, stencilWriteMask: 0, stencilRef: 0, stencilFuncMask: opts.clip.bits,
+        // outside: no mask bit set; inside: any mask bit set
+        stencilFunc: opts.clip.mode === 'outside' ? THREE.EqualStencilFunc : THREE.NotEqualStencilFunc });
+    return material;
 }
 
 export class SpriteWeapon {
@@ -171,24 +231,46 @@ export class SpriteWeapon {
         this.buttRaise=this.art.rig.buttRaiseDegrees??8;
         this.flatCamera = new THREE.OrthographicCamera(0, this.art.width, 0, -this.art.height, .01, 20);
         this.flatCamera.position.z = 10;
-        const gunZ=this.art.layers.find(l=>l.gun)?.zIndex ?? 100;
-        for (const layer of layers) {
+        const gunZ=this.art.layers.find(l=>l.gun)?.zIndex ?? 100, W=this.art.width, H=this.art.height;
+        // v2 perspective rigs share one depth buffer between the gun and the painted cards (see paintedMaterial).
+        this.depthMode = this.art.rig.gunView?.projection === 'perspective' && (this.art.puppet?.version ?? 0) >= 2;
+        this.coreScene = new THREE.Scene(); this.edgeScene = new THREE.Scene(); this.maskScene = new THREE.Scene();
+        const cfg = id => this.art.puppet?.layers?.[id] || {};
+        const masks = [...new Set(Object.values(this.art.puppet?.layers || {}).flatMap(l => l.clip?.by || []))];
+        this.maskBits = Object.fromEntries(masks.map((m, i) => [m, 1 << i]));
+        const depthMaps = {};
+        if (this.depthMode) for (const [id, l] of Object.entries(this.art.puppet.layers || {})) if (l.depthMap) depthMaps[id] = await loadTexture(this.base + l.depthMap.image);
+        const swapMaps = new Map();
+        for (const layer of layers) for (const swap of cfg(layer.id).swaps || []) swapMaps.set(swap, await Promise.all([loadTexture(this.base + swap.image, true),
+            loadTexture(this.base + (swap.normal || layer.normal)), loadTexture(this.base + (swap.lightingMask || layer.lightingMask))]));
+        if (this.disposed) return;
+        const addCard = (layer, maps, bounds, swap = null) => {
             const deformable=this.art.puppet&&layer.bone&&!layer.bone.endsWith('hand');
             const divisions=deformable?(this.art.puppet.meshDivisions||32):1;
-            const [x0,y0,x1,y1]=deformable&&layer.bounds?layer.bounds:[0,0,this.art.width,this.art.height];
+            const [x0,y0,x1,y1]=deformable&&bounds?bounds:[0,0,W,H];
             const geometry = new THREE.PlaneGeometry(x1-x0, y1-y0,divisions,divisions);
             geometry.translate((x0+x1)/2, -(y0+y1)/2, 0);
             const uv=geometry.attributes.uv;
-            for(let i=0;i<uv.count;i++)uv.setXY(i,(x0+uv.getX(i)*(x1-x0))/this.art.width,1-(y1-uv.getY(i)*(y1-y0))/this.art.height);
-            const material = paintedMaterial(...layer.maps), mesh = new THREE.Mesh(geometry, material);
-            mesh.matrixAutoUpdate = false; mesh.renderOrder = spriteLayerOrder(layer);
-            (spriteLayerOrder(layer) < gunZ ? this.backScene : this.frontScene).add(mesh);
-            mesh.frustumCulled=false;
-            this.cards.push({ mesh, layer, source:deformable?geometry.attributes.position.array.slice():null }); this.resources.push(geometry, material);
+            for(let i=0;i<uv.count;i++)uv.setXY(i,(x0+uv.getX(i)*(x1-x0))/W,1-(y1-uv.getY(i)*(y1-y0))/H);
+            if (this.depthMode) geometry.setAttribute('depth', new THREE.BufferAttribute(new Float32Array(geometry.attributes.position.count).fill(1.5), 1));
+            const c = cfg(layer.id), clip = c.clip ? { bits: c.clip.by.reduce((b, m) => b | this.maskBits[m], 0), mode: c.clip.mode } : null;
+            const opts = { depth: this.depthMode, depthMap: depthMaps[layer.id], depthRange: c.depthMap?.range, clip, near: this.camera.near, far: this.camera.far };
+            const material = paintedMaterial(...maps, opts), mesh = new THREE.Mesh(geometry, material), extra = [];
+            const place = (m, scene) => { m.matrixAutoUpdate = false; m.renderOrder = spriteLayerOrder(layer); m.frustumCulled = false; scene.add(m); };
+            place(mesh, this.depthMode ? this.coreScene : spriteLayerOrder(layer) < gunZ ? this.backScene : this.frontScene);
+            if (this.depthMode) { const edge = new THREE.Mesh(geometry, paintedMaterial(...maps, { ...opts, edge: true, uniforms: material.uniforms })); place(edge, this.edgeScene); extra.push(edge); this.resources.push(edge.material); }
+            if (this.maskBits[layer.id] && !swap) { const m = new THREE.Mesh(geometry, paintedMaterial(...maps, { ...opts, clip: null, mask: this.maskBits[layer.id], uniforms: material.uniforms })); place(m, this.maskScene); extra.push(m); this.resources.push(m.material); }
+            this.cards.push({ mesh, extra, layer, swap, source: deformable ? geometry.attributes.position.array.slice() : null });
+            this.resources.push(geometry, material);
+        };
+        for (const layer of layers) {
+            addCard(layer, layer.maps, layer.bounds);
+            // Angle-keyed art swaps: an alternative painting on its own card, crossfaded by the sleeve's foreshortening.
+            if (layer.bone && !layer.bone.endsWith('hand')) for (const swap of cfg(layer.id).swaps || []) addCard(layer, swapMaps.get(swap), swap.bounds || layer.bounds, swap);
         }
         this.hemi = new THREE.HemisphereLight(); this.sun = new THREE.DirectionalLight(); this.fill = new THREE.DirectionalLight();
         this.scene.add(this.hemi, this.sun, this.sun.target, this.fill, this.fill.target);
-        this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'low-power' });
+        this.renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'low-power', stencil: true });
         this.renderer.setClearColor(0, 0); this.renderer.setPixelRatio(1); this.renderer.autoClear = false;
         this.renderer.setSize(this.art.width, this.art.height, false);
         this.renderer.outputColorSpace = THREE.SRGBColorSpace; this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -238,27 +320,52 @@ export class SpriteWeapon {
             const pose=gunPoseSample(this.art,this.assembly,this.camera,{yaw:y,pitch:p,recoil:r},this.buttRaise);
             this.pivot.matrixAutoUpdate=false;this.pivot.matrix.copy(pose.matrix);
             this.model.updateMatrixWorld(true);
+            const far = p => contactDepth(this.camera, p.clone().applyMatrix4(this.pivot.matrixWorld));
+            this.lastDepths = this.gunVisible ? { grip: far(new THREE.Vector3()), support: far(this.support) } : null;
             return this.gunVisible ? {stock:this.project(this.stock),grip:this.project(new THREE.Vector3()),support:this.project(this.support),muzzle:this.project(gunPoint(this.assembly.muzzle)),
                 ...(this.triggerContact?{trigger:this.project(this.triggerContact)}:{})}
                 : {stock:this.art.rig.stock,grip:this.art.rig.grip,support:this.art.rig.support,muzzle:this.art.muzzle};
         };
         const puppet=this.art.puppet;
         // Clamp only the authored parameter domain. No automatic anatomy, reach solve or elbow flipping.
-        const input=puppet?{yaw:THREE.MathUtils.clamp(yaw,-puppet.range.yaw,puppet.range.yaw),pitch:THREE.MathUtils.clamp(pitch,-puppet.range.pitch,puppet.range.pitch),recoil:THREE.MathUtils.clamp(recoil,0,puppet.range.recoil)}:{yaw,pitch,recoil};
-        const solved=puppet?{input,targets:sample(input)}:constrainGunPose(sample,input,this.art.rig,this.art.width,this.art.height);
-        if(puppet)solved.arms=puppetPose(this.art,solved.targets,this.config.family,input);
+        const input=this.art.staticPose?{yaw:0,pitch:0,recoil:0}:puppet?{yaw:THREE.MathUtils.clamp(yaw,-puppet.range.yaw,puppet.range.yaw),pitch:THREE.MathUtils.clamp(pitch,-puppet.range.pitch,puppet.range.pitch),recoil:THREE.MathUtils.clamp(recoil,0,puppet.range.recoil)}:{yaw,pitch,recoil};
+        const solved=this.art.staticPose?{input,targets:sample(input),arms:{transforms:{},technique:'static-painting'}}:puppet?{input,targets:sample(input)}:constrainGunPose(sample,input,this.art.rig,this.art.width,this.art.height);
+        if(puppet)solved.arms=puppetPose(this.art,solved.targets,this.config.family,input,this.depthMode?this.lastDepths:null);
         const targets=solved.targets,transforms=puppet?solved.arms.handTransforms:solved.arms.transforms;
         this.rigPose=solved;
-        for (const { mesh, layer, source } of this.cards) {
-            if(source){deformPuppetMesh(mesh.geometry,source,solved.arms.deformers[layer.bone]);mesh.matrix.identity();mesh.material.uniforms.boneRotation.value.set(1,0);continue;}
+        for (const { mesh, extra, layer, source, swap } of this.cards) {
+            const cfg = puppet?.layers?.[layer.id] || {}, sync = () => extra.forEach(e => e.matrix.copy(mesh.matrix));
+            if(source){
+                const base=solved.arms.deformers[layer.bone],weights=swapWeights(cfg.swaps||[],base.foreshorten);
+                deformPuppetMesh(mesh.geometry,source,{...(swap?swapDeformer(base,swap,this.art.width,this.art.height):base),depthOffset:cfg.depthOffset||0});
+                mesh.material.uniforms.opacity.value=swap?weights[cfg.swaps.indexOf(swap)]:1-weights.reduce((a,b)=>a+b,0);
+                mesh.matrix.identity();mesh.material.uniforms.boneRotation.value.set(1,0);sync();continue;
+            }
             const m = transforms[layer.bone] || [1, 0, 0, 1, 0, 0], [a, b, c, d, x, y] = m;
             mesh.matrix.set(a, -c, 0, x, -b, d, 0, -y, 0, 0, 1, 0, 0, 0, 0, 1);
             const n = Math.max(.00001, Math.hypot(a, b)); mesh.material.uniforms.boneRotation.value.set(a / n, -b / n);
+            const depth = mesh.geometry.attributes.depth;
+            if (depth) {
+                // Hands sit at the gun contact's depth; the body uses its depth map (the attribute is then an offset).
+                const side = layer.bone?.endsWith('hand') ? layer.bone.split('-')[0] : null;
+                const v = (side ? solved.arms.joints[side].depth.palm ?? 1.5 : cfg.depthMap ? 0 : cfg.depth ?? 1.5) + (cfg.depthOffset || 0);
+                if (depth.array[0] !== v) { depth.array.fill(v); depth.needsUpdate = true; }
+            }
+            sync();
         }
         this.updateLights();
-        this.renderer.clear(); this.renderer.render(this.backScene, this.flatCamera);
-        this.renderer.clearDepth(); this.renderer.render(this.scene, this.camera);
-        this.renderer.clearDepth(); this.renderer.render(this.frontScene, this.flatCamera);
+        this.renderer.clear();
+        if (this.maskScene.children.length) this.renderer.render(this.maskScene, this.flatCamera);
+        if (this.depthMode) {
+            // One depth buffer: gun, then the cards' opaque cores, then their soft rims.
+            this.renderer.render(this.scene, this.camera);
+            this.renderer.render(this.coreScene, this.flatCamera);
+            this.renderer.render(this.edgeScene, this.flatCamera);
+        } else {
+            this.renderer.render(this.backScene, this.flatCamera);
+            this.renderer.clearDepth(); this.renderer.render(this.scene, this.camera);
+            this.renderer.clearDepth(); this.renderer.render(this.frontScene, this.flatCamera);
+        }
         this.targets = targets; return targets;
     }
     setPuppetWireframe(enabled){
