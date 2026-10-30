@@ -49,43 +49,44 @@ exactly on the adjoining tile runs. Wall meshes, caps, curved panes, projectile 
 footprint, following the same tangent-corner principle as rounded terrain. Movement still reserves the wall tile;
 rounding the visual corner does not allow diagonal movement through an occupied wall cell.
 
-## Building era: rounded (modern) vs straight (old) edges
+## Building era and authored curves
 
-Every building has an era (`shared/mission/BuildingEra.js`, `building.era`):
+Era and edge treatment are independent. Buildings use square edges by default, including modern buildings.
+`era` selects the material/design era; `edgeStyle: 'curved'` or legacy `rounded: true` explicitly enables curves.
+`edgeStyle: 'square'` overrides the legacy flag. Legacy `rounded: false` still implies an old era when no era is set.
 
-| Era | Edges | What it covers |
-|---|---|---|
-| `modern` | rounded | curved outside L corners, softened wall ends, filleted slab and floor edges, soft-edged furniture |
-| `old` | straight | square wall corners, ends and junctions (outer walls **and** interior partitions), sharp slab and floor edges, straight-edged furniture |
+Square footprints populate `VoxelStore.squareCorners`, use square wall/collision pieces and suppress floor and
+furniture bevels. A square building sharing a party wall keeps that wall square. Explicit landmark curves use
+`VoxelStore.curveCells`: four clipped modules across a 2×2 footprint share a 1.5-tile-radius wall centreline and a
+2-tile floor arc. The same polygons drive rendering, ray hits, standing surfaces and curved cover samples.
+Doorways and stairs retain their existing corners when a larger arc would remove circulation space.
 
-- **Where it comes from.** A spec's `era` wins; the older `rounded` flag still works (`rounded: false` → old,
-  `true` → modern). Present-day builders (`buildModern`, `compileBuilding`) default to modern; the classic
-  stone/plaster/timber `buildBuilding` defaults to old. District mixes keep their authored choices (offices, depots,
-  garages, motels are `rounded: false` → old; the showroom is modern), the rest are mixed by seed, and the Test Ground
-  remix's **Building era** control can force modern or old for every building (the share-link key is still `corners`).
-- **Per cell, so merges keep both looks.** An old building marks its whole footprint in `VoxelStore.squareCorners`
-  (the name predates eras; snapshots and the battle hash carry it). When an old and a modern parcel merge, the old
-  footprint draws straight and the modern one rounded. A cell both footprints share (the party wall) belongs to the
-  old building.
-- **Same rule for rendering and gameplay.** Walls in straight cells use the `square_wall` / `square_cap` pieces, whose
-  silhouette (`wallFootprint(mask, false)`, no fillet) is also the collision, ray and cover shape. The chunk mesher
-  skips the rounded-mass path for straight cells, and `KitView` asks for `<piece>@sharp` there: `KitLibrary` rebuilds
-  the piece with `softBox` and profile bevels made straight (`withSharpEdges` in `Geo.js`), sharing the ordinary
-  geometry when a piece has no bevel.
-- Tests: `shared/mission/building-era.test.js`, `client/src/render/kit/building-era.test.js`.
+Use `m.curve({x,y,turn,height:1,wall:'concrete_wall',floor:'paving'})` for low curved cover; height 2 provides a
+full-height wall. NW/NE/SE/SW use turns 0/1/2/3. Snapshots, baked maps and rotated/mirrored prefabs retain shapes.
+See [the visual audit and authoring details](AIMING-HUD-AUDIT.md).
+
+Tests: `shared/voxel/DoubleTileCurves.test.js`, `shared/mission/building-era.test.js`, and
+`client/src/render/kit/building-era.test.js`.
 
 ## Playable test map
 
-Open `http://localhost:2567/?play=architecture-yard` or choose **Architecture Yard** from the map list.
+Open `http://localhost:2567/?play=architecture-yard&fixture=1&seed=1` or choose **Architecture Yard** from the map list.
 
 - Reyes starts at (12,35,1), facing the full-glass lane at y=33. Move to (8,32,1) to walk through glass.
 - Kowalski starts at (19,35,1), facing the sill-backed lane. Move to (19,32,1) to vault the solid sill.
 - Residential sash and factory grid samples occupy the adjacent apron at y=26.
 - The northern buildings show stucco/sash and metal/factory treatments. The southeast pavilion shows concrete
-  panels, stacked glazing, and four rounded glass corners. Use the Buildings control and floor arrows to inspect.
+  panels, stacked glazing, and authored rounded glass corners. Use the Buildings control and floor arrows to inspect.
 
 The map and its facade hints serialize through the same mission snapshot as co-op missions.
 
 ### Automatic window entry
 
 Half-window sills now register a crossing axis in `VoxelStore.windowOpenings`. Ordinary move searches automatically include a crouched vault through that aperture beneath the ceiling; other low obstacles retain full-height vault clearance. Both building generators reserve the interior landing from furniture. Movement breaks the glass, keeps the sill as half cover, reveals the room entered and emits a crouched vault animation. Opening metadata survives cloning and compiled mission snapshots, so broken windows remain traversable in both directions and online peers agree. Solidly filled apertures, occupied landing tiles and wide units still block entry. Training Facility's outdoor cover pass uses a three-tile target gap to preserve the existing cover gates with the revised furniture layout.
+
+Ground-level curves carry an `underlay` material; their complementary apron covers the outside of the arc.
+This keeps the terrain complete while raised floors and road/curb heights follow the curved boundary.
+`roundRoadCorners` applies this to junction curbs during map finishing; `m.roadCurve` authors one explicitly.
+
+Building corner stamping preserves the material of every existing floor tile and roof tile instead of applying a
+default floor finish across the arc. Curves therefore retain room-specific flooring, including wet-room tiles.

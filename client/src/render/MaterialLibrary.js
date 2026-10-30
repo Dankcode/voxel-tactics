@@ -61,7 +61,7 @@ export class MaterialLibrary {
             depthWrite: kind === 'opaque' || (r.opacity ?? 1) >= 1
         });
         if (r.brightness) m.color.multiplyScalar(r.brightness);
-        if (kind === 'opaque') { heightCues(m); if (continuous) surfaceFinish(m); }
+        if (kind === 'opaque') { heightCues(m); if (continuous) surfaceFinish(m,key); }
         if (r.emissive && map) m.emissiveMap = map;
         if (kind === 'water') {
             // Water scrolls its normal map; keep its own clone so other keys sharing the texture don't scroll.

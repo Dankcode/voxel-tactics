@@ -79,15 +79,14 @@ Loose ammo, fire modes, persistent overwatch, equipment weight, markers, and for
 | `1`–`9` | ability bar slots (weapons, grenades, overwatch, reload, abilities, formation, breach, door) |
 | `Tab` / `Shift+Tab` | next / previous soldier (in targeting: next / previous target) |
 | `Space` | fire (targeting) · `Enter` end turn |
-| `Z X C V G` | aim at head / torso / L arm / R arm / legs |
+| `Z` / `X` (or `PgUp` / `PgDn`) | upper / lower floor cutaway |
 | Mouse in targeting mode | aim freely at a body part, cover, or an unseen world point |
 | `I` | open body status and equipment; left portraits switch soldiers; double-click stored rigs/pouches |
 | `T` throw · `O` overwatch · `R` reload · `F` formation · `B` breach | `R` rotates a selected inventory item while inventory is open |
-| WASD / arrows / screen edges / right-drag | pan the camera |
+| WASD / arrows / screen edges / right-drag | pan the tactical camera; WASD peeks while aiming |
 | `Q` / `E` | rotate 90° · middle-drag orbits freely |
 | wheel | zoom (the camera tilts up as it zooms out) |
 | `H` / `Home` | centre on the selected soldier · `V` isometric view on / off |
-| `PgUp` / `PgDn` | storey cutaway |
 | `F1` | debug mode |
 
 ## Debug mode

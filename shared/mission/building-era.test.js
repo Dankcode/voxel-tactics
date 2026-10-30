@@ -1,4 +1,4 @@
-// Building era → edge style: modern buildings are rounded everywhere, old buildings straight everywhere (interior
+// Building era → edge style: curves are explicitly authored, ordinary buildings are straight (interior
 // included), and two merged buildings keep their own style per footprint.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,7 +20,7 @@ test('era comes from the spec: explicit era, then the older rounded flag, then t
 // Two shops built wall to wall (they share the x = 14 wall column), one modern and one old.
 function merged() {
     const m = createMap({ id: 'era-test', width: 34, depth: 20, seed: 3 });
-    const modern = m.building({ id: 'modern', program: 'office', x0: 3, y0: 3, w: 12, d: 10, storeys: 1, front: 's', era: 'modern' });
+    const modern = m.building({ id: 'modern', program: 'office', x0: 3, y0: 3, w: 12, d: 10, storeys: 1, front: 's', era: 'modern', rounded:true });
     const old = m.building({ id: 'old', program: 'office', x0: 14, y0: 3, w: 12, d: 10, storeys: 1, front: 's', era: 'old' });
     return { m, modern, old };
 }

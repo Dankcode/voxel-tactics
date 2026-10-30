@@ -14,7 +14,7 @@ import { CameraRig } from './CameraRig.js';
 export const LIGHTING = {
     dawn: { sun: 0xffd4ad, sunI: 1.9, sky: 0x98b7ce, ground: 0x454b4f, hemiI: 0.4, env: 0.3, exposure: 1.05, bgTop: '#455a70', bgBottom: '#b6afb0', fog: 0x7a8c9a, sunDir: [0.85, 0.35, -0.4] },
     overcast: { sun: 0xdce7ee, sunI: 1.3, sky: 0xb0c0cc, ground: 0x505b62, hemiI: 0.55, env: 0.3, exposure: 1, bgTop: '#596b79', bgBottom: '#96a5ae', fog: 0x798c98, sunDir: [-0.4, 1, -0.3] },
-    day: { sun: 0xfff0d8, sunI: 2.6, sky: 0xc9dcf2, ground: 0x5a4c3a, hemiI: 0.45, env: 0.35, exposure: 1.0, bgTop: '#0d151d', bgBottom: '#2b3843', fog: 0x1b252e, sunDir: [-0.55, 1, -0.35] },
+    day: { sun: 0xfff1dd, sunI: 2.1, sky: 0xb9d4ec, ground: 0x686968, hemiI: 0.65, env: 0.4, exposure: 1.0, bgTop: '#0d151d', bgBottom: '#2b3843', fog: 0x1b252e, sunDir: [-0.55, 1, -0.35] },
     dusk: { sun: 0xffb27a, sunI: 2.2, sky: 0x7f8fb8, ground: 0x3a2e2a, hemiI: 0.35, env: 0.25, exposure: 1.05, bgTop: '#2c3550', bgBottom: '#c98a63', fog: 0x6d6a78, sunDir: [-0.9, 0.45, -0.2] },
     night: { sun: 0x9fb4ff, sunI: 0.9, sky: 0x31406b, ground: 0x15161c, hemiI: 0.28, env: 0.12, exposure: 1.25, bgTop: '#070b16', bgBottom: '#1b2438', fog: 0x111725, sunDir: [-0.4, 1, 0.5] }
 };
@@ -29,7 +29,7 @@ export class Scene {
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFShadowMap;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         this.scene = new THREE.Scene();
         this.rig = new CameraRig(window.innerWidth / Math.max(1, window.innerHeight));
         this.cutPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1000);
@@ -133,7 +133,7 @@ export class Scene {
         this.renderPass = new RenderPass(this.scene, this.camera);
         this.composer.addPass(this.renderPass);
         const gtao = new GTAOPass(this.scene, this.camera, w, h, undefined, { radius: 0.9, distanceExponent: 1.4, thickness: 1.2, scale: 1.1, samples: 12 });
-        gtao.blendIntensity = 0.85;
+        gtao.blendIntensity = 0.65;
         const base = gtao._overrideVisibility.bind(gtao);
         gtao._overrideVisibility = () => {
             base();

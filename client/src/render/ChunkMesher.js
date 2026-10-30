@@ -1,3 +1,4 @@
+import { curveCell } from '../../../shared/voxel/DoubleTileCurves.js';
 // Face-culled chunk mesher: one buffer per render material (RenderTable.js) with world-space or per-face UVs,
 // normals, and vertex colours that carry corner ambient occlusion, large-scale variation and fog-of-war tint.
 // Pure (no THREE): returns typed-array-ready lists so it can move into a worker later without changes.
@@ -52,7 +53,7 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
     const cut = options.cutZ ?? Infinity;          // storey cutaway: voxels at z >= cut are not drawn
     const kit = options.kit || (() => null);      // voxels the tile set draws (thin walls, props …) are skipped
     const opaque = (x, y, z) => z < cut && !options.hidden?.(x,y,z) && opaqueAt(store, x, y, z);
-    const hides = (x, y, z) => opaque(x, y, z) && !kit(store, x, y, z);   // only full cubes hide a neighbour's face
+    const hides = (x, y, z) => opaque(x, y, z) && (!kit(store, x, y, z) || curveCell(store,x,y,z)?.underlay!=null);   // only full cubes hide a neighbour's face
     const apron = !!options.apron;
     const straight = straightCells(store);       // old buildings: straight edges (BuildingEra.js)               // the map edge continues as an apron: no boundary side faces
     // PLAN-14: a slab broken by damage keeps a straight section with the building's finish (and its damage decals)
@@ -152,7 +153,7 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
         const live = topDrawn && !capped;
         const my = live ? dropOf(m.key) : 0;
         const T = z + 1 - my;
-        const R = Math.min(0.32, r0.bevel ?? 0.16);
+        const R = Math.min(0.10, r0.bevel ?? 0.035);
         const rT = live ? R : 0;
         const ex = [false, false, false, false], curb = [0, 0, 0, 0];
         SIDE.forEach(({ d: [dx, dy] }, i) => {

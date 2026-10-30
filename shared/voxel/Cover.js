@@ -2,6 +2,7 @@
 // real work; this is what the HUD shields and the AI's tile scoring read).
 import { collisionFootprint, intersectCellShape } from './ConnectedShapes.js';
 import { materialById, coverWeight } from './Materials.js';
+import { curveCell } from './DoubleTileCurves.js';
 
 export const DIRS4 = Object.freeze([
     { id: 'n', dx: 0, dy: -1 }, { id: 'e', dx: 1, dy: 0 }, { id: 's', dx: 0, dy: 1 }, { id: 'w', dx: -1, dy: 0 }
@@ -11,8 +12,9 @@ export const COVER = Object.freeze({ NONE: 0, HALF: 1, FULL: 2 });
 /** Cover a unit standing on surface (x, y, z) gets from the neighbour in direction d. */
 export function coverToward(store, x, y, z, d, travel = null, elevated = false) {
     const nx = x + d.dx, ny = y + d.dy;
-    const low = travel ? protectionAlong(store, x, y, nx, ny, z + 1, travel) : protection(store, nx, ny, z + 1, d);
-    const high = travel ? protectionAlong(store, x, y, nx, ny, z + 2, travel) : protection(store, nx, ny, z + 2, d);
+    const direction=travel||[-d.dx,-d.dy,0];
+    const low = Math.max(curveProtection(store,x,y,z+1,direction),travel ? protectionAlong(store, x, y, nx, ny, z + 1, travel) : protection(store, nx, ny, z + 1, d));
+    const high = Math.max(curveProtection(store,x,y,z+2,direction),travel ? protectionAlong(store, x, y, nx, ny, z + 2, travel) : protection(store, nx, ny, z + 2, d));
     if (low >= 0.8 && high >= 0.8) return COVER.FULL;
     // From two voxels above, low protection below the chest no longer rates as half cover.
     // Upper protection (an overhang/window band) still counts, and the pitched samples can see over a wall.
@@ -52,13 +54,18 @@ export const STANDARD_ROUND_ENERGY = 6;
  * PLAN-07: is the cover on face d soft, i.e. would a round with `energy` pass through every voxel that gives it?
  * A face without cover is not soft (there is nothing to be soft).
  */
-export function softToward(store, x, y, z, d, energy = STANDARD_ROUND_ENERGY) {
+export function softToward(store, x, y, z, d, energy = STANDARD_ROUND_ENERGY, travel = [-d.dx,-d.dy,0]) {
     let any = false;
     for (const h of [1, 2]) {
-        const m = materialById(store.get(x + d.dx, y + d.dy, z + h));
+        const cells=[[x+d.dx,y+d.dy]];
+        for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)if((dx||dy)&&curveCell(store,x+dx,y+dy,z+h)?.kind==='wall')cells.push([x+dx,y+dy]);
+        for(const [cx,cy] of cells){
+        if(protectionAlong(store,x,y,cx,cy,z+h,travel)===0)continue;
+        const m = materialById(store.get(cx, cy, z + h));
         if (coverWeight(m) < 1) continue;
         any = true;
         if (!(m.resistance < energy)) return false;
+        }
     }
     return any;
 }
@@ -77,7 +84,7 @@ export function hardCoverAgainst(store, x, y, z, sx, sy, sz = z, energy = STANDA
         if (dot <= 0 || dot / len < 0.5) continue;
         const c = coverToward(store, x, y, z, d, [-dx / len, -dy / len, -(sz - z) / len], sz - z >= 2);
         if (!c) continue;
-        const s = softToward(store, x, y, z, d, energy);
+        const s = softToward(store, x, y, z, d, energy, [-dx/len,-dy/len,-(sz-z)/len]);
         if (c > best || (c === best && soft && !s)) { best = c; soft = s; }
     }
     return { level: best, soft };
@@ -106,12 +113,12 @@ function protection(store, x, y, z, d) {
  * rays across a 0.76-cell body band aimed at the unit's cell, counting those that meet the neighbour's real shape
  * while crossing that cell.
  */
-function protectionAlong(store, ux, uy, x, y, z, travel) {
+function protectionAlong(store, ux, uy, x, y, z, travel, offsets=[-0.38,-0.19,0,0.19,0.38]) {
     const weight = coverWeight(materialById(store.get(x, y, z)));
     if (weight < 1) return 0;
     const [tx, ty, tz = 0] = travel, px = -ty, py = tx;
     let hits = 0;
-    for (const offset of [-0.38, -0.19, 0, 0.19, 0.38]) {
+    for (const offset of offsets) {
         const ox = ux + 0.5 + px * offset - tx * 2.5, oy = uy + 0.5 + py * offset - ty * 2.5, oh=z+0.5-tz*2.5;
         // Interval of the ray inside the neighbour cell (2D slab test).
         let t0 = 0, t1 = 2.5, ok = true;
@@ -130,5 +137,14 @@ function protectionAlong(store, ux, uy, x, y, z, travel) {
         if (!collisionFootprint(store, x, y, z)) { hits++; continue; }
         if (intersectCellShape(store, x, y, z, [ox, oy, oh], [tx, ty, tz], t0, t1)) hits++;
     }
-    return hits / 5 * Math.min(1, weight);
+    return hits / offsets.length * Math.min(1, weight);
+}
+
+/** Adjacent curved modules can each shelter part of the body. Count their union, not the best single cell. */
+function curveProtection(store,x,y,z,travel){
+    if(!store.curveCells?.size)return 0;
+    const cells=[];
+    for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++)if((dx||dy)&&curveCell(store,x+dx,y+dy,z)?.kind==='wall')cells.push([x+dx,y+dy]);
+    if(!cells.length)return 0;
+    return [-.38,-.19,0,.19,.38].filter(offset=>cells.some(([cx,cy])=>protectionAlong(store,x,y,cx,cy,z,travel,[offset])>0)).length/5;
 }

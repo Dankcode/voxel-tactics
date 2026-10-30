@@ -7,6 +7,8 @@
 // The store implements the parts of vibe-game's VoxelWorld interface that the copied
 // TraversalRules / PathSearch use (`surfaces`, `isSolid`), so movement reuses that code unchanged.
 import { MATERIALS, MAT, AIR, materialById } from './Materials.js';
+import { curveCell, doubleCurveFootprint } from './DoubleTileCurves.js';
+import { containsPoint } from './ConnectedShapes.js';
 
 export const CHUNK = 16;
 const HP_INF = 0xffff;
@@ -24,6 +26,7 @@ export class VoxelStore {
         // "x,y" cells drawn with straight edges: the whole footprint of every old building (BuildingEra.js). The name
         // predates eras, when only outside corners could be square; snapshots and the battle hash keep it.
         this.squareCorners = new Set();
+        this.curveCells = new Map();
         this.windowOpenings = new Map(); // half-window sill cells → crossing axis; survives shattered glazing
         // PLAN-07 visible damage (gameplay-neutral, shared so every peer and snapshot shows the same marks):
         //   scars   cells whose voxel was shot or blown out; surviving neighbours show a broken edge toward them
@@ -110,6 +113,8 @@ export class VoxelStore {
         for (let z = 0; z < this.height; z++) {
             const m = materialById(this.get(x, y, z));
             if (!m.walkable && !(m.liquid && m.traversal === 'wade')) continue;
+            const curve=curveCell(this,x,y,z);
+            if(curve&&curve.underlay==null&&!containsPoint(doubleCurveFootprint(curve),.5,.5))continue;
             const above = materialById(this.get(x, y, z + 1));
             if (above.solid || above.liquid) continue;
             let headroom = 0;
@@ -140,6 +145,7 @@ export class VoxelStore {
     clone() {
         const c = new VoxelStore(this.width, this.depth, this.height);
         c.squareCorners=new Set(this.squareCorners);
+        c.curveCells=new Map(structuredClone([...this.curveCells]));
         c.windowOpenings=new Map(this.windowOpenings);
         c.scars=new Set(this.scars);c.scorch=new Map(this.scorch);
         c.datum=this.datum;c.supportGroups=structuredClone(this.supportGroups||[]);

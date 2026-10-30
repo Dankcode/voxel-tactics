@@ -34,18 +34,18 @@ export class Hud {
                 <div class="tools"><button data-act="options" title="Settings" aria-label="Settings">${ICONS.gear}</button></div>
             </div>
             <div class="camera-nav" aria-label="Camera controls">
-                <button data-act="lvlUp" class="nav-up" title="Upper floor · Page Up" aria-label="Upper floor">${ICONS.up}</button>
+                <button data-act="lvlUp" class="nav-up" title="Upper floor · Z / Page Up" aria-label="Upper floor">${ICONS.up}</button>
                 <button data-act="rotL" class="nav-left" title="Rotate left · Q" aria-label="Rotate left">${ICONS.rotL}</button>
                 <span class="nav-cube" aria-hidden="true">${ICONS.cube}</span>
                 <button data-act="rotR" class="nav-right" title="Rotate right · E" aria-label="Rotate right">${ICONS.rotR}</button>
-                <button data-act="lvlDown" class="nav-down" title="Lower floor · Page Down" aria-label="Lower floor">${ICONS.down}</button>
+                <button data-act="lvlDown" class="nav-down" title="Lower floor · X / Page Down" aria-label="Lower floor">${ICONS.down}</button>
                 <span class="floor-label">Roof</span>
             </div>
             <div class="squad"></div>
             <div class="unitcard hidden" aria-live="polite"></div>
             <div class="unit-callout"></div>
             <button class="autoend hidden" data-act="cancelAutoEnd" title="Cancel (Esc)"><b>ALL AP SPENT — ENDING TURN</b><i></i><small>click or Esc to stay</small></button>
-            <div class="unitpanel hidden"></div><div class="equipment-overlay hidden"></div><div class="aim-reticle hidden" aria-label="Weapon accuracy reticle"><i class="reticle-ring outer"></i><i class="reticle-ring inner"></i><i class="reticle-cross"></i><div class="pellets"></div><span class="band"></span><span class="read"></span></div>
+            <div class="unitpanel hidden"></div><div class="equipment-overlay hidden"></div><div class="aim-reticle hidden" aria-label="Weapon accuracy reticle"><i class="reticle-ring outer"></i><span class="read"></span></div>
             <div class="targets"></div>
             <div class="actionbar"><div class="slotname"></div><div class="slots"></div></div>
             <div class="target hidden"></div>
@@ -302,16 +302,18 @@ export class Hud {
     }
     /** PLAN-14: no target portraits — targets are picked with the reticle only. */
     renderTargets() { this.el('.targets').innerHTML = ''; }
-    /** PLAN-14: a slim aiming bar (fire / back and how to aim); the body part and its odds sit on the reticle. */
+    /** Aiming uses an edge HUD; the only target annotation is distance below the circle. */
     renderTarget(){
-        const g=this.game,el=this.el('.target');
-        if(g.mode.kind!=='shoot'){el.classList.add('hidden');return;}
+        const g=this.game,el=this.el('.target'),aiming=g.mode.kind==='shoot';
+        this.root.classList.toggle('shooter-mode',aiming);
+        if(!aiming){el.classList.add('hidden');return;}
         el.classList.remove('hidden');el.classList.add('slim');
-        const u=g.selectedUnit(),w=WEAPONS[g.mode.weaponId],locked=g.aimPointer?.locked,t=g.targetInfo;
-        const cost=t?.ap??(u&&w?g.battle.shotAp(u,w):0);
-        const ps=g.peekStatus?.(),peekLine=ps?`<p class="peek-line ${ps.label==='EXPOSED'?'exposed':ps.label==='HALF COVER'?'half':''}">${ps.peeking?`LEANING OUT · <b>${ps.label}</b>${ps.overwatch?' · <b class="flank">! OVERWATCH</b>':''} · <button data-act="peekHome">Step back <kbd>Esc</kbd></button>`:`<b>${ps.label}</b> · <kbd>WASD</kbd> lean out ${ps.range} tile${ps.range>1?'s':''}${ps.overwatch?' · <b class="flank">! OVERWATCH</b>':''}`}</p>`:'';
-        el.innerHTML=peekLine+`<p>${locked?'Move the mouse to aim · the body part under the reticle is the one you hit · wheel zooms':g.aimPointer?.unavailable?'Drag in the scene to aim · Space fires · wheel zooms':'Click the scene to aim with the mouse'}</p>
-            <div class="tbtns">${!locked&&!g.aimPointer?.unavailable?'<button data-act="captureAim">Aim</button>':''}<button data-act="cancel">${locked?'Release <kbd>Esc</kbd>':'Back <kbd>Esc</kbd>'}</button><button data-act="fire" class="fire">Fire · ${cost} AP <kbd>Space</kbd></button></div>`;
+        const u=g.selectedUnit(),w=WEAPONS[g.mode.weaponId],locked=g.aimPointer?.locked;
+        if(!u||!w){el.classList.add('hidden');return;}
+        const cost=g.targetInfo?.ap??g.battle.shotAp(u,w),ammo=u.ammo?.[w.id]||0;
+        el.innerHTML=`<button class="aim-back" data-act="cancel" aria-label="${locked?'Release aim':'Back to tactics'}">${locked?'Release aim':'Back'} <kbd>Esc</kbd></button>
+            <div class="shooter-status"><span class="shooter-weapon">${esc(w.name)}</span><span class="shooter-ammo" aria-label="${ammo} loaded, ${reserveAmmo(u,w)} reserve"><b>${ammo}</b><small> / ${reserveAmmo(u,w)}</small></span></div>
+            <div class="tbtns">${!locked&&!g.aimPointer?.unavailable?'<button data-act="captureAim">Aim</button>':''}<button data-act="fire" class="fire" ${ammo<1||u.ap<cost?'disabled':''}>Fire <kbd>Space</kbd></button></div>`;
     }
     showGearPanel(){const u=this.game.selectedUnit(),p=this.el('.panel');p.classList.remove('hidden');p.innerHTML=`<h3>Equipment <button data-act="closePanel">✕</button></h3><div class="gear-quick">${Object.entries(u.items).filter(([id,n])=>n>0&&THROWABLES[id]).map(([id,n])=>`<button data-act="item" data-arg="${id}">${ICONS.grenade}<b>${esc(THROWABLES[id].name)}</b><small>${n} carried · ${THROWABLES[id].ap} AP</small></button>`).join('')}</div>`;}
     showFormationPanel() {

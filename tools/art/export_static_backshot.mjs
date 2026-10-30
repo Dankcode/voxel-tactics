@@ -1,8 +1,8 @@
 // Static sprite and separate gun reference export. No arm rig or deformation.
-// Export the exact runtime 2D puppet vertices and authored parameter shapes for Blender.
+// Export screen projections and metre-space geometry for independent Blender alignment checks.
 import fs from 'node:fs';
 import * as THREE from 'three';
-import {aimGunCamera,gunPoint,gunPoseSample} from '../../client/src/anim/SpriteWeapon.js';
+import {aimGunCamera,gunPoint,gunPoseSample,lowerGunRearPoint,gunStockDrop} from '../../client/src/anim/SpriteWeapon.js';
 const art=JSON.parse(fs.readFileSync('client/public/assets/characters/ranger-01/cutin.json'));
 const kit=JSON.parse(fs.readFileSync('client/public/assets/weapons/ranger-preview/gun-kit.json'));
 const buffer=fs.readFileSync('client/public/assets/weapons/ranger-preview/gun-kit.glb');
@@ -12,9 +12,10 @@ const layouts={};
 for(const [family,assembly]of Object.entries(kit.assemblies)){
  const camera=aimGunCamera(art.rig,gunPoint(assembly.stock),art.width/art.height),pose=gunPoseSample(art,assembly,camera),meshes=[];
  for(const node of gltf.nodes.filter(n=>assembly.parts.includes(n.name)))for(const p of gltf.meshes[node.mesh].primitives){
-  const vertices=accessor(p.attributes.POSITION).map(v=>{const q=new THREE.Vector3(...v).applyMatrix4(pose.matrix).project(camera);return[(q.x+1)/2,(q.y+1)/2,-q.z];});
-  const indices=accessor(p.indices).flat(),faces=[];for(let i=0;i<indices.length;i+=3)faces.push(indices.slice(i,i+3));meshes.push({name:node.name,vertices,faces});
+  const localVertices=accessor(p.attributes.POSITION).map(v=>lowerGunRearPoint(new THREE.Vector3(...v),assembly).toArray());
+  const vertices=localVertices.map(v=>{const q=new THREE.Vector3(...v).applyMatrix4(pose.matrix).project(camera);return[(q.x+1)/2,(q.y+1)/2,-q.z];});
+  const indices=accessor(p.indices).flat(),faces=[];for(let i=0;i<indices.length;i+=3)faces.push(indices.slice(i,i+3));meshes.push({name:node.name,vertices,localVertices,faces});
  }
- layouts[family]={targets:pose.targets,meshes};
+ layouts[family]={targets:pose.targets,meshes,matrix:pose.matrix.toArray(),assembly,stockDropMetres:gunStockDrop(assembly),actualStock:lowerGunRearPoint(gunPoint(assembly.stock),assembly).toArray(),bore:pose.bore?{origin:pose.bore.origin.toArray(),direction:pose.bore.direction.toArray(),target:pose.bore.target.toArray()}:null};
 }
-fs.writeFileSync('tools/art/sprites/ranger-01/static-gun-layout.json',JSON.stringify({width:art.width,height:art.height,image:art.layers.find(l=>l.image).image,layouts}));
+fs.writeFileSync('tools/art/sprites/ranger-01/static-gun-layout.json',JSON.stringify({width:art.width,height:art.height,rig:art.rig,image:art.layers.find(l=>l.image).image,layouts}));

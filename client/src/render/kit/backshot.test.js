@@ -37,7 +37,8 @@ test('Ranger shoulder placement respects the authored convergence point and lowe
         const c=sideCutin(ranger,shoulder),aim={x:viewport.width/2,y:viewport.height/2},p=backshotPlacement(c,aim,viewport);
         if(c.staticPose){
             assert.equal(p.left,0);assert.equal(p.top+p.height,viewport.height*(1-BAR_SHARE));
-            assert.equal(p.height,c.screenHeight*viewport.height);
+            assert.equal(p.height,c.screenHeight*Math.min(viewport.height,viewport.width/(c.width/c.height)));
+            assert.ok(p.width<=viewport.width,'narrow screens keep the shoulder away from the centre');
         }else if(c.crosshair){
             const x=c.mirror?1-c.crosshair[0]:c.crosshair[0];
             assert.ok(Math.abs(p.left+x*p.width-aim.x)<1e-6);

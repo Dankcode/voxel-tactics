@@ -1,3 +1,4 @@
+import { curveBuildingCorners } from '../../voxel/DoubleTileCurves.js';
 import { solveDressing } from '../../mapgen/DressingSolver.js';
 // Present-day buildings on the tactical grid.
 //
@@ -16,7 +17,7 @@ import { solveDressing } from '../../mapgen/DressingSolver.js';
 // placed with a connectivity guard: every floor cell stays reachable from the entry.
 import { hashString } from '../../util/Rng.js';
 import { MAT, AIR } from '../../voxel/Materials.js';
-import { buildingEra, markBuildingEdges } from '../BuildingEra.js';
+import { buildingEra, roundedBuilding, markBuildingEdges } from '../BuildingEra.js';
 import { createStairRun } from '../../world/StairRun.js';
 
 export const STOREY = 3;
@@ -280,8 +281,8 @@ export function buildModern(store, spec, ctx) {
     const result = { id: spec.id, name: spec.name || spec.id, role: spec.program, program: spec.program, x0, y0, w, d, baseZ, storeys, top, front, wall: wallKey,
         era: buildingEra(spec), rooms: [], doors: [], windows: [], stairs: [], approach: [] };
     // Modern: rounded edges everywhere. Old: straight edges for the whole footprint, interior included.
-    result.rounded = result.era === 'modern';
-    markBuildingEdges(store, result, result.era);
+    result.rounded = roundedBuilding(spec);
+    markBuildingEdges(store, result, result.rounded ? 'modern' : 'old');
 
     // Frame: local (u along the front, v from front to back) → world.
     const W = front === 'n' || front === 's' ? w : d, D = front === 'n' || front === 's' ? d : w;
@@ -429,6 +430,7 @@ export function buildModern(store, spec, ctx) {
     result.entry = exterior.find(e => e.entry) || exterior[0];
     result.exits = exterior;
     result.floorCells = floorCells;
+    curveBuildingCorners(store,result,{wall:wallKey,floor:floorKey,roof:'concrete',hints});
     return result;
 }
 

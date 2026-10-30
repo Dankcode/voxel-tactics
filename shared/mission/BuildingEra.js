@@ -1,13 +1,4 @@
-// Building era decides the edge style of everything a building is made of.
-//
-//   modern → rounded edges everywhere: curved outside wall corners, rounded wall ends, filleted slab edges and
-//            soft-edged furniture.
-//   old    → straight edges everywhere, the interior included: square wall corners and ends, sharp slabs and
-//            sharp-edged furniture.
-//
-// The style is stored per map cell (VoxelStore.squareCorners: the "x,y" cells drawn with straight edges), so two
-// buildings that merge keep their own look: the old building's footprint is straight, the modern one's rounded.
-// A cell both footprints share (the party wall of a merge) belongs to the old building.
+// Building age and edge treatment are independent. Ordinary buildings are rectilinear; curves are opt-in.
 export const ERAS = Object.freeze(['modern', 'old']);
 
 /**
@@ -21,9 +12,13 @@ export function buildingEra(spec = {}, fallback = 'modern') {
     return fallback;
 }
 
+/** Preserve the curved authoring method without applying it to every modern building. */
+export function roundedBuilding(spec={}) { return spec.edgeStyle==='curved' || (spec.edgeStyle!=='square' && spec.rounded===true); }
+
 /** Mark an old building's whole footprint as straight-edged. Modern buildings leave the cells as they are. */
 export function markBuildingEdges(store, { x0, y0, w, d }, era) {
     if (era !== 'old') return;
+    for(const key of store.curveCells?.keys()||[]){const [x,y]=key.split(',').map(Number);if(x>=x0&&y>=y0&&x<x0+w&&y<y0+d)store.curveCells.delete(key);}
     for (let y = y0; y < y0 + d; y++) for (let x = x0; x < x0 + w; x++) store.squareCorners.add(`${x},${y}`);
 }
 

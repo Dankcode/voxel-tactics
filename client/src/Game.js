@@ -218,7 +218,7 @@ export class Game {
             if(v.tagMode!==this.options.unitTags){v.tagMode=this.options.unitTags;v.drawBar();}
             v.update(dt, cine ? Math.atan2(this.cameraDirector.cam.position.x - v.pos.x, this.cameraDirector.cam.position.z - v.pos.z) : yaw, this.scene.camera);
             v.bar.visible = !cine && !v.unit.dead && v.group.visible && (v.unit.side==='player'||this.options.showEnemyBars);
-            v.sprite.visible = !(cine && this.cameraDirector.hidden?.has(v.id));
+            v.sprite.visible = !(cine && (this.cameraDirector.hidden?.has(v.id) || (v.unit.side===this.selectedUnit()?.side && this.cameraDirector.foregroundUnit(v.pos))));
             const ground = this.battle?.store.surfaces(Math.floor(v.pos.x), Math.floor(v.pos.z))[0];
             v.updateDrop(cine ? Infinity : ground ? ground.z + 1 : 0);
         }
@@ -632,7 +632,7 @@ export class Game {
     bindInput(canvas) {
         this.aimPointer=new AimPointer(canvas,{
             changed:()=>this.hud.renderTarget(),
-            failed:()=>{this.hud.renderTarget();this.hud.toast('Browser refused mouse capture. Drag or use arrow keys to aim; Space fires.','warn');}
+            failed:()=>{this.hud.renderTarget();this.hud.toast('Drag or use arrow keys to aim.','warn');}
         });
         canvas.addEventListener('pointerdown',e=>{
             if(e.button===0&&this.mode.kind==='shoot'&&this.aimPointer.unavailable&&!this.aimPointer.locked){
@@ -686,9 +686,9 @@ export class Game {
     /** WASD / arrows and screen edges feed the rig's smooth pan (relative to the camera yaw). */
     handleKeysHeld(dt) {
         const k = this.keys;
-        // PLAN-15: W/S change floors (onKey); A/D and the arrows pan. While aiming WASD peeks (onKey), arrows nudge the aim.
+        // Z/X change floors (onKey); WASD and the arrows pan. While aiming WASD peeks (onKey), arrows nudge the aim.
         let x = (k.has('d') || k.has('arrowright') ? 1 : 0) - (k.has('a') || k.has('arrowleft') ? 1 : 0);
-        let y = (k.has('arrowup') ? 1 : 0) - (k.has('arrowdown') ? 1 : 0);
+        let y = (k.has('w') || k.has('arrowup') ? 1 : 0) - (k.has('s') || k.has('arrowdown') ? 1 : 0);
         if(this.mode.kind==='shoot'){
             this.scene.rig.setPanIntent(0,0);
             const ax=(k.has('arrowright')?1:0)-(k.has('arrowleft')?1:0),ay=(k.has('arrowup')?1:0)-(k.has('arrowdown')?1:0);
@@ -721,8 +721,8 @@ export class Game {
             if (this.canAct()) this.stepPeek(key);
             return;
         }
-        if ((key === 'w' || key === 's') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); if (!e.repeat) this.changeLevel(key === 'w' ? 1 : -1); return; }
-        if (['a', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) { e.preventDefault(); this.keys.add(key); return; }
+        if ((key === 'z' || key === 'x') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); if (!e.repeat) this.changeLevel(key === 'z' ? 1 : -1); return; }
+        if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) { e.preventDefault(); this.keys.add(key); return; }
         const u = this.selectedUnit();
         switch (key) {
             case 'q': this.scene.rotate(-1); break;
@@ -905,7 +905,7 @@ export class Game {
         else this.aim.setTarget(anchor);
         if(frame)this.cameraDirector.focusTarget(new THREE.Vector3(anchor.x,anchor.h,anchor.y));
         this.targetInfo.part = part;
-        this.overlays.showCone(this.targetInfo.muzzle, partCentre(target, part), this.targetInfo.spread);
+        this.overlays.clearAim();
         if (frame && this.options.followCamera) this.scene.glideTo(new THREE.Vector3((u.x + target.x) / 2 + 0.5, (u.z + target.z) / 2 + 1, (u.y + target.y) / 2 + 0.5), 4);
         if (frame) this.focusFloor(u, target);
         this.hud.renderTarget();
@@ -930,15 +930,7 @@ export class Game {
         }
         this.views.get(u.id)?.face(p.x-origin.x,p.y-origin.y);
         if(this.cameraDirector.phase==='prepare')this.cameraDirector.track(new THREE.Vector3(p.x,p.h,p.y),dt);
-        // PLAN-10: the aim line and cone follow the live aim from the muzzle the shot will actually leave from.
-        this.coneT=(this.coneT||0)+dt;
-        const m=this.aimStance?.muzzle,key=m&&`${aimStanceKey(m)}:${p.x.toFixed(1)},${p.y.toFixed(1)},${p.h.toFixed(1)}`;
-        if(m&&key!==this.coneKey&&this.coneT>=0.06){
-            this.coneKey=key;this.coneT=0;
-            const t=this.aimTargetNear(p),spread=this.battle.spreadFor(this.shooterOf(u),w,p,{target:t}).spread;
-            this.overlays.showCone(m,p,spread);
-            if(this.targetInfo)this.targetInfo.spread=spread;
-        }
+
     }
     /** PLAN-14: hit chance for the body part under the reticle (cached per stance, target position and battle step). */
     partChance(t,part){

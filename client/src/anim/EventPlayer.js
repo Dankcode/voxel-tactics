@@ -58,7 +58,10 @@ export class EventPlayer {
                 const sv = this.view(e.unitId), tv = target ? this.view(target.id) : null;
                 // A shot from a blocked angle is framed from the side tile the soldier steps out to.
                 const step = e.muzzle?.step, shooterPos = step && sv ? new THREE.Vector3(step.x + 0.5, sv.worldPosition().y, step.y + 0.5) : sv?.worldPosition();
-                await g.cutins.play({ units: group, weaponId: e.weaponId, kind: e.kind, title, subtitle: sub, side: u.side, shoulder: e.muzzle?.side,
+                const shotPoint=e.aimPoint||(target?{x:target.x+.5,y:target.y+.5,h:target.z+1.55}:null);
+                const spread=e.weaponId&&shotPoint?g.battle.spreadFor(u,WEAPONS[e.weaponId],shotPoint,{target}).spread:1;
+                const aimDistance=e.muzzle&&shotPoint?Math.hypot(shotPoint.x-e.muzzle.x,shotPoint.y-e.muzzle.y,shotPoint.h-e.muzzle.h):undefined;
+                await g.cutins.play({ units: group, weaponId: e.weaponId, kind: e.kind, title, subtitle: sub, side: u.side, shoulder: e.muzzle?.side,spread,aimDistance,
                     shooterPos, targetPos: e.aimPoint?new THREE.Vector3(e.aimPoint.x,e.aimPoint.h-1.1,e.aimPoint.y):tv ? tv.worldPosition() : sv?.worldPosition().clone().add(new THREE.Vector3(...faceVec(u)).multiplyScalar(4)) });
                 break;
             }

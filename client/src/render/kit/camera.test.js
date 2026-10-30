@@ -70,3 +70,24 @@ test('aiming round a corner: the camera keeps the right shoulder but moves in un
     assert.ok(Math.abs(open.from.clone().sub(shooter).dot(right) - 1.3) < 1e-6);
     assert.ok(cam.from.clone().sub(shooter).dot(right) < 1.3, 'less offset round the corner');
 });
+
+test('nearby allied billboards clear the aiming view and return after camera exit',()=>{
+ const c=new CameraDirector({aspect:16/9});c.active=true;c.cam.fov=20;c.cam.aspect=16/9;c.cam.position.set(0,2,0);c.cam.lookAt(0,2,-20);c.cam.updateMatrixWorld(true);
+ assert.equal(c.foregroundUnit(new THREE.Vector3(1,1,-7)),true);
+ assert.equal(c.foregroundUnit(new THREE.Vector3(1,1,-30)),false);
+ assert.equal(c.foregroundUnit(new THREE.Vector3(20,1,-7)),false);
+ c.active=false;assert.equal(c.foregroundUnit(new THREE.Vector3(1,1,-7)),false);
+});
+
+test('new double-tile curve modules load alongside an existing baked library',async()=>{
+ const {KitLibrary}=await import('./KitLibrary.js');const kit=new KitLibrary({});
+ for(const kind of ['wall','floor','glass'])for(let turn=0;turn<4;turn++)for(let dx=0;dx<2;dx++)for(let dy=0;dy<2;dy++)assert.ok(kit.piece(`double_curve_${kind}_${turn}_${dx}_${dy}`));
+});
+
+test('aim clearance removes foreground geometry without cutting target cover',()=>{
+ const c=new CameraDirector({aspect:16/9}),s=new VoxelStore(24,24,10);c.store=s;
+ s.fill(7,4,2,9,4,4,'concrete_wall');s.fill(7,12,2,9,12,4,'concrete_wall');
+ const cells=c.foregroundCells(new THREE.Vector3(8.5,3,2.5),new THREE.Vector3(8.5,3,18.5),new THREE.Vector3(8.5,2,6.5));
+ assert.ok([...cells].some(k=>k.split(',')[1]==='4'));
+ assert.ok([...cells].every(k=>k.split(',')[1]!=='12'));
+});

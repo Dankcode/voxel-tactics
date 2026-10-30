@@ -47,7 +47,7 @@ test('the kit builds straight variants only for pieces that had bevels', () => {
 
 test('furniture and walls in the old half of a merged pair are drawn straight, the modern half rounded', () => {
     const m = createMap({ id: 'era-view', width: 34, depth: 20, seed: 3 });
-    m.building({ id: 'modern', program: 'office', x0: 3, y0: 3, w: 12, d: 10, storeys: 1, front: 's', era: 'modern' });
+    m.building({ id: 'modern', program: 'office', x0: 3, y0: 3, w: 12, d: 10, storeys: 1, front: 's', era: 'modern', rounded: true });
     const old = m.building({ id: 'old', program: 'office', x0: 14, y0: 3, w: 12, d: 10, storeys: 1, front: 's', era: 'old' });
     const asked = [];
     const kit = { piece: id => { asked.push(id); return [{ slot: 'self', geometry: new THREE.BoxGeometry() }]; }, material: () => new THREE.MeshBasicMaterial() };

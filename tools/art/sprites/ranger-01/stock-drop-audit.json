@@ -1,0 +1,27 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "family": "rifle",
+      "stockDropMetres": 0,
+      "paintedDropPixels": 0,
+      "muzzleChangeMetres": 0,
+      "boreMissMetres": 5.551792708129603e-17
+    },
+    {
+      "family": "sniper",
+      "stockDropMetres": 0.055,
+      "paintedDropPixels": 84.16254101015097,
+      "muzzleChangeMetres": 0,
+      "boreMissMetres": 5.551284527130373e-17
+    },
+    {
+      "family": "shotgun",
+      "stockDropMetres": 0.045,
+      "paintedDropPixels": 68.87592255639629,
+      "muzzleChangeMetres": 0,
+      "boreMissMetres": 1.3877787807814457e-17
+    }
+  ],
+  "blenderRefresh": "MCP disconnected; existing blend is the earlier shoulder alignment reference."
+}

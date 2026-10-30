@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "checks": [
+    {
+      "weapon": "rifle",
+      "boreMissMetres": 2.98059601444849e-08,
+      "stockErrorPixels": 0.00020744772895953006,
+      "crosshairErrorPixels": 0.0001779538173420653
+    },
+    {
+      "weapon": "sniper",
+      "boreMissMetres": 2.3283064365386963e-10,
+      "stockErrorPixels": 0.0002062473388348679,
+      "crosshairErrorPixels": 0.0001779538173420653
+    },
+    {
+      "weapon": "shotgun",
+      "boreMissMetres": 2.980323186851972e-08,
+      "stockErrorPixels": 0.00020744772895953006,
+      "crosshairErrorPixels": 0.0001779538173420653
+    }
+  ],
+  "file": "/Users/lx/Documents/GitHub/voxel-tactics/tools/art/sprites/ranger-01/ranger-shoulder-alignment.blend"
+}

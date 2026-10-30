@@ -87,9 +87,10 @@ export function bakePrefab(mission, group, { id = group, name = null, source = n
     const openings = [...s.windowOpenings].filter(([k]) => { const [x, y, z] = k.split(',').map(Number); return foot.has(`${x},${y}`) && z >= z0 && z <= z1; })
         .map(([k, a]) => { const [x, y, z] = k.split(',').map(Number); return [x - x0, y - y0, z - z0, a]; });
     const corners = [...s.squareCorners].filter(k => foot.has(k)).map(k => L(k.split(',').map(Number)));
+    const curves = [...(s.curveCells || [])].filter(([k]) => { const [x,y,z]=k.split(',').map(Number); return foot.has(`${x},${y}`)&&z>=z0&&z<=z1; }).map(([k,spec])=>{const [x,y,z]=k.split(',').map(Number);return [x-x0,y-y0,z-z0,{...spec,material:P(spec.material),...(spec.underlay!=null?{underlay:P(spec.underlay)}:{})}];});
     const main = recs.find(r => r.wing === 0) || recs[0];
     return { format: PREFAB_FORMAT, id, name: name || main.realName || main.name || id, source, program: main.program, storeys: main.storeys, front: main.front,
-        size: [W, D, H], footprint: [...foot].map(k => L(k.split(',').map(Number))), palette, voxels, rooms: rooms.map(lr), records, hints, decor, openings, corners };
+        size: [W, D, H], footprint: [...foot].map(k => L(k.split(',').map(Number))), palette, voxels, rooms: rooms.map(lr), records, hints, decor, openings, corners, curves };
 }
 
 /**
@@ -152,6 +153,14 @@ export function stampPrefab(m, prefab, { x = 0, y = 0, z = 1, rot = 0, mirror = 
     }
     for (const [a, b, c, ax] of prefab.openings) { const [wx, wy] = wc(a, b); s.windowOpenings.set(`${wx},${wy},${c + z}`, T.axis(ax)); }
     for (const [a, b] of prefab.corners) { const [wx, wy] = wc(a, b); s.squareCorners.add(`${wx},${wy}`); }
+    for(const [a,b,c,spec] of prefab.curves || []) {
+        const [wx,wy]=wc(a,b), local=transformFor([2,2],{rot,mirror}).cell([spec.dx,spec.dy]);
+        const turn=((mirror ? 1-spec.turn : spec.turn)+T.k+4)%4;
+        s.curveCells.set(`${wx},${wy},${c+z}`,{...spec,turn,dx:local[0],dy:local[1],material:ids[spec.material],...(spec.underlay!=null?{underlay:ids[spec.underlay]}:{})});
+        s.markDirty(wx,wy,c+z);
+        s.surfaceCache.delete(wx+wy*s.width);
+        for(const cache of s.profileSurfaceCache.values())cache.delete(wx+wy*s.width);
+    }
     register?.(written, `prefab:${prefab.id}`);
     return out;
 }

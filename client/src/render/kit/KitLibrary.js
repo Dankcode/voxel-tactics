@@ -123,7 +123,7 @@ export class KitLibrary {
         }
         return this.pieces.get(key) || this.piece(id);
     }
-    piece(id) { if(id.endsWith('@sharp'))return this.sharpPiece(id.slice(0,-6)); if(!this.pieces.has(id)&&MODERN_PIECES[id])this.pieces.set(id,MODERN_PIECES[id].build()); if(id.startsWith('square_')&&!this.pieces.has(id)&&CONNECTED_PIECES[id])this.pieces.set(id,CONNECTED_PIECES[id].build());return this.pieces.get(id) || this.pieces.get(`${id}#0`) || null; }
+    piece(id) { if(id.endsWith('@sharp'))return this.sharpPiece(id.slice(0,-6)); if(!this.pieces.has(id)&&MODERN_PIECES[id])this.pieces.set(id,MODERN_PIECES[id].build()); if(!this.pieces.has(id)&&CONNECTED_PIECES[id])this.pieces.set(id,CONNECTED_PIECES[id].build());return this.pieces.get(id) || this.pieces.get(`${id}#0`) || null; }
     /** Material for a slot; `selfKey` is the voxel material that 'self' (and barrels) resolve to. */
     material(slot, selfKey, clipping) {
         const def = SLOTS[slot] || SLOTS.self;
@@ -145,7 +145,7 @@ export class KitLibrary {
         });
         if (r.brightness) m.color.multiplyScalar(r.brightness);
         if (def.uv === 'world') worldUv(m, def.scale ?? r.scale ?? 2);
-        if (continuous) surfaceFinish(m);
+        if (continuous) surfaceFinish(m,selfKey);
         this.cache.set(key, m);
         return m;
     }

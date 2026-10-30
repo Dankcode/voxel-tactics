@@ -10,7 +10,7 @@ Status: implemented 2026-10-27 in the cloud workspace and copied into the local 
 |---|---|
 | D1 | A peek is free. The shot fires from the peek tile, and the soldier steps back home. |
 | D2 | `B.peekRange` = 1 |
-| D3 | W/S change floors. A/D, the arrow keys, the screen edges and right-drag pan. |
+| D3 | Z/X change floors. WASD, the arrow keys, the screen edges and right-drag pan. |
 | D4 | One shared armour table |
 | D5 | The in-battle squad selector |
 | D6 | Every AI item |
@@ -32,7 +32,7 @@ Status: implemented 2026-10-27 in the cloud workspace and copied into the local 
 | Status shown more often; AP more visible; know who is selected | The active-soldier card is always on in the squad phase: portrait, name, class, large AP pips (blue = can act, yellow = move only), HP, rounds, gadgets and statuses. It shrinks to a strip while aiming. The selected soldier carries a name + AP tag over its head (`unitTags`) and a bobbing beacon. Every change of soldier shows a `▶ NAME · CLASS` call-out. | `Hud.renderUnitCard/announceUnit`, `UnitView.drawBar/beacon` |
 | Smarter character select | Squad portraits show READY / n AP / WATCH / DONE / KIA plus AP pips, and spent soldiers are dimmed. Hovering a portrait lights that soldier's ring in the world. A NEXT ▸ button jumps to the next ready soldier. | `Hud.refresh` (`squadBadge`), `UnitView.setHovered` |
 | End the turn when all AP is spent | On by default; a one-time settings migration flips an old saved `false`. A 1.2 s `ALL AP SPENT — ENDING TURN` countdown runs; Esc, a click or a new order cancels it. | `ToolState.autoEndReady/migrateSettings`, `Game.startAutoEnd` |
-| W and S move the building floors | W/S call `changeLevel(±1)`. | `Game.onKey/handleKeysHeld` |
+| Z and X move the building floors | Z/X call `changeLevel(±1)`; W/S pan the tactical camera. | `Game.onKey/handleKeysHeld` |
 | Armour too high | New lighter table. Every projectile keeps at least `B.armorMinDamage` (0.5) of its damage. Brace drops from +4 to +2; the ballistic helmet from 3 to 2. A braced Riot Guard now takes 7 from a 5.56 round (was 2), and buckshot hurts plate (was 0). `docs/BALANCE.md` has the before/after table. These are starting values; nothing was auto-tuned. | `weapons.js`, `balance.js`, `Elements.js`, `gear.js`, `Battle.dealDamage`, AI damage estimates |
 | Enemy spawns too close (generated maps) | Encounter zones. The objective building holds two pods at most. Pods take the cover pockets nearest 30 / 55 / 78 % of the line of play, at least `B.podSpacing` (12) tiles apart and 16 from the insertion; a post beside the route is used when a zone has no pocket. A picket goes in a side building at mid-route. Members of a pod stand two or more tiles apart. Fixture maps keep their old rules. | `OperationDesigner.addPocketPods`, `Generator`, `MissionCommon` |
 | AI needs more work | Pod plan: one focus target per pod per round, and roles from the situation (the grenade holder supports, the widest member flanks). The support acts first. Focus fire, and wounded soldiers are preferred. Scamper scores cover against every soldier that sees the pod and spreads members out. Tiles with cover are never skipped by sampling. Every enemy intent carries a `why`; the F1 debug panel's **ai** tab lists the pod plans and the last 40 decisions. | `shared/battle/PodPlanner.js`, `EnemyAi.js`, `Ai.aiOrder`, `Battle.scatterPod`, `DebugTools` |

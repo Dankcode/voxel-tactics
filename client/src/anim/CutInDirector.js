@@ -14,6 +14,7 @@ import { SpriteWeapon, sortedSpriteLayers, spriteLayerOrder } from './SpriteWeap
 import { WorldAimSprite, worldAimSide } from './WorldAimSprite.js';
 import { PRESETS } from './CutInTimeline.js';
 import { loadCharacterArt } from '../units/UnitView.js';
+import { projectedSpreadRadius } from '../ui/AimReticle.js';
 
 export const CUTIN_MODES = ['always'];
 /** Fallback barrel tip for art without a `muzzle` entry. */
@@ -30,7 +31,7 @@ export function backshotPlacement(cutin, aim, view, { bars = BAR_SHARE, scale = 
     const [u, v] = cutin.muzzle || DEFAULT_MUZZLE;
     const aspect = (cutin.width || 512) / (cutin.height || 768);
     if(cutin.staticPose){
-        const height=(cutin.screenHeight||1)*view.height*scale;
+        const height=(cutin.screenHeight||1)*Math.min(view.height,view.width/aspect)*scale;
         return {left:0,top:view.height*(1-bars)-height,width:height*aspect,height,origin:'0% 100%'};
     }
     if (cutin.crosshair) {
@@ -108,9 +109,11 @@ export class CutInDirector {
     placeAim(target) {
         const a=this.aiming;
         if(a?.figure){
-            const p=backshotPlacement(a.art,null,viewport(),{bars:0});
+            const view=viewport(),p=backshotPlacement(a.art,null,view,{bars:0});
             Object.assign(a.figure.style,{left:p.left+'px',top:p.top+'px',width:p.width+'px',height:p.height+'px'});
-            a.weapon.update();this.cameraDirector.hidden=new Set([a.unitId]);return;
+            const aim=target?projectToScreen(this.cameraDirector.scene.camera,target,view):{x:view.width/2,y:view.height/2};
+            a.weapon.update({aimUV:[(aim.x-p.left)/p.width,(aim.y-p.top)/p.height],aimDistance:target?this.cameraDirector.cam.position.distanceTo(target):20});
+            this.cameraDirector.hidden=new Set([a.unitId]);return;
         }
         if(!a?.world?.ready)return;
         const camera=this.cameraDirector.scene.camera;
@@ -139,10 +142,11 @@ export class CutInDirector {
         const aimWorld = o.targetPos ? o.targetPos.clone().add(new THREE.Vector3(0, 1.1, 0)) : null;
         const timeline = (PRESETS[o.kind] || PRESETS.shot)(o.side === 'enemy' ? 0.95 : undefined);
         const arts = (await Promise.all(o.units.map(u => loadCharacterArt(u.art)))).map(a => ({ ...a, cutin: sideCutin(a.cutin, shoulder) }));
+        const shooterHud = !!o.weaponId && ['shot','burst','heavy'].includes(o.kind);
         const el = document.createElement('div');
-        el.className = `cutin cutin-${o.kind} side-${o.side}`;
+        el.className = `cutin cutin-${o.kind} side-${o.side}${shooterHud?' shooter-shot':''}`;
         el.innerHTML = `<div class="bar top"></div><div class="bar bottom"></div><div class="flash"></div>
-            <div class="figures"></div><i class="cutin-crosshair"></i><div class="caption"><div class="title"></div><div class="sub"></div></div>`;
+            <div class="figures"></div><i class="cutin-crosshair"><span class="read"></span></i><div class="caption"><div class="title"></div><div class="sub"></div></div>`;
         el.querySelector('.title').textContent = o.title || '';
         el.querySelector('.sub').textContent = o.subtitle || '';
         const figures = el.querySelector('.figures');
@@ -174,11 +178,17 @@ export class CutInDirector {
             const view = viewport(), aim = projectToScreen(this.cameraDirector.cam, aimWorld, view);
             const cutin = arts[0].cutin, liveMuzzle = weapons[0]?.targets?.muzzle;
             const muzzle = liveMuzzle ? [cutin.mirror ? 1 - liveMuzzle[0] : liveMuzzle[0], liveMuzzle[1]] : cutin.muzzle;
-            const pl = backshotPlacement({ ...cutin, muzzle }, aim, view), fig = figures.firstChild;
+            const pl = backshotPlacement({ ...cutin, muzzle }, aim, view, {bars:shooterHud?0:BAR_SHARE}), fig = figures.firstChild;
+            if(cutin.staticPose)weapons[0]?.update({aimUV:[(aim.x-pl.left)/pl.width,(aim.y-pl.top)/pl.height],aimDistance:this.cameraDirector.cam.position.distanceTo(aimWorld)});
             const pivot = cutin.crosshair ? [cutin.mirror ? 1 - cutin.crosshair[0] : cutin.crosshair[0], cutin.crosshair[1]] : muzzle;
             layerEls[0].img.style.transformOrigin = `${pivot[0]*100}% ${pivot[1]*100}%`;
             Object.assign(fig.style, { left: `${pl.left}px`, top: `${pl.top}px`, width: `${pl.width}px`, height: `${pl.height}px` });
             const ch = el.querySelector('.cutin-crosshair'); ch.style.left = `${aim.x}px`; ch.style.top = `${aim.y}px`; ch.style.display = aim.behind ? 'none' : 'block';
+            if(shooterHud){
+                const distance=o.aimDistance??o.shooterPos.clone().add(new THREE.Vector3(0,1.55,0)).distanceTo(aimWorld);
+                ch.style.setProperty('--aim-radius',`${projectedSpreadRadius(this.cameraDirector.cam,view.height,o.spread??1,distance)}px`);
+                ch.querySelector('.read').textContent=`${distance.toFixed(1)} m`;
+            }
         };
         this.current = cur;
         await new Promise(resolve => {
@@ -193,9 +203,9 @@ export class CutInDirector {
                 for (const l of layerEls) {
                     const x = (1 - (s.slide ?? 1)) * -110 * l.parallax;
                     const scale = 1 + ((s.push ?? 1) - 1) * l.parallax;
-                    l.img.style.transform = `translateX(${x}%) scale(${scale})`;
+                    l.img.style.transform = shooterHud?'none':`translateX(${x}%) scale(${scale})`;
                 }
-                if (this.cameraDirector.active) this.cameraDirector.apply(s.dolly ?? 0);
+                if (this.cameraDirector.active) this.cameraDirector.apply(shooterHud?0:(s.dolly ?? 0));
                 for (const weapon of weapons) weapon?.update({ recoil: (s.flash || 0) * .012 });
                 place();
                 if (cur.t >= timeline.duration) { resolve(); return; }

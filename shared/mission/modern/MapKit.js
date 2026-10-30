@@ -3,6 +3,7 @@ import { organizeStreetLights } from '../../mapgen/StreetLighting.js';
 // theme cover pass and the finishing step. Every map is still a voxel grid (the gameplay truth); vehicles, trees and
 // furniture also leave render hints so the tile set can draw them as whole objects, and decor is visual only.
 import { ladderAttachment, validateLadders } from '../../world/LadderAttachment.js';
+import { stampDoubleCurve, roundRoadCorners } from '../../voxel/DoubleTileCurves.js';
 import { VoxelStore } from '../../voxel/VoxelStore.js';
 import { MAT } from '../../voxel/Materials.js';
 import { createRng, hashString } from '../../util/Rng.js';
@@ -24,18 +25,21 @@ export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'l
         ground(x0, y0, x1, y1, key, z = datum) {
             for (let y = Math.max(0, y0); y <= Math.min(depth - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(width - 1, x1); x++) store.set(x, y, z, MAT[key]);
         },
+        curbGround(x0,y0,x1,y1,key){
+            for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++)if(store.inBounds(x,y,datum)&&![MAT.asphalt,MAT.road_mark].includes(store.get(x,y,datum)))store.set(x,y,datum,MAT[key]);
+        },
         /** Keep these cells free of scattered cover (approaches, spawns, driveways). */
         reserve(x0, y0, x1, y1) { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) m.keep.add(`${x},${y}`); },
         /** Road along x (rows y0..y1) with a dashed centre line. */
         roadX(y0, y1, x0 = 0, x1 = width - 1, { dash = true, curb = 'concrete' } = {}) {
             m.ground(x0, y0, x1, y1, 'asphalt');
             if (dash) { const yc = Math.floor((y0 + y1) / 2); for (let x = x0 + 1; x <= x1; x += 4) m.ground(x, yc, Math.min(x1, x + 1), yc, 'road_mark'); }
-            if (curb) { m.ground(x0, y0 - 1, x1, y0 - 1, curb); m.ground(x0, y1 + 1, x1, y1 + 1, curb); }
+            if (curb) { m.curbGround(x0, y0 - 1, x1, y0 - 1, curb); m.curbGround(x0, y1 + 1, x1, y1 + 1, curb); }
         },
         roadY(x0, x1, y0 = 0, y1 = depth - 1, { dash = true, curb = 'concrete' } = {}) {
             m.ground(x0, y0, x1, y1, 'asphalt');
             if (dash) { const xc = Math.floor((x0 + x1) / 2); for (let y = y0 + 1; y <= y1; y += 4) m.ground(xc, y, xc, Math.min(y1, y + 1), 'road_mark'); }
-            if (curb) { m.ground(x0 - 1, y0, x0 - 1, y1, curb); m.ground(x1 + 1, y0, x1 + 1, y1, curb); }
+            if (curb) { m.curbGround(x0 - 1, y0, x0 - 1, y1, curb); m.curbGround(x1 + 1, y0, x1 + 1, y1, curb); }
         },
         /** Zebra crossing across a road running along x, at column x. */
         crossingX(x, y0, y1) { for (let y = y0; y <= y1; y++) for (let dx = 0; dx < 3; dx += 2) store.set(x + dx, y, 1, MAT.road_mark); },
@@ -50,6 +54,8 @@ export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'l
         line(x, y, len, axis, key, h = 1, z = datum) {
             for (let i = 0; i < len; i++) for (let k = 1; k <= h; k++) store.set(x + (axis === 'x' ? i : 0), y + (axis === 'y' ? i : 0), z + k, MAT[key]);
         },
+        roadCurve(spec) { stampDoubleCurve(store,{z:datum,height:0,floor:'paving',underlay:MAT.asphalt,...spec});m.reserve(spec.x,spec.y,spec.x+1,spec.y+1); },
+        curve(spec) { stampDoubleCurve(store,{z:datum,...spec});m.reserve(spec.x,spec.y,spec.x+1,spec.y+1); },
         hedge(x, y, len, axis, z = 1) { m.line(x, y, len, axis, 'hedge', 1, z); },
         /**
          * Steel ladder in cell (x, y) leaning on its neighbour in direction (dx, dy): rungs from the ground up to the
@@ -137,6 +143,13 @@ export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'l
                 blocked: (x, y) => m.keep.has(`${x},${y}`) || near(x, y) || blocked(x, y) });
         },
         finish({ name, spawns, objective, meta = {} }) {
+            // Later building wings and door approaches can remove an earlier furnishing voxel.
+            for(const [key,hint]of Object.entries(ctx.hints))if(!hint.roller&&!store.get(...key.split(',').map(Number)))delete ctx.hints[key];
+            for(const [key,hint]of Object.entries(ctx.hints)){
+                if(hint.member&&!ctx.hints[hint.member])delete ctx.hints[key];
+                if(hint.cells)hint.cells=hint.cells.filter(cell=>ctx.hints[cell]||cell===key);
+            }
+            roundRoadCorners(store,{blocked:(x,y)=>m.buildings.some(b=>x>=b.x0&&x<b.x0+b.w&&y>=b.y0&&y<b.y0+b.d)});
             validateLadders(store);
             const streetLights=organizeStreetLights(m,{roads:m.lightRoutes||[],spacing:meta.lightSpacing||12});
             // Decor that a later prop or the cover pass landed on is dropped.

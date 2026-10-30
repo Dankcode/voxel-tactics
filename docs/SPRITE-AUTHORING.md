@@ -21,3 +21,18 @@ The full previous right arm (upper arm, forearm, glove and finger fragment) was 
 Previous `aim-*` and `world-aim-*` textures were moved out of the public game assets into `tools/art/archive/ranger-puppet/`, together with a snapshot of their manifest and formula. They are historical fixtures for the legacy renderer's tests, not selectable game sprites. The old bake/seed/apply commands refuse to overwrite the new static manifest. The archived puppet's known elbow diagnostic is retained in regression coverage; it is not a shipping art check.
 
 Check the active replacement with `node --test client/src/render/kit/static-backshot.test.js`, then `npm run build`. The six enemy packs and tactical field animations are unaffected by this replacement.
+
+## Shoulder alignment and aiming HUD (2026-10-30)
+
+`rig.gunView.projection: shoulder` uses a perspective camera and a rigid transform of the gun. The stock is pinned at `rig.stock` in the painting. The barrel axis, including its height above the stock, intersects the aim ray at target depth. It is not aligned using the diagonal from stock to muzzle. `CutInDirector` supplies the live crosshair in sprite coordinates, so the same alignment works at other aspect ratios; the painting is never deformed. The gun preserves its native metre scale. The sprite is width-limited on narrow screens and remains attached to the bottom edge.
+
+The current 3D alignment source is `tools/art/sprites/ranger-01/ranger-shoulder-alignment.blend`. Rebuild it by running `node tools/art/export_static_backshot.mjs`, then `tools/art/blender/shoulder_alignment.py → build()` through Blender MCP. It contains metre-space gun meshes, a perspective camera, the unchanged soldier card, and shoulder/muzzle/target markers. `shoulder-blender-audit.json` records independent Blender projection and bore checks. The older `ranger-static-backshot.blend` is the previous flattened layout reference.
+
+Aiming uses one circle sized from ballistic angular spread (bounded to stay visible and fit the screen), with distance below it. There are no pellet dots, aim lines, hit percentages, range bands, or spread text. Ammunition and controls live at the screen edge. Firing suppresses tactical HUD, captions, letterboxing and character slide/scale animations; its circle uses the shot's spread. Tactical controls return on leaving aim.
+
+Validation: `node --test client/src/render/kit/shoulder-alignment.test.js`. See `docs/AIMING-HUD-AUDIT.md` for the visual audit and scope.
+
+Shotgun/sniper rear-stock correction: `gunStockDrop` in `SpriteWeapon.js` drops the rear 45/55 mm, tapering to
+zero at the receiver. Forward barrel vertices and the bore transform stay fixed. `lowerGunRearGeometry` clones
+geometry per instance; `stock-drop-audit.json` and the exported layout record the lowered physical stock.
+The original Blender shoulder file predates this correction; the updated export/rebuild scripts include it.

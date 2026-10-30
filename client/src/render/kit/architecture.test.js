@@ -31,3 +31,17 @@ test('rounded walls, glazed bends and caps use continuous matching pieces',()=>{
     assert.ok(drawn(s).includes('facade_concrete_3'));assert.ok(drawn(s).includes('joined_cap_3'));
     s.set(5,5,2,MAT.glass);assert.ok(drawn(s).includes('glaze_curve_3'));
 });
+
+test('complete ground under curves does not bevel adjacent terrain into cut-outs',async()=>{
+ const {stampDoubleCurve,curveCell}=await import('../../../../shared/voxel/DoubleTileCurves.js');
+ const {meshChunk}=await import('../ChunkMesher.js');const s=new VoxelStore(12,12,8);s.fill(0,0,0,11,11,1,'concrete');
+ stampDoubleCurve(s,{x:4,y:4,z:1,height:0});
+ const out=meshChunk(s,0,0,0,{kit:(st,x,y,z)=>!!curveCell(st,x,y,z)});
+ let checked=0;
+ for(const b of out){const p=b.positions,n=b.normals;
+  for(let i=0;i<p.length;i+=3)if(p[i]>3.5&&p[i]<4.01&&p[i+2]>4.1&&p[i+2]<5.9&&p[i+1]>1.8){
+   assert.ok(Math.abs(n[i])<1e-6&&Math.abs(n[i+2])<1e-6,'adjacent ground stays flat at the curve seam');checked++;
+  }
+ }
+ assert.ok(checked>0);
+});

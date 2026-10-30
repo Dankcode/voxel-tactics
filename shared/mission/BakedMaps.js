@@ -28,6 +28,7 @@ export function bakeMission(mission, { id = mission.id, seed, generator, source 
     const used = new Set();
     for (let i = 1; i < packed.store.voxels.length; i += 4) used.add(packed.store.voxels[i]);
     for (const h of Object.values(packed.visual?.hints || {})) for (const m of h.materials || []) used.add(m);
+    for(const [,spec]of packed.store.curveCells||[]){used.add(spec.material);if(spec.underlay!=null)used.add(spec.underlay);}
     const palette = Object.fromEntries([...used].sort((a, b) => a - b).map(i => [i, MATERIALS[i]?.key ?? 'air']));
     return { format: BAKED_FORMAT, id, seed, generator, source, palette, bakedAt: null, mission: packed };
 }
@@ -53,6 +54,7 @@ export function bakedMission(id, seed, { generator, source } = {}) {
     const v = snap.store.voxels;
     for (let i = 1; i < v.length; i += 4) v[i] = remap.get(v[i]);
     for (const h of Object.values(snap.visual?.hints || {})) if (h.materials) h.materials = h.materials.map(m => remap.get(m) ?? m);
+    for(const [,spec] of snap.store.curveCells || []){spec.material=remap.get(spec.material)??spec.material;if(spec.underlay!=null)spec.underlay=remap.get(spec.underlay)??spec.underlay;}
     const mission = unpackMission(snap);
     mission.meta = { ...mission.meta, baked: { generator: bake.generator, source: bake.source } };
     return mission;

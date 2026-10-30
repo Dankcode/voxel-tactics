@@ -1,3 +1,4 @@
+import { curveBuildingCorners } from '../voxel/DoubleTileCurves.js';
 // The floor graph, shell, facade and vertical circulation all compile into the same collision/cover matrix.
 // Layout v2 (PLAN-02/03: one facade for all storeys, fixed W/E exits) and v3 (PLAN-04: per-storey facade bays,
 // exits by lot sockets, stacked stair core anywhere, district wall materials, planned access modules) share it.
@@ -7,7 +8,7 @@ import { furnish } from '../mission/modern/ModernBuilder.js';
 import { createRng, hashString } from '../util/Rng.js';
 import { placeFireEscape, placeRoofLadder, compileFireEscape, validateAccessModule, facadeOrigin, roofLadderTemplate, reserveFireEscape, SIDE_FRAME } from './AccessModules.js';
 import { STOREY } from './KitMetric.js';
-import { buildingEra, markBuildingEdges } from '../mission/BuildingEra.js';
+import { buildingEra, roundedBuilding, markBuildingEdges } from '../mission/BuildingEra.js';
 import { furnishBuilding } from './FurnishSolver.js';
 const key=(x,y)=>`${x},${y}`;
 const WALLS=new Set(['stucco','brick','concrete_wall','siding']);
@@ -21,7 +22,7 @@ export function compileBuilding(m,b,{roomById=id=>m.ctx.rooms.find(r=>r.id===id)
     if(storeys<1||storeys>4||b.floors.length!==storeys)throw Error('compile.storeys: requires all 1–4 floor layouts');
     const wallKey=WALLS.has(b.wall)?b.wall:'stucco',WALL=MAT[wallKey];
     const out={id:b.id,name:b.id,program:b.program,role:b.program,x0,y0,w,d,baseZ:m.G,top,storeys,front:b.front,wall:wallKey,district:b.district||null,era:buildingEra(b),rooms:[],doors:[],windows:[],stairs:[],escapes:[],approach:[],exits:[],access:[]};
-    out.rounded=out.era==='modern';markBuildingEdges(store,out,out.era);
+    out.rounded=roundedBuilding(b);markBuildingEdges(store,out,out.rounded?'modern':'old');
     const world=([x,y])=>[x+x0,y+y0];
     for(let y=y0;y<y0+d;y++)for(let x=x0;x<x0+w;x++) {
         for(let z=m.G;z<=top+2;z++)store.set(x,y,z,AIR);
@@ -159,6 +160,7 @@ reserveFireEscape(m,f);
         furnish(store,{floorSet,rooms,fz:m.G+STOREY*f.floor,keepFree,obstacles,rng:createRng(hashString(`${m.id}:${m.seed}:${b.id}:${f.floor}`)),hints:ctx.hints,decor:ctx.decor,wfc:true});
     }
     out.floorCells=out.rooms.filter(r=>r.storey===0&&r.gameplay).flatMap(r=>r.cells);
+    curveBuildingCorners(store,out,{wall:wallKey,floor:'oak_floor',hints:ctx.hints});
     m.buildings.push(out);return out;
 }
 

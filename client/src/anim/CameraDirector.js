@@ -18,6 +18,29 @@ export class CameraDirector {
         this.cutZ=Infinity;this.xray=null;this.xrayCells=null;
     }
     solid(store,x,y,z){return z<this.cutZ&&store.isSolid(x,y,z)&&!this.xrayCells?.has(`${x},${y},${z}`);}
+    /** Allied billboards close to the shoulder camera must not fill the aiming viewport. */
+    foregroundUnit(position) {
+        if(!this.active)return false;
+        const p=position.clone().add(new THREE.Vector3(0,1,0)).applyMatrix4(this.cam.matrixWorldInverse);
+        const depth=-p.z, halfHeight=Math.max(.1,depth)*Math.tan(THREE.MathUtils.degToRad(this.cam.fov/2));
+        // Cull allies whose billboard occupies at least a quarter of the screen height.
+        return depth>-.8 && depth<14 && 1.8/(2*halfHeight)>.25 && Math.abs(p.x)<halfHeight*this.cam.aspect+1 && Math.abs(p.y)<halfHeight+1.5;
+    }
+    /** Screen-space clearance behind the shooter's shoulder. This never changes collision or cover. */
+    foregroundCells(at,look,pivot) {
+        if(!this.store)return new Set();
+        const camera=new THREE.PerspectiveCamera(this.cam.fov,this.scene.aspect||1,.01,30);
+        camera.position.copy(at);camera.lookAt(look);camera.updateMatrixWorld(true);
+        const depth=Math.max(.5,Math.min(4.5,at.distanceTo(pivot)-.35)),cells=new Set();
+        for(let iy=-2;iy<=2;iy++)for(let ix=-3;ix<=3;ix++){
+            const ray=new THREE.Vector3(ix/3,iy/2,.5).unproject(camera).sub(at).normalize();
+            const to=at.clone().addScaledVector(ray,depth);
+            castRay(this.store,{x:at.x,y:at.z,h:at.y},{x:to.x,y:to.z,h:to.y},{blocks:()=>false,skipStart:false,visit:(x,y,z)=>{
+                if(z>Math.floor(pivot.y)-2 && this.store.get(x,y,z))cells.add(`${x},${y},${z}`);
+            }});
+        }
+        return cells;
+    }
     clear(v) {
         const s=this.store;
         return !s || (!this.solid(s,Math.floor(v.x),Math.floor(v.z),Math.floor(v.y)) && !castRay(s,this.head,{x:v.x,y:v.z,h:v.y},{blocks:(store,x,y,z)=>this.solid(store,x,y,z)}).hit);
@@ -81,7 +104,8 @@ export class CameraDirector {
         const moved=!this.xrayAt||this.xrayAt.distanceTo(at)>0.3||this.xrayLook.distanceTo(look)>0.8;
         if(this.store&&!this.xrayT&&moved){
             this.xrayT=0.12;this.xrayAt=at.clone();this.xrayLook=look.clone();
-            const fresh=(cramped||!this.sees(at,look))?this.occluders(at,[pivot,look,point],Math.floor(this.shooter.y)-1):new Set();
+            const fresh=this.foregroundCells(at,look,pivot);
+            if(cramped||!this.sees(at,look))for(const cell of this.occluders(at,[pivot],Math.floor(this.shooter.y)-1))fresh.add(cell);
             // Hysteresis: a cut cell stays cut for 0.4 s after it stops blocking, so fast swings do not flash walls back.
             this.xrayKeep||=new Map();for(const c of fresh)this.xrayKeep.set(c,this.clock+0.4);
             for(const [c,until] of this.xrayKeep)if(until<this.clock)this.xrayKeep.delete(c);

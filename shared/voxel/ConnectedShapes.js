@@ -1,6 +1,7 @@
 // Shared connection geometry for rendering, ray hits and cover. Coordinates are local XY in [0,1].
 // Only face neighbours join; diagonal proximity never invents a wall across a walkable gap.
 import { materialById } from './Materials.js';
+import { curveCell, doubleCurveFootprint } from './DoubleTileCurves.js';
 export const WALL_THICKNESS = 0.4;
 export const WALL_KEYS = new Set(['stone', 'plaster', 'timber', 'stucco', 'brick', 'concrete_wall', 'siding']);
 const OPENINGS = new Set(['glass', 'door', 'door_open', 'door_locked', 'lantern']);
@@ -101,6 +102,7 @@ export function openingAxis(store, x, y, z) {
 }
 /** null means an ordinary full voxel. Movement continues to reserve wall cells, including their thin margins. */
 export function collisionFootprint(store, x, y, z) {
+    const curve=curveCell(store,x,y,z);if(curve)return curve.underlay!=null?null:doubleCurveFootprint(curve);
     const key = keyAt(store, x, y, z);
     if (key === 'ice' || key === 'deep_ice') return liquidFootprint(store,x,y,z);
     const band = BANDS[key];

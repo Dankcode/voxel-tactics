@@ -12,6 +12,18 @@ export function spriteGunParts(weaponId) {
     return null;
 }
 export const gunPoint = p => new THREE.Vector3(p[0], p[2], -p[1]);
+/** Lower the rear furniture while preserving the receiver/front barrel's exact position and bore axis. */
+export function gunStockDrop(assembly){return assembly.parts.some(p=>p.startsWith('sniper_'))?.055:assembly.parts.some(p=>p.startsWith('shotgun_'))?.045:0;}
+export function lowerGunRearPoint(point,assembly){
+    const drop=gunStockDrop(assembly),rear=Math.max(.01,-assembly.stock[1]);
+    const t=THREE.MathUtils.clamp(point.z/rear,0,1),weight=t*t*(3-2*t);
+    return point.clone().add(new THREE.Vector3(0,-drop*weight,0));
+}
+export function lowerGunRearGeometry(geometry,assembly){
+    const copy=geometry.clone(),p=copy.attributes.position;
+    for(let i=0;i<p.count;i++){const v=lowerGunRearPoint(new THREE.Vector3().fromBufferAttribute(p,i),assembly);p.setXYZ(i,v.x,v.y,v.z);}
+    p.needsUpdate=true;copy.computeVertexNormals();copy.computeBoundingBox();copy.computeBoundingSphere();return copy;
+}
 /** Shared global paint order for the flat fallback and the character/gun compositor. */
 export const spriteLayerOrder = l => l.zIndex ?? ((l.stage === 'back' ? 0 : 100) + (l.order ?? (l.id === 'body' ? 5 : l.id === 'support-hand' ? 10 : l.id.endsWith('upper') ? 1 : l.id.endsWith('forearm') ? 2 : 3)));
 export const sortedSpriteLayers = layers => [...layers].sort((a,b) => spriteLayerOrder(a) - spriteLayerOrder(b));
@@ -39,6 +51,11 @@ export function fitSpriteGunCamera(camera, spec, stock, support, aspect) {
  * keeps the legacy orthographic side fit. */
 export function aimGunCamera(rig, stock, aspect) {
     const view = rig.gunView;
+    if (view?.projection === 'shoulder') {
+        const camera = new THREE.PerspectiveCamera(view.verticalFovDeg || 42, aspect, .01, 500);
+        camera.updateMatrixWorld(true);
+        return camera;
+    }
     if (view?.projection !== 'perspective') return fitGunPose(new THREE.OrthographicCamera(), rig, stock, aspect);
     const [fw, fh] = view.frame, [x, y, w, h] = view.card;
     const camera = new THREE.PerspectiveCamera(view.verticalFovDeg, fw / fh, view.near ?? .02, view.far ?? 60);
@@ -76,6 +93,7 @@ export function barrelButtMatrix(camera, assembly, degrees = 8) {
 }
 
 export function gunPoseSample(art, assembly, camera, input={}, degrees=art.rig.buttRaiseDegrees??8) {
+    if (art.staticPose && art.rig.gunView?.projection === 'shoulder') return shoulderGunPose(art, assembly, camera, input);
     if(art.staticPose)input={};
     const rest=barrelButtMatrix(camera,assembly,degrees);
     const seatedStock=gunPoint(assembly.stock).applyMatrix4(rest);
@@ -84,6 +102,24 @@ export function gunPoseSample(art, assembly, camera, input={}, degrees=art.rig.b
     const far=p=>contactDepth(camera,gunPoint(p).applyMatrix4(matrix));
     return {matrix,targets:{stock:uv(assembly.stock),grip:uv(assembly.grip),support:uv(assembly.support),muzzle:uv(assembly.muzzle)},
         depths:{stock:far(assembly.stock),grip:far(assembly.grip),support:far(assembly.support),muzzle:far(assembly.muzzle)}};
+}
+/** Inverse projection: pin the stock to the painting, then aim the physical bore through the target ray.
+ * Barrel height above the stock is accounted for; stock-to-muzzle is NOT the barrel's direction.
+ * The painting remains an identity plane. Only the metre-scale gun receives this rigid transform. */
+export function shoulderGunPose(art, assembly, camera, {aimUV=art.rig.gunView.aimUV || [.51,.49], aimDistance=20}={}) {
+    const depth=art.rig.gunView.shoulderDepth || .8;
+    const onRay=(uv,z)=>{const p=new THREE.Vector3(uv[0]*2-1,1-uv[1]*2,.5).unproject(camera);return p.multiplyScalar(z/-p.z);};
+    const seat=onRay(art.rig.stock,depth), target=onRay(aimUV,Math.max(depth+2,aimDistance));
+    const stock=gunPoint(assembly.stock),muzzle=gunPoint(assembly.muzzle),delta=target.clone().sub(seat);
+    const rotation=new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(seat,target,new THREE.Vector3(0,1,0)));
+    // All authored barrels run down local -Z, with their bore centred on x=0.
+    rotation.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),-Math.asin((muzzle.y-stock.y)/delta.length())));
+    const matrix=new THREE.Matrix4().compose(seat.clone().sub(stock.clone().applyQuaternion(rotation)),rotation,new THREE.Vector3(1,1,1));
+    const world=p=>gunPoint(p).applyMatrix4(matrix),uv=p=>{const q=p.clone().project(camera);return[(q.x+1)/2,(1-q.y)/2];};
+    const points=Object.fromEntries(['stock','grip','support','muzzle'].map(k=>[k,lowerGunRearPoint(gunPoint(assembly[k]),assembly).applyMatrix4(matrix)]));
+    return {matrix,targets:Object.fromEntries(Object.entries(points).map(([k,p])=>[k,uv(p)])),
+        depths:Object.fromEntries(Object.entries(points).map(([k,p])=>[k,contactDepth(camera,p)])),
+        bore:{origin:points.muzzle,direction:new THREE.Vector3(0,0,-1).applyQuaternion(rotation),target}};
 }
 /** Camera-space distance (metres along the view axis) of a world point; painted cards use it as their depth. */
 export function contactDepth(camera, point) {
@@ -215,6 +251,7 @@ export class SpriteWeapon {
             ob.visible = this.config.parts.includes(ob.name);
             if (ob.isMesh) {
                 // Per-instance materials; the cached GLTF and its metre-space geometry stay immutable.
+                if(this.config.parts.includes(ob.name)&&gunStockDrop(this.assembly)){ob.geometry=lowerGunRearGeometry(ob.geometry,this.assembly);this.resources.push(ob.geometry);}
                 ob.material = gunCelMaterial(ob.name, ramp); this.resources.push(ob.material);
                 gunMeshes.push(ob);
             }
@@ -313,11 +350,11 @@ export class SpriteWeapon {
         this.fill.color.copy(fill); this.fill.intensity = 2; this.fill.position.copy(fillDir).applyQuaternion(this.camera.quaternion).multiplyScalar(5);
         this.renderer.toneMappingExposure = w?.renderer?.toneMappingExposure ?? 1;
     }
-    update({yaw=0,pitch=0,recoil=0} = {}) {
-        this.last = { yaw, pitch, recoil };
+    update({yaw=0,pitch=0,recoil=0,aimUV,aimDistance} = {}) {
+        this.last = { yaw, pitch, recoil, aimUV, aimDistance };
         if (!this.ready || this.disposed) return null;
         const sample = ({yaw: y, pitch: p, recoil: r}) => {
-            const pose=gunPoseSample(this.art,this.assembly,this.camera,{yaw:y,pitch:p,recoil:r},this.buttRaise);
+            const pose=gunPoseSample(this.art,this.assembly,this.camera,{yaw:y,pitch:p,recoil:r,aimUV,aimDistance},this.buttRaise);
             this.pivot.matrixAutoUpdate=false;this.pivot.matrix.copy(pose.matrix);
             this.model.updateMatrixWorld(true);
             const far = p => contactDepth(this.camera, p.clone().applyMatrix4(this.pivot.matrixWorld));

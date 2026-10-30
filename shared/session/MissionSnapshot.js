@@ -13,7 +13,7 @@ export function packMission(mission) {
     return { ...structuredClone(data), store: {
         width: store.width, depth: store.depth, height: store.height,
         datum: store.datum, version: store.version,
-        supportGroups: structuredClone(store.supportGroups || []), windowOpenings: [...store.windowOpenings], squareCorners:[...store.squareCorners], voxels,
+        supportGroups: structuredClone(store.supportGroups || []), windowOpenings: [...store.windowOpenings], squareCorners:[...store.squareCorners], curveCells:structuredClone([...store.curveCells]), voxels,
     } };
 }
 export function unpackMission(snapshot) {
@@ -33,5 +33,6 @@ export function unpackMission(snapshot) {
     store.supportGroups = structuredClone(packed.supportGroups || []);
     store.windowOpenings = new Map(packed.windowOpenings || []);
     store.squareCorners=new Set(packed.squareCorners||[]);
+    store.curveCells=new Map(packed.curveCells||[]);
     return { ...structuredClone(data), store };
 }

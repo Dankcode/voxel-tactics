@@ -1,3 +1,4 @@
+import { curveCell, curvePiece } from '../../../../shared/voxel/DoubleTileCurves.js';
 import { ladderAttachment } from '../../../../shared/world/LadderAttachment.js';
 import { STREET_PROP_TALL } from './StreetPropPieces.js';
 import { straightCells } from '../../../../shared/mission/BuildingEra.js';
@@ -38,6 +39,7 @@ export const chunkKeyOf = (x, y, z) => `${Math.floor(x / CHUNK)},${Math.floor(y 
 
 /** Which kit handler draws this voxel (null → the cube mesher draws it). Shared with ChunkMesher. */
 export function kitHandler(store, x, y, z, id = store.get(x, y, z)) {
+    if(curveCell(store,x,y,z))return 'curve';
     const k = keyOf(id);
     if (!k) return null;
     if (WALLS.has(k)) return 'wall';
@@ -120,7 +122,7 @@ export class KitView {
         const add = (piece, x, y, z, yaw = 0, selfKey = 'stone', { scale = 1, sx = 1, sz = 1, dx = 0, dy = 0, dz = 0, tint = null, tintSlots = null } = {}) => {
             if (opts.hidden?.(x,y,z)) return false;
             // Old buildings: furniture and fittings come with straight edges too (same piece, bevels removed).
-            if (straight(Math.round(x + dx), Math.round(y + dy)) && !piece.startsWith('square_')) piece = `${piece}@sharp`;
+            if (straight(Math.round(x + dx), Math.round(y + dy)) && !piece.startsWith('square_') && !piece.startsWith('double_curve_')) piece = `${piece}@sharp`;
             const parts = this.kit.piece(piece); if (!parts) return false;
             q.setFromAxisAngle(up, yaw); s.set(scale * sx, scale, scale * sz); p.set(x + 0.5 + dx, z + dz, y + 0.5 + dy);
             m4.compose(p, q, s);
@@ -148,7 +150,15 @@ export class KitView {
             return ok;
         };
         const x0 = cx * CHUNK, y0 = cy * CHUNK, z0 = cz * CHUNK;
-        const ctx = { store, get, wallLike, add, cut, intact };
+        const hiddenObjects=new Map();
+        const objectHidden=anchor=>{
+            if(!hiddenObjects.has(anchor)){
+                const hint=this.hints[anchor];
+                hiddenObjects.set(anchor,(hint?.cells||[anchor]).some(c=>opts.hidden?.(...c.split(',').map(Number))));
+            }
+            return hiddenObjects.get(anchor);
+        };
+        const ctx = { store, get, wallLike, add, cut, intact, objectHidden };
         for (let z = z0; z < Math.min(z0 + CHUNK, store.height, cut); z++)
             for (let y = y0; y < Math.min(y0 + CHUNK, store.depth); y++)
                 for (let x = x0; x < Math.min(x0 + CHUNK, store.width); x++) {
@@ -197,7 +207,7 @@ export class KitView {
         return out;
     }
 
-    emit(h, k, x, y, z, { store, get, wallLike, add, cut, intact }) {
+    emit(h, k, x, y, z, { store, get, wallLike, add, cut, intact, objectHidden }) {
         const mask = DIRS.map(([dx, dy]) => wallLike(x + dx, y + dy, z));
         const lineYaw = (same) => {
             const ex = same(x + 1, y) || same(x - 1, y), ey = same(x, y + 1) || same(x, y - 1);
@@ -208,6 +218,7 @@ export class KitView {
         const sameKey = (ax, ay) => keyOf(get(ax, ay, z)) === k;
         const wallAxis = () => openingAxis(store, x, y, z) === 'x' ? 0 : -Math.PI / 2;
         const hint = this.hints[`${x},${y},${z}`];
+        if(objectHidden?.(hint?.member||`${x},${y},${z}`))return;
         if(hint?.member&&intact(hint.member))return;
         if(hint?.cells&&hint?.centre&&intact(`${x},${y},${z}`)){
             const [ccx,ccy]=hint.centre;
@@ -219,6 +230,16 @@ export class KitView {
             const full = keyOf(get(x, y, z + 1)) === k;
             add(`joined_${k}_${m2}_${full ? 'full' : 'top'}`, x, y, z, 0, k);
         };
+        if(h==='curve'){
+            const spec=curveCell(store,x,y,z),piece=curvePiece(spec);
+            if(spec.underlay!=null){
+                const base=keyOf(spec.underlay)||'concrete',drop=key=>['asphalt','road_mark'].includes(key)?.13:0;
+                add('double_curve_ground_base',x,y,z,0,base);
+                add(piece,x,y,z,0,k,{dz:-drop(k)});
+                add(piece.replace('curve_floor','curve_apron'),x,y,z,0,base,{dz:-drop(base)});
+            }else add(piece.replace('curve_wall',k==='glass'?'curve_glass':'curve_wall'),x,y,z,0,k);
+            return;
+        }
         switch (h) {
             case 'wall': {
                 const connections = wallMask(store, x, y, z);
