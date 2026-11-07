@@ -163,7 +163,7 @@ test('independent gloves keep cuffs opaque and place gun sockets within the grip
  }
 });
 
-test('game gun meshes cut source triangle cost by at least half without losing named parts',()=>{
+test('original game gun meshes retain named parts within the triangle and file budgets',()=>{
  const metadata=JSON.parse(readFileSync(new URL('../../../public/assets/weapons/ranger-preview/gun-kit.json',import.meta.url)));
  const buffer=readFileSync(new URL('../../../public/assets/weapons/ranger-preview/gun-kit.glb',import.meta.url));
  const gltf=JSON.parse(buffer.subarray(20,20+buffer.readUInt32LE(12)).toString());
@@ -174,8 +174,9 @@ test('game gun meshes cut source triangle cost by at least half without losing n
   assert.ok(actual>0);total+=actual;
  }
  assert.equal(total,metadata.optimization.triangles);
- assert.ok(total<metadata.optimization.sourceTriangles*.5);
- assert.ok(buffer.length<1200000,'no accidental source mesh re-export');
+ assert.equal(metadata.optimization.method,'Authored at game resolution; no imported source meshes');
+ assert.ok(total<=2000,`original kit has ${total} triangles`);
+ assert.ok(buffer.length<300000,'no accidental source mesh re-export');
 });
 
 test('support wrists remain below the barrel and pistol-grip placement cannot twist the support glove',()=>{

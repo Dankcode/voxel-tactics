@@ -24,6 +24,8 @@ test('static mode skips both IK and puppet evaluation in the renderer',()=>{
  const fake={art,ready:true,config:{family:'rifle'},assembly:gun,camera,stock,gunVisible:false,support:gunPoint(gun.support),pivot:{matrix:{copy(){}}},model:{updateMatrixWorld(){}},cards:[],maskScene:{children:[]},renderer:{clear(){},clearDepth(){},render(){}},updateLights(){}};
  assert.doesNotThrow(()=>SpriteWeapon.prototype.update.call(fake,{yaw:.5,pitch:.5,recoil:1}));assert.equal(fake.rigPose.arms.technique,'static-painting');assert.deepEqual(fake.rigPose.input,{yaw:0,pitch:0,recoil:0});
 });
-test('static backshot remains anchored to the lower left regardless of reticle or shoulder',()=>{
- const view={width:1280,height:720};const a=backshotPlacement(art,{x:100,y:100},view,{bars:0}),b=backshotPlacement(art,{x:1000,y:600},view,{bars:0});assert.deepEqual(a,b);assert.equal(a.left,0);assert.equal(a.top+a.height,view.height);
+test('static backshot is bottom anchored and fully visible regardless of reticle or shoulder',()=>{
+ for(const view of [{width:1280,height:720},{width:600,height:800}]){
+  const a=backshotPlacement(art,{x:100,y:100},view,{bars:0}),b=backshotPlacement(art,{x:1000,y:600},view,{bars:0});assert.deepEqual(a,b);assert.equal(a.left,0);assert.equal(a.top+a.height,view.height);assert.ok(a.top>=0);assert.ok(a.left+a.width<=view.width);
+ }
 });

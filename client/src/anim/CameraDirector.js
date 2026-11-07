@@ -1,13 +1,9 @@
-// Preparation uses a close tactical shoulder view; committed actions use the lower, tighter back-shot camera.
+// Player shots retain their prepared shoulder camera; other actions use the lower back-shot camera.
 import * as THREE from 'three';
 import { castRay, blocksSight } from '../../../shared/voxel/Raycast.js';
 export const MAX_YAW = 35 * Math.PI / 180;
 /** PLAN-14: the over-the-shoulder offset while aiming (tiles): behind the shoulder, to its side, above it. */
 export const SHOULDER = Object.freeze({ back: 3.4, side: 0.95, up: 0.45 });
-/** Frame a human-size target at roughly a third of the viewport, without moving through cover. */
-export function targetAimFov(distance) {
-    return THREE.MathUtils.clamp(THREE.MathUtils.radToDeg(2*Math.atan(2.4/(Math.max(1,distance)*.7))),14,38);
-}
 export class CameraDirector {
     constructor(scene) {
         this.scene=scene; this.cam=new THREE.PerspectiveCamera(38,1,0.08,300);
@@ -70,11 +66,10 @@ export class CameraDirector {
         for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(let dz=-1;dz<=1;dz++)keep(Math.floor(a.x)+dx,Math.floor(a.y)+dy,Math.floor(a.h)+dz);
         return out;
     }
-    prepareAim(shooter,target,{side='right'}={}){
-        // PLAN-14: already aiming (a step-out or a shoulder swap): the follow camera glides over; no cut.
-        if(this.active&&this.phase==='prepare'&&this.following){this.side=side;this.shooter=shooter.clone();this.head={x:shooter.x,y:shooter.z,h:shooter.y+1.7};return;}   // PLAN-15: wall tests from where the shooter now is
-        this.side=side;this.following=false;if(!this.begin(shooter,target.clone().add(new THREE.Vector3(0,-1.1,0)),'prepare',{side}))return;this.look.copy(target);this.shooter=shooter.clone();this.aimDir=this.flatDir(shooter,target);this.apply(0);}
-    focusTarget(point) { this.aimFov=targetAimFov(this.cam.position.distanceTo(point)); }
+    prepareAim(shooter,target,{side='right',preserveDirection=false}={}){
+        // A strafe translates the shot and keeps its viewing direction even when a wall changes the shoulder offset.
+        if(this.active&&this.phase==='prepare'&&this.following){this.side=side;this.fixedDir=preserveDirection?this.cam.getWorldDirection(new THREE.Vector3()):null;this.shooter=shooter.clone();this.head={x:shooter.x,y:shooter.z,h:shooter.y+1.7};return;}   // PLAN-15: wall tests from where the shooter now is
+        this.side=side;this.fixedDir=null;this.following=false;if(!this.begin(shooter,target.clone().add(new THREE.Vector3(0,-1.1,0)),'prepare',{side}))return;this.look.copy(target);this.shooter=shooter.clone();this.aimDir=this.flatDir(shooter,target);this.apply(0);}
     zoomAim(factor) { this.aimFov=THREE.MathUtils.clamp((this.aimFov??38)*factor,14,60); }
     flatDir(a,b){const d=b.clone().sub(a);d.y=0;return d.lengthSq()<1e-6?new THREE.Vector3(0,0,1):d.normalize();}
     /**
@@ -91,15 +86,16 @@ export class CameraDirector {
         // PLAN-15: always test walls from the current shooter (home or peek tile), never from where aiming began.
         this.head={x:pivot.x,y:pivot.z,h:pivot.y+0.15};
         const dir=point.clone().sub(pivot),dist=dir.length();if(dist<1e-3)return;dir.multiplyScalar(1/dist);
+        if(this.fixedDir)dir.copy(this.fixedDir);
         const flat=new THREE.Vector3(dir.x,0,dir.z);if(flat.lengthSq()<1e-6)flat.set(0,0,1);flat.normalize();
         const right=new THREE.Vector3(-flat.z,0,flat.x),side=(this.side==='left'?-1:1)*SHOULDER.side;
         const desired=pivot.clone().addScaledVector(dir,-SHOULDER.back).addScaledVector(right,side).add(new THREE.Vector3(0,SHOULDER.up,0));
         // PLAN-15: continuous pull-in (stop short of the first wall), then one raised try; never a camera inside a wall.
         let at=this.clear(desired)?desired:this.pullIn(pivot,desired);
-        const look=pivot.clone().addScaledVector(dir,Math.max(dist,6));
         // Too close to read the shot: keep the readable shoulder distance and cut away what stands in front of it.
         const cramped=!at||at.distanceTo(pivot)<SHOULDER.back*0.45;
         if(cramped)at=this.openSpot(pivot,desired);
+        const look=this.fixedDir?at.clone().addScaledVector(dir,Math.max(dist,6)):pivot.clone().addScaledVector(dir,Math.max(dist,6));
         this.xrayT=Math.max(0,(this.xrayT||0)-dt);
         const moved=!this.xrayAt||this.xrayAt.distanceTo(at)>0.3||this.xrayLook.distanceTo(look)>0.8;
         if(this.store&&!this.xrayT&&moved){
@@ -113,12 +109,20 @@ export class CameraDirector {
             const changed=(!old)!==(!cells)||(old&&cells&&(old.size!==cells.size||[...cells].some(c=>!old.has(c))));
             if(changed){this.xrayCells=cells;this.xray?.(cells);}
         }
-        const k=dt>0?1-Math.exp(-dt/0.05):1;
-        this.cam.position.lerp(at,k);
-        if(this.store&&this.solid(this.store,Math.floor(this.cam.position.x),Math.floor(this.cam.position.z),Math.floor(this.cam.position.y)))this.cam.position.copy(at);
-        this.look.lerp(look,k);
+        this.cam.position.copy(at);
+        this.look.copy(look);
         this.cam.aspect=this.scene.aspect||1;this.cam.updateProjectionMatrix();this.cam.lookAt(this.look);this.cam.updateMatrixWorld();
         this.aimDir=flat;this.following=true;
+    }
+    commitAim(unitId=null) {
+        if(!this.active||this.phase!=='prepare')return false;
+        this.phase='action';this.elapsed=0;this.from.copy(this.cam.position);this.to.copy(this.cam.position);this.aimContinuity=true;this.aimUnitId=unitId;
+        return true;
+    }
+    resumeAim() {
+        if(!this.active||this.phase!=='action'||!this.aimContinuity||!this.shooter)return false;
+        this.phase='prepare';this.elapsed=0;this.following=true;this.from.copy(this.cam.position);this.to.copy(this.cam.position);
+        return true;
     }
     /** PLAN-15: the farthest clear spot on the line pivot → desired (then the same line raised 0.6), or null. */
     pullIn(pivot,desired){
@@ -143,7 +147,7 @@ export class CameraDirector {
      * and only then any clear spot.
      */
     begin(shooter,target,phase='action',{side:shoulder='right'}={}) {
-        this.phase=phase; this.elapsed=0;
+        this.phase=phase; this.elapsed=0; this.aimContinuity=false; this.aimUnitId=null;
         const dir=target.clone().sub(shooter);dir.y=0;if(dir.lengthSq()<1e-6)dir.set(0,0,1);dir.normalize();
         const right=new THREE.Vector3(-dir.z,0,dir.x);
         this.head={x:shooter.x,y:shooter.z,h:shooter.y+1.7};
@@ -187,5 +191,5 @@ export class CameraDirector {
         if(!this.clear(this.cam.position))this.cam.position.copy(this.from);
         this.cam.aspect=this.scene.aspect || 1;this.cam.updateProjectionMatrix();this.cam.lookAt(this.look);this.cam.updateMatrixWorld();
     }
-    end() {const was=this.active;this.following=false;this.xrayAt=null;this.xrayKeep=null;this.aimFov=38;this.shooter=null;this.active=false;this.phase=null;if(this.xrayCells){this.xrayCells=null;this.xray?.(null);}if(was)this.onEnd?.();this.scene.actionCamera=null;this.hidden=new Set();}
+    end() {const was=this.active;this.following=false;this.xrayAt=null;this.xrayKeep=null;this.aimFov=38;this.shooter=null;this.aimContinuity=false;this.aimUnitId=null;this.active=false;this.phase=null;if(this.xrayCells){this.xrayCells=null;this.xray?.(null);}if(was)this.onEnd?.();this.scene.actionCamera=null;this.hidden=new Set();}
 }

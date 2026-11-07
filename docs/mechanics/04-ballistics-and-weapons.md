@@ -7,9 +7,9 @@ targets' body-part cylinders. Code: `shared/battle/Ballistics.js`, `Battle.fireW
 ## Aiming
 
 - **Free aim** (move the reticle, then click or press Space): the shot goes at the reticle's point, whatever it is on
-  (an enemy, a wall voxel to shoot away, an unseen spot). Tab snaps the reticle to the next visible enemy's torso;
-  body-part anchors are only snap points, no longer a required choice. Target-dependent modifiers (height, smoke, dim
-  room, formation) apply when the shot is anchored on a unit.
+  (an enemy, a wall voxel to shoot away, an unseen spot). Entering aim follows the soldier's facing; neither entry nor
+  mouse movement snaps to a target, body part, or surface. Target-dependent modifiers (height, smoke, dim room,
+  formation) apply when the free-aim point is on a unit.
 - **Aim inertia** (`client/src/ui/AimController.js`, PLAN-07): the cursor sets where you want to aim; the aim point
   follows it through a critically damped spring with a time constant by weapon weight (pistol 0.08 s, rifle 0.14 s,
   shotgun 0.16 s, sniper 0.22 s, +10 % per wounded arm) plus a slow figure-eight sway (0.12° × (1 + stress ÷ 60),
@@ -294,14 +294,16 @@ Overwatch reactions (both sides) and every NPC shot now roll an XCOM 2-style per
   reactions for that step (the soldier is exposed: known overwatch fires, reaction shots use the peek tile's cover),
   fires (leans and step-outs still apply from the peek tile), then steps back home (`peekBack`). A soldier killed on
   the peek tile stays there. The reticle line shows the peek tile's cover (`peekExposure`) and any known overwatch.
-  Esc steps back from a peek before it leaves aiming.
-- **Free aim / assist** (`options.aimAssist`): `light` (default) slows the mouse to 0.55× while the aim line passes
-  through or within 1.2° / 0.35 tiles of a visible hostile (`aimFriction`) and never moves the aim point; the body
-  part is whatever hitbox the line passes through (`partUnderRay`). `strong` is the old PLAN-11 snap (`stickyAim`);
-  `off` has neither.
-- **Shotgun reticle**: corner brackets for the pellet pattern (capped at 120 px, `WIDE` past it), eight fixed pellet
-  marks, a range band (`EFFECTIVE` ≤ range, `FALLOFF` ≤ max range, `OUT OF RANGE`) and the expected pellets and
-  damage on the hostile under it.
+  Esc steps back from a peek before it leaves aiming. Strafing translates the muzzle and every aim-state point by the
+  same displacement, preserving shot direction and distance. The shoulder camera keeps its viewing direction even when
+  the shoulder changes or a wall pulls it in; the next mouse movement releases that fixed direction.
+- **Free aim**: mouse movement preserves the exact derived point and distance, with no target, body-part, or surface
+  snapping. `partUnderRay` passively identifies a visible hostile under the reticle for target-dependent modifiers.
+  Hit detection is refreshed from the current stance muzzle every aiming frame, including immediately after a strafe.
+  Entering aim starts eight tiles along the soldier's facing rather than selecting a spotted enemy.
+- **Shotgun reticle**: one angular accuracy circle uses the live perspective field of view, so zooming changes its
+  projected radius in exact proportion to magnification. The shotgun's base spread is 4°; range and status modifiers
+  still apply. Only the distance readout accompanies it.
 - **Aim camera** (`CameraDirector.track`): wall tests always run from the current shooter (home or peek); the
   shoulder pulls in continuously and then tries 0.6 tiles higher; the camera is never placed inside a solid voxel; the
   x-ray cut keeps a cell for 0.4 s after it stops blocking, so fast swings do not flash walls back in.

@@ -31,8 +31,9 @@ export function backshotPlacement(cutin, aim, view, { bars = BAR_SHARE, scale = 
     const [u, v] = cutin.muzzle || DEFAULT_MUZZLE;
     const aspect = (cutin.width || 512) / (cutin.height || 768);
     if(cutin.staticPose){
-        const height=(cutin.screenHeight||1)*Math.min(view.height,view.width/aspect)*scale;
-        return {left:0,top:view.height*(1-bars)-height,width:height*aspect,height,origin:'0% 100%'};
+        const availableHeight=view.height*(1-bars);
+        const height=Math.min((cutin.screenHeight||1)*Math.min(view.height,view.width/aspect)*scale,availableHeight);
+        return {left:0,top:availableHeight-height,width:height*aspect,height,origin:'0% 100%'};
     }
     if (cutin.crosshair) {
         // Over-the-shoulder perspective art: the bore converges on `crosshair` (art fractions), placed on the aim point.
@@ -97,7 +98,7 @@ export class CutInDirector {
         if(loaded.cutin.staticPose){
             token.art=loaded.cutin;
             token.figure=document.createElement('div');token.figure.className='static-aimshot';
-            Object.assign(token.figure.style,{position:'fixed',pointerEvents:'none',zIndex:'3'});
+            Object.assign(token.figure.style,{position:'fixed',pointerEvents:'none',zIndex:'3',visibility:token.suspended?'hidden':''});
             const content=paintFigure(token.figure,loaded);
             (document.getElementById('aimshot-layer')||this.root).appendChild(token.figure);
             token.weapon=new SpriteWeapon(content,loaded.cutin,unit,weaponId,this.cameraDirector.scene,loaded.base);
@@ -131,10 +132,17 @@ export class CutInDirector {
      * Returns a promise that resolves when the cut-in finishes (or immediately when disabled).
      */
     async play(o) {
-        this.endAim();
         const shoulder = o.shoulder === 'left' ? 'left' : 'right';
-        // Same shoulder camera whatever side the shot leaves from; the side only picks a left-side sprite if one exists.
-        if (o.shooterPos && o.targetPos) this.cameraDirector.begin(o.shooterPos, o.targetPos);
+        const shooterHud = !!o.weaponId && ['shot','burst','heavy'].includes(o.kind);
+        const continuousAim = shooterHud && o.side === 'player' && o.units.length === 1 && this.cameraDirector.commitAim(o.units[0].id);
+        if (!continuousAim) {
+            this.endAim();
+            if (o.shooterPos && o.targetPos) this.cameraDirector.begin(o.shooterPos, o.targetPos);
+        } else if(this.aiming) {
+            this.aiming.suspended=true;
+            if(this.aiming.figure)this.aiming.figure.style.visibility='hidden';
+            if(this.aiming.world?.mesh)this.aiming.world.mesh.visible=false;
+        }
         // Every camera switch uses the back shot (no first-only / off modes any more).
         const key = o.units.map(u => u.id).join(',');
         this.shownThisTurn.add(key);
@@ -142,7 +150,6 @@ export class CutInDirector {
         const aimWorld = o.targetPos ? o.targetPos.clone().add(new THREE.Vector3(0, 1.1, 0)) : null;
         const timeline = (PRESETS[o.kind] || PRESETS.shot)(o.side === 'enemy' ? 0.95 : undefined);
         const arts = (await Promise.all(o.units.map(u => loadCharacterArt(u.art)))).map(a => ({ ...a, cutin: sideCutin(a.cutin, shoulder) }));
-        const shooterHud = !!o.weaponId && ['shot','burst','heavy'].includes(o.kind);
         const el = document.createElement('div');
         el.className = `cutin cutin-${o.kind} side-${o.side}${shooterHud?' shooter-shot':''}`;
         el.innerHTML = `<div class="bar top"></div><div class="bar bottom"></div><div class="flash"></div>
@@ -213,11 +220,12 @@ export class CutInDirector {
             };
             requestAnimationFrame(step);
         });
-        // Keep the action camera through tracer/skill playback; EventPlayer returns to tactics when the queue drains.
-        this.cameraDirector.hidden = new Set();
+        // Keep the action camera through tracer playback; continuous aim then resumes the same shoulder scene.
+        this.cameraDirector.hidden = continuousAim ? new Set(o.units.map(u => u.id)) : new Set();
         document.body.classList.remove('cutin-active');
         weapons.forEach(w => w?.dispose());
         el.remove();
         if (this.current === cur) this.current = null;
+        if(continuousAim&&this.aiming){this.aiming.suspended=false;if(this.aiming.figure)this.aiming.figure.style.visibility='';this.placeAim(aimWorld);}
     }
 }

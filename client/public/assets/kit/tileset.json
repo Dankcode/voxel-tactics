@@ -1,6 +1,6 @@
 {
  "version": "tileset-v1",
- "generated": "2026-10-12",
+ "generated": "2026-11-05",
  "cell": {
   "size": 1,
   "height": 1,
@@ -378,21 +378,21 @@
    "slots": [
     "self"
    ],
-   "tris": 24,
+   "tris": 72,
    "bounds": [
     [
      -0.5,
      0,
-     -0.5
+     -0.48
     ],
     [
      0.5,
      1,
-     0.5
+     0.48
     ]
    ],
    "group": "stairs",
-   "text": "Two treads in one voxel, rising toward +X"
+   "text": "Six compact treads in one tile, rising toward +X"
   },
   "stair_rail": {
    "slots": [
@@ -942,6 +942,525 @@
    ],
    "group": "decor",
    "text": "Crystal cluster"
+  },
+  "abandoned_car": {
+   "slots": [
+    "wreck",
+    "glass_dark",
+    "frame",
+    "tyre",
+    "chrome"
+   ],
+   "tris": 548,
+   "bounds": [
+    [
+     -1.95,
+     0,
+     -1.02
+    ],
+    [
+     1.95,
+     1.15,
+     1.02
+    ]
+   ],
+   "overhang": true,
+   "group": "vehicle",
+   "wheelCount": 4,
+   "footprint": [
+    4,
+    2
+   ],
+   "text": "Whole abandoned car with 2 axles"
+  },
+  "truck": {
+   "slots": [
+    "carpaint",
+    "glass_dark",
+    "frame",
+    "tyre",
+    "chrome"
+   ],
+   "tris": 548,
+   "bounds": [
+    [
+     -2.95,
+     0,
+     -1.02
+    ],
+    [
+     2.95,
+     2,
+     1.02
+    ]
+   ],
+   "overhang": true,
+   "group": "vehicle",
+   "wheelCount": 4,
+   "footprint": [
+    6,
+    2
+   ],
+   "text": "Whole truck with 2 axles"
+  },
+  "bus": {
+   "slots": [
+    "carpaint",
+    "glass_dark",
+    "frame",
+    "tyre",
+    "chrome"
+   ],
+   "tris": 696,
+   "bounds": [
+    [
+     -3.95,
+     0,
+     -1.02
+    ],
+    [
+     3.95,
+     1.85,
+     1.02
+    ]
+   ],
+   "overhang": true,
+   "group": "vehicle",
+   "wheelCount": 6,
+   "footprint": [
+    8,
+    2
+   ],
+   "text": "Whole bus with 3 axles"
+  },
+  "semitrailer": {
+   "slots": [
+    "carpaint",
+    "glass_dark",
+    "frame",
+    "tyre",
+    "chrome"
+   ],
+   "tris": 1012,
+   "bounds": [
+    [
+     -4.95,
+     0,
+     -1.02
+    ],
+    [
+     4.95,
+     2,
+     1.02
+    ]
+   ],
+   "overhang": true,
+   "group": "vehicle",
+   "wheelCount": 8,
+   "footprint": [
+    10,
+    2
+   ],
+   "text": "Whole semitrailer with 4 axles"
+  },
+  "eighteen_wheeler": {
+   "slots": [
+    "carpaint",
+    "glass_dark",
+    "frame",
+    "tyre",
+    "chrome"
+   ],
+   "tris": 1116,
+   "bounds": [
+    [
+     -5.95,
+     0,
+     -1.02
+    ],
+    [
+     5.95,
+     2,
+     1.02
+    ]
+   ],
+   "overhang": true,
+   "group": "vehicle",
+   "wheelCount": 18,
+   "footprint": [
+    12,
+    2
+   ],
+   "text": "Whole eighteen wheeler with 5 axles"
+  },
+  "supply_crates": {
+   "slots": [
+    "crate",
+    "iron"
+   ],
+   "tris": 240,
+   "bounds": [
+    [
+     -0.95,
+     0,
+     -0.425
+    ],
+    [
+     0.95,
+     0.8,
+     0.425
+    ]
+   ],
+   "overhang": true,
+   "group": "street-cover",
+   "footprint": [
+    2,
+    1
+   ]
+  },
+  "bike_rack": {
+   "slots": [
+    "iron"
+   ],
+   "tris": 120,
+   "bounds": [
+    [
+     -0.925,
+     0,
+     -0.275
+    ],
+    [
+     0.925,
+     0.76,
+     0.275
+    ]
+   ],
+   "overhang": true,
+   "group": "street-cover",
+   "footprint": [
+    2,
+    1
+   ]
+  },
+  "utility_cabinet": {
+   "slots": [
+    "frame",
+    "lamp"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.925,
+     0,
+     -0.375
+    ],
+    [
+     0.925,
+     0.9,
+     0.43
+    ]
+   ],
+   "overhang": true,
+   "group": "street-cover",
+   "footprint": [
+    2,
+    1
+   ]
+  },
+  "parcel_locker": {
+   "slots": [
+    "carpaint",
+    "frame"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.925,
+     0,
+     -0.375
+    ],
+    [
+     0.925,
+     0.92,
+     0.41
+    ]
+   ],
+   "overhang": true,
+   "group": "street-cover",
+   "footprint": [
+    2,
+    1
+   ]
+  },
+  "transit_shelter": {
+   "slots": [
+    "frame",
+    "glass",
+    "lamp"
+   ],
+   "tris": 60,
+   "bounds": [
+    [
+     -1.45,
+     0,
+     -0.45
+    ],
+    [
+     1.45,
+     1.97,
+     0.45
+    ]
+   ],
+   "overhang": true,
+   "group": "street-cover",
+   "footprint": [
+    3,
+    1
+   ]
+  },
+  "rooftop_ac": {
+   "slots": [
+    "frame",
+    "iron"
+   ],
+   "tris": 60,
+   "bounds": [
+    [
+     -0.925,
+     0,
+     -0.935
+    ],
+    [
+     0.925,
+     1.88,
+     0.935
+    ]
+   ],
+   "overhang": true,
+   "group": "street-cover",
+   "footprint": [
+    2,
+    2
+   ]
+  },
+  "traffic_signal": {
+   "slots": [
+    "post",
+    "self_dark",
+    "red",
+    "steel_yellow",
+    "glow",
+    "canvas_white"
+   ],
+   "tris": 1008,
+   "bounds": [
+    [
+     -0.55,
+     0,
+     -2.965
+    ],
+    [
+     0.55,
+     6.13,
+     4.75
+    ]
+   ],
+   "group": "decor",
+   "overhang": true,
+   "text": "Mast-arm traffic signal: corner pole, arm over the road toward +Z, three heads; visual only"
+  },
+  "signal_post": {
+   "slots": [
+    "post",
+    "self_dark",
+    "red",
+    "steel_yellow",
+    "glow",
+    "lamp"
+   ],
+   "tris": 500,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.19,
+     3.55,
+     0.4
+    ]
+   ],
+   "group": "decor",
+   "overhang": true,
+   "text": "Pedestal signal with a pedestrian head; visual only"
+  },
+  "stop_sign": {
+   "slots": [
+    "post",
+    "red",
+    "canvas_white"
+   ],
+   "tris": 68,
+   "bounds": [
+    [
+     -0.342,
+     0,
+     -0.03
+    ],
+    [
+     0.342,
+     2.592,
+     0.08
+    ]
+   ],
+   "group": "decor",
+   "overhang": true,
+   "text": "Stop sign on a post (face toward +Z); visual only"
+  },
+  "street_sign": {
+   "slots": [
+    "post",
+    "accent",
+    "canvas_white"
+   ],
+   "tris": 72,
+   "bounds": [
+    [
+     -0.075,
+     0,
+     -0.075
+    ],
+    [
+     1.175,
+     2.98,
+     1.175
+    ]
+   ],
+   "group": "decor",
+   "overhang": true,
+   "text": "Corner post with two street-name blades (along X and along Z); visual only"
+  },
+  "utility_pole": {
+   "slots": [
+    "wood",
+    "porcelain",
+    "iron",
+    "self_dark"
+   ],
+   "tris": 264,
+   "bounds": [
+    [
+     -1.1,
+     0,
+     -0.45
+    ],
+    [
+     1.1,
+     9,
+     0.45
+    ]
+   ],
+   "group": "decor",
+   "overhang": true,
+   "text": "Wooden utility pole: crossarm, insulators, transformer can; visual only"
+  },
+  "storefront_awning": {
+   "slots": [
+    "canvas",
+    "iron"
+   ],
+   "tris": 60,
+   "bounds": [
+    [
+     -0.5,
+     1.726,
+     -0.47
+    ],
+    [
+     0.5,
+     2.52,
+     1.635
+    ]
+   ],
+   "group": "decor",
+   "overhang": true,
+   "text": "Fabric shop awning projecting 1 cell toward +Z (place one per front cell); visual only"
+  },
+  "shopping_cart": {
+   "slots": [
+    "chrome",
+    "red",
+    "tyre"
+   ],
+   "tris": 260,
+   "bounds": [
+    [
+     -0.32,
+     0,
+     -0.445
+    ],
+    [
+     0.27,
+     0.96,
+     0.315
+    ]
+   ],
+   "group": "decor",
+   "text": "Shopping cart (handle toward −Z); visual only"
+  },
+  "cart_corral": {
+   "slots": [
+    "chrome",
+    "red",
+    "canvas_white"
+   ],
+   "tris": 144,
+   "bounds": [
+    [
+     -1.4,
+     0,
+     -0.41
+    ],
+    [
+     1.7,
+     1.45,
+     0.41
+    ]
+   ],
+   "group": "street-cover",
+   "overhang": true,
+   "footprint": [
+    3,
+    1
+   ],
+   "text": "Cart return: pipe rails over 3 cells with a sign (concealment; rounds pass the rails)"
+  },
+  "plaza_sign": {
+   "slots": [
+    "self_dark",
+    "frame",
+    "red",
+    "canvas_white",
+    "accent",
+    "lamp"
+   ],
+   "tris": 528,
+   "bounds": [
+    [
+     -1.2,
+     0,
+     -0.3
+    ],
+    [
+     1.2,
+     6.7,
+     0.3
+    ]
+   ],
+   "group": "decor",
+   "overhang": true,
+   "text": "Shopping-centre pylon sign with tenant panels (faces ±Z); visual only"
   },
   "aid_station": {
    "slots": [
@@ -2111,6 +2630,271 @@
    "group": "furniture",
    "overhang": true
   },
+  "market_stall": {
+   "slots": [
+    "wood",
+    "goods_a",
+    "accent"
+   ],
+   "tris": 168,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.43
+    ],
+    [
+     0.5,
+     0.97,
+     0.43
+    ]
+   ],
+   "group": "furniture",
+   "text": "Market vendor counter with slatted crates and striped front"
+  },
+  "bakery_case": {
+   "slots": [
+    "wood",
+    "frame",
+    "glass",
+    "wood"
+   ],
+   "tris": 432,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.4
+    ],
+    [
+     0.5,
+     0.98,
+     0.4
+    ]
+   ],
+   "group": "furniture",
+   "text": "Glass bakery display with bread trays"
+  },
+  "chest_freezer": {
+   "slots": [
+    "lacquer",
+    "glass",
+    "chrome",
+    "accent"
+   ],
+   "tris": 72,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.45
+    ],
+    [
+     0.5,
+     0.92,
+     0.45
+    ]
+   ],
+   "group": "furniture",
+   "text": "Low chest freezer with split sliding glass lids"
+  },
+  "packing_table": {
+   "slots": [
+    "iron",
+    "wood",
+    "goods_c",
+    "chrome"
+   ],
+   "tris": 108,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.4
+    ],
+    [
+     0.5,
+     0.99,
+     0.4
+    ]
+   ],
+   "group": "furniture",
+   "text": "Shipping bench with cartons, tape and a parcel scale"
+  },
+  "conveyor": {
+   "slots": [
+    "iron",
+    "chrome",
+    "goods_a"
+   ],
+   "tris": 276,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.385
+    ],
+    [
+     0.5,
+     0.94,
+     0.385
+    ]
+   ],
+   "group": "furniture",
+   "text": "Modular parcel roller conveyor"
+  },
+  "cable_spool": {
+   "slots": [
+    "wood",
+    "self_dark"
+   ],
+   "tris": 144,
+   "bounds": [
+    [
+     -0.36,
+     0,
+     -0.36
+    ],
+    [
+     0.36,
+     0.66,
+     0.36
+    ]
+   ],
+   "group": "decor",
+   "text": "Cable spool dressing; visual only"
+  },
+  "parts_bin": {
+   "slots": [
+    "frame",
+    "goods_c",
+    "chrome"
+   ],
+   "tris": 180,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.435
+    ],
+    [
+     0.5,
+     0.81,
+     0.4
+    ]
+   ],
+   "group": "furniture",
+   "text": "Hardware sorting bins in a steel cabinet"
+  },
+  "produce_display": {
+   "slots": [
+    "wood",
+    "goods_a",
+    "goods_b"
+   ],
+   "tris": 588,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.425
+    ],
+    [
+     0.5,
+     0.96,
+     0.425
+    ]
+   ],
+   "group": "furniture",
+   "text": "Low sloping produce bins, open timber trays"
+  },
+  "pegboard_lower": {
+   "slots": [
+    "frame",
+    "chrome",
+    "goods_c"
+   ],
+   "tris": 144,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.46
+    ],
+    [
+     0.5,
+     1,
+     0.005
+    ]
+   ],
+   "group": "furniture",
+   "text": "Wall pegboard with hanging tools and shallow bins"
+  },
+  "pegboard_upper": {
+   "slots": [
+    "frame",
+    "chrome"
+   ],
+   "tris": 84,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.46
+    ],
+    [
+     0.5,
+     0.9,
+     -0.31
+    ]
+   ],
+   "group": "furniture",
+   "text": "Pegboard head with hanging hardware"
+  },
+  "warehouse_rack_lower": {
+   "slots": [
+    "iron",
+    "wood",
+    "goods_a"
+   ],
+   "tris": 108,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.42
+    ],
+    [
+     0.5,
+     1,
+     0.42
+    ]
+   ],
+   "group": "furniture",
+   "text": "Open steel pallet racking with wide beams"
+  },
+  "warehouse_rack_upper": {
+   "slots": [
+    "iron",
+    "wood",
+    "goods_c"
+   ],
+   "tris": 108,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.42
+    ],
+    [
+     0.5,
+     0.95,
+     0.42
+    ]
+   ],
+   "group": "furniture",
+   "text": "Upper steel rack with bundled stock"
+  },
   "cooler_lower": {
    "slots": [
     "self",
@@ -2693,6 +3477,94 @@
    "text": "Conifer (whole object)",
    "overhang": true
   },
+  "tree_oak": {
+   "slots": [
+    "bark",
+    "leaves"
+   ],
+   "tris": 1096,
+   "bounds": [
+    [
+     -1.732,
+     0,
+     -2.217
+    ],
+    [
+     2.301,
+     4.208,
+     2.288
+    ]
+   ],
+   "group": "foliage",
+   "text": "Broad oak, wide low crown (whole object)",
+   "overhang": true
+  },
+  "tree_birch": {
+   "slots": [
+    "bark",
+    "leaves"
+   ],
+   "tris": 612,
+   "bounds": [
+    [
+     -0.652,
+     0,
+     -0.764
+    ],
+    [
+     0.81,
+     5.796,
+     0.422
+    ]
+   ],
+   "group": "foliage",
+   "text": "Birch, slender trunk and tall oval crown (whole object)",
+   "overhang": true
+  },
+  "tree_ornamental": {
+   "slots": [
+    "bark",
+    "leaves"
+   ],
+   "tris": 432,
+   "bounds": [
+    [
+     -0.911,
+     0,
+     -0.955
+    ],
+    [
+     0.969,
+     3.358,
+     0.813
+    ]
+   ],
+   "group": "foliage",
+   "text": "Ornamental street tree, compact round head (whole object)",
+   "overhang": true
+  },
+  "tree_cypress": {
+   "slots": [
+    "bark",
+    "needles"
+   ],
+   "tris": 668,
+   "bounds": [
+    [
+     -0.662,
+     0,
+     -0.662
+    ],
+    [
+     0.659,
+     5.832,
+     0.599
+    ]
+   ],
+   "group": "foliage",
+   "text": "Columnar cypress (whole object)",
+   "overhang": true
+  },
   "checkpoint_sign": {
    "slots": [
     "iron",
@@ -2734,27 +3606,6 @@
    ],
    "group": "decor",
    "text": "Roof exhaust; visual only"
-  },
-  "cable_spool": {
-   "slots": [
-    "wood",
-    "self_dark"
-   ],
-   "tris": 144,
-   "bounds": [
-    [
-     -0.36,
-     0,
-     -0.36
-    ],
-    [
-     0.36,
-     0.66,
-     0.36
-    ]
-   ],
-   "group": "decor",
-   "text": "Cable spool dressing; visual only"
   },
   "rug": {
    "slots": [
@@ -3572,6 +4423,105 @@
    "group": "decor",
    "text": "Louvred wall vent (+Z faces out)"
   },
+  "car_sedan": {
+   "slots": [
+    "carpaint",
+    "glass_dark",
+    "frame",
+    "tyre",
+    "chrome",
+    "lamp",
+    "tail"
+   ],
+   "tris": 1144,
+   "bounds": [
+    [
+     -2.036,
+     0,
+     -0.957
+    ],
+    [
+     2.285,
+     1.335,
+     0.957
+    ]
+   ],
+   "group": "vehicle",
+   "overhang": true,
+   "footprint": [
+    4,
+    2
+   ]
+  },
+  "car_pickup": {
+   "slots": [
+    "carpaint",
+    "glass_dark",
+    "self_dark",
+    "frame",
+    "tyre",
+    "chrome",
+    "lamp",
+    "tail"
+   ],
+   "tris": 1180,
+   "bounds": [
+    [
+     -2.031,
+     0,
+     -0.998
+    ],
+    [
+     2.32,
+     1.435,
+     0.998
+    ]
+   ],
+   "group": "vehicle",
+   "overhang": true,
+   "footprint": [
+    4,
+    2
+   ]
+  },
+  "square_wall_0": {
+   "slots": [
+    "self"
+   ],
+   "tris": 52,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "square-wall"
+  },
+  "square_cap_0": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 2,
+   "bounds": [
+    [
+     -0.2,
+     1.008,
+     -0.2
+    ],
+    [
+     0.2,
+     1.008,
+     0.2
+    ]
+   ],
+   "group": "square-wall"
+  },
   "joined_wall_0": {
    "slots": [
     "self"
@@ -3610,6 +4560,44 @@
     ]
    ],
    "group": "connected-wall"
+  },
+  "square_wall_1": {
+   "slots": [
+    "self"
+   ],
+   "tris": 30,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "square-wall"
+  },
+  "square_cap_1": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 2,
+   "bounds": [
+    [
+     -0.2,
+     1.008,
+     -0.2
+    ],
+    [
+     0.5,
+     1.008,
+     0.2
+    ]
+   ],
+   "group": "square-wall"
   },
   "joined_wall_1": {
    "slots": [
@@ -3650,6 +4638,44 @@
    ],
    "group": "connected-wall"
   },
+  "square_wall_2": {
+   "slots": [
+    "self"
+   ],
+   "tris": 30,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "square-wall"
+  },
+  "square_cap_2": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 2,
+   "bounds": [
+    [
+     -0.2,
+     1.008,
+     -0.2
+    ],
+    [
+     0.2,
+     1.008,
+     0.5
+    ]
+   ],
+   "group": "square-wall"
+  },
   "joined_wall_2": {
    "slots": [
     "self"
@@ -3688,6 +4714,44 @@
     ]
    ],
    "group": "connected-wall"
+  },
+  "square_wall_3": {
+   "slots": [
+    "self"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "square-wall"
+  },
+  "square_cap_3": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 4,
+   "bounds": [
+    [
+     -0.2,
+     1.008,
+     -0.2
+    ],
+    [
+     0.5,
+     1.008,
+     0.5
+    ]
+   ],
+   "group": "square-wall"
   },
   "joined_wall_3": {
    "slots": [
@@ -3728,6 +4792,44 @@
    ],
    "group": "connected-wall"
   },
+  "square_wall_4": {
+   "slots": [
+    "self"
+   ],
+   "tris": 30,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "square-wall"
+  },
+  "square_cap_4": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 2,
+   "bounds": [
+    [
+     -0.5,
+     1.008,
+     -0.2
+    ],
+    [
+     0.2,
+     1.008,
+     0.2
+    ]
+   ],
+   "group": "square-wall"
+  },
   "joined_wall_4": {
    "slots": [
     "self"
@@ -3766,6 +4868,44 @@
     ]
    ],
    "group": "connected-wall"
+  },
+  "square_wall_5": {
+   "slots": [
+    "self"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "square-wall"
+  },
+  "square_cap_5": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 2,
+   "bounds": [
+    [
+     -0.5,
+     1.008,
+     -0.2
+    ],
+    [
+     0.5,
+     1.008,
+     0.2
+    ]
+   ],
+   "group": "square-wall"
   },
   "joined_wall_5": {
    "slots": [
@@ -3806,6 +4946,44 @@
    ],
    "group": "connected-wall"
   },
+  "square_wall_6": {
+   "slots": [
+    "self"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "square-wall"
+  },
+  "square_cap_6": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 4,
+   "bounds": [
+    [
+     -0.5,
+     1.008,
+     -0.2
+    ],
+    [
+     0.2,
+     1.008,
+     0.5
+    ]
+   ],
+   "group": "square-wall"
+  },
   "joined_wall_6": {
    "slots": [
     "self"
@@ -3844,6 +5022,44 @@
     ]
    ],
    "group": "connected-wall"
+  },
+  "square_wall_7": {
+   "slots": [
+    "self"
+   ],
+   "tris": 42,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "square-wall"
+  },
+  "square_cap_7": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 6,
+   "bounds": [
+    [
+     -0.5,
+     1.008,
+     -0.2
+    ],
+    [
+     0.5,
+     1.008,
+     0.5
+    ]
+   ],
+   "group": "square-wall"
   },
   "joined_wall_7": {
    "slots": [
@@ -3884,6 +5100,44 @@
    ],
    "group": "connected-wall"
   },
+  "square_wall_8": {
+   "slots": [
+    "self"
+   ],
+   "tris": 30,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "square-wall"
+  },
+  "square_cap_8": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 2,
+   "bounds": [
+    [
+     -0.2,
+     1.008,
+     -0.5
+    ],
+    [
+     0.2,
+     1.008,
+     0.2
+    ]
+   ],
+   "group": "square-wall"
+  },
   "joined_wall_8": {
    "slots": [
     "self"
@@ -3922,6 +5176,44 @@
     ]
    ],
    "group": "connected-wall"
+  },
+  "square_wall_9": {
+   "slots": [
+    "self"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "square-wall"
+  },
+  "square_cap_9": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 4,
+   "bounds": [
+    [
+     -0.2,
+     1.008,
+     -0.5
+    ],
+    [
+     0.5,
+     1.008,
+     0.2
+    ]
+   ],
+   "group": "square-wall"
   },
   "joined_wall_9": {
    "slots": [
@@ -3962,6 +5254,44 @@
    ],
    "group": "connected-wall"
   },
+  "square_wall_10": {
+   "slots": [
+    "self"
+   ],
+   "tris": 8,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "square-wall"
+  },
+  "square_cap_10": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 2,
+   "bounds": [
+    [
+     -0.2,
+     1.008,
+     -0.5
+    ],
+    [
+     0.2,
+     1.008,
+     0.5
+    ]
+   ],
+   "group": "square-wall"
+  },
   "joined_wall_10": {
    "slots": [
     "self"
@@ -4000,6 +5330,44 @@
     ]
    ],
    "group": "connected-wall"
+  },
+  "square_wall_11": {
+   "slots": [
+    "self"
+   ],
+   "tris": 42,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "square-wall"
+  },
+  "square_cap_11": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 6,
+   "bounds": [
+    [
+     -0.2,
+     1.008,
+     -0.5
+    ],
+    [
+     0.5,
+     1.008,
+     0.5
+    ]
+   ],
+   "group": "square-wall"
   },
   "joined_wall_11": {
    "slots": [
@@ -4040,6 +5408,44 @@
    ],
    "group": "connected-wall"
   },
+  "square_wall_12": {
+   "slots": [
+    "self"
+   ],
+   "tris": 36,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.2
+    ]
+   ],
+   "group": "square-wall"
+  },
+  "square_cap_12": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 4,
+   "bounds": [
+    [
+     -0.5,
+     1.008,
+     -0.5
+    ],
+    [
+     0.2,
+     1.008,
+     0.2
+    ]
+   ],
+   "group": "square-wall"
+  },
   "joined_wall_12": {
    "slots": [
     "self"
@@ -4078,6 +5484,44 @@
     ]
    ],
    "group": "connected-wall"
+  },
+  "square_wall_13": {
+   "slots": [
+    "self"
+   ],
+   "tris": 42,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "square-wall"
+  },
+  "square_cap_13": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 6,
+   "bounds": [
+    [
+     -0.5,
+     1.008,
+     -0.5
+    ],
+    [
+     0.5,
+     1.008,
+     0.2
+    ]
+   ],
+   "group": "square-wall"
   },
   "joined_wall_13": {
    "slots": [
@@ -4118,6 +5562,44 @@
    ],
    "group": "connected-wall"
   },
+  "square_wall_14": {
+   "slots": [
+    "self"
+   ],
+   "tris": 42,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "square-wall"
+  },
+  "square_cap_14": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 6,
+   "bounds": [
+    [
+     -0.5,
+     1.008,
+     -0.5
+    ],
+    [
+     0.2,
+     1.008,
+     0.5
+    ]
+   ],
+   "group": "square-wall"
+  },
   "joined_wall_14": {
    "slots": [
     "self"
@@ -4156,6 +5638,44 @@
     ]
    ],
    "group": "connected-wall"
+  },
+  "square_wall_15": {
+   "slots": [
+    "self"
+   ],
+   "tris": 76,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "square-wall"
+  },
+  "square_cap_15": {
+   "slots": [
+    "cap"
+   ],
+   "tris": 10,
+   "bounds": [
+    [
+     -0.5,
+     1.008,
+     -0.5
+    ],
+    [
+     0.5,
+     1.008,
+     0.5
+    ]
+   ],
+   "group": "square-wall"
   },
   "joined_wall_15": {
    "slots": [
@@ -7354,6 +8874,1329 @@
    "text": "Shrubs and flowers in a planter cell",
    "overhang": true
   },
+  "double_curve_wall_0_0_0": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 72,
+   "bounds": [
+    [
+     0.126,
+     0,
+     0.126
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_wall_0_1_0": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 240,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_wall_0_0_1": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 240,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_wall_0_1_1": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 40,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     -0.33,
+     1,
+     -0.33
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_wall_1_0_0": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 240,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_wall_1_1_0": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 72,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     0.126
+    ],
+    [
+     -0.126,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_wall_1_0_1": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 40,
+   "bounds": [
+    [
+     0.33,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     -0.33
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_wall_1_1_1": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 240,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_wall_2_0_0": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 40,
+   "bounds": [
+    [
+     0.33,
+     0,
+     0.33
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_wall_2_1_0": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 240,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_wall_2_0_1": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 240,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_wall_2_1_1": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 72,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     -0.126,
+     1,
+     -0.126
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_wall_3_0_0": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 240,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_wall_3_1_0": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 40,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     0.33
+    ],
+    [
+     -0.33,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_wall_3_0_1": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 72,
+   "bounds": [
+    [
+     0.126,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     -0.126
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_wall_3_1_1": {
+   "slots": [
+    "self",
+    "frame_white"
+   ],
+   "tris": 240,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_floor_0_0_0": {
+   "slots": [
+    "self"
+   ],
+   "tris": 52,
+   "bounds": [
+    [
+     -0.231,
+     0,
+     -0.231
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_floor_0_1_0": {
+   "slots": [
+    "self"
+   ],
+   "tris": 52,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_floor_0_0_1": {
+   "slots": [
+    "self"
+   ],
+   "tris": 52,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_floor_0_1_1": {
+   "slots": [
+    "self"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_floor_1_0_0": {
+   "slots": [
+    "self"
+   ],
+   "tris": 52,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_floor_1_1_0": {
+   "slots": [
+    "self"
+   ],
+   "tris": 52,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.231
+    ],
+    [
+     0.231,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_floor_1_0_1": {
+   "slots": [
+    "self"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_floor_1_1_1": {
+   "slots": [
+    "self"
+   ],
+   "tris": 52,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_floor_2_0_0": {
+   "slots": [
+    "self"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_floor_2_1_0": {
+   "slots": [
+    "self"
+   ],
+   "tris": 52,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_floor_2_0_1": {
+   "slots": [
+    "self"
+   ],
+   "tris": 52,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_floor_2_1_1": {
+   "slots": [
+    "self"
+   ],
+   "tris": 52,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.231,
+     1,
+     0.231
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_floor_3_0_0": {
+   "slots": [
+    "self"
+   ],
+   "tris": 52,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_floor_3_1_0": {
+   "slots": [
+    "self"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_floor_3_0_1": {
+   "slots": [
+    "self"
+   ],
+   "tris": 52,
+   "bounds": [
+    [
+     -0.231,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.231
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_floor_3_1_1": {
+   "slots": [
+    "self"
+   ],
+   "tris": 52,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_glass_0_0_0": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 64,
+   "bounds": [
+    [
+     0.126,
+     0,
+     0.126
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_glass_0_1_0": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 232,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_glass_0_0_1": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 228,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_glass_0_1_1": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 32,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     -0.33,
+     1,
+     -0.33
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_glass_1_0_0": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 228,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.2
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_glass_1_1_0": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 64,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     0.126
+    ],
+    [
+     -0.126,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_glass_1_0_1": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 32,
+   "bounds": [
+    [
+     0.33,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     -0.33
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_glass_1_1_1": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 232,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_glass_2_0_0": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 32,
+   "bounds": [
+    [
+     0.33,
+     0,
+     0.33
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_glass_2_1_0": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 228,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.2,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_glass_2_0_1": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 232,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_glass_2_1_1": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 64,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     -0.126,
+     1,
+     -0.126
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_glass_3_0_0": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 232,
+   "bounds": [
+    [
+     -0.2,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_glass_3_1_0": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 32,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     0.33
+    ],
+    [
+     -0.33,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_glass_3_0_1": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 64,
+   "bounds": [
+    [
+     0.126,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     -0.126
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_glass_3_1_1": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 228,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.2
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_apron_0_0_0": {
+   "slots": [
+    "self"
+   ],
+   "tris": 60,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_apron_0_1_0": {
+   "slots": [
+    "self"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     -0.231
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_apron_0_0_1": {
+   "slots": [
+    "self"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     -0.231,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_apron_0_1_1": {
+   "slots": [],
+   "tris": 0,
+   "bounds": [
+    [
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_apron_1_0_0": {
+   "slots": [
+    "self"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     -0.231
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_apron_1_1_0": {
+   "slots": [
+    "self"
+   ],
+   "tris": 60,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_apron_1_0_1": {
+   "slots": [],
+   "tris": 0,
+   "bounds": [
+    [
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_apron_1_1_1": {
+   "slots": [
+    "self"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     0.231,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_apron_2_0_0": {
+   "slots": [],
+   "tris": 0,
+   "bounds": [
+    [
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_apron_2_1_0": {
+   "slots": [
+    "self"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     0.231,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_apron_2_0_1": {
+   "slots": [
+    "self"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     0.231
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_apron_2_1_1": {
+   "slots": [
+    "self"
+   ],
+   "tris": 60,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_apron_3_0_0": {
+   "slots": [
+    "self"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     -0.231,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_apron_3_1_0": {
+   "slots": [],
+   "tris": 0,
+   "bounds": [
+    [
+     null,
+     null,
+     null
+    ],
+    [
+     null,
+     null,
+     null
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_apron_3_0_1": {
+   "slots": [
+    "self"
+   ],
+   "tris": 60,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_apron_3_1_1": {
+   "slots": [
+    "self"
+   ],
+   "tris": 48,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     0.231
+    ],
+    [
+     0.5,
+     1,
+     0.5
+    ]
+   ],
+   "group": "double-tile-curve",
+   "text": "Shared radius across diagonal modules; collision-matched"
+  },
+  "double_curve_ground_base": {
+   "slots": [
+    "self"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.85,
+     0.5
+    ]
+   ],
+   "group": "ground-underlay"
+  },
   "window_sash": {
    "slots": [
     "glass",
@@ -7416,6 +10259,72 @@
    ],
    "group": "architecture",
    "text": "Industrial steel-grid window, three bays and two lights"
+  },
+  "window_divided": {
+   "slots": [
+    "glass",
+    "frame_white",
+    "quoin"
+   ],
+   "tris": 96,
+   "bounds": [
+    [
+     -0.51,
+     0,
+     -0.065
+    ],
+    [
+     0.51,
+     1,
+     0.115
+    ]
+   ],
+   "group": "architecture",
+   "text": "Four-light divided window with a projecting sill"
+  },
+  "window_shuttered": {
+   "slots": [
+    "glass",
+    "frame_white",
+    "shutter",
+    "quoin"
+   ],
+   "tris": 312,
+   "bounds": [
+    [
+     -0.52,
+     0,
+     -0.187
+    ],
+    [
+     0.52,
+     1,
+     0.1
+    ]
+   ],
+   "group": "architecture",
+   "text": "Residential sash with hinged louvered shutters"
+  },
+  "window_hopper": {
+   "slots": [
+    "glass",
+    "frame"
+   ],
+   "tris": 108,
+   "bounds": [
+    [
+     -0.48,
+     0,
+     -0.285
+    ],
+    [
+     0.48,
+     1,
+     0.1
+    ]
+   ],
+   "group": "architecture",
+   "text": "Top-hinged utility window with a tilted upper light"
   },
   "facade_concrete_0": {
    "slots": [

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { AimController, aimTau, aimClass, swayDegrees, AIM_TAU, aimDelta, AIM_PITCH_LIMIT, aimSpriteInertia } from '../../ui/AimController.js';
 import { reticleRadius } from '../../ui/AimReticle.js';
-import { CameraDirector, MAX_YAW, targetAimFov } from '../../anim/CameraDirector.js';
+import { CameraDirector, MAX_YAW } from '../../anim/CameraDirector.js';
 import { AimPointer } from '../../ui/AimPointer.js';
 import { WEAPONS } from '../../../../shared/content/weapons.js';
 
@@ -60,7 +60,7 @@ test('PLAN-14: the aiming camera follows the aim like a third-person shooter —
     const cd = new CameraDirector({ aspect: 1 });
     const shooter = new THREE.Vector3(0, 1, 0);
     cd.prepareAim(shooter, new THREE.Vector3(0, 2, -10));
-    const settle = p => { for (let i = 0; i < 40; i++) cd.track(p, 1 / 60); };
+    const settle = p => cd.track(p, 1 / 60);
     const centred = p => { cd.cam.updateMatrixWorld(); const n = p.clone().project(cd.cam); return Math.hypot(n.x, n.y); };
     const ahead = new THREE.Vector3(0, 2, -10); settle(ahead);
     assert.ok(centred(ahead) < 0.05, 'the reticle sits at the screen centre');
@@ -103,13 +103,15 @@ test('relative aim: cursor motion turns the aim by a damped angle and never runs
     assert.ok(Math.atan2(p.h - 2, Math.hypot(p.x, p.y)) <= AIM_PITCH_LIMIT + 1e-9, 'pitch is clamped');
 });
 
-test('selecting a distant target zooms smoothly; wheel zoom survives camera re-anchoring and resets on exit',()=>{
-    assert.ok(targetAimFov(30)<targetAimFov(10));
+test('wheel zoom survives camera movement and committing a shot preserves the exact aim pose',()=>{
     const cd=new CameraDirector({aspect:1}),shooter=new THREE.Vector3(0,1,0),target=new THREE.Vector3(0,2,-30);
-    cd.prepareAim(shooter,target,{side:'left'});cd.focusTarget(target);cd.update(.1);
-    assert.ok(cd.cam.fov<38&&cd.cam.fov>cd.aimFov,'eases into target framing');
+    cd.prepareAim(shooter,target,{side:'left'});cd.track(target,1/60);
     cd.zoomAim(.8);const zoom=cd.aimFov;cd.track(new THREE.Vector3(30,2,0),.2);
     assert.equal(cd.aimFov,zoom);assert.equal(cd.side,'left');
+    cd.update(1);const position=cd.cam.position.clone(),look=cd.look.clone(),fov=cd.cam.fov;
+    assert.ok(cd.commitAim());cd.apply(1);
+    assert.ok(cd.cam.position.distanceTo(position)<1e-9);assert.ok(cd.look.distanceTo(look)<1e-9);assert.equal(cd.cam.fov,fov);
+    assert.ok(cd.resumeAim());assert.equal(cd.phase,'prepare');assert.equal(cd.aimFov,zoom);
     cd.zoomAim(.001);assert.equal(cd.aimFov,14);cd.zoomAim(100);assert.equal(cd.aimFov,60);
     cd.end();cd.prepareAim(shooter,target);assert.equal(cd.cam.fov,38,'free aim starts wide');
 });

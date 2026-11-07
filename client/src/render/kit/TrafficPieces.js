@@ -14,7 +14,7 @@ for(const [type,s] of Object.entries(VEHICLE_SPECS)){
    if(!bus&&L>=10){body.push(box(L-3, .25,1.86,-1.2,1.65));for(let x=-L/2+.3;x<cab-1.6;x+=.7)trim.push(box(.05,1.15,1.85,x,.6));}
   }else{glass.push(box(1.6,.35,1.5,-.5,.8));trim.push(box(.8,.05,1.6,1.4,.75).rotateZ(.15));}
   const axles=s.axles===5?[-L/2+1,-L/2+1.8,-1,-.2,L/2-1]:Array.from({length:s.axles},(_,i)=>-L/2+1+i*(L-2)/(s.axles-1));
-  for(const [i,x] of axles.entries())for(const z of type==='eighteen_wheeler'&&i<4?[-.9,-.66,.66,.9]:[-.9,.9]){rubber.push(disc(.34,.22,12,x,.34,z));rims.push(disc(.19,.24,12,x,.34,z));}
+  for(const [i,x] of axles.entries())for(const z of type==='eighteen_wheeler'&&i<4?[-.9,-.66,.66,.9]:[-.9,.9]){rubber.push(disc(.34,.22,type==='eighteen_wheeler'?6:10,x,.34,z));rims.push(disc(.19,.24,type==='eighteen_wheeler'?4:10,x,.34,z));}
   trim.push(box(L-.1,.1,1.86,0,.42));
   return [{slot:car?'wreck':'carpaint',geometry:merge(body)},{slot:'glass_dark',geometry:merge(glass)},{slot:'frame',geometry:merge(trim)},{slot:'tyre',geometry:merge(rubber)},{slot:'chrome',geometry:merge(rims)}];
  });

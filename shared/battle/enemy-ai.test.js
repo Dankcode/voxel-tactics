@@ -282,6 +282,47 @@ test('PLAN-10: free aim lands on what the crosshair line meets, so leaning out n
     assert.equal(aimedUnit(b, p, r)?.id, 'e0', 'point shots on a body use that target\'s modifiers');
 });
 
+test('free aim puts the leading projectile on the reticle ray while the remaining shotgun pellets spread', async () => {
+    const { partCentre, traceProjectile, chooseMuzzle, occupiedBy } = await import('./Ballistics.js');
+    const b = arena({ squad: ['vanguard'], players: [{ x: 10, y: 20, z: 1 }], enemies: [{ type: 'cultist', pos: { x: 10, y: 8, z: 1 }, group: 1 }] });
+    const p = b.unit('p0'), e = b.unit('e0'), point = partCentre(e, 'head');
+    const r = b.apply({ type: 'shoot', unitId: p.id, weaponId: 'blunderbuss', aim: { point } });
+    assert.ok(r.ok, r.reason);
+    const shot = r.events.find(e => e.t === 'shot');
+    assert.equal(shot.projectiles.length, WEAPONS.blunderbuss.pellets);
+    assert.equal(shot.projectiles[0].unitId, e.id, 'the reticle is on the head, so the leading pellet hits it');
+    assert.equal(shot.projectiles[0].part, 'head');
+    const muzzle = chooseMuzzle(b.store, p, point, { occupied: occupiedBy(b, p) });
+    const d = [point.x - muzzle.x, point.y - muzzle.y, point.h - muzzle.h], length = Math.hypot(...d);
+    const centred = traceProjectile(b, muzzle, d.map(v => v / length), length + 1, { ignore: p.id });
+    assert.equal(centred.unit?.id, e.id, 'the test aim line itself intersects the enemy');
+});
+
+test('an accurate free-aim leading projectile still stops at cover', async () => {
+    const { partCentre } = await import('./Ballistics.js');
+    const b = arena({ squad: ['vanguard'], players: [{ x: 10, y: 20, z: 1 }], enemies: [{ type: 'cultist', pos: { x: 10, y: 8, z: 1 }, group: 1 }],
+        build: st => wall(st, 0, 13, 27, 13, 5) });
+    const r = b.apply({ type: 'shoot', unitId: 'p0', weaponId: 'blunderbuss', aim: { point: partCentre(b.unit('e0'), 'torso') } });
+    assert.ok(r.ok, r.reason);
+    const first = r.events.find(e => e.t === 'shot').projectiles[0];
+    assert.equal(first.kind, 'voxel');
+    assert.equal(first.unitId, undefined);
+});
+
+test('gunfire alerts a pod without scattering it, including when the shot hits cover', () => {
+    const b = arena({ squad: ['vanguard'], players: [{ x: 10, y: 20, z: 1 }], enemies: [{ type: 'cultist', pos: { x: 10, y: 8, z: 1 }, group: 1 }],
+        build: st => wall(st, 0, 13, 27, 13, 5) });
+    const e = b.unit('e0'), before = { x: e.x, y: e.y, z: e.z }, moves = b.log.filter(x => x.t === 'move').length;
+    b.fireWeapon(b.unit('p0'), WEAPONS.blunderbuss, { point: { x: 20.5, y: 7.5, h: 3 } });
+    assert.ok(e.alerted);
+    assert.deepEqual(e.investigate && { x: e.investigate.x, y: e.investigate.y, z: e.investigate.z }, { x: 10, y: 20, z: 1 });
+    assert.deepEqual({ x: e.x, y: e.y, z: e.z }, before, 'incoming fire grants no free movement');
+    assert.equal(b.log.filter(x => x.t === 'move').length, moves, 'gunfire emits no scamper move');
+    b.fireWeapon(b.unit('p0'), WEAPONS.blunderbuss, { point: { x: 20.5, y: 7.5, h: 3 } });
+    assert.deepEqual({ x: e.x, y: e.y, z: e.z }, before, 'subsequent shots also leave the enemy in place');
+    assert.equal(b.log.filter(x => x.t === 'move').length, moves);
+});
+
 test('PLAN-11: the free-aim reticle sticks to a nearby enemy body part, never through a wall', async () => {
     const { stickyAim, partCentre } = await import('./Ballistics.js');
     const b = arena({ players: [{ x: 10, y: 20, z: 1 }, { x: 1, y: 26, z: 1 }], enemies: [{ type: 'cultist', pos: { x: 10, y: 8, z: 1 }, group: 1, alerted: true }] });

@@ -12,16 +12,21 @@ export function spriteGunParts(weaponId) {
     return null;
 }
 export const gunPoint = p => new THREE.Vector3(p[0], p[2], -p[1]);
+export const GUN_RENDER_SCALE = .72;
+export function scaledGunAssembly(assembly) {
+    const scale=point=>point.map(v=>v*GUN_RENDER_SCALE);
+    return {...assembly,stock:scale(assembly.stock),grip:scale(assembly.grip),support:scale(assembly.support),muzzle:scale(assembly.muzzle),renderScale:GUN_RENDER_SCALE};
+}
 /** Lower the rear furniture while preserving the receiver/front barrel's exact position and bore axis. */
-export function gunStockDrop(assembly){return assembly.parts.some(p=>p.startsWith('sniper_'))?.055:assembly.parts.some(p=>p.startsWith('shotgun_'))?.045:0;}
+export function gunStockDrop(assembly){return (assembly.parts.some(p=>p.startsWith('sniper_'))?.055:assembly.parts.some(p=>p.startsWith('shotgun_'))?.045:0)*(assembly.renderScale??1);}
 export function lowerGunRearPoint(point,assembly){
     const drop=gunStockDrop(assembly),rear=Math.max(.01,-assembly.stock[1]);
     const t=THREE.MathUtils.clamp(point.z/rear,0,1),weight=t*t*(3-2*t);
     return point.clone().add(new THREE.Vector3(0,-drop*weight,0));
 }
 export function lowerGunRearGeometry(geometry,assembly){
-    const copy=geometry.clone(),p=copy.attributes.position;
-    for(let i=0;i<p.count;i++){const v=lowerGunRearPoint(new THREE.Vector3().fromBufferAttribute(p,i),assembly);p.setXYZ(i,v.x,v.y,v.z);}
+    const copy=geometry.clone(),p=copy.attributes.position,scale=assembly.renderScale??1;
+    for(let i=0;i<p.count;i++){const v=lowerGunRearPoint(new THREE.Vector3().fromBufferAttribute(p,i),assembly).multiplyScalar(scale);p.setXYZ(i,v.x,v.y,v.z);}
     p.needsUpdate=true;copy.computeVertexNormals();copy.computeBoundingBox();copy.computeBoundingSphere();return copy;
 }
 /** Shared global paint order for the flat fallback and the character/gun compositor. */
@@ -237,7 +242,7 @@ export class SpriteWeapon {
             maps: await Promise.all([loadTexture(this.base + l.image, true), loadTexture(this.base + l.normal), loadTexture(this.base + l.lightingMask)]) })));
         if (this.disposed) return;
         this.anchors = anchors;
-        this.assembly = anchors.assemblies[this.config.family];
+        this.assembly = scaledGunAssembly(anchors.assemblies[this.config.family]);
         this.config.parts = this.gunVisible ? this.assembly.parts : [];
         this.support = gunPoint(this.assembly.support);
         this.scene = new THREE.Scene(); this.backScene = new THREE.Scene(); this.frontScene = new THREE.Scene();
@@ -250,8 +255,8 @@ export class SpriteWeapon {
             if (!known.has(ob.name)) return;
             ob.visible = this.config.parts.includes(ob.name);
             if (ob.isMesh) {
-                // Per-instance materials; the cached GLTF and its metre-space geometry stay immutable.
-                if(this.config.parts.includes(ob.name)&&gunStockDrop(this.assembly)){ob.geometry=lowerGunRearGeometry(ob.geometry,this.assembly);this.resources.push(ob.geometry);}
+                // Per-instance geometry and materials; the cached GLTF stays immutable.
+                if(this.config.parts.includes(ob.name)){ob.geometry=lowerGunRearGeometry(ob.geometry,this.assembly);this.resources.push(ob.geometry);}
                 ob.material = gunCelMaterial(ob.name, ramp); this.resources.push(ob.material);
                 gunMeshes.push(ob);
             }
@@ -263,7 +268,7 @@ export class SpriteWeapon {
         this.stock = gunPoint(this.assembly.stock);
         // Trigger finger contact (top of the trigger guard), gun space; the glove's index fingertip is registered on it.
         const contact = this.art.rig.triggerContact?.[this.config.family];
-        this.triggerContact = contact ? gunPoint(contact) : null;
+        this.triggerContact = contact ? gunPoint(contact).multiplyScalar(GUN_RENDER_SCALE) : null;
         this.camera = aimGunCamera(this.art.rig, this.stock, this.art.width / this.art.height);
         this.buttRaise=this.art.rig.buttRaiseDegrees??8;
         this.flatCamera = new THREE.OrthographicCamera(0, this.art.width, 0, -this.art.height, .01, 20);

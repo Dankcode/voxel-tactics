@@ -1,20 +1,45 @@
-// User-supplied Mixkit clips. Playback belongs to presentation, never battle state.
+// Original synthesized clips plus the supplied Mixkit footsteps and explosion tails.
 export const SOUNDS = Object.freeze({
     footsteps: 'mixkit-crunchy-footsteps-loop-535.wav',
     explosion: 'mixkit-explosion-hit-1704.wav',
     distantExplosion: 'mixkit-epic-impact-afar-explosion-2782.wav',
     shotgunPump: 'mixkit-shotgun-pump-1659.wav',
-    handgunClick: 'mixkit-handgun-click-1660.mp3'
+    handgunClick: 'mixkit-handgun-click-1660.mp3',
+    rifleShot: 'rifleShot.wav', sniperShot: 'sniperShot.wav', shotgunShot: 'shotgunShot.wav',
+    sidearmShot: 'sidearmShot.wav', suppressedShot: 'suppressedShot.wav', flameShot: 'flameShot.wav',
+    rifleReload: 'rifleReload.wav', sniperReload: 'sniperReload.wav',
+    impactUnit: 'impactUnit.wav', impactStone: 'impactStone.wav', impactMetal: 'impactMetal.wav',
+    impactGlass: 'impactGlass.wav', impactWood: 'impactWood.wav', impactEarth: 'impactStone.wav',
+    doorOpen: 'doorOpen.wav', doorKick: 'doorKick.wav', throwWhoosh: 'throwWhoosh.wav', meleeHit: 'meleeHit.wav',
+    heal: 'heal.wav', recover: 'recover.wav', extract: 'extract.wav', overwatch: 'overwatch.wav',
+    uiSelect: 'uiSelect.wav', uiConfirm: 'uiConfirm.wav', collapse: 'collapse.wav',
+    hydroBurst: 'hydroBurst.wav', cryoBurst: 'cryoBurst.wav', anemoBurst: 'anemoBurst.wav', contactAlert: 'contactAlert.wav'
 });
 
 export function explosionSound(event, focus) {
-    if (event.element === 'hydro') return null;
+    if (event.element === 'hydro') return 'hydroBurst';
+    if (event.element === 'cryo') return 'cryoBurst';
+    if (event.element === 'anemo') return 'anemoBurst';
     return focus && Math.hypot(event.x - focus.x, event.y - focus.z) > 18
         ? 'distantExplosion' : 'explosion';
 }
 
+export function weaponSound(weaponId) {
+    return {
+        repeater:'rifleShot',musket:'rifleShot',shortbow:'rifleShot',longrifle:'sniperShot',
+        blunderbuss:'shotgunShot',handcannon:'sidearmShot',crossbow:'suppressedShot',firelance:'flameShot'
+    }[weaponId] || null;
+}
+
 export function weaponHandlingSound(weaponId) {
-    return weaponId === 'blunderbuss' ? 'shotgunPump' : weaponId === 'handcannon' ? 'handgunClick' : null;
+    return {
+        blunderbuss:'shotgunPump',handcannon:'handgunClick',longrifle:'sniperReload',
+        repeater:'rifleReload',musket:'rifleReload',shortbow:'rifleReload',crossbow:'rifleReload',firelance:'rifleReload'
+    }[weaponId] || null;
+}
+
+export function impactSound(family) {
+    return { unit:'impactUnit',metal:'impactMetal',glass:'impactGlass',ice:'impactGlass',wood:'impactWood',plant:'impactWood',stone:'impactStone',earth:'impactStone' }[family] || 'impactStone';
 }
 
 const clampVolume = value => Number.isFinite(Number(value)) ? Math.max(0, Math.min(1, Number(value))) : 0.65;

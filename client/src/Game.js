@@ -23,8 +23,8 @@ import { toolTeardown, autoEndReady, peekStep, migrateSettings } from './ui/Tool
 //
 // Turn flow (XCOM 2 idiom, Phoenix Point AP underneath):
 //   select soldier → blue zone (move and still act) / yellow zone (dash) → hover shows path, cost and cover →
-//   click moves → action bar (fire / throw / overwatch / abilities) → targeting: target strip, Tab cycles,
-//   body-part aim, confirm fires → when a soldier is out of AP the next ready soldier is selected → when the
+//   click moves → action bar (fire / throw / overwatch / abilities) → free-aim reticle, confirm fires →
+//   when a soldier is out of AP the next ready soldier is selected → when the
 //   whole squad is spent the turn ends (auto-end setting) → enemy phase with the camera following each actor.
 import * as THREE from 'three';
 import { Scene } from './render/Scene.js';
@@ -46,11 +46,11 @@ import { reasonText } from './ui/Reasons.js';
 import { castRay } from '../../shared/voxel/Raycast.js';
 import { MAT, AIR, materialById } from '../../shared/voxel/Materials.js';
 import { nodeKey, pathTo } from '../../shared/world/PathSearch.js';
-import { estimateShot, partCentre, chooseMuzzle, occupiedBy, resolveAimPoint, aimedUnit, stickyAim, partUnderRay, aimFriction } from '../../shared/battle/Ballistics.js';
+import { estimateShot, partCentre, chooseMuzzle, occupiedBy, aimedUnit, partUnderRay } from '../../shared/battle/Ballistics.js';
 import { coverAgainst, COVER } from '../../shared/voxel/Cover.js';
 import { decide, formationIntents, aiOrder } from '../../shared/battle/Ai.js';
 import { podRole } from '../../shared/battle/EnemyAi.js';
-import { alive } from '../../shared/battle/Units.js';
+import { alive, FACING_VEC } from '../../shared/battle/Units.js';
 import { WEAPONS, THROWABLES } from '../../shared/content/weapons.js';
 import { reserveAmmo } from '../../shared/inventory/Equipment.js';
 import { ABILITIES } from '../../shared/content/units.js';
@@ -79,7 +79,7 @@ export class Game {
     constructor({ canvas, hudRoot, cutinRoot, floatRoot, onExit, options = {} }) {
         let savedOptions={};try{savedOptions=JSON.parse(localStorage.getItem('tactics-settings')||'{}');}catch{}
         savedOptions=migrateSettings(savedOptions);
-        this.options = { soundVolume:0.65,turnSpeed:1,rotateSpeed:1,aimSensitivity:0.5,aimSway:true,aimAssist:'light',unitTags:'selected',showEnemyBars:true,confirmMoves:false,autoEndTurn: true, autoNext: true, followCamera: true, edgeScroll: true, buildingView:'auto', ...savedOptions, ...options };
+        this.options = { soundVolume:0.65,turnSpeed:1,rotateSpeed:1,aimSensitivity:0.5,aimSway:true,unitTags:'selected',showEnemyBars:true,confirmMoves:false,autoEndTurn: true, autoNext: true, followCamera: true, edgeScroll: true, buildingView:'auto', ...savedOptions, ...options };
         this.audio = new SoundPlayer({ volume: this.options.soundVolume });
         this.scene = new Scene(canvas);
         this.library = new MaterialLibrary(this.scene.renderer, this.scene.clipping);
@@ -268,12 +268,6 @@ export class Game {
     minActionAp(u) { return this.battle.blueAp(u); }
     canStillAct(u) { return alive(u) && (u.ap + u.moveOnlyAp) > 0; }
     readyUnits() { return this.battle.unitsOf(this.battle.activeSide).filter(u => this.controllable(u) && this.canStillAct(u) && !u.overwatch); }
-    targetsFor(u, weaponId) {
-        const w = WEAPONS[weaponId]&&weaponBuild(u,WEAPONS[weaponId]);
-        return this.battle.enemiesOf(u)
-            .filter(t => (u.side !== 'player' || this.isVisible(t)) && Math.hypot(t.x - u.x, t.y - u.y) <= (w?.maxRange ?? 30) && (u.side !== 'player' || this.battle.visible?.has(t.id) || !this.fog))
-            .sort((a, b) => Math.hypot(a.x - u.x, a.y - u.y) - Math.hypot(b.x - u.x, b.y - u.y));
-    }
 
     // ------------------------------------------------------------------ selection & modes
     select(id, { snap = false } = {}) {
@@ -281,6 +275,7 @@ export class Game {
         if (!u || !alive(u) || !(u.side === 'player' || this.controllable(u))) return;
         for (const v of this.views.values()) v.setSelected(false);
         this.selected = id;
+        this.audio.play('uiSelect',{volume:.22});
         this.views.get(id)?.setSelected(true);
         this.setMode({ kind: 'move' });
         this.focusUnit(u, !snap);
@@ -325,6 +320,7 @@ export class Game {
         if (glide && this.options.followCamera) this.scene.glideTo(t, 5); else { this.scene.glide = null; this.scene.target.copy(t); }
     }
     setMode(m) {
+        if(m.kind!=='move'&&(this.mode?.kind!==m.kind||this.mode?.weaponId!==m.weaponId||this.mode?.itemId!==m.itemId))this.audio.play('uiConfirm',{volume:.2});
         if (m.kind === 'shoot' && m.weaponId === 'handcannon' && (this.mode.kind !== 'shoot' || this.mode.weaponId !== m.weaponId)) this.audio.play('handgunClick', { volume: 0.5 });
         // PLAN-15: one tool on screen at a time — entering a tool tears every other one down (panels, aim, overlays).
         const td = toolTeardown(this.mode, m, { panelOpen: !this.hud.el('.panel').classList.contains('hidden'), locked: !!this.aimPointer?.locked });
@@ -334,7 +330,7 @@ export class Game {
         this.cancelAutoEnd();
         if (this.cameraDirector.phase === 'prepare') this.cameraDirector.end();
         this.mode = m;this.aimDrag=null;this.rawAim=null;this.aimPick=null;
-        if (['throw','gadget','breach'].includes(m.kind)) this.views.get(this.selected)?.flashStatus?.(); this.targetInfo = null;this.freeAim=null;this.freeAimManual=false;this.moveConfirmation=null;this.aim.clear();this.aimStance=null;
+        if (['throw','gadget','breach'].includes(m.kind)) this.views.get(this.selected)?.flashStatus?.(); this.freeAim=null;this.freeAimManual=false;this.moveConfirmation=null;this.aim.clear();this.aimStance=null;
         this.aimPointer.setEnabled(m.kind==='shoot');
         if(m.kind!=='shoot')this.hud.el('.aim-reticle')?.classList.add('hidden');   // PLAN-15: never a reticle beside another tool
         this.overlays.clearAim();
@@ -407,30 +403,26 @@ export class Game {
     }
 
     // ------------------------------------------------------------------ targeting
+    defaultAimPoint(u) {
+        const [dx,dy]=FACING_VEC[u.facing]||[0,1],len=Math.hypot(dx,dy)||1;
+        return {x:u.x+.5+dx/len*8,y:u.y+.5+dy/len*8,h:u.z+2.1};
+    }
     enterTargeting() {
         const u = this.selectedUnit(); if (!u) return;
-        this.targets = this.targetsFor(u, this.mode.weaponId);
-        const keep = this.targets.find(t => t.id === this.lastTargetId) || this.targets[0];
-        if (keep) this.aimAt(u, keep, 'torso', { frame: true });
-        else {this.freeAim={x:u.x+.5,y:u.y-8,h:u.z+2.1};this.aim.snap(this.freeAim);this.freeAimManual=true;this.frameAim(u,this.freeAim);this.focusFloor(u);}
+        this.freeAim = this.defaultAimPoint(u);
+        this.aim.snap(this.freeAim); this.freeAimManual = true;
+        this.frameAim(u, this.freeAim); this.focusFloor(u);
         if(navigator.userActivation?.isActive&&!this.aimPointer.unavailable)this.aimPointer.request();
     }
-    cycleTarget(d = 1) {
-        const u = this.selectedUnit(); if (!u) return;
-        this.targets=this.targetsFor(u,this.mode.weaponId);if(!this.targets.length)return;
-        const i = this.targets.findIndex(t => t.id === this.targetInfo?.target.id);
-        this.aimAt(u, this.targets[(i + d + this.targets.length) % this.targets.length], this.targetInfo?.part || 'torso', { frame: true });
+    confirmFire() {
+        if (this.mode.kind !== 'shoot') return;
+        if (this.mode.suppress) {
+            const target = this.aimPick && this.battle.unit(this.aimPick.unitId);
+            if (!target) { this.hud.toast('Put the reticle on an enemy to suppress', 'warn'); return; }
+            return this.intent({ type: 'ability', abilityId: 'suppress', targetId: target.id });
+        }
+        if (this.freeAim) this.intent({type:'shoot',weaponId:this.mode.weaponId,aim:{point:{...this.freeAim}},...(this.peek?{from:{...this.peek}}:{})});
     }
-    targetById(id) {
-        const u = this.selectedUnit(), t = this.battle.unit(id);
-        if (!u || !t || !this.targetsFor(u,this.mode.weaponId||watchWeapon(u)).some(target=>target.id===id)) return;
-        if (this.mode.kind !== 'shoot') { const w = watchWeapon(u); if (!w) return; this.mode = { kind: 'shoot', weaponId: w }; this.targets = this.targetsFor(u, w); }
-        this.aimAt(u, t, this.targetInfo?.part || 'torso', { frame: true });
-        this.aimPointer.setEnabled(true);
-        if(navigator.userActivation?.isActive&&!this.aimPointer.unavailable)this.aimPointer.request();
-        this.hud.refresh();
-    }
-    confirmFire() {if(this.mode.kind!=='shoot')return;if(this.mode.suppress&&this.targetInfo)return this.fire(this.targetInfo.target,'torso');if(this.freeAim)this.intent({type:'shoot',weaponId:this.mode.weaponId,aim:{point:{...this.freeAim}},...(this.peek?{from:{...this.peek}}:{})});}
 
     // ------------------------------------------------------------------ intents
     canAct() { return this.battle && !this.battle.outcome && (!this.session.local || this.player.idle()) && this.session.canAct?.() !== false && (this.battle.activeSide === 'player' || this.debug.manualEnemy) && !this.aiRunning; }
@@ -446,8 +438,10 @@ export class Game {
         if (partial.type === 'reload' && u) this.views.get(u.id)?.flashStatus?.();
         if(['inventoryMove','equipCargo','setFireMode','mark','formation_plan'].includes(partial.type)){this.refreshRange();this.hud.refresh();return r;}
         if (this.battle.outcome) return r;
-        if (u && alive(u) && this.mode.kind === 'shoot' && partial.type === 'shoot' && u.ap >= this.battle.shotAp(u, WEAPONS[this.mode.weaponId])) this.setMode({ kind: 'shoot', weaponId: this.mode.weaponId });
-        else this.setMode({ kind: 'move' });
+        const continuousAim=this.cameraDirector.phase==='prepare'&&this.cameraDirector.aimContinuity&&this.cameraDirector.aimUnitId===u?.id;
+        if (u && alive(u) && this.mode.kind === 'shoot' && partial.type === 'shoot' && u.ap >= this.battle.shotAp(u, WEAPONS[this.mode.weaponId])) {
+            if(!continuousAim)this.setMode({ kind: 'shoot', weaponId: this.mode.weaponId });
+        } else this.setMode({ kind: 'move' });
         await this.afterUnitAction(u);
         return r;
     }
@@ -512,19 +506,6 @@ export class Game {
         return null;
     }
     toggleNearestDoor() { const u = this.selectedUnit(); const d = u && this.nearestDoor(u); if (d) this.intent({ type: 'door', door: d }); }
-    setAimPart(part) {
-        if (this.mode.kind !== 'shoot' || !this.targetInfo || this.mode.suppress) return;
-        const u = this.selectedUnit(); if (!u) return;
-        this.aimAt(u, this.targetInfo.target, part);
-    }
-    fire(target, part = 'torso') {
-        const u = this.selectedUnit(); if (!u) return;
-        this.lastTargetId = target.id;
-        this.lastPreview = { unitId: u.id, hit: this.targetInfo?.byPart?.[part] };
-        this.intent(this.mode.suppress
-            ? { type: 'ability', abilityId: 'suppress', targetId: target.id }
-            : { type: 'shoot', weaponId: this.mode.weaponId, aim: { unitId: target.id, part }, ...(this.peek ? { from: { ...this.peek } } : {}) });
-    }
     /** PLAN-15 auto end turn: 1.2 s countdown on the HUD; Esc, a click on it or any new order cancels. */
     startAutoEnd(ms = 1200) {
         this.cancelAutoEnd();
@@ -882,41 +863,13 @@ export class Game {
             default: this.overlays.clearPath(); this.hud.cursorTip(null);
         }
     }
-    aimAt(u, target, part, { frame = false } = {}) {
-        if (this.mode.suppress) part = 'torso';
-        const w = WEAPONS[this.mode.weaponId];
-        if (!w) return;
-        const key = `${u.id}:${u.x},${u.y},${u.z}:${target.id}:${target.x},${target.y},${target.z}:${w.id}:${!!this.mode.suppress}:${this.battle.seq}`;
-        if (!this.targetInfo || this.targetInfo.key !== key) {
-            const { spread, mods } = this.battle.spreadFor(u, w, partCentre(target, 'torso'), { target });
-            const byPart = {};
-            let any = 0, blocked = 0, friendly = 0, muzzle = null, lean = null, distance = 0;
-            for (const p of ['head', 'torso', 'armL', 'armR', 'legs']) {
-                const est = estimateShot(this.battle, u, { unitId: target.id, part: p }, { weapon: w, spread, samples: 64 });
-                byPart[p] = est.parts[p];
-                if (p === 'torso') { any = est.hit; blocked = est.cover; friendly = est.friendly; muzzle = est.muzzle; lean = est.lean; distance = est.distance; }
-            }
-            const cover = coverAgainst(this.battle.store, target.x, target.y, target.z, u.x, u.y, u.z);
-            this.targetInfo = { key, target, part, byPart, anyHit: any, blocked, friendly, spread, mods, muzzle, lean, distance, cover, flanked: cover === COVER.NONE, ap: this.mode.suppress ? ABILITIES.suppress.ap : this.battle.shotAp(u, w), inRange: distance <= weaponBuild(u,w).maxRange };
-        }
-        // Target selection re-frames and zooms; body-part changes and free aim keep the current framing.
-        const anchor=partCentre(target,part);this.freeAimManual=false;this.rawAim=null;this.lastTargetId=target.id;this.aimPick={unitId:target.id,part};
-        if(frame||!this.aim.current||this.cameraDirector.phase!=='prepare'){this.aim.snap(anchor);this.freeAim={...anchor};this.frameAim(u,anchor);}
-        else this.aim.setTarget(anchor);
-        if(frame)this.cameraDirector.focusTarget(new THREE.Vector3(anchor.x,anchor.h,anchor.y));
-        this.targetInfo.part = part;
-        this.overlays.clearAim();
-        if (frame && this.options.followCamera) this.scene.glideTo(new THREE.Vector3((u.x + target.x) / 2 + 0.5, (u.z + target.z) / 2 + 1, (u.y + target.y) / 2 + 0.5), 4);
-        if (frame) this.focusFloor(u, target);
-        this.hud.renderTarget();
-    }
     /**
      * Update the direct aim point and shoulder camera. The character stays on its world cell.
      */
     stepAim(dt){
         const u=this.selectedUnit();
         if(!u||this.mode.kind!=='shoot'||!this.aim.current)return;
-        const w=WEAPONS[this.mode.weaponId],origin=this.aimOrigin(u);
+        const w=WEAPONS[this.mode.weaponId];let origin=this.aimOrigin(u);
         const p=this.aim.step(dt,{tau:aimTau(u,w),sway:this.options.aimSway?swayDegrees(u):0,origin,inertia:false});
         if(!p)return;
         this.freeAim=p;
@@ -928,6 +881,7 @@ export class Game {
             if(!st||st.unitId!==u.id||aimStanceKey(m)!==st.key)this.frameAim(u,p,m);
             else {Object.assign(st,{at:{...p},muzzle:m,side:m.side||'right',blocked:shotBlocked(this.battle.store,m,p)});this.cutins.beginAim(u,{shoulder:st.side,weaponId:this.mode.weaponId});}
         }
+        origin=this.aimOrigin(u);this.updateAimPick(u,origin,p);
         this.views.get(u.id)?.face(p.x-origin.x,p.y-origin.y);
         if(this.cameraDirector.phase==='prepare')this.cameraDirector.track(new THREE.Vector3(p.x,p.h,p.y),dt);
 
@@ -944,10 +898,14 @@ export class Game {
     }
     /** The shot's origin for aiming: the current stance muzzle (lean or step-out), else the shoulder on the unit's tile. */
     aimOrigin(u){const m=this.aimStance?.unitId===u.id?this.aimStance.muzzle:null,s=this.shooterOf(u);return m?{x:m.x,y:m.y,h:m.h}:{x:s.x+.5,y:s.y+.5,h:s.z+2.35};}
+    updateAimPick(u,origin,p){
+        const under=this.battle?.store?partUnderRay(this.battle,u,origin,p,{filter:t=>this.isVisible(t)}):null;
+        this.aimPick=under?{unitId:under.unit.id,part:under.part}:null;
+    }
     /** PLAN-15: the shooter as it stands for this shot — on its peek tile while peeking. */
     shooterOf(u){return this.peek&&this.mode.kind==='shoot'?atCell(u,this.peek):u;}
-    /** The visible hostile whose body the aim point sits on (for target-dependent spread: smoke, darkness, height). */
-    aimTargetNear(p){const u=this.selectedUnit();return u&&p?aimedUnit(this.battle,u,p,t=>this.isVisible(t)):null;}
+    /** The hostile at the aim point, matching the target-dependent spread used by Battle.fireWeapon(). */
+    aimTargetNear(p){const u=this.selectedUnit();return u&&p?aimedUnit(this.battle,u,p):null;}
     /** Where a shot at `p` would leave from (lean or step-out), as the battle will resolve it. */
     aimMuzzle(u,p){const s=this.shooterOf(u);return chooseMuzzle(this.battle.store,s,p,{occupied:occupiedBy(this.battle,u)});}
     /**
@@ -955,36 +913,22 @@ export class Game {
      * (and the reticle) look past the wall at the target, as in XCOM 2. The camera keeps the same shoulder and the
      * character stays on its occupied cell. Its world sprite flips toward the reticle.
      */
-    frameAim(u,p,m=this.aimMuzzle(u,p)){
+    frameAim(u,p,m=this.aimMuzzle(u,p),{preserveDirection=false}={}){
         const s=this.shooterOf(u),side=this.peekSide||m.side||'right',o=m.step?new THREE.Vector3(m.step.x+.5,s.z+1,m.step.y+.5):new THREE.Vector3(s.x+.5,s.z+1,s.y+.5);
         this.aimStance={unitId:u.id,key:aimStanceKey(m),side,muzzle:m,at:{...p},blocked:shotBlocked(this.battle.store,m,p)};
         this.cutins.beginAim(u,{shoulder:side,weaponId:this.mode.weaponId});
-        this.cameraDirector.prepareAim(o,new THREE.Vector3(p.x,p.h,p.y),{side});
+        this.cameraDirector.prepareAim(o,new THREE.Vector3(p.x,p.h,p.y),{side,preserveDirection});
     }
     /** Pointer-lock deltas never stop at the browser edge or feed back through the moving camera. */
     moveAim(dx,dy){
         const u=this.selectedUnit();if(!u||(!dx&&!dy))return;
-        // The raw (unsnapped) aim keeps moving with the mouse, so the reticle can leave a sticky target again.
         const focus=this.rawAim||this.aim.target||this.freeAim;if(!focus)return;
         const origin=this.aimOrigin(u);
-        const assist=this.options.aimAssist||'light',visible=t=>this.isVisible(t);
-        // PLAN-15 light assist: friction near a visible hostile (slower mouse), never a snap.
-        const friction=assist==='light'&&this.battle?.store?aimFriction(this.battle,u,origin,focus,{filter:visible}):1;
-        const step=aimDelta(focus,origin,dx,dy,{fov:this.cameraDirector.cam.fov,height:this.scene.renderer.domElement.clientHeight||innerHeight,sensitivity:(this.options.aimSensitivity??.5)*friction});
-        // PLAN-10: put the aim on whatever the crosshair line meets, so near and far targets line up with the shot.
+        const step=aimDelta(focus,origin,dx,dy,{fov:this.cameraDirector.cam.fov,height:this.scene.renderer.domElement.clientHeight||innerHeight,sensitivity:this.options.aimSensitivity??.5});
         if(step){
-            const w=WEAPONS[this.mode.weaponId]?weaponBuild(u,WEAPONS[this.mode.weaponId]):null;
-            // PLAN-11: the reticle sticks to a visible enemy's body part when the line passes close to it, so it settles
-            // on the enemy rather than the wall or cover beside them; otherwise it lands on whatever the line meets.
-            this.rawAim=step;
-            const stick=assist==='strong'&&this.battle?.store?stickyAim(this.battle,this.shooterOf(u),origin,step,{filter:visible}):null;
-            if(stick){this.aimPick={unitId:stick.unit.id,part:stick.part};this.aim.setTarget(stick.point);this.lastTargetId=stick.unit.id;}
-            else {
-                // PLAN-15: the body part is whatever hitbox the line passes through; the aim point stays where the mouse put it.
-                const under=this.battle?.store?partUnderRay(this.battle,u,origin,step,{filter:visible}):null;
-                this.aimPick=under?{unitId:under.unit.id,part:under.part}:null;if(under)this.lastTargetId=under.unit.id;
-                this.aim.setTarget(this.battle?.store?resolveAimPoint(this.battle,u,origin,step,(w?.maxRange??40)+12):step);
-            }
+            this.cameraDirector.fixedDir=null;
+            this.rawAim=step;this.updateAimPick(u,origin,step);
+            this.aim.setTarget(step);
             this.freeAimManual=true;
         }
     }
@@ -996,15 +940,29 @@ export class Game {
         if(next===undefined){this.hud.toast('No room to lean that way','warn');return;}
         this.setPeek(next&&(next.x!==u.x||next.y!==u.y)?next:null);
     }
-    /** PLAN-15: set or clear the peek tile; the sprite glides there and the aim camera re-frames from it. */
+    /** PLAN-15: set or clear the peek tile; the sprite and aim camera translate without turning the shot. */
     setPeek(cell,{reframe=true}={}){
-        const u=this.selectedUnit(),prev=this.peek;if(!cell&&!prev&&!reframe)return;this.peek=cell||null;this.peekInfo=null;
+        const u=this.selectedUnit(),prev=this.peek;if(!cell&&!prev&&!reframe)return;
+        const aiming=reframe&&u&&this.mode.kind==='shoot'&&this.freeAim&&(prev?.x!==cell?.x||prev?.y!==cell?.y);
+        const oldOrigin=aiming?this.aimOrigin(u):null,oldAim=aiming?{...this.freeAim}:null;
+        this.peek=cell||null;this.peekInfo=null;
         if(u){
             this.peekSide=null;
             if(cell){const f=new THREE.Vector3();this.cameraDirector.cam.getWorldDirection(f);const rx=-f.z,ry=f.x,d=(cell.x-u.x)*rx+(cell.y-u.y)*ry;this.peekSide=d<-0.2?'left':d>0.2?'right':null;}
             const v=this.views.get(u.id),to=cell||u;
             if(v){const from=v.pos.clone();this.peekGlide={view:v,from,to:new THREE.Vector3(to.x+.5,to.z+1,to.y+.5),t:0,dur:0.14};}
-            if(reframe&&this.mode.kind==='shoot'&&this.freeAim&&(prev?.x!==cell?.x||prev?.y!==cell?.y)){this.aimStance=null;this.frameAim(u,this.freeAim);}
+            if(aiming){
+                const shift=(p,d)=>({...p,x:p.x+d.x,y:p.y+d.y,h:p.h+d.h});
+                const tileDelta={x:(cell?.x??u.x)-(prev?.x??u.x),y:(cell?.y??u.y)-(prev?.y??u.y),h:(cell?.z??u.z)-(prev?.z??u.z)};
+                const firstMuzzle=this.aimMuzzle(u,shift(oldAim,tileDelta));
+                let delta={x:firstMuzzle.x-oldOrigin.x,y:firstMuzzle.y-oldOrigin.y,h:firstMuzzle.h-oldOrigin.h};
+                const finalMuzzle=this.aimMuzzle(u,shift(oldAim,delta));
+                delta={x:finalMuzzle.x-oldOrigin.x,y:finalMuzzle.y-oldOrigin.y,h:finalMuzzle.h-oldOrigin.h};
+                this.freeAim=shift(oldAim,delta);
+                this.aim.current=shift(this.aim.current,delta);this.aim.target=shift(this.aim.target,delta);
+                if(this.rawAim)this.rawAim=shift(this.rawAim,delta);
+                this.aimStance=null;this.frameAim(u,this.freeAim,finalMuzzle,{preserveDirection:true});
+            }
         }
         this.hud.renderTarget?.();
     }
@@ -1036,7 +994,6 @@ export class Game {
         switch (this.mode.kind) {
             case 'move': {
                 const c = p?.cell;
-                if (unit && unit.side !== u.side && this.isVisible(unit)) { this.targetById(unit.id); break; }
                 { const slot = this.formationSlotAt(u, c); if (slot >= 0) { this.intent({ type: 'formation_swap', slot }); break; } }
                 if(c&&this.zones?.has(nodeKey(c))){const key=nodeKey(c);if(this.options.confirmMoves&&this.moveConfirmation!==key){this.moveConfirmation=key;this.hud.toast('Click the destination again to move');break;}const f=this.battle.formations.of(u);this.intent({type:'move',to:c,group:!!f&&!f.assembling&&f.leaderId===u.id});}
                 break;

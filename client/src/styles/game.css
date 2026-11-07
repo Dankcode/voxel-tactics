@@ -488,6 +488,7 @@ button{background:rgba(15,15,18,.68);border-color:var(--line);border-radius:4px}
 #hud.shooter-mode .target .tbtns button:disabled{opacity:.4}
 #hud.shooter-mode .target button:focus-visible{outline:2px solid white;outline-offset:3px}
 #hud>.aim-reticle{position:fixed;pointer-events:none!important;width:0;height:0;z-index:32;--aim-radius:25px}
+#hud>.aim-reticle::after{content:'';position:absolute;left:-2px;top:-2px;width:4px;height:4px;border-radius:50%;background:#fff;box-shadow:0 0 0 1px #000b}
 #hud>.aim-reticle .reticle-ring.outer,.cutin.shooter-shot .cutin-crosshair{position:absolute;width:calc(var(--aim-radius)*2);height:calc(var(--aim-radius)*2);box-sizing:border-box;border:1.5px solid #fff;border-radius:50%;box-shadow:0 0 0 1px #0009,inset 0 0 0 1px #0005;pointer-events:none}
 #hud>.aim-reticle .reticle-ring.outer{left:calc(-1 * var(--aim-radius));top:calc(-1 * var(--aim-radius))}
 #hud>.aim-reticle.blocked .reticle-ring.outer{border-color:#ff876c}
@@ -495,7 +496,7 @@ button{background:rgba(15,15,18,.68);border-color:var(--line);border-radius:4px}
 #hud>.aim-reticle .read,.cutin.shooter-shot .cutin-crosshair .read{position:absolute;left:0;top:calc(var(--aim-radius) + 10px);transform:translateX(-50%);font:500 12px/1.4 var(--font);font-style:normal;font-variant-numeric:tabular-nums;letter-spacing:.03em;white-space:nowrap;color:#fff;background:#0b1019bf;padding:2px 6px;border-radius:3px;text-shadow:0 1px 2px #000}
 .cutin.shooter-shot :is(.bar,.caption,.flash){display:none}
 .cutin.shooter-shot .cutin-crosshair{margin:calc(-1 * var(--aim-radius));--aim-radius:12px}
-.cutin.shooter-shot .cutin-crosshair::after{display:none}
+.cutin.shooter-shot .cutin-crosshair::after{display:block}
 .cutin.shooter-shot .cutin-crosshair .read{left:50%;top:calc(100% + 10px)}
 @media(max-width:700px){#hud.shooter-mode>.target.slim{right:16px;bottom:16px;width:205px;padding:10px 12px}#hud.shooter-mode .target .aim-back{top:16px;left:16px}.shooter-ammo b{font-size:24px}}
 

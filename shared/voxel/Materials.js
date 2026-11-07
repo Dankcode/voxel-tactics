@@ -112,7 +112,8 @@ def('bed', { label: 'Bed', color: 0xa8b9ad, hp: 3, family: 'wood', flammable: tr
 def('desk', { label: 'Desk', color: 0xb99870, hp: 3, family: 'wood', flammable: true, structural: false, walkable: false });
 def('planter', { label: 'Concrete planter', color: 0xafb7b1, hp: 8, family: 'stone', debris: 'rubble', structural: false, walkable: false });
 def('privacy_fence', { label: 'Privacy fence', color: 0x9a795b, hp: 4, family: 'wood', flammable: true, structural: false, walkable: false });
-def('car_body', { label: 'Parked car', color: 0xaabcc1, hp: 7, family: 'metal', structural: false, walkable: false });
+def('car_body', { label: 'Parked car', color: 0xaabcc1, hp: 18, family: 'metal', structural: false, walkable: false,
+    explosive: { radius: 3.2, power: 9, damage: 8, element: 'pyro', knockback: 1 } });
 def('appliance', { label: 'Appliance', color: 0xd5dad7, hp: 7, family: 'metal', structural: false, walkable: false });
 def('road_mark', { label: 'Road marking', color: 0xe1dfcb, hp: 8, family: 'stone' });
 // Modern set, pass 2: themed ground, walls and real-object cover (shared/mission/themes/*).

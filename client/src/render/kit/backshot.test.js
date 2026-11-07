@@ -31,13 +31,14 @@ test('there is no cut-in mode that skips the back shot', () => {
     assert.deepEqual(CUTIN_MODES, ['always']);
 });
 
-test('Ranger shoulder placement respects the authored convergence point and lower crop',()=>{
+test('Ranger shoulder placement respects the authored convergence point and keeps the back shot fully visible',()=>{
     const ranger=art('ranger-01');
     for(const viewport of [{width:1280,height:720},{width:600,height:800}])for(const shoulder of ['right','left']){
         const c=sideCutin(ranger,shoulder),aim={x:viewport.width/2,y:viewport.height/2},p=backshotPlacement(c,aim,viewport);
         if(c.staticPose){
             assert.equal(p.left,0);assert.equal(p.top+p.height,viewport.height*(1-BAR_SHARE));
-            assert.equal(p.height,c.screenHeight*Math.min(viewport.height,viewport.width/(c.width/c.height)));
+            assert.equal(p.height,Math.min(c.screenHeight*Math.min(viewport.height,viewport.width/(c.width/c.height)),viewport.height*(1-BAR_SHARE)));
+            assert.ok(p.top>=0,'helmet stays inside viewport');
             assert.ok(p.width<=viewport.width,'narrow screens keep the shoulder away from the centre');
         }else if(c.crosshair){
             const x=c.mirror?1-c.crosshair[0]:c.crosshair[0];

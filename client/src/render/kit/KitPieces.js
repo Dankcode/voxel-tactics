@@ -17,6 +17,7 @@ import { rng, box, clean, merge, softBox, blob } from './Geo.js';
 import { ARCHITECTURE_PIECES } from './ArchitecturePieces.js';
 import { CONNECTED_PIECES } from './ConnectedPieces.js';
 import { MODERN_PIECES } from './ModernPieces.js';
+import { VEHICLE_PIECES } from './VehiclePieces.js';
 
 export { WALL_T, ARM } from './Geo.js';
 import { WALL_T, ARM } from './Geo.js';
@@ -163,6 +164,7 @@ export const PIECES = {
     } },
     // Present-day pieces (walls trims, glazing, doors, furniture, vehicles, street furniture, trees, decor).
     ...MODERN_PIECES,
+    ...VEHICLE_PIECES,
     ...CONNECTED_PIECES,
     ...ARCHITECTURE_PIECES
 };

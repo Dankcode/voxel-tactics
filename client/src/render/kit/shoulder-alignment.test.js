@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import * as THREE from 'three';
-import {aimGunCamera,gunPoint,gunPoseSample,gunStockDrop,lowerGunRearPoint} from '../../anim/SpriteWeapon.js';
+import {aimGunCamera,GUN_RENDER_SCALE,gunPoint,gunPoseSample,gunStockDrop,lowerGunRearPoint,scaledGunAssembly} from '../../anim/SpriteWeapon.js';
 import {backshotPlacement} from '../../anim/CutInDirector.js';
 import {projectedSpreadRadius,updateReticle} from '../../ui/AimReticle.js';
 import {Hud} from '../../ui/Hud.js';
@@ -38,6 +38,13 @@ test('accuracy circle grows with angular spread and magnification for every weap
  assert.equal(projectedSpreadRadius(camera,720,2,30),projectedSpreadRadius(camera,720,2,15),'angular spread remains distance independent in perspective');
 });
 
+test('reticle radius follows perspective zoom exactly and keeps the shotgun readable',()=>{
+ const camera=new THREE.PerspectiveCamera(60,16/9,.01,500),wide=projectedSpreadRadius(camera,720,2,15);
+ camera.fov=14;const narrow=projectedSpreadRadius(camera,720,2,15);
+ assert.ok(Math.abs(narrow/wide-Math.tan(60*Math.PI/360)/Math.tan(14*Math.PI/360))<1e-10);
+ camera.fov=38;assert.ok(projectedSpreadRadius(camera,720,4,7)<=120,'four-degree shotgun spread stays bounded at effective range');
+});
+
 const classList=()=>{const values=new Set();return{add:x=>values.add(x),remove:x=>values.delete(x),contains:x=>values.has(x),toggle:(x,on)=>on?values.add(x):values.delete(x)}};
 test('live reticle shows only distance and never requests hit odds or pellet estimates',()=>{
  const read={},el={classList:classList(),style:{setProperty(k,v){this[k]=v}},querySelector:s=>{assert.equal(s,'span.read');return read}};
@@ -62,5 +69,17 @@ test('shotgun and sniper butt drops leave every forward barrel point unchanged',
   assert.ok(Math.abs((stock.y-dropped.y)-gunStockDrop(gun))<1e-10);
   for(const p of [gun.muzzle,gun.support,gun.grip])assert.ok(lowerGunRearPoint(gunPoint(p),gun).distanceTo(gunPoint(p))<1e-10);
   assert.equal(gunStockDrop(gun)>0,family!=='rifle');
+ }
+});
+
+test('render-scale shrinks gun geometry and every contact anchor without changing the rigid aim transform',()=>{
+ for(const raw of Object.values(kit.assemblies)){
+  const gun=scaledGunAssembly(raw);
+  assert.equal(gun.renderScale,GUN_RENDER_SCALE);
+  for(const key of ['stock','grip','support','muzzle'])for(let i=0;i<3;i++)assert.ok(Math.abs(gun[key][i]-raw[key][i]*GUN_RENDER_SCALE)<1e-10,`${key}[${i}]`);
+  const camera=aimGunCamera(art.rig,gunPoint(gun.stock),art.width/art.height),pose=gunPoseSample(art,gun,camera,{});
+  assert.ok(Math.abs(pose.matrix.determinant()-1)<1e-10);
+  const stock=lowerGunRearPoint(gunPoint(gun.stock),gun).applyMatrix4(pose.matrix).project(camera);
+  assert.ok(Math.hypot(pose.targets.stock[0]-(stock.x+1)/2,pose.targets.stock[1]-(1-stock.y)/2)<1e-10,'scaled stock and lowered geometry still agree');
  }
 });

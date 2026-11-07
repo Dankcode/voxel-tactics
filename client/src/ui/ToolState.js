@@ -50,11 +50,11 @@ export function peekStep(battle, u, current, key, forward) {
     return undefined;
 }
 
-/** PLAN-15: saved settings older than this plan take the new defaults once (auto end turn on, light aim assist). */
+/** Migrate old defaults once and remove the retired aim-assist preference. */
 export function migrateSettings(o, store = globalThis.localStorage){
     if(!o||typeof o!=='object')return{};
-    if((o.settingsVersion||0)>=15)return o;
-    const next={...o,autoEndTurn:true,aimAssist:o.aimAssist===false?'off':typeof o.aimAssist==='string'?o.aimAssist:'light',settingsVersion:15};
-    try{store?.setItem('tactics-settings',JSON.stringify(next));}catch{}
+    const version=o.settingsVersion||0,next={...o,...(version<15?{autoEndTurn:true}:{}),settingsVersion:16};
+    delete next.aimAssist;
+    if(version!==16||'aimAssist' in o)try{store?.setItem('tactics-settings',JSON.stringify(next));}catch{}
     return next;
 }

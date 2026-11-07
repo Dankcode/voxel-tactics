@@ -4,14 +4,17 @@ import * as THREE from 'three';
 import { CameraDirector } from '../../anim/CameraDirector.js';
 import { VoxelStore } from '../../../../shared/voxel/VoxelStore.js';
 
-test('preparation is closer than tactics; action lowers and tightens the back shot without entering walls', () => {
+test('a committed aim preserves its camera; an ordinary action still uses the closer back shot', () => {
     const scene={aspect:1.6},camera=new CameraDirector(scene),shooter=new THREE.Vector3(8.5,2,8.5),target=new THREE.Vector3(8.5,2,18.5);
     const store=new VoxelStore(30,30,12);store.fill(0,0,0,29,29,1,'concrete');store.fill(0,5,2,29,5,7,'brick');camera.store=store;
-    assert.ok(camera.prepare(shooter,target) !== false);assert.equal(camera.phase,'prepare');
-    const distance=camera.cam.position.distanceTo(shooter),height=camera.cam.position.y;
-    assert.ok(distance<12);assert.ok(camera.clear(camera.cam.position));
+    camera.prepareAim(shooter,target);assert.equal(camera.phase,'prepare');
+    const distance=camera.cam.position.distanceTo(shooter),position=camera.cam.position.clone(),look=camera.look.clone(),fov=camera.cam.fov;
+    assert.ok(distance<12);assert.ok(camera.clear(position));
+    assert.ok(camera.commitAim());camera.apply(1);
+    assert.ok(camera.cam.position.distanceTo(position)<1e-9);assert.ok(camera.look.distanceTo(look)<1e-9);assert.equal(camera.cam.fov,fov);
+    assert.ok(camera.resumeAim());assert.equal(camera.phase,'prepare');
     camera.begin(shooter,target);assert.equal(camera.phase,'action');
-    assert.ok(camera.cam.position.distanceTo(shooter)<distance);assert.ok(camera.cam.position.y<height);
+    assert.ok(camera.cam.position.distanceTo(shooter)<distance);
     for(let k=0;k<=1;k+=0.1){camera.apply(k);assert.ok(camera.clear(camera.cam.position));}
     assert.equal(scene.actionCamera,camera.cam);camera.end();assert.equal(scene.actionCamera,null);
 });

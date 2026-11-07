@@ -8,6 +8,7 @@ import { MATERIALS, MAT, AIR } from '../../../../shared/voxel/Materials.js';
 import { CHUNK } from '../../../../shared/voxel/VoxelStore.js';
 import { buildAllPieces, PIECES } from './KitPieces.js';
 import { MODERN_OVERHANG } from './ModernPieces.js';
+import { VEHICLE_OVERHANG } from './VehiclePieces.js';
 import { MAPS } from '../../../../shared/mission/Maps.js';
 import { KitView, kitHandler } from './KitView.js';
 import { buildRoofGeometry, roofColumn } from './RoofBuilder.js';
@@ -35,7 +36,7 @@ function buildAll(cut = Infinity, m = mission) {
 }
 
 test('every piece builds within its cell (except the documented overhangs)', () => {
-    const overhang = new Set(['cart_shaft', 'stall', 'foliage', 'hedge', 'stair_rail', 'rock#0', 'rock#1', 'rock#2', 'rock_top', 'door_open_lower', 'door_open_upper', 'cart_wheels', 'mdoor_open_lower', 'mdoor_open_upper', 'gdoor_open_lower', 'gdoor_open_upper', ...MODERN_OVERHANG]);
+    const overhang = new Set(['cart_shaft', 'stall', 'foliage', 'hedge', 'stair_rail', 'rock#0', 'rock#1', 'rock#2', 'rock_top', 'door_open_lower', 'door_open_upper', 'cart_wheels', 'mdoor_open_lower', 'mdoor_open_upper', 'gdoor_open_lower', 'gdoor_open_upper', ...MODERN_OVERHANG, ...VEHICLE_OVERHANG]);
     for (const [id, parts] of pieces) {
         for (const { geometry } of parts) {
             geometry.computeBoundingBox();
@@ -46,6 +47,16 @@ test('every piece builds within its cell (except the documented overhangs)', () 
         }
     }
     assert.ok(Object.keys(PIECES).length >= 40);
+});
+
+test('vehicle pillars follow the cabin instead of protruding through its roof', () => {
+    for (const id of ['car_sedan', 'car_pickup']) {
+        const parts = pieces.get(id), bounds = slot => {
+            const geometry = parts.find(part => part.slot === slot).geometry;
+            geometry.computeBoundingBox(); return geometry.boundingBox;
+        };
+        assert.ok(bounds('frame').max.y <= bounds('glass_dark').max.y + .02, `${id} frame rises above its glazing`);
+    }
 });
 
 test('the training facility draws walls, glazing, doors, stairs, roofs, furniture, vehicles and cover with tile-set pieces', () => {

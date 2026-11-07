@@ -1,27 +1,24 @@
-// PLAN-07: cracks on damaged voxels, broken edges next to shot-out cells, soot from blasts and fire.
+// PLAN-07: no bullet holes on surviving voxels; broken edges next to shot-out cells, soot from blasts and fire.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { VoxelStore } from '../../../../shared/voxel/VoxelStore.js';
 import { MAT } from '../../../../shared/voxel/Materials.js';
 import { edgeTexture } from '../DamageDecals.js';
 import { damageVoxel, destroyVoxel, scorchBlast } from '../../../../shared/voxel/Destruction.js';
-import { DamageDecals, damageLevel, faceMatrix } from '../DamageDecals.js';
+import { DamageDecals, faceMatrix } from '../DamageDecals.js';
 
 const room = () => { const s = new VoxelStore(16, 16, 8); s.fill(0, 0, 0, 15, 15, 0, 'concrete'); return s; };
 
-test('no decals on an intact world; cracks appear at 66 % and heavy cracks at 33 % HP', () => {
+test('damaged but surviving voxels have no bullet-hole decals', () => {
     const s = room(), d = new DamageDecals();
     for (let x = 4; x <= 8; x++) for (let z = 1; z <= 2; z++) s.set(x, 5, z, MAT.brick);
     assert.equal(d.collect(s, 0, 0, 0).length, 0);
     s.takeDirtyChunks();
     damageVoxel(s, 6, 5, 1, 4);                         // brick 9 → 5 (56 %)
-    assert.equal(damageLevel(s, 6, 5, 1), 1);
     assert.ok(s.dirtyChunks.size > 0, 'crossing a damage band marks the chunk for a redraw');
-    const cracks = d.collect(s, 0, 0, 0).filter(x => x.kind === 'crack');
-    assert.ok(cracks.length >= 2, 'both broad faces of the wall show cracks');
+    assert.equal(d.collect(s, 0, 0, 0).length, 0);
     damageVoxel(s, 6, 5, 1, 3);                         // 2 / 9
-    assert.equal(damageLevel(s, 6, 5, 1), 2);
-    assert.ok(d.collect(s, 0, 0, 0).some(x => x.kind === 'heavy'));
+    assert.equal(d.collect(s, 0, 0, 0).length, 0);
 });
 
 test('a shot-out cell leaves broken material on the neighbours facing it and frayed edges beside it', () => {

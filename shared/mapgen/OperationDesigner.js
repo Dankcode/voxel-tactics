@@ -65,11 +65,12 @@ export function designProgrammes({ buildings, target, plot, seed, objectiveKind 
     const code = `Operation ${pick(CODE_A, `${seed}:code-a`)} ${pick(CODE_B, `${seed}:code-b:${plot.family}`)}`;
     const where = { downtown: 'downtown block', industrial: 'freight yard', suburb: 'residential close' }[plot.family] || 'city block';
     const goal = { recover: `recover the intelligence from the ${ORDINAL[top]}-floor ${topRooms[0].kind.replace('_', ' ')}`, extract: `get three soldiers to the ${ORDINAL[top]}-floor rendezvous`, hold: `take and hold the ${ORDINAL[top]}-floor ${topRooms[0].kind.replace('_', ' ')}`, eliminate: 'clear every Syndicate cell in the block' }[kind];
-    const under = { subway: 'the subway tunnel', 'storm-drain': 'the storm drain' }[plot.underground] || 'the underground route';
+    const under = { subway: 'the subway tunnel', 'storm-drain': 'the storm drain' }[plot.underground];
+    const flank = under ? `use ${under} or a fire escape` : 'use a fire escape';
     const design = {
         version: 1, generated: true,
         mission: { kind, title: name || code, timeOfDay, target: { building: target.id, floor: top, room: topRooms[0].id },
-            briefing: `The Syndicate has fortified a ${where}. Insert on the street, push from cover to cover along the line of advance, use ${under} or a fire escape to flank the ${target.program === 'apartment' ? 'apartment block' : target.program}, and ${goal}.` },
+            briefing: `The Syndicate has fortified a ${where}. Insert on the street, push from cover to cover along the line of advance, ${flank} to flank the ${target.program === 'apartment' ? 'apartment block' : target.program}, and ${goal}.` },
         programs,
         beats: [
             { id: 'approach', text: 'Reach the cover outside the objective.', building: target.id, floor: 0, room: 'hall' },

@@ -20,7 +20,6 @@ import { ICONS, weaponIcon } from './Icons.js';
 import { TERRAIN_CUES } from '../render/MaterialLibrary.js';
 import { QUALITY, setQuality } from '../render/Quality.js';
 
-const PARTS = [['head', 'Head', 'Z'], ['torso', 'Torso', 'X'], ['armL', 'L Arm', 'C'], ['armR', 'R Arm', 'V'], ['legs', 'Legs', 'G']];
 const pct = v => `${Math.round(v * 100)}%`;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -109,11 +108,8 @@ export class Hud {
             case 'cancelAutoEnd': g.cancelAutoEnd(); break;
             case 'peekHome': g.setPeek(null); break;
             case 'slot': this.runSlot(+arg); break;
-            case 'target': g.targetById(arg); break;
-            case 'part': g.setAimPart(arg); break;
             case 'fire': g.confirmFire(); break;
             case 'captureAim': g.captureAim(); break;
-            case 'nextTarget': g.cycleTarget(1); break;
             case 'cancel': g.cancel(); break;
             case 'formTpl': g.declareFormation(arg); this.hidePanel(); break;
             case 'doBreach': { const [i, entry] = arg.split(':'); g.doBreach(+i, entry); this.hidePanel(); break; }
@@ -140,7 +136,7 @@ export class Hud {
         const g = this.game, o = g.options, el = this.el('.options');
         if (el.classList.contains('hidden')) return;
         const row = (k, label) => `<button data-act="opt" data-arg="${k}" class="${o[k] ? 'on' : ''}">${o[k] ? '☑' : '☐'} ${label}</button>`;
-        el.innerHTML = `<h3>Settings <button data-act="options">✕</button></h3><h4>Gameplay</h4><label>Turn / animation speed<select data-setting="turnSpeed">${[.5,1,1.5,2,3].map(n=>`<option value="${n}" ${Number(o.turnSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label><label>Camera rotation<select data-setting="rotateSpeed">${[.5,1,1.5,2].map(n=>`<option value="${n}" ${Number(o.rotateSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('confirmMoves','Confirm movement destinations')}${row('showEnemyBars','Show enemy health')}<label>Aim sensitivity<select data-setting="aimSensitivity">${[.25,.5,.75,1].map(n=>`<option value="${n}" ${Number(o.aimSensitivity??.5)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('aimSway','Reticle breathing')}<label>Aim assist<select data-setting="aimAssist" data-type="string">${[['off','Off'],['light','Light (slows near enemies)'],['strong','Strong (snaps to body parts)']].map(([v,l])=>`<option value="${v}" ${(o.aimAssist||'light')===v?'selected':''}>${l}</option>`).join('')}</select></label><label>Soldier name and AP tags<select data-setting="unitTags" data-type="string">${[['selected','Selected soldier'],['always','Whole squad'],['flash','Only briefly']].map(([v,l])=>`<option value="${v}" ${(o.unitTags||'selected')===v?'selected':''}>${l}</option>`).join('')}</select></label><button data-act="debug">Test / debug tools (F1)</button><button data-act="inventory">Equipment and body status (I)</button><button data-act="menu">Return to menu</button>${row('autoEndTurn', 'Auto end turn when the squad is spent')}${row('autoNext', 'Auto-select the next ready soldier')}${row('followCamera', 'Camera follows actions')}
+        el.innerHTML = `<h3>Settings <button data-act="options">✕</button></h3><h4>Gameplay</h4><label>Turn / animation speed<select data-setting="turnSpeed">${[.5,1,1.5,2,3].map(n=>`<option value="${n}" ${Number(o.turnSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label><label>Camera rotation<select data-setting="rotateSpeed">${[.5,1,1.5,2].map(n=>`<option value="${n}" ${Number(o.rotateSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('confirmMoves','Confirm movement destinations')}${row('showEnemyBars','Show enemy health')}<label>Aim sensitivity<select data-setting="aimSensitivity">${[.25,.5,.75,1].map(n=>`<option value="${n}" ${Number(o.aimSensitivity??.5)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('aimSway','Reticle breathing')}<label>Soldier name and AP tags<select data-setting="unitTags" data-type="string">${[['selected','Selected soldier'],['always','Whole squad'],['flash','Only briefly']].map(([v,l])=>`<option value="${v}" ${(o.unitTags||'selected')===v?'selected':''}>${l}</option>`).join('')}</select></label><button data-act="debug">Test / debug tools (F1)</button><button data-act="inventory">Equipment and body status (I)</button><button data-act="menu">Return to menu</button>${row('autoEndTurn', 'Auto end turn when the squad is spent')}${row('autoNext', 'Auto-select the next ready soldier')}${row('followCamera', 'Camera follows actions')}
             <h4>Audio</h4><label>Sound effects volume<input type="range" data-setting="soundVolume" min="0" max="1" step="0.05" value="${o.soundVolume ?? 0.65}" aria-label="Sound effects volume"></label>
             <h4>Camera</h4>${row('edgeScroll', 'Screen-edge scrolling')}<button data-act="proj" class="${g.scene.projection === 'ortho' ? 'on' : ''}">${g.scene.projection === 'ortho' ? '☑' : '☐'} Isometric (orthographic) view (V)</button>
             <div class="camhint" style="font-size:11px;opacity:.7;line-height:1.5;margin:4px 0 2px">W / S floor up / down · A/D, arrows, screen edge pan · right-drag grab · middle-drag orbit · wheel zoom · Q/E rotate · H / Home centre on soldier · V isometric · while aiming: WASD lean out of cover, Esc steps back</div>
@@ -310,7 +306,7 @@ export class Hud {
         el.classList.remove('hidden');el.classList.add('slim');
         const u=g.selectedUnit(),w=WEAPONS[g.mode.weaponId],locked=g.aimPointer?.locked;
         if(!u||!w){el.classList.add('hidden');return;}
-        const cost=g.targetInfo?.ap??g.battle.shotAp(u,w),ammo=u.ammo?.[w.id]||0;
+        const cost=g.mode.suppress?ABILITIES.suppress.ap:g.battle.shotAp(u,w),ammo=u.ammo?.[w.id]||0;
         el.innerHTML=`<button class="aim-back" data-act="cancel" aria-label="${locked?'Release aim':'Back to tactics'}">${locked?'Release aim':'Back'} <kbd>Esc</kbd></button>
             <div class="shooter-status"><span class="shooter-weapon">${esc(w.name)}</span><span class="shooter-ammo" aria-label="${ammo} loaded, ${reserveAmmo(u,w)} reserve"><b>${ammo}</b><small> / ${reserveAmmo(u,w)}</small></span></div>
             <div class="tbtns">${!locked&&!g.aimPointer?.unavailable?'<button data-act="captureAim">Aim</button>':''}<button data-act="fire" class="fire" ${ammo<1||u.ap<cost?'disabled':''}>Fire <kbd>Space</kbd></button></div>`;

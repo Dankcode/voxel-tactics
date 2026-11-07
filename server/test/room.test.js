@@ -9,6 +9,11 @@ import colyseus from 'colyseus';
 import { WebSocketTransport } from '@colyseus/ws-transport';
 import * as ColyseusClient from 'colyseus.js';
 const Client = { Client: class extends ColyseusClient.Client {
+    constructor(...args) {
+        super(...args);
+        const getOptions = this.http.getOptions.bind(this.http);
+        this.http.getOptions = options => ({ ...getOptions(options), timeout: options.timeout ?? 30000 });
+    }
     track(room) {
         let seq = 0;
         room.onMessage('init', m => { seq = Math.max(seq, m.seq); });

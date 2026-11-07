@@ -47,11 +47,10 @@ test('WASD peek steps are camera-relative and stay inside the peek cells', () =>
     assert.deepEqual(peekStep(b, u, { x: 11, y: 20, z: 1 }, 'a', north), home, 'back home');
 });
 
-test('settings migrate once: auto end turn on, aim assist light (or off if it was off)', () => {
+test('settings migrate once and remove the retired aim-assist preference', () => {
     const mem = { v: null, setItem(k, v) { this.v = v; } };
-    const m = migrateSettings({ autoEndTurn: false, soundVolume: 0.2 }, mem);
-    assert.equal(m.autoEndTurn, true); assert.equal(m.aimAssist, 'light'); assert.equal(m.soundVolume, 0.2); assert.ok(mem.v);
-    assert.equal(migrateSettings({ aimAssist: false }, mem).aimAssist, 'off');
+    const m = migrateSettings({ autoEndTurn: false, soundVolume: 0.2, aimAssist: 'strong' }, mem);
+    assert.equal(m.autoEndTurn, true); assert.equal(m.aimAssist, undefined); assert.equal(m.soundVolume, 0.2); assert.ok(mem.v);
     const later = migrateSettings({ ...m, autoEndTurn: false }, mem);
     assert.equal(later.autoEndTurn, false, 'a choice made after the migration sticks');
 });

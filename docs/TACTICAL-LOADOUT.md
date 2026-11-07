@@ -30,7 +30,7 @@ A final salvo uses the rounds remaining in the gun. Every bullet is traced separ
 
 Armor subtracts damage after the projectile's penetration allowance. Gun type and attachments determine spread and effective range; scopes tighten spread and narrow the overwatch cone. Precision barrels tighten spread and extend range. Wounds, status, cover, and range modifiers still apply.
 
-Choose **Shoot**, move the reticle, then click or press **Space** to fire. **Tab** snaps the reticle to the next visible enemy; no body part has to be chosen. The aim follows the cursor with weapon-weight inertia (Settings → *Aim inertia*), the reticle's rings show the gun's real spread at that distance, and the shoulder camera and back-view sprite follow the aim. The tracer decides what is actually hit, including rounds that go through thin cover. Sprite breathing is cosmetic and can be disabled in Settings.
+Choose **Shoot**, move the reticle, then click or press **Space** to fire. Entering Shoot aims eight tiles along the soldier's facing, regardless of spotted enemies. The reticle remains free: cursor movement never snaps its position, distance, or direction onto a target or body part. The aim follows the cursor with weapon-weight inertia (Settings → *Aim inertia*), the reticle's rings show the gun's real spread at that distance, and the shoulder camera and back-view sprite follow the aim. The tracer decides what is actually hit, including rounds that go through thin cover. Sprite breathing is cosmetic and can be disabled in Settings.
 
 Overwatch remains active across phases and can react to successive movement actions, consuming the selected gun's normal salvo each time. It ends on a wound, a status effect, or exhausted loaded ammunition. Reactions never create free ammo.
 

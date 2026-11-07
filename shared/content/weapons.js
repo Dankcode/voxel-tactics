@@ -24,7 +24,7 @@ export const WEAPONS = Object.freeze(Object.fromEntries(Object.entries({
     repeater: { name: 'Assault Rifle', kind: 'ballistic', caliber: '5.56', ap: 2, projectiles: 3, shred: 0,
         spread: 1.6, range: 18, maxRange: 34, ammo: 9, perShot: 3, reloadAp: 1, noise: 14, element: null, cutIn: 'burst' },
     blunderbuss: { name: 'Combat Shotgun', kind: 'ballistic', caliber: '12g', ap: 2, projectiles: 8, shred: 0,
-        spread: 6.5, range: 7, maxRange: 14, ammo: 4, perShot: 1, reloadAp: 1, noise: 14, element: null, cutIn: 'shot' },
+        spread: 4, range: 7, maxRange: 14, ammo: 4, perShot: 1, reloadAp: 1, noise: 14, element: null, cutIn: 'shot' },
     longrifle: { name: 'Sniper Rifle', kind: 'ballistic', caliber: '338', ap: 3, projectiles: 1, shred: 0,
         spread: 0.6, range: 30, maxRange: 48, ammo: 3, perShot: 1, reloadAp: 1, noise: 18, element: null, cutIn: 'heavy' },
     handcannon: { name: 'Sidearm', kind: 'ballistic', caliber: '9mm', ap: 1, projectiles: 1, shred: 0,

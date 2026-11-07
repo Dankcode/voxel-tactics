@@ -10,14 +10,14 @@ export const SIDE_VEC = Object.freeze({ n: [0, -1], e: [1, 0], s: [0, 1], w: [-1
 export const OPPOSITE = Object.freeze({ n: 's', s: 'n', e: 'w', w: 'e' });
 
 /**
- * Plot families (P2 ships three). Each has a theme (prop palette, materials), district weights, the underground kind
- * its streets hide (PLAN-03 D4), the times of day it suits and a road layout generator on the lot grid.
+ * Plot families (P2 ships three). Each has a theme (prop palette, materials), district weights, the times of day it
+ * suits and a road layout generator on the lot grid.
  */
 export const PLOT_FAMILIES = Object.freeze({
     downtown: {
-        name: 'Downtown grid', theme: 'Downtown', size: [48, 40], underground: 'subway', times: ['dusk', 'night-ops', 'overcast', 'night', 'day'],
+        name: 'Downtown grid', theme: 'Downtown', size: [48, 40], times: ['dusk', 'night-ops', 'overcast', 'night', 'day'],
         districts: { commercial: 4, residential: 1.4, plaza: 1.1 },
-        text: 'A main road and a cross street through shops, offices and apartments, with a subway beneath.',
+        text: 'A main road and a cross street through shops, offices and apartments.',
         roads(rng, LW, LD) {
             const row = rng.pick([LD - 2, LD - 3]), col = rng.int(2, LW - 3), full = rng.next() < 0.5;
             const cells = [];
@@ -27,9 +27,9 @@ export const PLOT_FAMILIES = Object.freeze({
         }
     },
     industrial: {
-        name: 'Industrial yard', theme: 'Industrial', size: [48, 40], underground: 'storm-drain', times: ['night', 'night-ops', 'dusk', 'overcast'],
+        name: 'Industrial yard', theme: 'Industrial', size: [48, 40], times: ['night', 'night-ops', 'dusk', 'overcast'],
         districts: { industrial: 4, yard: 2, commercial: 0.5 },
-        text: 'An access road and a service road around depots, container stacks and loading yards, over a storm drain.',
+        text: 'An access road and a service road around depots, container stacks and loading yards.',
         roads(rng, LW, LD) {
             const col = rng.pick([1, LW - 2]), row = LD - 2, cells = [];
             for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
@@ -38,9 +38,9 @@ export const PLOT_FAMILIES = Object.freeze({
         }
     },
     suburb: {
-        name: 'Suburb close', theme: 'Suburbs', size: [48, 40], underground: 'storm-drain', times: ['dusk', 'day', 'dawn', 'night'],
+        name: 'Suburb close', theme: 'Suburbs', size: [48, 40], times: ['dusk', 'day', 'dawn', 'night'],
         districts: { residential: 4, park: 1.3, commercial: 0.5 },
-        text: 'A residential road with a cul-de-sac between houses, back gardens and a pocket park, over a storm drain.',
+        text: 'A residential road with a cul-de-sac between houses, back gardens and a pocket park.',
         roads(rng, LW, LD) {
             const row = rng.pick([LD - 2, LD - 3]), col = rng.int(2, LW - 3), cells = [];
             for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);

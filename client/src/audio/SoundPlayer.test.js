@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { SoundPlayer, SOUNDS, explosionSound, weaponHandlingSound } from './SoundPlayer.js';
+import { SoundPlayer, SOUNDS, explosionSound, impactSound, weaponHandlingSound, weaponSound } from './SoundPlayer.js';
 import { EventPlayer } from '../anim/EventPlayer.js';
 
 const flush = () => new Promise(resolve => setImmediate(resolve));
@@ -19,14 +19,20 @@ function fakeContext() {
     return context;
 }
 
-test('all supplied clips exist; explosion distance and weapon handling select appropriate sounds', () => {
+test('all clips exist and event selectors choose distinct weapon, impact, and elemental sounds', () => {
     for (const file of Object.values(SOUNDS)) assert.ok(existsSync(new URL(`../../public/assets/audio/${file}`, import.meta.url)));
     assert.equal(explosionSound({ x: 2, y: 2 }, { x: 0, z: 0 }), 'explosion');
     assert.equal(explosionSound({ x: 25, y: 0 }, { x: 0, z: 0 }), 'distantExplosion');
-    assert.equal(explosionSound({ x: 2, y: 2, element: 'hydro' }), null);
+    assert.equal(explosionSound({ x: 2, y: 2, element: 'hydro' }), 'hydroBurst');
+    assert.equal(explosionSound({ x: 2, y: 2, element: 'cryo' }), 'cryoBurst');
     assert.equal(weaponHandlingSound('blunderbuss'), 'shotgunPump');
     assert.equal(weaponHandlingSound('handcannon'), 'handgunClick');
-    assert.equal(weaponHandlingSound('repeater'), null);
+    assert.equal(weaponHandlingSound('repeater'), 'rifleReload');
+    assert.equal(weaponSound('repeater'), 'rifleShot');
+    assert.equal(weaponSound('longrifle'), 'sniperShot');
+    assert.equal(weaponSound('sword'), null);
+    assert.equal(impactSound('metal'), 'impactMetal');
+    assert.equal(impactSound('unit'), 'impactUnit');
 });
 
 test('cancelled footsteps never start after loading; muting stops active voices', async t => {
@@ -78,11 +84,19 @@ test('footsteps span continuous walking, stop for climbing, and stay silent for 
     assert.equal(calls.length, 0);
 });
 
-test('shotgun cycling follows the shot; reloads use the matching mechanical clip', async () => {
+test('shots and reloads use the matching weapon clips', async () => {
     const { player, calls, game } = presentation();
     game.fx = { flash() {}, float() {} };
     await player.play({ t: 'shot', unitId: 'p0', weaponId: 'blunderbuss', projectiles: [] });
     await player.play({ t: 'reload', unitId: 'p0', weaponId: 'handcannon' });
     await player.play({ t: 'reload', unitId: 'p0', weaponId: 'repeater' });
-    assert.deepEqual(calls.map(c => c[1]), ['shotgunPump', 'handgunClick']);
+    assert.deepEqual(calls.map(c => c[1]), ['shotgunShot', 'shotgunPump', 'handgunClick', 'rifleReload']);
+});
+
+test('a projectile impact uses its target material without stacking pellet sounds', async () => {
+    const { player, calls, game } = presentation();
+    game.fx = { flash() {}, float() {}, impact() {}, tracer(a,b,c,{onArrive}) { onArrive(); } };
+    const projectiles=Array.from({length:8},()=>({kind:'unit',to:{x:1,y:1,h:1}}));
+    await player.play({ t: 'shot', unitId: 'p0', weaponId: 'blunderbuss', muzzle:{x:0,y:0,h:1}, projectiles });
+    assert.deepEqual(calls.map(c => c[1]), ['shotgunShot', 'impactUnit', 'shotgunPump']);
 });

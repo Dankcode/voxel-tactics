@@ -41,6 +41,20 @@ export const REJECT = Object.freeze(['not_your_turn', 'not_your_unit', 'unit_dow
 
 const PROFILE = AGENT_PROFILES.player;
 
+export function deploymentFacing(mission, pos, side = 'player') {
+    const route = mission.meta?.lineOfPlay?.main || [];
+    if (route.length < 2) return 's';
+    let nearest = 0, best = Infinity;
+    route.forEach(([x, y], i) => {
+        const d = (x - pos.x) ** 2 + (y - pos.y) ** 2;
+        if (d < best) { best = d; nearest = i; }
+    });
+    const step = side === 'enemy' ? -1 : 1;
+    const index = Math.max(0, Math.min(route.length - 1, nearest + step * Math.min(6, route.length - 1)));
+    const target = route[index];
+    return facingToward(target[0] - pos.x, target[1] - pos.y);
+}
+
 export class Battle {
     /**
      * @param {{ mission, squad: {type, owner?, name?}[], seed, controllers? }} o
@@ -78,13 +92,13 @@ export class Battle {
         const ps = mission.spawns.player;
         squad.forEach((s, i) => {
             const pos = ps[i % ps.length];
-            const u=createUnit(s.type,'player',pos,`p${i}`,{owner:s.owner||'player',name:s.name});
+            const u=createUnit(s.type,'player',pos,`p${i}`,{owner:s.owner||'player',name:s.name,facing:deploymentFacing(mission,pos,'player')});
             if(s.inventory){u.inventory=normalizeInventory(s.inventory);syncItems(u);}
             if(testArsenal)grantTestArsenal(u);
             this.units.push(u);
         });
         (enemies || mission.spawns.enemy).forEach((e, i) => {
-            this.units.push(createUnit(e.type, 'enemy', e.pos, `e${i}`, { group: e.group ?? 0, facing: e.facing || 's', extra: e.alerted ? { alerted: true, scattered: true } : undefined }));
+            this.units.push(createUnit(e.type, 'enemy', e.pos, `e${i}`, { group: e.group ?? 0, facing: e.facing || deploymentFacing(mission,e.pos,'enemy'), extra: e.alerted ? { alerted: true, scattered: true } : undefined }));
             this.units.at(-1).home = { x: e.pos.x, y: e.pos.y, z: e.pos.z };   // PLAN-10 patrol post
         });
         // PLAN-14: a drone placed with a pod belongs to that pod's tech (the nearest one).
@@ -797,7 +811,7 @@ export class Battle {
                     if (i % (w.pellets || 1) === 0) { rollHit = this.rng.next() * 100 < hc.chance; rollCrit = rollHit && this.rng.next() * 100 < hc.crit; rolls.push({ hit: rollHit, crit: rollCrit }); }
                     if (rollHit) d = sampleCone(this.rollAim(muzzle, target, rollCrit), 0.25, this.rng);
                     else { d = this.rollMiss(muzzle, target); ignore = [u.id, target.id]; }
-                } else d = sampleCone(dir, spread, this.rng);
+                } else d = i === 0 && aim.point && u.side === 'player' ? [...dir] : sampleCone(dir, spread, this.rng);
                 const res = traceProjectile(this, muzzle, d, maxDist, { ignore, energy: w.energy || 0 });
                 for (const [gx, gy, gz] of res.glass) if (this.store.get(gx, gy, gz) === MAT.glass) { this.store.set(gx, gy, gz, AIR); this.stats.voxelsDestroyed++; }
                 const p = { to: res.point, kind: res.kind };

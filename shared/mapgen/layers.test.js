@@ -6,14 +6,23 @@ import { buildPackagedMap } from './PackageBuilder.js';
 import { layerCompatible } from './LayerSolver.js';
 import { canJumpDown, ladderMoves, reachable, nodeKey } from '../world/PathSearch.js';
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
+import { generateOperation } from './Generator.js';
+test('generated operation families stay on the surface',()=>{
+ for(const plot of ['downtown','industrial','suburb']) {
+  const op=generateOperation({plot,seed:1,compile:false});
+  assert.equal(op.layout.layers,null);assert.equal(op.site.underground,null);
+  assert.doesNotMatch(op.design.mission.briefing,/subway|storm drain|underground/i);
+ }
+});
 test('three-layer sockets reject rock beneath an entrance and compile deterministic seeds',()=>{
  assert.equal(layerCompatible('rock','entrance','up'),false);assert.equal(layerCompatible('tunnel','drop','up'),true);
+ const site=structuredClone(CEDAR_IMAGE_SITE);site.underground={kind:'subway'};
  // Seeds 1–8 include local re-collapse, a moved drop and a full layout reseed (seed 7).
  for(let seed=1;seed<=8;seed++) {
-  const solved=solveLayout(CEDAR_IMAGE_SITE,{seed}),m=buildPackagedMap({site:CEDAR_IMAGE_SITE,...solved},{seed});
+  const solved=solveLayout(site,{seed}),m=buildPackagedMap({site,...solved},{seed});
   const u=m.meta.underground;assert.ok(u.openings.length>=2);const d=u.openings.find(e=>e.kind==='jump');if(d)assert.deepEqual(canJumpDown(m.store,d.from,-1,0),d.to); // the street drop may be closed by the dropSafe repair
   const c=u.openings.find(e=>e.kind==='climb');assert.ok(ladderMoves(m.store,c.to).some(p=>nodeKey(p)===nodeKey(c.from)));
-  const reach=reachable(m.store,m.spawns.player[0],Infinity,AGENT_PROFILES.player);assert.ok(u.cells.every(p=>reach.costs.has(nodeKey(p))||m.store.isSolid(p.x,p.y,2)));assert.deepEqual(solved.layout,solveLayout(CEDAR_IMAGE_SITE,{seed}).layout);
+  const reach=reachable(m.store,m.spawns.player[0],Infinity,AGENT_PROFILES.player);assert.ok(u.cells.every(p=>reach.costs.has(nodeKey(p))||m.store.isSolid(p.x,p.y,2)));assert.deepEqual(solved.layout,solveLayout(site,{seed}).layout);
  }
 });
 import { MAP_PACKAGES } from '../mission/generated/PackageCatalog.js';

@@ -18,7 +18,26 @@ export const ARCHITECTURE_PIECES={
     window_ribbon:P('Continuous office ribbon window, dark aluminium perimeter',()=>frame(1)),
     window_factory:P('Industrial steel-grid window, three bays and two lights',()=>frame(1,'frame',[
         box(.028,.9,.06,-.16,.05),box(.028,.9,.06,.16,.05),box(.9,.028,.06,0,.49)
-    ]))
+    ])),
+    window_divided:P('Four-light divided window with a projecting sill',()=>[
+        ...frame(.9,'frame_white',[box(.035,.9,.06,0,.05),box(.8,.035,.06,0,.49)]),
+        {slot:'quoin',geometry:box(1.02,.07,.18,0,0,.025)}
+    ]),
+    window_shuttered:P('Residential sash with hinged louvered shutters',()=>[
+        ...frame(.72,'frame_white',[box(.03,.9,.06,0,.05),box(.62,.035,.06,0,.49)]),
+        {slot:'shutter',geometry:merge([-1,1].flatMap(s=>[
+            box(.2,.94,.045,s*.42,.03,.015),
+            ...Array.from({length:8},(_,i)=>box(.17,.045,.065,s*.42,.09+i*.105,.035).rotateX(-.22))
+        ]))},
+        {slot:'quoin',geometry:box(1.04,.065,.16,0,0,.02)}
+    ]),
+    window_hopper:P('Top-hinged utility window with a tilted upper light',()=>[
+        {slot:'glass',geometry:merge([box(.86,.58,.035,0,.05),box(.86,.28,.035,0,.69).rotateX(-.28)])},
+        {slot:'frame',geometry:merge([
+            box(.96,.05,.07,0,0),box(.96,.05,.07,0,.95),box(.05,.9,.07,-.455,.05),box(.05,.9,.07,.455,.05),
+            box(.86,.035,.06,0,.64),box(.035,.58,.06,0,.05),box(.3,.025,.08,0,.58,.06)
+        ])}
+    ])
 };
 for(let mask=0;mask<16;mask++) {
     const poly=wallFootprint(mask);

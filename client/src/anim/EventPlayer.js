@@ -7,8 +7,9 @@ import { ELEMENT_COLORS } from '../../../shared/elements/Elements.js';
 import { ABILITIES } from '../../../shared/content/units.js';
 import { FORMATIONS } from '../../../shared/content/formations.js';
 import { materialById } from '../../../shared/voxel/Materials.js';
+import { aimedUnit } from '../../../shared/battle/Ballistics.js';
 import { TRACER_SPEED, BURST_GAP } from '../render/Fx.js';
-import { explosionSound, weaponHandlingSound } from '../audio/SoundPlayer.js';
+import { explosionSound, impactSound, weaponHandlingSound, weaponSound } from '../audio/SoundPlayer.js';
 
 const wait = s => new Promise(r => setTimeout(r, s * 1000));
 const PART_LABEL = { head: 'head', torso: 'torso', armL: 'L arm', armR: 'R arm', legs: 'legs' };
@@ -25,7 +26,11 @@ export class EventPlayer {
             try { await this.play(e); } catch (err) { console.error('event playback', e, err); }
         }
         this.busy = false;
-        if (this.game.cameraDirector.phase === 'action') this.game.cameraDirector.end();
+        const camera=this.game.cameraDirector;
+        if (camera.phase === 'action') {
+            const resume=this.game.mode.kind==='shoot'&&this.game.selected===camera.aimUnitId;
+            if(!resume||!camera.resumeAim())camera.end();
+        }
         this.game.discoveryVisible.clear();
         this.game.settleViews();
         const w = this.idleWaiters; this.idleWaiters = [];
@@ -59,7 +64,8 @@ export class EventPlayer {
                 // A shot from a blocked angle is framed from the side tile the soldier steps out to.
                 const step = e.muzzle?.step, shooterPos = step && sv ? new THREE.Vector3(step.x + 0.5, sv.worldPosition().y, step.y + 0.5) : sv?.worldPosition();
                 const shotPoint=e.aimPoint||(target?{x:target.x+.5,y:target.y+.5,h:target.z+1.55}:null);
-                const spread=e.weaponId&&shotPoint?g.battle.spreadFor(u,WEAPONS[e.weaponId],shotPoint,{target}).spread:1;
+                const spreadTarget=target||(e.aimPoint?aimedUnit(g.battle,u,shotPoint):null);
+                const spread=e.weaponId&&shotPoint?g.battle.spreadFor(u,WEAPONS[e.weaponId],shotPoint,{target:spreadTarget}).spread:1;
                 const aimDistance=e.muzzle&&shotPoint?Math.hypot(shotPoint.x-e.muzzle.x,shotPoint.y-e.muzzle.y,shotPoint.h-e.muzzle.h):undefined;
                 await g.cutins.play({ units: group, weaponId: e.weaponId, kind: e.kind, title, subtitle: sub, side: u.side, shoulder: e.muzzle?.side,spread,aimDistance,
                     shooterPos, targetPos: e.aimPoint?new THREE.Vector3(e.aimPoint.x,e.aimPoint.h-1.1,e.aimPoint.y):tv ? tv.worldPosition() : sv?.worldPosition().clone().add(new THREE.Vector3(...faceVec(u)).multiplyScalar(4)) });
@@ -116,7 +122,8 @@ export class EventPlayer {
                 if (step) await this.slide(v, v.unit, step, 0.14);
                 v?.animator.play('fire', { weaponId: e.weaponId, restart: true });
                 if (e.aim) v?.face(e.aim.x - (v.unit.x + 0.5), e.aim.y - (v.unit.y + 0.5));
-                const w = WEAPONS[e.weaponId];
+                const w = WEAPONS[e.weaponId],audible=v&&(v.unit.side==='player'||g.isVisible(v.unit));
+                if(audible)g.audio.play(weaponSound(e.weaponId),{volume:e.weaponId==='longrifle'?.72:.58});
                 fx.flash(e.muzzle, 0xffe08a, 0.25);
                 // PLAN-07 tracers: squad warm white, enemies red-orange, overwatch amber, elemental shots in colour.
                 // Burst/auto rounds leave BURST_GAP apart; pellets of one shell fly together.
@@ -128,9 +135,10 @@ export class EventPlayer {
                     const delay = Math.floor(i / perRound) * BURST_GAP / this.speed;
                     const d = Math.hypot(p.to.x - e.muzzle.x, p.to.y - e.muzzle.y, p.to.h - e.muzzle.h);
                     last = Math.max(last, delay + d / (TRACER_SPEED * this.speed));
-                    fx.tracer(e.muzzle, p.to, color, { delay, speed: TRACER_SPEED * this.speed, onArrive: () => {
-                        if (p.kind === 'voxel') fx.impact(p.to, materialById(g.battle?.store.get(p.voxel?.x, p.voxel?.y, p.voxel?.z) ?? 0).family || 'stone');
-                        else if (p.kind === 'unit') { fx.impact(p.to, 'unit'); if (p.crit) fx.float(new THREE.Vector3(p.to.x, p.to.h - 1.6, p.to.y), 'CRITICAL', '#ffd34d', 20); }
+                    fx.tracer(e.muzzle, p.to, color, { delay, speed: TRACER_SPEED * this.speed, light: i === 0, onArrive: () => {
+                        const family=p.kind==='voxel'?materialById(g.battle?.store.get(p.voxel?.x, p.voxel?.y, p.voxel?.z) ?? 0).family||'stone':p.kind==='unit'?'unit':null;
+                        if(family){fx.impact(p.to,family);if(audible&&i%perRound===0)g.audio.play(impactSound(family),{volume:.28});}
+                        if (p.kind === 'unit' && p.crit) fx.float(new THREE.Vector3(p.to.x, p.to.h - 1.6, p.to.y), 'CRITICAL', '#ffd34d', 20);
                         for (const q of p.pierced || []) { const k = q.t / Math.max(d, 1e-6); fx.impact({ x: e.muzzle.x + (p.to.x - e.muzzle.x) * k, y: e.muzzle.y + (p.to.y - e.muzzle.y) * k, h: e.muzzle.h + (p.to.h - e.muzzle.h) * k }, 'stone', { exit: true }); }
                     } });
                 });
@@ -143,12 +151,14 @@ export class EventPlayer {
             case 'melee': {
                 const v = this.view(e.unitId), t = this.view(e.targetId);
                 if (v && t) { v.face(t.unit.x - v.unit.x, t.unit.y - v.unit.y); v.animator.play('fire', { restart: true }); }
+                if(v&&(v.unit.side==='player'||g.isVisible(v.unit)))g.audio.play('meleeHit',{volume:.5});
                 await this.d(0.3);
                 break;
             }
             case 'throw': {
                 const v = this.view(e.unitId);
                 v?.animator.play('throw', { restart: true });
+                if(v&&(v.unit.side==='player'||g.isVisible(v.unit)))g.audio.play('throwWhoosh',{volume:.4});
                 const ball = new THREE.Mesh(new THREE.SphereGeometry(0.14, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffa040 }));
                 g.scene.scene.add(ball);
                 const pts = e.points || [];
@@ -167,10 +177,18 @@ export class EventPlayer {
             }
             case 'explosion': g.audio?.play(explosionSound(e, g.scene.target), { volume: e.of > 1 ? 0.7 / Math.sqrt(e.of) : 0.7 }); fx.explosion(e, e.radius, e.element); g.voxelView?.flush(); if (!(e.of > 1) || e.salvo === e.of - 1) await this.d(0.15); break;   // an airstrike salvo goes off at once
             case 'smoke': fx.syncField(g.battle.field); break;
-            case 'voxels': g.voxelView.flush(); if (g.roadMarks && g.battle && (g.battle.mission?.visual?.roadPaint || e.changes?.some(c => (c[2] ?? c.z) <= (g.battle.mission?.meta?.streetDatum ?? 1) + 1))) g.roadMarks.build(g.battle.store, g.battle.mission?.visual?.roadPaint); break;
-            case 'collapse': g.voxelView.flush(); fx.float(new THREE.Vector3(e.fallen?.[0]?.x ?? 0, e.fallen?.[0]?.to ?? 1, e.fallen?.[0]?.y ?? 0), 'COLLAPSE', '#ffcc66', 22); g.scene.shake = 0.6; await this.d(0.25); break;
-            case 'elements': g.voxelView.flush(); fx.syncField(g.battle.field); break;
-            case 'door': { const v=this.view(e.unitId); if(e.kicked){v?.animator.play('vault',{restart:true});fx.float(v?.worldPosition()||new THREE.Vector3(),'KICK!','#ffd54f',22);g.scene.shake=.18;await this.d(.3);} g.voxelView.flush(); break; }
+            case 'voxels': {
+                const destroyed=(e.changes||[]).map(c=>({x:c[0]??c.x,y:c[1]??c.y,z:c[2]??c.z,before:c[3]??c.before,after:c[4]??c.after}))
+                    .filter(c=>c.before!==0&&c.after===0&&materialById(c.before).render!=='none');
+                const stride=Math.max(1,Math.ceil(destroyed.length/24));
+                for(let i=0;i<destroyed.length;i+=stride){const c=destroyed[i];fx.debris({x:c.x+.5,y:c.y+.5,h:c.z+.5},materialById(c.before));}
+                g.voxelView.flush();
+                if (g.roadMarks && g.battle && (g.battle.mission?.visual?.roadPaint || e.changes?.some(c => (c[2] ?? c.z) <= (g.battle.mission?.meta?.streetDatum ?? 1) + 1))) g.roadMarks.build(g.battle.store, g.battle.mission?.visual?.roadPaint);
+                break;
+            }
+            case 'collapse': g.audio.play('collapse',{volume:.65});g.voxelView.flush(); fx.float(new THREE.Vector3(e.fallen?.[0]?.x ?? 0, e.fallen?.[0]?.to ?? 1, e.fallen?.[0]?.y ?? 0), 'COLLAPSE', '#ffcc66', 22); g.scene.shake = 0.6; await this.d(0.25); break;
+            case 'elements': g.voxelView.flush(); fx.syncField(g.battle.field); if(e.element)g.audio.play(explosionSound({...e,x:e.changes?.[0]?.x||0,y:e.changes?.[0]?.y||0},g.scene.target),{volume:.35}); break;
+            case 'door': { const v=this.view(e.unitId);if(v&&(v.unit.side==='player'||g.isVisible(v.unit)))g.audio.play(e.kicked?'doorKick':'doorOpen',{volume:.5}); if(e.kicked){v?.animator.play('vault',{restart:true});fx.float(v?.worldPosition()||new THREE.Vector3(),'KICK!','#ffd54f',22);g.scene.shake=.18;await this.d(.3);} g.voxelView.flush(); break; }
             case 'damage': {
                 const v = this.view(e.unitId); if (!v) break;
                 if (!g.isVisible(v.unit) && v.unit.side === 'enemy') break;
@@ -180,17 +198,17 @@ export class EventPlayer {
                 break;
             }
             case 'disabled': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition().add(new THREE.Vector3(0, 0.4, 0)), `${PART_LABEL[e.part]} disabled`.toUpperCase(), '#ffb74d', 15); break; }
-            case 'heal': { const v=this.view(e.unitId); if(v) {v.drawBar(); fx.float(v.worldPosition(),`+${e.amount} HP`,'#5ff2d6',22);} await this.d(0.3); break; }
-            case 'death': { const v = this.view(e.unitId); if (v) { v.animator.play('down'); v.drawBar(); fx.float(v.worldPosition(), v.unit.side === 'player' ? 'KIA' : v.unit.drone ? 'DRONE DOWN' : 'KILLED', '#ff5252', 22); } await this.d(CLIP_HOLD.down); break; }
-            case 'extract': { const v = this.view(e.unitId); if (v) { fx.float(v.worldPosition(), e.item ? 'EXTRACTED WITH THE PACKAGE' : 'EXTRACTED', '#5ff2d6', 20); await this.d(0.35); v.setVisible(false); } g.overlays.showObjective(g.battle); break; }
-            case 'recover': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition(), `${(e.label || 'item').toUpperCase()} RECOVERED`, '#5ff2d6', 20); g.overlays.showObjective(g.battle); await this.d(0.3); break; }
+            case 'heal': { const v=this.view(e.unitId); if(v) {v.drawBar(); fx.float(v.worldPosition(),`+${e.amount} HP`,'#5ff2d6',22);if(v.unit.side==='player'||g.isVisible(v.unit))g.audio.play('heal',{volume:.4});} await this.d(0.3); break; }
+            case 'death': { const v = this.view(e.unitId); if (v) { const p=v.worldPosition();v.animator.play('down'); v.drawBar(); fx.defeat(p,v.unit.drone);fx.float(p, v.unit.side === 'player' ? 'KIA' : v.unit.drone ? 'DRONE DOWN' : 'KILLED', '#ff5252', 22); } await this.d(CLIP_HOLD.down); break; }
+            case 'extract': { const v = this.view(e.unitId); if (v) { fx.float(v.worldPosition(), e.item ? 'EXTRACTED WITH THE PACKAGE' : 'EXTRACTED', '#5ff2d6', 20);g.audio.play('extract',{volume:.45}); await this.d(0.35); v.setVisible(false); } g.overlays.showObjective(g.battle); break; }
+            case 'recover': { const v = this.view(e.unitId); if (v) {fx.float(v.worldPosition(), `${(e.label || 'item').toUpperCase()} RECOVERED`, '#5ff2d6', 20);g.audio.play('recover',{volume:.45});} g.overlays.showObjective(g.battle); await this.d(0.3); break; }
             case 'drop': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition(), `${(e.label || 'item').toUpperCase()} DROPPED`, '#ffc845', 18); if (e.collapse) g.hud.log(`${e.label || 'The package'} fell with the floor.`); g.overlays.showObjective(g.battle); break; }
             case 'zone': g.overlays.showObjective(g.battle); g.hud.log('The objective zone collapsed to the floor below.'); break;
             case 'objective': if (e.kind === 'hold') g.hud.log(e.contested ? `Zone contested — held ${e.held}/${e.rounds}` : `Zone held ${e.held}/${e.rounds}`); break;
             case 'status': { const v = this.view(e.unitId); if (v && (v.unit.side === 'player' || g.isVisible(v.unit))) fx.float(v.worldPosition().add(new THREE.Vector3(0, 0.3, 0)), e.statusId, '#ffe08a', 14); break; }
             case 'stress': { const v = this.view(e.unitId); if (v) { v.drawBar(); if (e.breakdown) { fx.float(v.worldPosition(), 'BREAKDOWN', '#c38bff', 22); await this.d(0.4); } } break; }
-            case 'reaction': { const v = this.view(e.watcherId); if (v) fx.float(v.worldPosition(), e.chance != null ? `OVERWATCH ${e.chance}%` : 'OVERWATCH!', '#ff9f6b', 18); await this.d(0.2); break; }
-            case 'discovery': { e.unitIds.forEach(id=>g.discoveryVisible.add(id));g.updateEnemyVisibility();g.hud.banner('ENEMY CONTACT','SCATTERING TO COVER','enemy');g.hud.log('Enemy group spotted — scattering to cover.');await this.d(.5);break; }
+            case 'reaction': { const v = this.view(e.watcherId); if (v) {fx.float(v.worldPosition(), e.chance != null ? `OVERWATCH ${e.chance}%` : 'OVERWATCH!', '#ff9f6b', 18);if(v.unit.side==='player'||g.isVisible(v.unit))g.audio.play('overwatch',{volume:.35});} await this.d(0.2); break; }
+            case 'discovery': { e.unitIds.forEach(id=>g.discoveryVisible.add(id));g.updateEnemyVisibility();g.hud.banner('ENEMY CONTACT','SCATTERING TO COVER','enemy');g.hud.log('Enemy group spotted — scattering to cover.');g.audio.play('contactAlert',{volume:.4});await this.d(.5);break; }
             case 'wait': this.view(e.unitId)?.animator.play('idle');break;
             case 'alert': for (const id of e.unitIds) { const v = this.view(id); if (v && g.isVisible(v.unit)) fx.float(v.worldPosition(), '!', '#ff5252', 30); } break;
             // PLAN-14: enemies that heard a loud sound and go to search it (only the ones you can see show it).
@@ -200,7 +218,7 @@ export class EventPlayer {
             case 'reveal': g.onReveal(e.roomId); break;
             case 'fall': { const v = this.view(e.unitId); if (v) { v.animator.play('hit', { restart: true }); if (e.to >= 0) v.setCell(v.unit.x, v.unit.y, e.to); } await this.d(0.2); break; }
             case 'breach': fx.float(this.view(e.unitIds[0])?.worldPosition() || new THREE.Vector3(), 'BREACH!', '#ffd54f', 24); break;
-            case 'overwatch': this.view(e.unitId)?.animator.play('hunker'); break;
+            case 'overwatch': {const v=this.view(e.unitId);v?.animator.play('hunker');if(v&&(v.unit.side==='player'||g.isVisible(v.unit)))g.audio.play('overwatch',{volume:.35});break;}
             case 'overwatchCancel': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition().add(new THREE.Vector3(0, 0.3, 0)), 'OVERWATCH CANCELLED', '#9fd8ff', 14); break; }
             case 'ability': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition(), ABILITIES[e.abilityId]?.name || e.abilityId, '#7fdbff', 16); break; }
             case 'formation': {

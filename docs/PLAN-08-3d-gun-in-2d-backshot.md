@@ -1,8 +1,8 @@
 # PLAN-08 · A 3D gun in the 2D back shot
 
-Status: **planned, waiting for Leon's approval** (2026-10-15). Planned read-only against `main` at `d1f182b`; the
-working tree also holds Leon's uncommitted audio work (`Game.js`, `EventPlayer.js`, `Hud.js`, `package.json`,
-`client/src/audio/`). Only the gun **assets** (§4.0) were produced in this session; no game code has changed.
+Status: **superseded by the implemented static back-shot**. The current runtime uses `SpriteWeapon.js` and one
+painted soldier layer with interchangeable original weapon meshes. The planning details below are historical;
+§4.0–4.1 records the shipped asset pipeline and the older reference-mesh pipeline has been removed.
 
 ## 1. Goal
 
@@ -43,53 +43,21 @@ the 2D hands:
 
 ## 4. Design
 
-### 4.0 Assets (delivered in this session)
+### 4.0 Current asset pipeline
 
-Each gun is built on a reference model Leon supplied, never from scratch. Every part is rebuilt as a very low-poly
-**UV relief** by depth analysis, because the gun is only ever seen small. Real-world scale comes from published
-specs: the M5 SCW is about 0.705 m with a 10.3" barrel; the L118A1 (AI Arctic Warfare family) is 1.18 m with a
-26"/660 mm barrel; the Mossberg Maverick 88 Security is about 1.02 m with an 18.5–20" barrel.
+`node tools/art/rebuild_weapons.mjs` authors the complete kit in Three.js without imported meshes or textures. It
+writes `client/public/assets/weapons/ranger-preview/gun-kit.glb` and its anchor manifest. The 10 parts contain 1,816
+triangles in total; the rifle, sniper and shotgun retain physical lengths of 0.705 m, 1.18 m and 1.02 m.
 
-| Gun | Reference | Kit parts |
+| Gun | Parts | Triangles |
 |---|---|---|
-| AR | Low-poly Colt M5 SCW (`m5-scw.blend`) | `body_rifle` (lower, upper, grip, stock, trigger, handguard); `barrel_std` (10.3" barrel + flash hider, cut at the handguard so the hidden part is gone); `barrel_long` (precision, stretched 1.45×); `sight_irons`; `mag_rifle` (PMAG). The small controls and the bolt are dropped. |
-| Scope | The L118A1's own scope, at 0.75 scale (the M5 has no optic) | `optic_scope`, seated on the AR's flat-top. The shotgun uses the same node moved by `scopeOffset.shotgun`. |
-| Sniper | Low-Poly L118A1 (`l118a1.usdz`) | `body_sniper`, with its own scope |
-| Shotgun | Pump shotgun (`shotgun/shotgun.obj`), coloured from its reference photo through the model's UVs (wood-coloured photo background is rejected) | `body_shotgun` |
+| Rifle | Receiver, stock, trigger grip, handguard, magazine, barrel/muzzle, iron sights | 776 |
+| Sniper | Stock/receiver/barrel assembly, scope | 564 |
+| Shotgun | Stock, receiver, barrel, magazine tube and pump | 476 |
 
-How each part is built:
-
-1. **Scan**: orthographic ray casts from the right and left sides at 2 mm per texel give the silhouette, both
-   surface depths, and a baked side texture. The texture uses the reference material colour, or the reference
-   texture, with light and ink.
-2. **Clean**: holes under 60 texels (slots, screws) are filled; the trigger guard, thumbhole and stock cut-outs
-   stay. Both depth maps are smoothed, and the surfaces can never cross.
-3. **Relief**: silhouette samples, a bevel ring of samples 3 texels inside the outline, depth-step samples and a
-   sparse interior are triangulated (Blender's CDT). The two sides meet at the outline with separate normals, which
-   gives even shading. The mesh runs 2 texels past the outline and the texture alpha (glTF `MASK`) cuts the exact
-   edge.
-
-| File | What |
-|---|---|
-| `client/public/assets/weapons/gun-kit.glb` | One `Gun` node with parts `body_rifle` (660 tris), `barrel_std` (48), `barrel_long` (149), `sight_irons` (81), `mag_rifle` (140), `optic_scope` (155), `body_sniper` (927) and `body_shotgun` (653), plus empties `muzzle_std`, `muzzle_long`, `muzzle_sniper` and `muzzle_shotgun`. One material (alpha-masked atlas, 1024²); 225 KB. **Per loadout: AR 929 tris, AR + scope 1,003, AR + scope + precision barrel 1,104, sniper 927, shotgun 653, shotgun + scope 808.** |
-| `client/public/assets/weapons/gun-kit.json` | Anchors in gun space (metres, Blender axes: +Y muzzle, +Z up, +X right, origin = the firing hand's grip): `grip`, `support` per body, `muzzles`, `bores`, `scopeOffset` per body, triangle counts, reference names. |
-| `tools/art/blender/gun_kit.py` | The whole pipeline (load references, kitbash, scan, relief, atlas, export). It runs in Leon's Blender 5.2.1 over the MCP in about 2 s with byte-identical output, and removes everything it created. It also runs as `blender -b -P tools/art/blender/gun_kit.py`. |
-| `output/reference/` | `m5-scw.blend`, `l118a1.usdz`, and `shotgun/` (obj, mtl, photo), kept **outside git** until their licences are confirmed (D5). |
-| `docs/gun-kit-contact-sheet.png` | Six loadouts rendered with three.js from the GLB, side and three-quarter views. |
-
-### 4.1 Which parts show: `gunParts()`
-
-`client/src/anim/GunKit.js` is a pure module, testable in node:
-`gunParts(weaponId, mods = {}, { scoped }) → { parts, muzzle, body } | null`.
-
-| Weapon | Kit | Barrel | Sight |
-|---|---|---|---|
-| `repeater` (Assault Rifle) | `body_rifle` + `mag_rifle` | `barrel_long` if `mods.barrel`, else `barrel_std` | `optic_scope` if `mods.scope`, else `sight_irons` |
-| `shortbow` (Marksman) | `body_rifle` + `mag_rifle` | `barrel_long` | `optic_scope` (built in) |
-| `musket` (AK), `crossbow` (carbine) | the AR kit for now (no AK mag, no suppressor yet) | as `repeater` | as `repeater` |
-| `longrifle` (Sniper) | `body_sniper` (its own scope) | built in | built in |
-| `blunderbuss` (Shotgun), `firelance` | `body_shotgun` | built in | `optic_scope` if `mods.scope`, moved by `scopeOffset.shotgun` |
-| `handcannon`, melee, throwables, none | `null`: no 3D gun, and the `flat` art is shown | | |
+The old reference-derived meshes, atlas, contact sheets and Blender generation scripts were removed. Runtime family
+selection lives in `spriteGunParts()` in `client/src/anim/SpriteWeapon.js`; the shoulder pose uses the manifest's
+stock, grip, support and muzzle anchors without scaling the weapons.
 
 ### 4.2 Art contract: layers around a gun slot
 
@@ -241,7 +209,7 @@ There are two springs on the same crosshair:
 | Frame cost | A canvas the size of the figure (≤ 42 % of the width), rendered only on change, with about 1k visible triangles. |
 | The 3D gun looks off against the anime art | Toon ramp, ink outline and art-matched light (D3). The look stays a material swap, so changing it later is cheap. |
 | The hands do not match every gun (the long sniper) | Anchors are per art, and the support point is per body (`gun-kit.json`). |
-| The reference models' licences are unknown | They stay out of git (D5). The shipped GLB is a heavy derivative, but attribution may still be needed. |
+| Fixed hands cannot fit different weapon lengths | The current pack supplies three complete family-specific paintings; `SpriteWeapon` selects the matching layer variant. |
 | Layer-split quality (the body behind the painted gun) | D1. Until the split exists, the art has no `gun` slot and `flat` shows, so nothing breaks. |
 | Leon's uncommitted edits in `Game.js` / `EventPlayer.js` | Only one argument changes in each file, applied to his working copy without reformatting. |
 
@@ -257,4 +225,4 @@ the art exactly as today. Removing the `gun` slot from `cutin.json` also turns t
 | D1 | Who splits the back-shot art into `back` (gun removed) and `front` (hands, head) | **Leon or an artist paints the two layers from `backshot.png`** / a scripted polygon split plus fill (fast, but the fill behind the gun is rough) / interim: draw the 3D gun over the painted one, posed to match it at rest |
 | D3 | 3D gun look | **Toon ramp + ink outline** / plain PBR as exported |
 | D4 | Left-peek sprite (`variants.left`) | **Later, when its art exists, in the same bottom-left spot** / build it from the existing kneeling illustration / place it bottom-right as in the XCOM 2 reference (this changes the "never moves" rule) |
-| D5 | Licences of the three references (M5 SCW `.blend`, L118A1 `.usdz` exported from Sketchfab, shotgun `.obj` + photo) | **Leon confirms each source and licence; credits go in `PROVENANCE.md`** / replace any reference that can't be cleared before shipping |
+| D5 | Imported weapon reference licences | **Resolved:** the imported meshes, reference scenes, textures, contact sheets and generators were removed. The current kit is original procedural geometry from `rebuild_weapons.mjs`. |

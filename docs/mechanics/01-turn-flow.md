@@ -90,8 +90,9 @@ There is no XCOM "firing ends the turn" rule; the zones are a client readout (`G
   unit **sees** one of its members, or when one of its unalerted members sees a squad unit (`spotted`); when a
   squad **noise** reaches a member (`noise`); and when its room is **breached** (`breach`).
 - **Noise** (`Battle.noise`): every unalerted enemy within the radius (3D Euclidean, tiles, z not scaled) of the
-  noise point wakes its pod. The radius is ×0.6 when the listener stands in a room and the source is not in that
-  same room. Noise from enemies never wakes enemies.
+  noise point wakes its pod without moving it. Only first-contact spotting triggers the pod's one-time, zero-AP scamper
+  toward cover; incoming and repeat gunfire never grant free movement. The radius is ×0.6 when the listener stands in a
+  room and the source is not in that same room. Noise from enemies never wakes enemies.
 
 | Source | Radius | Where |
 |---|---|---|

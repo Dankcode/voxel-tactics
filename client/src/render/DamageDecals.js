@@ -1,6 +1,5 @@
 // PLAN-07 visible damage. Presentation only: reads the voxel store and never changes it.
 //
-//   cracks   voxels at ≤ 66 % HP get a cracked overlay on their exposed faces, ≤ 33 % a heavy one
 //   scars    a surviving voxel next to a shot-out / blown-out cell (store.scars) shows broken material on the face
 //            toward the hole, and a frayed, chipped band along the edge of its faces nearest the hole
 //   scorch   cells in store.scorch get soot: a burn mark on an exposed top, a soot gradient on exposed sides, and
@@ -19,14 +18,6 @@ const OBJECT_KEYS = new Set(['car_body', 'car_cabin', 'container', 'dumpster', '
 const FAMILY_TINT = { stone: 0x8d857a, metal: 0x55595f, wood: 0xa07e55, earth: 0x6e5c47, glass: 0x9aa5ad, ice: 0xbcd6e4, plant: 0x5d6b3c };
 const DIRS = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
 const EPS = 0.012;
-
-/** 0 = intact, 1 = cracked (≤ 66 % HP), 2 = heavily damaged (≤ 33 % HP). */
-export function damageLevel(store, x, y, z) {
-    const m = materialById(store.get(x, y, z));
-    if (!m.solid || m.liquid || !Number.isFinite(m.hp) || m.hp <= 1 || OBJECT_KEYS.has(m.key)) return 0;
-    const r = store.hpAt(x, y, z) / m.hp;
-    return r <= 0.33 ? 2 : r <= 0.66 ? 1 : 0;
-}
 
 // ---------------------------------------------------------------------------------------------- textures
 function rng(seed) { let s = seed >>> 0; return () => ((s = Math.imul(s ^ (s >>> 15), 0x2c1b3c6d) + 0x9e3779b9 >>> 0) / 4294967296); }
@@ -51,17 +42,6 @@ function texture(c) {
     t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter; t.generateMipmaps = false;
     t.needsUpdate = true;
     return t;
-}
-/** Cracks radiating from impact points; heavy adds more, wider cracks and chipped spots. */
-export function crackTexture(heavy = false) {
-    const c = canvas(), r = rng(heavy ? 77 : 41), dark = [26, 23, 20];
-    const hits = heavy ? 4 : 2;
-    for (let h = 0; h < hits; h++) {
-        const cx = 24 + r() * 80, cy = 24 + r() * 80;
-        for (let k = 0; k < (heavy ? 7 : 4); k++) crackLine(c, r, cx, cy, 18 + r() * (heavy ? 50 : 32), r() * Math.PI * 2, heavy && k < 3 ? 1 : 0, dark, heavy ? 235 : 200);
-        if (heavy) for (let k = 0; k < 40; k++) { const a = r() * Math.PI * 2, d = r() * 7; plot(c, cx + Math.cos(a) * d, cy + Math.sin(a) * d, [40, 36, 32], 210); }
-    }
-    return texture(c);
 }
 /** Broken material seen end-on: speckled rubble, aggregate and dark voids (tinted per material family). */
 export function rubbleTexture() {
@@ -157,7 +137,7 @@ const open = (store, x, y, z) => { const m = materialById(store.get(x, y, z)); r
 export class DamageDecals {
     constructor({ clipping = [] } = {}) {
         this.clipping = clipping;
-        this.tex = { crack: crackTexture(false), heavy: crackTexture(true), rubble: rubbleTexture(), fray: frayTexture(), scorch: scorchTexture(), soot: sootTexture(), edge: edgeTexture() };
+        this.tex = { rubble: rubbleTexture(), fray: frayTexture(), scorch: scorchTexture(), soot: sootTexture(), edge: edgeTexture() };
         this.materials = new Map();
         this.geometry = new THREE.PlaneGeometry(1, 1);
         this.stats = { decals: 0 };
@@ -183,19 +163,18 @@ export class DamageDecals {
         for (let z = z0; z < z1; z++) for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
             const m = materialById(store.get(x, y, z));
             if (!m.solid || m.liquid || m.shatters || OBJECT_KEYS.has(m.key) || hidden(x, y, z)) continue;
-            const lvl = damageLevel(store, x, y, z), soot = scorch.get(`${x},${y},${z}`) || 0;
+            const soot = scorch.get(`${x},${y},${z}`) || 0;
             // PLAN-12: holes above the storey cut are not on screen, so they leave no marks on the walls below it.
             const seenScar = (sx, sy, sz) => sz < cutZ && scars.has(`${sx},${sy},${sz}`) && !store.isSolid(sx, sy, sz);
             let nearScar = false;
             if (scars.size) for (const [dx, dy, dz] of DIRS) if (seenScar(x + dx, y + dy, z + dz)) { nearScar = true; break; }
-            if (!lvl && !soot && !nearScar) continue;
+            if (!soot && !nearScar) continue;
             const box = footBox(store, x, y, z), tint = FAMILY_TINT[m.family] ?? 0x8d857a;
             for (const d of DIRS) {
                 const [dx, dy, dz] = d;
                 if (dz === 0 ? !open(store, x + dx, y + dy, z) : !open(store, x, y, z + dz)) continue;
                 if (dz < 0) continue;                                   // nobody sees the underside
                 if (dz > 0 && z + 1 >= cutZ) continue;                  // PLAN-12: the cut cap of a wall carries no damage marks
-                if (lvl) out.push({ kind: lvl === 2 ? 'heavy' : 'crack', tint: 0xffffff, opacity: 1, matrix: faceMatrix(box, z, d) });
                 if (soot) out.push(dz > 0 ? { kind: 'scorch', tint: 0xffffff, opacity: [0, 0.55, 0.8, 1][soot], matrix: faceMatrix(box, z, d, { scale: 1.08, spin: hashSpin(x, y, z) }) }
                     : { kind: 'soot', tint: 0xffffff, opacity: [0, 0.45, 0.7, 0.9][soot], matrix: faceMatrix(box, z, d) });
                 // The blast-facing side of a burned voxel is chipped along its edges (XCOM-style wear), heavier with more soot.

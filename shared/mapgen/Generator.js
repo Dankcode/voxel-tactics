@@ -130,7 +130,8 @@ export function plotFromSite(site, seed) {
     for (let ly = 0; ly < D / LOT; ly++) for (let lx = 0; lx < W / LOT; lx++) lots.push({ lx, ly, x0: lx * LOT, y0: ly * LOT, road: null, block: 0 });
     const F = PLOT_FAMILIES[family];
     return { version: 1, family, theme: site.theme || F.theme, seed, W, D, LW: W / LOT, LD: D / LOT, datum: 4, height: 18, lots, blocks: [], roadExits: [], picture: true,
-        insertion: { x: s.flow[0][0], y: s.flow[0][1], side: s.flow[0][0] < W / 2 ? 'w' : 'e' }, site: s, buildings, underground: site.underground?.kind || F.underground, times: F.times, districts: F.districts };
+        insertion: { x: s.flow[0][0], y: s.flow[0][1], side: s.flow[0][0] < W / 2 ? 'w' : 'e' }, site: s, buildings,
+        underground: site.underground?.kind || (family === 'downtown' ? 'subway' : 'storm-drain'), times: F.times, districts: F.districts };
 }
 
 // ------------------------------------------------------------------------------------------------ the generator
@@ -220,8 +221,8 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
             for (let u = span[0]; u <= span[1]; u++) for (let r = 1; r <= span[2]; r++) protectedCells.add(k2(origin[0] + f.a[0] * u + f.o[0] * r, origin[1] + f.a[1] * u + f.o[1] * r));
         }
     }
-    // ---- layers: a flank tunnel from near the insertion to the objective's side door (its openings keep off the
-    // access modules and the spawn; the tunnel itself may pass under anything)
+    // ---- layers: only authored picture/fixture plots with an underground kind get a flank tunnel. Generated
+    // operation families stay on the surface; their layout.layers remains null.
     const moduleCells = new Set();
     for (let dy = -2; dy <= 3; dy++) for (let dx = -3; dx <= 3; dx++) moduleCells.add(k2(plot.insertion.x + dx, plot.insertion.y + dy));
     for (const b of buildings) if (b.access?.side) {
@@ -247,7 +248,7 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
     const layerLayout = { width: W, depth: D, buildings, flow: [[plot.insertion.x, plot.insertion.y]], parcels: parcels4 };
     const layerSite = { id: id || `${plot.family}-${seed}`, underground: { kind: plot.underground } };
     let layers = null;
-    for (let attempt = 0; attempt < 4 && !layers; attempt++) {
+    for (let attempt = 0; plot.underground && attempt < 4 && !layers; attempt++) {
         try {
             layers = solveLayers(layerLayout, layerSite, seed + attempt, { entrance, approach, kind: plot.underground, bridge: !!(siteRead?.levels?.includes('bridge') || siteRead?.underground?.kind === 'underpass'),
                 avoid: (x, y) => moduleCells.has(k2(x, y)) });
@@ -581,6 +582,6 @@ export function siteFromLayout(layout, { family, time, seed }) {
         version: 2, id: layout.id, name: `${PLOT_FAMILIES[family].name} · ${seed}`, theme: PLOT_FAMILIES[family].theme, timeOfDay: time, frame: { width: W, height: D }, plot: family,
         buildings: layout.buildings.map(b => ({ id: b.id, bounds: [...n(b.x0, b.y0), ...n(b.x0 + b.w, b.y0 + b.d)], program: PROGRAM[b.program] || b.program, front: b.front, storeys: b.storeys })),
         surfaces: [], insertion: n(layout.insertion.x, layout.insertion.y).map(v => Math.min(0.94, Math.max(0.06, v))),
-        flow: layout.flow.slice(1).map(([x, y]) => n(x, y)), underground: { kind: layout.layers?.kind || 'subway' }, generated: true
+        flow: layout.flow.slice(1).map(([x, y]) => n(x, y)), underground: layout.layers ? { kind: layout.layers.kind } : null, generated: true
     };
 }

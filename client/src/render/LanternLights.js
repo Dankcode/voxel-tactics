@@ -32,7 +32,7 @@ export class LanternLights {
             const arm = d.kind === 'streetlight' ? 0.8 : 0;
             const p = new THREE.Vector3(d.x + 0.5 + Math.sin(d.yaw || 0) * arm, d.z + h, d.y + 0.5 + Math.cos(d.yaw || 0) * arm);
             if (d.kind === 'canopy') { p.range = 12; p.outdoor = true; this.spots.push(p); continue; }
-            p.range = h > 2 ? 11 : 6; p.outdoor = h > 2;
+            p.range = h > 2 ? 15 : 8; p.outdoor = h > 2;
             this.spots.push(p);
         }
         this.t = 99;
@@ -48,7 +48,7 @@ export class LanternLights {
             if (!s) { l.intensity = 0; return; }
             l.position.copy(s[0]);
             l.distance = s[0].range || 7.5;
-            l.intensity = (s[0].outdoor ? 5 * (night - 0.6) : 3.2 * night) * this.strength;
+            l.intensity = (s[0].outdoor ? 10 * Math.max(0.15, night - 0.55) : 4.5 * night) * this.strength;
         });
     }
 }

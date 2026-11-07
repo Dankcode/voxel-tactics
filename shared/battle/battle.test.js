@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { VoxelStore } from '../voxel/VoxelStore.js';
 import { MAT, AIR } from '../voxel/Materials.js';
-import { Battle } from './Battle.js';
+import { Battle, deploymentFacing } from './Battle.js';
 import { runAiSide } from './Ai.js';
 import { estimateShot } from './Ballistics.js';
 import { WEAPONS } from '../content/weapons.js';
@@ -20,6 +20,16 @@ function arena({ walls = [], enemies = [{ type: 'cultist', pos: { x: 10, y: 4, z
     const b = new Battle({ mission, squad: squad.map(type => ({ type })), seed: 9 });
     return b;
 }
+
+test('deployment faces players up the generated route and unbriefed enemies back toward the insertion', () => {
+    const b = arena();
+    b.mission.meta = { lineOfPlay: { main: [[10, 16], [10, 14], [12, 12], [12, 8], [10, 4]] } };
+    const p = b.unit('p0'), e = b.unit('e0');
+    p.facing = deploymentFacing(b.mission, p, 'player');
+    e.facing = deploymentFacing(b.mission, e, 'enemy');
+    assert.equal(p.facing, 'n');
+    assert.equal(e.facing, 's');
+});
 
 test('moving spends AP by path cost / mobility and is rejected beyond the budget', () => {
     const b = arena();
