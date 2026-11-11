@@ -36,16 +36,17 @@ landmark plans), `GeoLandmark` (landmark dressing), `GeoStreetProps`, `GeoRoadPa
   Geo-voxel first (it runs `geo-voxels build` from a `Geo-voxel` checkout next to this repo, or `--geo-voxel <path>`).
   The app's `map.json` (`geo-voxels/map@1`, a finished voxel map) is refused with a message saying to export the
   source.json instead. `tools/places/README.md` has the steps and options.
-- **`shared/mission/PlaceImport.js`** (`buildPlaceMission`, generator `place-import-1`) builds the mission:
+- **`shared/mission/PlaceImport.js`** (`buildPlaceMission`, generator `place-import-2`) builds the mission:
   - kept from the place: terrain, streets (each R/K/S cell owned by its nearest centreline), car parks (striped,
     planted islands), every building (its wing rectangles, then the rest of its `B` land by nearest building), units
     per tenant, landmark dressing, Geo-voxel's street paint;
   - decided by the game: the building type (`gameProgram`: pub/bar → `bar`, laundry → `laundromat`, convenience →
     `corner_store`, small garage → `lockup`, big house → `walkup`; `build.programs` overrides per building) and the
     **open land**, which the district parcel fill takes with the theme's mixes (Downtown/Landmark → urban, Suburbs →
-    suburban, Strip centre → retail, Industrial, Roadside). It may add up to six small buildings (≤ 2 storeys;
-    `newBuildings: 0` keeps the place as mapped). Landmark places keep open lawn as their grounds (`openLand`).
-    `lotsToParcels` hands mapped car parks to the fill. Objective, insertion, cover repair and pods are unchanged.
+    suburban, Strip centre → retail, Industrial, Roadside). The default `newBuildings: 0` keeps the mapped building
+    count; explicit `"auto"` permits up to six small infill buildings. Landmark places keep open lawn as their grounds
+    (`openLand`). `lotsToParcels` hands mapped car parks to the fill. Mapped trees suppress nearby generated street
+    trees, and car parks keep useful corrals without scattered loose shopping carts.
 - **`shared/mission/PlaceMaps.js`**: the catalog as map definitions (bake first, live build otherwise);
   `LocalSession`, `server/src/BakedDisk.js` and `BakedMaps.preloadBaked` read `client/public/places/`.
 - **Starter places** (same ids as before): Third Street (now Geo-voxel's live fetch: 21 buildings, was 15),
@@ -54,12 +55,13 @@ landmark plans), `GeoLandmark` (landmark dressing), `GeoStreetProps`, `GeoRoadPa
 
 ### Added: new parcels and interiors
 
-| Group | District mixes (`MixCatalogue`) | Building programmes (`ModernBuilder.PROGRAMS`) | Operation lot kinds (`LotCatalogue`) |
+| Group | District mixes (`MixCatalogue`) | Building programme source | Operation lot kinds (`LotCatalogue`) |
 |---|---|---|---|
 | Residential variety | `duplex-plot`, `trailer-park`, `garden-apartments`, `pool-backyard`, `garage-house` | `duplex` (a front and back door per home), `trailer` (one row of rooms), `walkup` (stair hall, four flats a floor) | `duplex`, `walkup`, `trailer` |
 | Service and back of house | `loading-dock` (raised platform, canopy, truck bays), `service-alley` (dumpsters, grease bins, condensers, meters, van slot) | — | — |
 | Commercial infill | `corner-store` (small lot, ice box, propane cage), `laundromat`, `bar-patio` (fenced deck patio, rear lot) | `corner_store` (flat above), `laundromat`, `bar` (was a house fallback) | `corner_store`, `laundromat` |
 | Garages | `lockup-garages` (a court of single lock-ups), the detached garage in `garage-house` | `lockup` (one bay behind a roller door) | `lockups` |
+| Civilian and civic | Designed `community_garden` and `civic_green` open parcels with clear central routes | `GEO_PROGRAMS.clinic` and `.library`, with operation floor programmes for wards, reading rooms and support spaces | `clinic`, `library`, `community_garden`, `civic_green` |
 
 New room kinds and their generated interiors: `laundry` (washer banks, dryer stacks, folding tables, vending),
 `convenience` (checkout, coolers, aisles), `barroom` (bar counter, back bar, booths, pool table) and `garage_bay`

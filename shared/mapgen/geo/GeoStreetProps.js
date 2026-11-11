@@ -8,7 +8,7 @@
 //   primaries                             bus stop (bench pair + stop sign) every ~60 cells (CATS routes)
 //   shop / diner entrances                storefront_awning over the door and the cells either side
 //   shop fronts on a walk                 concrete planters between the entrance bays (half cover)
-//   car parks                             shopping_cart decor in free aisle cells, one cart_corral per lot section
+//   car parks                             one cart_corral per lot section; no loose-cart scatter
 //   large car park next to a street       plaza_sign (pylon) at the lot corner nearest the biggest road
 //   large flat roofs                      rooftop_ac (2 × 2, half cover) + rooftop_vent decor
 // Decor is visual only; solid props are voxels registered with an origin (the prop-origin gate accounts for them).
@@ -184,12 +184,10 @@ export function placeGeoProps(m, { roads, roadAt, junctions = [], lots = [], see
         }
     }
 
-    // ---- car parks: carts, corrals, pylon sign
+    // ---- car parks: corrals and pylon signs; loose carts would be route clutter
     const biggest = roads.slice().sort((a, b) => b.cls - a.cls || b.half - a.half)[0];
     for (const [li, l] of lots.entries()) {
         const aisle = l.cells.filter(([x, y]) => tagAt(m, x, y) === 'aisle' && free(x, y));
-        const carts = Math.min(8, Math.floor(aisle.length / 120));
-        for (let i = 0; i < carts; i++) { const [x, y] = aisle[Math.floor(unit(`${seed}:${l.id}:cart:${i}`) * aisle.length)]; if (free(x, y)) decor('shopping_cart', x, y, unit(`${l.id}:cy:${i}`) * 6.28); }
         // corrals: on a straight run of 3 free aisle cells along the lot's long axis, one per ~500 cells
         // (a shopping-centre lot has one every couple of stall rows)
         const want = Math.max(l.cells.length >= 400 ? 1 : 0, Math.floor(l.cells.length / (l.implied ? 300 : 600)));

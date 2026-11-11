@@ -298,11 +298,13 @@ test('free aim puts the leading projectile on the reticle ray while the remainin
     assert.equal(centred.unit?.id, e.id, 'the test aim line itself intersects the enemy');
 });
 
-test('an accurate free-aim leading projectile still stops at cover', async () => {
-    const { partCentre } = await import('./Ballistics.js');
+test('an accurate free-aim leading projectile still stops at cover without marking the enemy through it', async () => {
+    const { partCentre, chooseMuzzle, occupiedBy, partUnderRay } = await import('./Ballistics.js');
     const b = arena({ squad: ['vanguard'], players: [{ x: 10, y: 20, z: 1 }], enemies: [{ type: 'cultist', pos: { x: 10, y: 8, z: 1 }, group: 1 }],
         build: st => wall(st, 0, 13, 27, 13, 5) });
-    const r = b.apply({ type: 'shoot', unitId: 'p0', weaponId: 'blunderbuss', aim: { point: partCentre(b.unit('e0'), 'torso') } });
+    const u=b.unit('p0'),point=partCentre(b.unit('e0'),'torso'),muzzle=chooseMuzzle(b.store,u,point,{occupied:occupiedBy(b,u)});
+    assert.equal(partUnderRay(b,u,muzzle,point),null,'solid cover hides the target from the reticle');
+    const r = b.apply({ type: 'shoot', unitId: 'p0', weaponId: 'blunderbuss', aim: { point } });
     assert.ok(r.ok, r.reason);
     const first = r.events.find(e => e.t === 'shot').projectiles[0];
     assert.equal(first.kind, 'voxel');

@@ -12,6 +12,7 @@ import { layoutLeaves } from './district/MixSolver.js';
 import { registerRoads } from './StreetDressing.js';
 import { remixParameters } from './DistrictRemix.js';
 import { LOT_KINDS, WING_PROGRAM } from './LotCatalogue.js';
+import { GEO_PROGRAMS } from './geo/GeoPrograms.js';
 
 const NEW_MIXES = ['duplex-plot', 'trailer-park', 'garden-apartments', 'pool-backyard', 'garage-house', 'loading-dock', 'service-alley', 'corner-store', 'laundromat', 'bar-patio', 'lockup-garages'];
 const NEW_PROGRAMS = ['duplex', 'trailer', 'walkup', 'corner_store', 'laundromat', 'bar', 'lockup'];
@@ -62,16 +63,30 @@ for (const id of NEW_MIXES) test(`mix ${id}: lays out alone, registers every pro
 
 test('operation lots: the new kinds are odd-sized footprints on one lot depth, with a wing programme and room programmes', async () => {
     const { designProgrammes } = await import('./OperationDesigner.js');
-    for (const k of ['duplex', 'walkup', 'trailer', 'corner_store', 'laundromat', 'lockups']) {
+    for (const k of ['duplex', 'walkup', 'trailer', 'corner_store', 'laundromat', 'lockups', 'clinic', 'library']) {
         const t = LOT_KINDS[k]?.building; assert.ok(t, k);
         for (const [along, deep] of t.variants || [[t.along, t.deep]]) {
             assert.ok(along % 2 === 1 && deep % 2 === 1, `${k}: ${along}×${deep} is n bays + shell`);
-            assert.ok(deep + t.front <= 8 * LOT_KINDS[k].size[1], `${k}: fits its lot depth`);
+            assert.ok(along <= 8 * LOT_KINDS[k].size[0] && deep + t.front <= 8 * LOT_KINDS[k].size[1], `${k}: fits its parcel`);
         }
         assert.ok(WING_PROGRAM[t.program], `${k}: wing programme`);
-        assert.ok(PROGRAMS[t.program], `${k}: ModernBuilder programme`);
+        assert.ok(PROGRAMS[t.program] || GEO_PROGRAMS[t.program], `${k}: interior programme`);
         const b = { id: 'b', program: t.program, w: t.along, d: t.deep, storeys: t.storeys[1] };
         const design = designProgrammes({ buildings: [b], target: b, plot: { family: 'suburb' }, seed: 1 });
         assert.equal(design.programs.length, b.storeys, k);
+        if (k === 'clinic') assert.ok(design.programs[0].rooms.some(r => r.kind === 'ward'));
+        if (k === 'library') assert.ok(design.programs[0].rooms.some(r => r.kind === 'reading'));
     }
+});
+
+test('generated operations field the civilian buildings and designed green parcels', async () => {
+    const { generateOperation } = await import('./Generator.js');
+    const kinds = new Set(), programs = new Set();
+    for (const plot of ['downtown', 'suburb']) for (let seed = 1; seed <= 8; seed++) {
+        const { layout } = generateOperation({ plot, seed, compile: false });
+        for (const lot of layout.plot.lots) if (lot.kind) kinds.add(lot.kind);
+        for (const b of layout.buildings) programs.add(b.program);
+    }
+    for (const kind of ['community_garden', 'civic_green']) assert.ok(kinds.has(kind), `${kind} appears`);
+    for (const program of ['clinic', 'library']) assert.ok(programs.has(program), `${program} appears`);
 });

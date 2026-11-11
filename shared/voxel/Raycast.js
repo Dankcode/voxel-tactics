@@ -12,7 +12,7 @@ export const blocksSight = (store, x, y, z) => materialById(store.get(x, y, z)).
  * Walk the voxels between `from` and `to` (optionally continuing `extend` units past `to`).
  * @returns {{ hit: {x,y,z}|null, t, point, normal, length, visited }}  t is the distance travelled.
  */
-export function castRay(store, from, to, { blocks = blocksProjectile, extend = 0, skipStart = true, visit = null } = {}) {
+export function castRay(store, from, to, { blocks = blocksProjectile, extend = 0, skipStart = true, visit = null, shapedVehicles = blocks === blocksProjectile } = {}) {
     const d = [to.x - from.x, to.y - from.y, to.h - from.h];
     const length = Math.hypot(d[0], d[1], d[2]);
     if (length < 1e-9) return { hit: null, t: 0, point: { ...from }, normal: null, length: 0 };
@@ -26,7 +26,7 @@ export function castRay(store, from, to, { blocks = blocksProjectile, extend = 0
     let t = 0, axis = -1;
     const shapeHit = (enter, fallbackNormal) => {
         if (!blocks(store, cell[0], cell[1], cell[2])) return null;
-        const h = intersectCellShape(store, ...cell, o, dir, enter, Math.min(maxT, ...tMax));
+        const h = intersectCellShape(store, ...cell, o, dir, enter, Math.min(maxT, ...tMax), { shapedVehicles });
         if (!h) return null;
         return { hit: { x: cell[0], y: cell[1], z: cell[2] }, t: h.t, length, dir,
             point: { x: o[0] + dir[0]*h.t, y: o[1] + dir[1]*h.t, h: o[2] + dir[2]*h.t }, normal: h.normal || fallbackNormal };

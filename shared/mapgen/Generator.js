@@ -24,7 +24,7 @@ import { hashString } from '../util/Rng.js';
 import { solveWaveFunctionCollapse } from '../generation/WaveFunctionCollapse.js';
 import { buildWithRepair } from './Repair.js';
 
-export const GENERATOR_VERSION = '4.2.0';
+export const GENERATOR_VERSION = '4.3.0';
 const unit = s => (hashString(s) >>> 0) / 4294967296;
 const SIDES = ['n', 'e', 's', 'w'];
 const k2 = (x, y) => `${x},${y}`;
@@ -577,7 +577,7 @@ export function generateOperation({ plot: family = 'downtown', seed = 1, objecti
 export function siteFromLayout(layout, { family, time, seed }) {
     const W = layout.width, D = layout.depth;
     const n = (x, y) => [Math.min(0.999, Math.max(0.001, x / W)), Math.min(0.999, Math.max(0.001, y / D))];
-    const PROGRAM = { apartment: 'house', motel: 'house', bar: 'diner', duplex: 'house', walkup: 'house', trailer: 'house', corner_store: 'shop', laundromat: 'shop', lockup: 'garage' };   // PLAN-14 / new-parcel programmes map to the site contract's
+    const PROGRAM = { apartment: 'house', motel: 'house', bar: 'diner', duplex: 'house', walkup: 'house', trailer: 'house', corner_store: 'shop', laundromat: 'shop', lockup: 'garage', clinic: 'office', library: 'office' };   // PLAN-14 / new-parcel programmes map to the site contract's
     return {
         version: 2, id: layout.id, name: `${PLOT_FAMILIES[family].name} · ${seed}`, theme: PLOT_FAMILIES[family].theme, timeOfDay: time, frame: { width: W, height: D }, plot: family,
         buildings: layout.buildings.map(b => ({ id: b.id, bounds: [...n(b.x0, b.y0), ...n(b.x0 + b.w, b.y0 + b.d)], program: PROGRAM[b.program] || b.program, front: b.front, storeys: b.storeys })),

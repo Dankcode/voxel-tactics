@@ -115,3 +115,28 @@ test('ice over deep water melts back into deep water; shallow ice into shallows'
     f.applyArea('pyro',6,5.5,2.5,1.2);
     assert.equal(s.get(5,5,2),MAT.deep_water);assert.equal(s.get(6,5,2),MAT.water);
 });
+
+test('shots above a car hood or roof clear it while body and cabin shots still connect',async()=>{
+    const {createMap}=await import('../mission/modern/MapKit.js');
+    const m=createMap({id:'vehicle-ray',width:20,depth:20,ground:'asphalt'});m.car(5,5,'x',1,null,1);
+    for(const x of [5,6,7,8])assert.equal(castRay(m.store,{x:x+.5,y:2,h:2.9},{x:x+.5,y:9,h:2.9}).hit,null,'horizontal shot above the car');
+    assert.equal(castRay(m.store,{x:2,y:5.5,h:2.9},{x:12,y:5.5,h:2.9}).hit,null,'horizontal shot over the hood');
+    const body=castRay(m.store,{x:2,y:5.5,h:2.5},{x:12,y:5.5,h:2.5});assert.equal(body.hit?.x,5,'body-height shot hits the hood');
+    const cabin=castRay(m.store,{x:2,y:5.5,h:3.25},{x:12,y:5.5,h:3.25});assert.equal(cabin.hit?.x,6,'cabin-height shot hits the roof');
+    assert.equal(m.store.clone().vehicleCollision?.size,m.store.vehicleCollision?.size,'collision profiles survive store snapshots');
+    const parts=Object.fromEntries(['head','armL','armR','torso','legs'].map(part=>[part,{hp:10}]));
+    const target={id:'target',side:'enemy',x:11,y:5,z:1,hp:30,dead:false,facing:'s',parts};
+    const shot=traceProjectile({store:m.store,units:[target]},{x:2,y:5.5,h:2.9},[1,0,0],15);
+    assert.equal(shot.unit,target,'a real projectile clears the car and reaches the enemy behind it');
+    const {placeStreetVehicle}=await import('../mapgen/StreetDressing.js');
+    placeStreetVehicle(m,'bus',12,5,{z:1});
+    assert.equal(castRay(m.store,{x:11,y:5.5,h:2.9},{x:20,y:5.5,h:2.9}).hit,null,'shot above a bus roof');
+    assert.equal(castRay(m.store,{x:11,y:5.5,h:3.5},{x:20,y:5.5,h:3.5}).hit?.x,12,'bus body still blocks its upper voxel');
+    const {packMission,unpackMission}=await import('../session/MissionSnapshot.js');
+    const packed=packMission({store:m.store,visual:{hints:m.hints,decor:[]}});
+    assert.equal(unpackMission(packed).store.vehicleCollision.size,m.store.vehicleCollision.size,'network snapshots preserve profiles');
+    delete packed.store.vehicleCollision;
+    const legacy=unpackMission(packed);
+    assert.equal(legacy.store.vehicleCollision.size,m.store.vehicleCollision.size,'older snapshots rebuild profiles from their vehicle hints');
+    assert.equal(castRay(legacy.store,{x:2,y:5.5,h:2.9},{x:12,y:5.5,h:2.9}).hit,null);
+});

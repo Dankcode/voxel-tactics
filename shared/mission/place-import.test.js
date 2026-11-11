@@ -77,18 +77,28 @@ test('a small place builds faithfully and deterministically: every real building
     assert.equal(ms.store.hash(), again.store.hash());
 });
 
-test('the open land is the game\'s: parcels fill it (themed), Landmark keeps lawn, newBuildings 0 adds none', () => {
+test('the open land keeps mapped buildings by default, with explicit infill and no loose parking carts', () => {
     const layers = sampleLayers();
     const fill = buildPlaceMission({ layers, id: 'place-fill', theme: 'Suburbs', audit: false });
     assert.ok(fill.meta.placeReport.parcels.mixes.length >= 1, JSON.stringify(fill.meta.placeReport.parcels));
     assert.equal(fill.meta.placeReport.family, 'suburban');
-    const none = buildPlaceMission({ layers, id: 'place-fill', theme: 'Suburbs', newBuildings: 0, audit: false });
-    assert.equal(none.meta.placeReport.parcels.newBuildings.length, 0);
+    assert.equal(fill.meta.placeReport.parcels.newBuildings.length, 0, 'default keeps the OSM building count');
+    assert.equal(fill.meta.placeReport.props.shopping_cart, 0);
+    assert.ok(!fill.visual.decor.some(d => d.kind === 'shopping_cart'));
+    const infill = buildPlaceMission({ layers, id: 'place-infill', theme: 'Suburbs', newBuildings: 'auto', audit: false });
+    assert.ok(infill.meta.placeReport.parcels.newBuildings.length > 0, 'explicit auto still permits infill');
     const park = buildPlaceMission({ layers, id: 'place-park', theme: 'Landmark', audit: false });
     assert.equal(park.meta.placeReport.openLand.mode, 'park');
     assert.ok(park.meta.placeReport.openLand.green > 0);
     const lu = park.meta.landUse.codes;
     assert.ok([...lu].filter(c => c === 'G').length > [...fill.meta.landUse.codes].filter(c => c === 'G').length, 'more lawn');
+});
+
+test('mapped street trees suppress nearby generated duplicates', () => {
+    const layers = { ...sampleLayers(), furniture: [{ kind: 'tree', at: [11, 9] }] };
+    const m = buildPlaceMission({ layers, id: 'place-trees', audit: false });
+    assert.equal(m.meta.placeReport.realTrees, 1);
+    assert.ok(m.meta.placeReport.streetTreesSuppressed >= 1);
 });
 
 test('footprints: an L outline becomes two wings sharing one wall line; touching buildings keep one party wall', () => {

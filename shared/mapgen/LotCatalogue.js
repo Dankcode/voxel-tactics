@@ -29,6 +29,8 @@ export const LOT_KINDS = Object.freeze({
     corner_store: { size: [2, 1], districts: ['commercial', 'residential'], w: 0.6, building: { program: 'corner_store', along: 11, deep: 7, front: 1, storeys: [1, 2], variants: [[11, 7], [9, 7]] }, ground: 'paving', pool: 'yard_paved' },
     laundromat: { size: [2, 1], districts: ['commercial', 'residential'], w: 0.45, building: { program: 'laundromat', along: 13, deep: 7, front: 1, storeys: [1, 1], variants: [[13, 7], [11, 7]] }, ground: 'paving', pool: 'yard_paved' },
     lockups: { size: [2, 1], districts: ['industrial', 'yard', 'residential'], w: 0.5, building: { program: 'lockup', along: 13, deep: 7, front: 1, storeys: [1, 1], variants: [[13, 7], [11, 7]] }, ground: 'concrete', pool: 'yard_industrial' },
+    clinic: { size: [2, 2], districts: ['commercial', 'residential'], w: 0.45, building: { program: 'clinic', along: 15, deep: 9, front: 1, storeys: [1, 2], variants: [[15, 9], [13, 9], [15, 7]] }, ground: 'paving', pool: 'yard_paved' },
+    library: { size: [2, 2], districts: ['commercial', 'plaza'], w: 0.45, building: { program: 'library', along: 13, deep: 11, front: 2, storeys: [1, 2], variants: [[13, 11], [11, 11], [13, 9]] }, ground: 'paving', pool: 'yard_paved' },
     // ---------------------------------------------------------------- objective parcels (a separate pool, as in XCOM 2)
     objective_office: { size: [2, 2], objective: true, families: ['downtown'], building: { program: 'office', along: 13, deep: 9, front: 1, storeys: [4, 4] }, ground: 'concrete', pool: 'yard_paved' },
     objective_depot: { size: [2, 2], objective: true, families: ['industrial'], building: { program: 'office', along: 13, deep: 9, front: 1, storeys: [3, 3] }, ground: 'concrete', pool: 'yard_industrial' },
@@ -42,13 +44,15 @@ export const LOT_KINDS = Object.freeze({
     depot_yard: { size: [1, 1], districts: ['industrial', 'yard'], w: 1.5, ground: 'concrete', pool: 'depot' },
     construction_site: { size: [1, 1], districts: ['commercial', 'industrial'], w: 0.6, ground: 'gravel', pool: 'construction' },
     backyard: { size: [1, 1], districts: ['residential', 'park'], w: 1.3, ground: 'lawn', pool: 'garden' },
+    community_garden: { size: [1, 1], districts: ['residential', 'park', 'commercial'], w: 0.55, ground: 'lawn', pool: 'garden' },
+    civic_green: { size: [1, 1], districts: ['commercial', 'plaza', 'park', 'residential'], w: 0.65, ground: 'lawn', pool: 'park' },
     alley: { size: [1, 1], districts: ['commercial', 'residential', 'industrial'], w: 0.8, ground: 'paving', pool: 'alley' },
     subway_plaza: { size: [1, 1], districts: ['commercial', 'plaza'], families: ['downtown'], w: 0.6, ground: 'paving', pool: 'plaza', underground: true }
 });
 
 /** PLAN-14: what the attached lower wing of a merged parcel houses, by the main block's programme. */
 export const WING_PROGRAM = Object.freeze({ office: 'shop', apartment: 'shop', house: 'garage', warehouse: 'garage', shop: 'diner', motel: 'diner', bar: 'shop',
-    duplex: 'lockup', walkup: 'laundromat', trailer: 'lockup', corner_store: 'lockup', laundromat: 'corner_store', lockup: 'lockup' });
+    duplex: 'lockup', walkup: 'laundromat', trailer: 'lockup', corner_store: 'lockup', laundromat: 'corner_store', lockup: 'lockup', clinic: 'office', library: 'office' });
 
 /** Which district kinds a plot family can field, and which lots may stand in them. */
 export const DISTRICT_KINDS = Object.freeze(['commercial', 'residential', 'industrial', 'yard', 'plaza', 'park']);

@@ -9,8 +9,7 @@ export class CameraDirector {
         this.scene=scene; this.cam=new THREE.PerspectiveCamera(38,1,0.08,300);
         this.active=false; this.phase=null;
         this.from=new THREE.Vector3();this.to=new THREE.Vector3();this.look=new THREE.Vector3();
-        // PLAN-10: the storey cut in view (voxels at or above it are not drawn, so they never block the camera) and the
-        // x-ray hook that hides the walls between a cramped interior camera and the shot (set by Game).
+        // Shooting uses the complete map; the camera moves to a clear position instead of hiding map voxels.
         this.cutZ=Infinity;this.xray=null;this.xrayCells=null;
     }
     solid(store,x,y,z){return z<this.cutZ&&store.isSolid(x,y,z)&&!this.xrayCells?.has(`${x},${y},${z}`);}
@@ -76,8 +75,8 @@ export class CameraDirector {
      * PLAN-14: third-person-shooter aiming (Gears / The Division / Phoenix Point free aim). While aiming, the camera is
      * rigidly attached over the shooter's shoulder and turns with the aim: the mouse swings the view, the soldier keeps
      * the same place on screen and the reticle stays at the centre. Looking down raises the camera, looking up lowers
-     * it (an orbit around the shoulder). The shoulder never pushes through walls: it pulls in toward the shooter, and
-     * where even that is blocked the walls between camera and aim are cut away (x-ray, throttled).
+     * it (an orbit around the shoulder). The shoulder never pushes through walls: it pulls in or moves to a clear
+     * nearby position while leaving every map voxel rendered.
      */
     track(point,dt){
         if(this.phase!=='prepare'||!this.shooter)return;
@@ -92,23 +91,10 @@ export class CameraDirector {
         const desired=pivot.clone().addScaledVector(dir,-SHOULDER.back).addScaledVector(right,side).add(new THREE.Vector3(0,SHOULDER.up,0));
         // PLAN-15: continuous pull-in (stop short of the first wall), then one raised try; never a camera inside a wall.
         let at=this.clear(desired)?desired:this.pullIn(pivot,desired);
-        // Too close to read the shot: keep the readable shoulder distance and cut away what stands in front of it.
+        // Too close to read the shot: move to a clear position without hiding intervening geometry.
         const cramped=!at||at.distanceTo(pivot)<SHOULDER.back*0.45;
         if(cramped)at=this.openSpot(pivot,desired);
         const look=this.fixedDir?at.clone().addScaledVector(dir,Math.max(dist,6)):pivot.clone().addScaledVector(dir,Math.max(dist,6));
-        this.xrayT=Math.max(0,(this.xrayT||0)-dt);
-        const moved=!this.xrayAt||this.xrayAt.distanceTo(at)>0.3||this.xrayLook.distanceTo(look)>0.8;
-        if(this.store&&!this.xrayT&&moved){
-            this.xrayT=0.12;this.xrayAt=at.clone();this.xrayLook=look.clone();
-            const fresh=this.foregroundCells(at,look,pivot);
-            if(cramped||!this.sees(at,look))for(const cell of this.occluders(at,[pivot],Math.floor(this.shooter.y)-1))fresh.add(cell);
-            // Hysteresis: a cut cell stays cut for 0.4 s after it stops blocking, so fast swings do not flash walls back.
-            this.xrayKeep||=new Map();for(const c of fresh)this.xrayKeep.set(c,this.clock+0.4);
-            for(const [c,until] of this.xrayKeep)if(until<this.clock)this.xrayKeep.delete(c);
-            const cells=this.xrayKeep.size?new Set(this.xrayKeep.keys()):null,old=this.xrayCells;
-            const changed=(!old)!==(!cells)||(old&&cells&&(old.size!==cells.size||[...cells].some(c=>!old.has(c))));
-            if(changed){this.xrayCells=cells;this.xray?.(cells);}
-        }
         this.cam.position.copy(at);
         this.look.copy(look);
         this.cam.aspect=this.scene.aspect||1;this.cam.updateProjectionMatrix();this.cam.lookAt(this.look);this.cam.updateMatrixWorld();
@@ -132,7 +118,7 @@ export class CameraDirector {
         }
         return null;
     }
-    /** PLAN-15: a camera spot at the readable distance that is at least not inside a solid voxel (walls get cut away). */
+    /** PLAN-15: the farthest camera position on this line that is not inside a solid voxel. */
     openSpot(pivot,desired){
         const s=this.store;if(!s)return desired;
         for(let k=1;k>=0.2;k-=0.1){const v=pivot.clone().lerp(desired,k);if(!this.solid(s,Math.floor(v.x),Math.floor(v.z),Math.floor(v.y)))return v;}
@@ -160,22 +146,7 @@ export class CameraDirector {
         };
         this.xrayCells=null;
         let safe=pick([main],[1,0.6,0.3,0],true)||pick([-main],[1,0.6,0.3],true)||pick([main,-main],[1],false);
-        // PLAN-10: cramped interiors. Instead of pushing the shoulder camera into the shooter's back, keep it back at a
-        // readable distance, widen the view and hide the walls and furniture between it and the shot (XCOM cutaway).
-        let xray=null;
-        // PLAN-11: also when the best spot found still cannot see the target (the fallback pick ignores the view), keep
-        // that spot and cut away what is in the way, so the target is always visible while aiming.
-        const blind=!!safe&&!this.sees(safe,look);
-        if(phase==='prepare'&&this.store&&(!safe||blind||safe.distanceTo(shooter)<back*0.6)) {
-            const s=this.store,keep=blind&&safe.distanceTo(shooter)>=back*0.6;
-            for(const v of keep?[safe]:[back*0.8,back*0.6,back*0.45].map(b=>at(b,main))) {
-                if(v.x<0.5||v.z<0.5||v.x>s.width-0.5||v.z>s.depth-0.5)continue;
-                const cells=this.occluders(v,[shooter.clone().add(new THREE.Vector3(0,1.4,0)),target.clone().add(new THREE.Vector3(0,1.1,0)),target.clone().add(new THREE.Vector3(0,0.4,0))],Math.min(Math.floor(shooter.y),Math.floor(target.y))-1);
-                xray={v,cells};break;
-            }
-            if(xray){safe=xray.v;this.xrayCells=xray.cells;this.aimFov=Math.max(this.aimFov??38,50);}
-        }
-        this.xray?.(this.xrayCells);
+        this.xray?.(null);
         if (!safe) {const v=shooter.clone().add(new THREE.Vector3(0,1.7,0)); if(this.clear(v))safe=v;}
         if (!safe) {this.end();return false;}
         this.from.copy(safe);this.to.copy(safe).lerp(shooter.clone().add(new THREE.Vector3(0,up,0)),0.12);

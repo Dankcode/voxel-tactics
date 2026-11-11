@@ -47,7 +47,7 @@ version and the place's own data).
 | Option | Default | Meaning |
 |---|---|---|
 | `programs` | `{}` | `{ "<building id>": "<program>" }` — what the game makes of a building (overrides `gameProgram`) |
-| `newBuildings` | `"auto"` | small buildings the parcel fill may add on open land (≤ 6); `0` keeps the place as mapped |
+| `newBuildings` | `0` | keep mapped building footprints by default; `"auto"` or a number opts into small infill buildings (≤ 6 for auto) |
 | `openLand` | by theme | `"parcels"` (the game's parcel mixes) or `"park"` (lawn beyond the yards stays lawn; Landmark default) |
 | `lotsToParcels` | `[]` | lot ids (or `true`) handed to the parcel fill instead of being striped as car parks |
 | `family` | by theme | district mix family: `urban`, `suburban`, `retail`, `industrial`, `roadside`, `mixed` |

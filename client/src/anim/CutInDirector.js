@@ -107,6 +107,16 @@ export class CutInDirector {
         if(!loaded.cutin.worldAim)return;
         token.world=new WorldAimSprite(view,loaded.cutin.worldAim,weaponId,loaded.base);
     }
+    tracerOrigin(fallback, target) {
+        const a=this.aiming,uv=a?.figure&&a.weapon?.targets?.muzzle;
+        if(!uv||!target)return fallback;
+        const view=viewport(),placement=backshotPlacement(a.art,null,view,{bars:0}),camera=this.cameraDirector.scene.camera;
+        const x=placement.left+uv[0]*placement.width,y=placement.top+uv[1]*placement.height;
+        const ray=new THREE.Vector3(x/view.width*2-1,1-y/view.height*2,.5).unproject(camera).sub(camera.position).normalize();
+        const muzzle=new THREE.Vector3(fallback.x,fallback.h,fallback.y),forward=camera.getWorldDirection(new THREE.Vector3());
+        const depth=Math.max(.1,muzzle.clone().sub(camera.position).dot(forward)),point=camera.position.clone().addScaledVector(ray,depth/ray.dot(forward));
+        return {x:point.x,y:point.z,h:point.y};
+    }
     placeAim(target) {
         const a=this.aiming;
         if(a?.figure){

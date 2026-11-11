@@ -1,5 +1,6 @@
 // Authoritative compiled mission for co-op. RLE keeps empty voxel volumes small on the wire.
 import { VoxelStore } from '../voxel/VoxelStore.js';
+import { registerVehicleCollision } from '../voxel/VehicleCollision.js';
 export function packMission(mission) {
     const { store, ...data } = mission;
     const voxels = [];
@@ -13,7 +14,7 @@ export function packMission(mission) {
     return { ...structuredClone(data), store: {
         width: store.width, depth: store.depth, height: store.height,
         datum: store.datum, version: store.version,
-        supportGroups: structuredClone(store.supportGroups || []), windowOpenings: [...store.windowOpenings], squareCorners:[...store.squareCorners], curveCells:structuredClone([...store.curveCells]), voxels,
+        supportGroups: structuredClone(store.supportGroups || []), windowOpenings: [...store.windowOpenings], squareCorners:[...store.squareCorners], curveCells:structuredClone([...store.curveCells]), vehicleCollision:structuredClone([...store.vehicleCollision]), voxels,
     } };
 }
 export function unpackMission(snapshot) {
@@ -34,5 +35,7 @@ export function unpackMission(snapshot) {
     store.windowOpenings = new Map(packed.windowOpenings || []);
     store.squareCorners=new Set(packed.squareCorners||[]);
     store.curveCells=new Map(packed.curveCells||[]);
+    store.vehicleCollision=new Map(packed.vehicleCollision||[]);
+    if(!packed.vehicleCollision)for(const hint of Object.values(data.visual?.hints||{}))if(hint.cells)registerVehicleCollision(store,hint.piece,hint.cells,hint.materials||[]);
     return { ...structuredClone(data), store };
 }

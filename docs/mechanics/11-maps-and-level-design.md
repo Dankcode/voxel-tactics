@@ -289,9 +289,11 @@ reseed. The critic score (`meta.critic`) is informational. Interior partitions o
 - **What the game decides:** each building's game type (`gameProgram`: a pub is a `bar`, a laundry a `laundromat`, a
   convenience shop a `corner_store`, a small garage a `lockup`, a big house a `walkup`), and the open land, which the
   district parcel fill takes with the place theme's mix weights (`THEME_FAMILY`: Downtown/Landmark → urban, Suburbs →
-  suburban, Strip centre → retail, Industrial, Roadside). The fill may add a few small buildings (`newBuildings`,
-  ≤ 6, ≤ 2 storeys; 0 keeps the place as mapped). Landmark places keep open lawn as grounds (`openLand: 'park'`).
-  `lotsToParcels` hands mapped car parks to the fill. Objective, insertion, cover repair and pods are as before.
+  suburban, Strip centre → retail, Industrial, Roadside). `newBuildings` defaults to 0, preserving the mapped building
+  count; explicit `"auto"` permits up to six small infill buildings. Landmark places keep open lawn as grounds
+  (`openLand: 'park'`). `lotsToParcels` hands mapped car parks to the fill. Mapped trees suppress nearby generated
+  duplicates, and parking aisles have useful cart corrals but no loose-cart scatter. Objective, insertion, cover repair
+  and pods are as before.
 - **New parcels** (district mixes, `MixCatalogue`): residential `duplex-plot`, `trailer-park`, `garden-apartments`,
   `pool-backyard`, `garage-house`; back of house `loading-dock`, `service-alley`; commercial infill `corner-store`,
   `laundromat`, `bar-patio`; garages `lockup-garages`. New building programmes with generated interiors

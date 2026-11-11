@@ -15,7 +15,7 @@
    "front": "n",
    "rooms": 10,
    "file": "/assets/buildings/baton-rouge-third-street/courtyard-baton-rouge-downtown.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--osm-515634554",
@@ -31,7 +31,7 @@
    "front": "w",
    "rooms": 20,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515634554.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--osm-515633403",
@@ -47,7 +47,7 @@
    "front": "e",
    "rooms": 10,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515633403.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--helix-steam-mentorship-academy",
@@ -63,7 +63,7 @@
    "front": "s",
    "rooms": 20,
    "file": "/assets/buildings/baton-rouge-third-street/helix-steam-mentorship-academy.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--osm-515633406",
@@ -79,7 +79,7 @@
    "front": "e",
    "rooms": 10,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515633406.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--capitol-city-press-building",
@@ -95,7 +95,7 @@
    "front": "n",
    "rooms": 26,
    "file": "/assets/buildings/baton-rouge-third-street/capitol-city-press-building.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--osm-515634553",
@@ -111,7 +111,7 @@
    "front": "w",
    "rooms": 10,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515634553.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--osm-515634568",
@@ -127,7 +127,7 @@
    "front": "n",
    "rooms": 10,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515634568.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--osm-515633405",
@@ -143,7 +143,7 @@
    "front": "e",
    "rooms": 6,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515633405.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--osm-515634555",
@@ -159,7 +159,7 @@
    "front": "w",
    "rooms": 10,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515634555.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--belisle-building",
@@ -175,7 +175,7 @@
    "front": "w",
    "rooms": 8,
    "file": "/assets/buildings/baton-rouge-third-street/belisle-building.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--osm-515634557",
@@ -191,7 +191,7 @@
    "front": "e",
    "rooms": 6,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515634557.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--osm-515633402",
@@ -207,7 +207,7 @@
    "front": "w",
    "rooms": 6,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515633402.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--osm-515633407",
@@ -223,7 +223,7 @@
    "front": "e",
    "rooms": 6,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515633407.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--osm-515634552",
@@ -239,7 +239,7 @@
    "front": "s",
    "rooms": 6,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515634552.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--osm-515633404",
@@ -255,7 +255,7 @@
    "front": "e",
    "rooms": 6,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515633404.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--osm-515632946",
@@ -271,7 +271,7 @@
    "front": "w",
    "rooms": 6,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515632946.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--osm-515634556",
@@ -287,7 +287,7 @@
    "front": "e",
    "rooms": 4,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515634556.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--osm-515634560",
@@ -303,7 +303,7 @@
    "front": "n",
    "rooms": 6,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515634560.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--fuqua-hardware-store-building",
@@ -319,7 +319,7 @@
    "front": "e",
    "rooms": 9,
    "file": "/assets/buildings/baton-rouge-third-street/fuqua-hardware-store-building.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-third-street--osm-515632950",
@@ -335,7 +335,7 @@
    "front": "n",
    "rooms": 15,
    "file": "/assets/buildings/baton-rouge-third-street/osm-515632950.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-sherwood-florida--asian-supermarket",
@@ -351,7 +351,7 @@
    "front": "n",
    "rooms": 3,
    "file": "/assets/buildings/baton-rouge-sherwood-florida/asian-supermarket.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-sherwood-florida--dollar-tree",
@@ -367,7 +367,7 @@
    "front": "n",
    "rooms": 3,
    "file": "/assets/buildings/baton-rouge-sherwood-florida/dollar-tree.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-sherwood-florida--baton-wireless",
@@ -383,7 +383,7 @@
    "front": "e",
    "rooms": 3,
    "file": "/assets/buildings/baton-rouge-sherwood-florida/baton-wireless.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-sherwood-florida--vivi-bubble-tea",
@@ -399,7 +399,7 @@
    "front": "e",
    "rooms": 3,
    "file": "/assets/buildings/baton-rouge-sherwood-florida/vivi-bubble-tea.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-sherwood-florida--osm-357854325",
@@ -415,7 +415,7 @@
    "front": "n",
    "rooms": 3,
    "file": "/assets/buildings/baton-rouge-sherwood-florida/osm-357854325.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-old-state-capitol--old-state-capitol",
@@ -431,7 +431,7 @@
    "front": "e",
    "rooms": 32,
    "file": "/assets/buildings/baton-rouge-old-state-capitol/old-state-capitol.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "baton-rouge-old-state-capitol--osm-1177437012",
@@ -447,7 +447,7 @@
    "front": "e",
    "rooms": 6,
    "file": "/assets/buildings/baton-rouge-old-state-capitol/osm-1177437012.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "philadelphia-independence-hall--old-city-hall",
@@ -463,7 +463,7 @@
    "front": "e",
    "rooms": 5,
    "file": "/assets/buildings/philadelphia-independence-hall/old-city-hall.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "philadelphia-independence-hall--congress-hall",
@@ -479,7 +479,7 @@
    "front": "w",
    "rooms": 10,
    "file": "/assets/buildings/philadelphia-independence-hall/congress-hall.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "philadelphia-independence-hall--philosophical-hall",
@@ -495,7 +495,7 @@
    "front": "e",
    "rooms": 8,
    "file": "/assets/buildings/philadelphia-independence-hall/philosophical-hall.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   },
   {
    "id": "philadelphia-independence-hall--independence-hall",
@@ -511,7 +511,7 @@
    "front": "n",
    "rooms": 72,
    "file": "/assets/buildings/philadelphia-independence-hall/independence-hall.json",
-   "generator": "place-import-1"
+   "generator": "place-import-2"
   }
  ]
 }

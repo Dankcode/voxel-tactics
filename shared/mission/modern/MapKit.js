@@ -5,6 +5,7 @@ import { organizeStreetLights } from '../../mapgen/StreetLighting.js';
 import { ladderAttachment, validateLadders } from '../../world/LadderAttachment.js';
 import { stampDoubleCurve, roundRoadCorners } from '../../voxel/DoubleTileCurves.js';
 import { VoxelStore } from '../../voxel/VoxelStore.js';
+import { registerVehicleCollision } from '../../voxel/VehicleCollision.js';
 import { MAT } from '../../voxel/Materials.js';
 import { createRng, hashString } from '../../util/Rng.js';
 import { buildModern } from './ModernBuilder.js';
@@ -108,7 +109,9 @@ export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'l
             const xs = cells.map(c => c[0]), ys = cells.map(c => c[1]);
             const centre = [(Math.min(...xs) + Math.max(...xs) + 1) / 2, (Math.min(...ys) + Math.max(...ys) + 1) / 2];
             const yaw = axis === 'x' ? (dir > 0 ? 0 : Math.PI) : (dir > 0 ? -Math.PI / 2 : Math.PI / 2);
-            ctx.hints[ak] = { piece, yaw, centre, z: anchor[2], cells: cells.map(c => c.join(',')), materials:cells.map(c=>store.get(...c)), tint };
+            const materials=cells.map(c=>store.get(...c));
+            ctx.hints[ak] = { piece, yaw, centre, z: anchor[2], cells: cells.map(c => c.join(',')), materials, tint };
+            registerVehicleCollision(store,piece,cells.map(c=>c.join(',')),materials);
             for (const c of cells) if (c.join(',') !== ak) ctx.hints[c.join(',')] = { member: ak };
         },
         /** Tree: trunk + canopy voxels (cover and sight); drawn as one tree while its trunk stands. kind 'round' | 'conifer' | 'palm'. */

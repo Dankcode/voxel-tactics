@@ -123,7 +123,7 @@ export function chooseMuzzle(store, u, aimPoint, { occupied = null } = {}) {
     const rx = -dy / len, ry = dx / len;
     const leans = [0.55, -0.55].map(s => ({ x: base.x + rx * s, y: base.y + ry * s, h: base.h, lean: s > 0 ? 'right' : 'left', side: s > 0 ? 'right' : 'left' }));
     const clear = c => !materialById(store.get(Math.floor(c.x), Math.floor(c.y), Math.floor(c.h))).solid
-        && !castRay(store, c, aimPoint, { blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile !== 'pass' }).hit;
+        && !castRay(store, c, aimPoint, { blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile !== 'pass', shapedVehicles: true }).hit;
     for (const c of [base, ...leans]) if (clear(c)) return c;
     for (const t of stepOutTiles(store, u, aimPoint, { occupied })) {
         const c = { x: t.x + 0.5, y: t.y + 0.5, h: base.h, lean: `step-${t.side}`, side: t.side, step: { x: t.x, y: t.y, z: t.z } };
@@ -184,6 +184,7 @@ export function traceProjectile(battle, o, d, maxDist, { ignore = null, energy =
         const r = castRay(store, from, end, {
             skipStart: seg === 0,
             blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile === 'block',
+            shapedVehicles: true,
             visit: (x, y, z, t) => { if (materialById(store.get(x, y, z)).shatters) {
                 let exit = maxDist;
                 [x, y, z].forEach((c, i) => { if (d[i]) exit = Math.min(exit, ((d[i] > 0 ? c + 1 : c) - origin[i]) / d[i]); });
@@ -305,7 +306,7 @@ export function stickyAim(battle, shooter, origin, point, { filter = null, maxDe
             if (off > Math.max(maxOffset, along * Math.tan(maxDeg * Math.PI / 180))) continue;
             // Judged from the muzzle the shot would really use for that part (a lean or step-out round a corner).
             const m = chooseMuzzle(battle.store, shooter, c, { occupied: occupiedBy(battle, shooter) });
-            const hit = castRay(battle.store, m, c, { blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile === 'block' });
+            const hit = castRay(battle.store, m, c, { blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile === 'block', shapedVehicles: true });
             const blocked = !!hit.hit && hit.t < hit.length - 0.35;
             if (blocked) continue;
             const score = off / along;
@@ -317,16 +318,20 @@ export function stickyAim(battle, shooter, origin, point, { filter = null, maxDe
 
 /**
  * PLAN-15 free aim: the hostile body part the aim line actually passes through (hitboxes, not the nearest centre),
- * or null. `point` is where the line is aimed; the line is extended a little past it.
+ * or null. Bullet-stopping voxels occlude the hitbox exactly as they occlude the leading projectile. `point` is where
+ * the line is aimed; the line is extended a little past it.
  */
 export function partUnderRay(battle, shooter, origin, point, { filter = null } = {}) {
     const dv = [point.x - origin.x, point.y - origin.y, point.h - origin.h], L = Math.hypot(...dv);
     if (L < 1e-6) return null;
-    const d = dv.map(c => c / L);
+    const d = dv.map(c => c / L), reach = L + 1.5;
+    const end = { x: origin.x + d[0] * reach, y: origin.y + d[1] * reach, h: origin.h + d[2] * reach };
+    const cover = castRay(battle.store, origin, end, { blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile === 'block', shapedVehicles: true });
+    const maxT = cover.hit ? cover.t : reach;
     let best = null;
     for (const t of battle.units) {
         if (!alive(t) || t.side === shooter.side || (filter && !filter(t))) continue;
-        const hit = rayUnit(origin, d, t, L + 1.5, battle.store);
+        const hit = rayUnit(origin, d, t, maxT, battle.store);
         if (hit && (!best || hit.t < best.t)) best = { unit: t, part: hit.part, t: hit.t };
     }
     return best;

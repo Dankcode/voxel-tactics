@@ -44,7 +44,12 @@ export const PARCEL_LAYOUTS = Object.freeze({
         [1, 3, 'hedge', 'back'], [2, 3, 'hedge', 'back'], [1, 1, 'tree', null], [2, 2, 'tree', null], [2, 1, 'bench', 'left']],
     // A fenced garden: fence on the back and sides, a hedge on the street edge with a gap, one tree.
     backyard: [[0, 1, 'fence', 'left'], [0, 2, 'fence', 'left'], [0, 3, 'fence', 'left'], [3, 1, 'fence', 'right'], [3, 2, 'fence', 'right'],
-        [3, 3, 'fence', 'right'], [1, 3, 'fence', 'back'], [2, 3, 'fence', 'back'], [0, 0, 'hedge', 'front'], [3, 0, 'hedge', 'front'], [2, 1, 'tree', null]]
+        [3, 3, 'fence', 'right'], [1, 3, 'fence', 'back'], [2, 3, 'fence', 'back'], [0, 0, 'hedge', 'front'], [3, 0, 'hedge', 'front'], [2, 1, 'tree', null]],
+    community_garden: [[0, 0, 'tree', null], [3, 0, 'tree', null], [0, 1, 'planter', 'left'], [0, 2, 'planter', 'left'],
+        [3, 1, 'planter', 'right'], [3, 2, 'planter', 'right'], [1, 3, 'hedge', 'back'], [2, 3, 'hedge', 'back'],
+        [0, 3, 'bench', 'back'], [3, 3, 'bench', 'back']],
+    civic_green: [[0, 1, 'tree', null], [3, 1, 'tree', null], [0, 2, 'bench', 'left'], [3, 2, 'bench', 'right'],
+        [0, 3, 'low_wall', 'back'], [3, 3, 'low_wall', 'back'], [1, 3, 'hedge', 'back'], [2, 3, 'hedge', 'back']]
 });
 
 /** Building-yard edges, by the yard's pool: what stands on the parcel boundary (street edge / other edges). */

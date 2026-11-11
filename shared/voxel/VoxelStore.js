@@ -28,6 +28,7 @@ export class VoxelStore {
         this.squareCorners = new Set();
         this.curveCells = new Map();
         this.windowOpenings = new Map(); // half-window sill cells → crossing axis; survives shattered glazing
+        this.vehicleCollision = new Map(); // vehicle cell → vertical slab within the voxel
         // PLAN-07 visible damage (gameplay-neutral, shared so every peer and snapshot shows the same marks):
         //   scars   cells whose voxel was shot or blown out; surviving neighbours show a broken edge toward them
         //   scorch  solid cells blackened by blasts and fire, "x,y,z" → 1..3
@@ -147,6 +148,7 @@ export class VoxelStore {
         c.squareCorners=new Set(this.squareCorners);
         c.curveCells=new Map(structuredClone([...this.curveCells]));
         c.windowOpenings=new Map(this.windowOpenings);
+        c.vehicleCollision=new Map(this.vehicleCollision);
         c.scars=new Set(this.scars);c.scorch=new Map(this.scorch);
         c.datum=this.datum;c.supportGroups=structuredClone(this.supportGroups||[]);
         c.mat.set(this.mat); c.hp.set(this.hp); c.rooms.set(this.rooms);

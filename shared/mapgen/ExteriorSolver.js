@@ -166,7 +166,7 @@ export function solveLots(plot, districts, fields, seed) {
         const t = tiles.get(tileId), k = LOT_KINDS[t.kind], [lx, ly] = nodeId.split(',').map(Number), x0 = lx * LOT, y0 = ly * LOT;
         const P = fields.prior, built = Math.max(0.15, Math.min(0.9, P.building.mean(x0, y0, x0 + 7, y0 + 7))), green = P.green.mean(x0, y0, x0 + 7, y0 + 7), paved = P.paved.mean(x0, y0, x0 + 7, y0 + 7);
         let prior = (k.building ? built / share.get(nodeId).b * 4 : (1 - built) / share.get(nodeId).o * 4);
-        if (['pocket_park', 'backyard', 'house'].includes(t.kind)) prior *= 0.6 + green;
+        if (['pocket_park', 'backyard', 'community_garden', 'civic_green', 'house'].includes(t.kind)) prior *= 0.6 + green;
         if (['plaza', 'parking_lot', 'subway_plaza'].includes(t.kind)) prior *= 0.6 + paved;
         const n = noisePref(`lot:${t.kind}`, noiseAt(seed, 'lot', x0 + 4, y0 + 4));
         const dl = fields.play.dist.get(x0 + 4, y0 + 4), H = fields.height.get(x0 + 4, y0 + 4);
@@ -443,9 +443,14 @@ export function piecesFromBays(bays, bayGrid) {
  * Engagement pockets (PLAN-04 §5.4): along the line of play, every 8–12 cells from a quarter of the way in, a pocket
  * of 2–4 cover pieces beside the route on alternating sides, facing the advance. Returned as bay pins.
  */
-const POCKET_COVER = ['low_wall', 'planter', 'hedge', 'tall_planter', 'jersey', 'fence', 'bench'];   // PLAN-13: no vending boxes or sandbags
+const POCKET_COVER = Object.freeze({
+    lawn: ['low_wall', 'hedge', 'planter', 'bench'], yard: ['low_wall', 'planter', 'bench'],
+    sidewalk: ['planter', 'tall_planter', 'low_wall', 'bench'], paving: ['planter', 'tall_planter', 'low_wall', 'bench'],
+    concrete: ['low_wall', 'planter', 'jersey'], gravel: ['low_wall', 'planter', 'jersey'], asphalt: ['jersey', 'planter']
+});
 const bayCls = b => b.cls.startsWith('parking_') || b.cls === 'carriageway' ? 'asphalt' : b.cls.startsWith('lane_') ? 'lane' : b.cls;
 const onRoad = b => b.cls === 'carriageway' || b.cls.startsWith('lane_') || b.cls.startsWith('parking_');
+const pocketCover = b => POCKET_COVER[bayCls(b)] || [];
 export function planPockets(main, bayGrid, { seed, spacing = null } = {}) {
     const pins = new Map(), pockets = [];
     if (!main?.length) return { pins, pockets };
@@ -468,7 +473,7 @@ export function planPockets(main, bayGrid, { seed, spacing = null } = {}) {
             const along = toward === 'n' || toward === 's' ? [1, 0] : [0, 1];
             const run = [[0, 0], along, [-along[0], -along[1]]].map(([ox, oy]) => bayGrid.at(centre.bx + ox, centre.by + oy)).filter(b => b && !b.blocked && !onRoad(b));
             const fits = (base, b) => { const id = `${base}_${toward}`, p = BAY_PIECES[id]; return p && p.surfaces?.includes(bayCls(b)) && !p.cells.some(([x, y]) => b.protected.some(([px, py]) => px === x && py === y)); };
-            const options = POCKET_COVER.filter(base => run[0] && fits(base, run[0]));
+            const options = pocketCover(run[0]).filter(base => fits(base, run[0]));
             const base = options.length ? options[Math.floor(unit(`${seed}:pocket:${k}`) * Math.min(options.length, 3))] : null;
             const members = base ? run.filter(b => fits(base, b)) : [];
             for (const b of members) pins.set(`${b.bx},${b.by}`, `${base}_${toward}`);

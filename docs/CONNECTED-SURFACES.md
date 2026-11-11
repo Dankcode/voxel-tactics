@@ -8,7 +8,7 @@ The game keeps a deterministic movement/destruction grid, but the default presen
 
 Exposed footprint corners use five-segment quadratic curves with a maximum 0.12-cell radius. Joined boundaries remain exact and their internal side faces are omitted. Renderer caps follow the same curved footprint. Adding, removing or burning a neighbour changes the mask; adjacent render chunks are dirtied by VoxelStore. Regenerate the distributable kit with `npm run kit:bake` after geometry changes.
 
-Movement still reserves a wall's grid cell, so a unit cannot path through the thin visual margins. Those margins are open to bullets and sight rays. This deliberately separates movement occupancy from projectile geometry. Furniture and vehicle collision remains its existing voxel envelope; this change does not claim mesh-exact collision for decorative legs, handles or plants.
+Movement still reserves a wall's grid cell, so a unit cannot path through the thin visual margins. Those margins are open to bullets and sight rays. This deliberately separates movement occupancy from projectile geometry. Furniture collision remains its existing voxel envelope. Vehicles keep their movement, cover and tactical sight cells, but shared vertical profiles clip projectile rays to the visible hood, cabin, roof or truck body instead of treating every occupied voxel as a full cube. Decorative wheels, mirrors and trim do not have mesh-exact collision.
 
 ## Cover and ballistics
 

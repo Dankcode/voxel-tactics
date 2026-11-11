@@ -25,7 +25,9 @@ const PROGRAMMES = {
     trailer: { ground: ['living', 'bedroom', 'kitchen', 'bathroom*'], upper: ['bedroom'], top: ['bedroom'] },
     corner_store: { ground: ['convenience', 'storeroom', 'office', 'restroom*'], upper: ['living', 'bedroom', 'kitchen', 'bathroom*'], top: ['living', 'bedroom', 'bathroom*'] },
     laundromat: { ground: ['laundry', 'office', 'storeroom', 'utility*'], upper: ['office', 'storeroom'], top: ['office', 'storeroom'] },
-    lockup: { ground: ['garage_bay', 'storeroom', 'utility*'], upper: ['storeroom'], top: ['storeroom'] }
+    lockup: { ground: ['garage_bay', 'storeroom', 'utility*'], upper: ['storeroom'], top: ['storeroom'] },
+    clinic: { ground: ['lobby', 'ward', 'office', 'restroom*'], upper: ['ward', 'office', 'ward', 'restroom*'], top: ['ward', 'office', 'meeting', 'restroom*'] },
+    library: { ground: ['lobby', 'reading', 'office', 'restroom*'], upper: ['reading', 'study', 'office', 'restroom*'], top: ['reading', 'study', 'meeting', 'restroom*'] }
 };
 const CODE_A = ['Iron', 'Silent', 'Grey', 'Night', 'Glass', 'Cold', 'Black', 'Copper', 'Ashen', 'Low', 'Broken', 'Last'];
 const CODE_B = ['Ledger', 'Harbor', 'Lantern', 'Viaduct', 'Canopy', 'Signal', 'Gutter', 'Spire', 'Ward', 'Switchyard', 'Crossing', 'Furnace'];

@@ -124,12 +124,23 @@ export function containsPoint(poly, x, y) {
     return inside;
 }
 /** Ray/prism intersection restricted to this DDA cell interval. Returns distance and voxel-space normal. */
-export function intersectCellShape(store, x, y, z, origin, dir, enter, exit) {
+export function intersectCellShape(store, x, y, z, origin, dir, enter, exit, { shapedVehicles = false } = {}) {
+    const slab=shapedVehicles?store.vehicleCollision?.get(`${x},${y},${z}`):null;
+    let slabNormal=null;
+    if(slab){
+        if(Math.abs(dir[2])<1e-10){if(origin[2]<z+slab[0]||origin[2]>z+slab[1])return null;}
+        else{
+            const a=(z+slab[0]-origin[2])/dir[2],b=(z+slab[1]-origin[2])/dir[2],lo=Math.min(a,b),hi=Math.max(a,b);
+            if(lo>enter){enter=lo;slabNormal=[0,0,-Math.sign(dir[2])];}
+            exit=Math.min(exit,hi);
+        }
+        if(enter>exit+1e-8)return null;
+    }
     const poly = collisionFootprint(store,x,y,z);
-    if (!poly) return { t: enter, normal: null };
+    if (!poly) return { t: enter, normal: slabNormal };
     const px = origin[0]-x, py=origin[1]-y;
     const at = t => containsPoint(poly,px+dir[0]*t,py+dir[1]*t);
-    if (at(enter+1e-7)) return { t: enter, normal: null };
+    if (at(enter+1e-7)) return { t: enter, normal: slabNormal };
     let best = null;
     for (let i=0;i<poly.length;i++) {
         const a=poly[i], b=poly[(i+1)%poly.length], ex=b[0]-a[0], ey=b[1]-a[1];

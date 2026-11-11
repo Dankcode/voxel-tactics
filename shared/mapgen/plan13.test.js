@@ -15,6 +15,10 @@ test('PLAN-13 lot pools carry no random scatter; layouts only use real pieces', 
         assert.ok(!BOXES.includes(base), `${kind}: ${base}`);
         assert.ok(BAY_PIECES[base] || BAY_PIECES[`${base}_n`], `${kind}: ${base} exists`);
     }
+    for (const kind of ['community_garden', 'civic_green']) {
+        assert.ok(PARCEL_LAYOUTS[kind].length >= 6, `${kind}: a designed civic space`);
+        assert.ok(PARCEL_LAYOUTS[kind].every(([u, v]) => v >= 3 || u === 0 || u === 3), `${kind}: central street-to-garden path stays clear`);
+    }
 });
 
 for (const plot of ['downtown', 'industrial', 'suburb']) test(`PLAN-13 ${plot}: no outdoor boxes or stray roofs, entrances are open stairs`, () => {

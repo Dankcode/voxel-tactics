@@ -11,7 +11,7 @@
 //   buildings  each exported building's cells (its wing rectangles, then the rest of its 'B' land) → ModernBuilder
 //              wings, rooms, stairs, glazing and furniture; party walls shared; tenants become units; landmarks dressed
 //   parcels    the open land is the game's: the district parcel fill runs on it with the place theme's mix weights
-//              (yards, gardens, garages, sheds, back lots, service yards …) and may add a few small buildings
+//              (yards, gardens, garages, sheds, back lots, service yards …); extra buildings are opt-in, off by default
 //   play       objective, insertion, cover repair and enemy pods along the line of play
 //
 // layers@1 extensions this reader also takes when present (Geo-voxel does not export them yet): a building's
@@ -38,7 +38,7 @@ import { lotStripesToPaint } from '../mapgen/geo/GeoRoadPaint.js';
 import { placeGeoProps } from '../mapgen/geo/GeoStreetProps.js';
 import { dressLandmark, landmarkHeadroom, styleFamily, LANDMARK_MAX_HEIGHT } from '../mapgen/geo/GeoLandmark.js';
 
-export const PLACE_GENERATOR_VERSION = 'place-import-1';
+export const PLACE_GENERATOR_VERSION = 'place-import-2';
 export const LAYERS_FORMAT = 'geo-voxels/layers@1';
 /** Place theme → the district family whose parcel mixes fill the open land. */
 export const THEME_FAMILY = Object.freeze({ Downtown: 'urban', Landmark: 'urban', 'Strip centre': 'retail', Suburbs: 'suburban', Industrial: 'industrial', Roadside: 'roadside', Mixed: 'mixed' });
@@ -86,7 +86,7 @@ export function readLayers(input) {
  *   openLand ('parcels' | 'park'; default by theme), lotsToParcels (lot ids, or true for every lot, handed to the
  *   parcel fill instead of being striped as car parks), timeOfDay, audit, coverRepair, enforceGates }
  */
-export function buildPlaceMission({ layers, id = 'place', name = 'Imported place', seed = 1, objectiveName = null, theme = 'Downtown', family = null, programs = {}, maxStoreys = 3, newBuildings = 'auto', openLand = null, lotsToParcels = [], timeOfDay = 'dusk', audit = true, coverRepair = true, enforceGates = false } = {}) {
+export function buildPlaceMission({ layers, id = 'place', name = 'Imported place', seed = 1, objectiveName = null, theme = 'Downtown', family = null, programs = {}, maxStoreys = 3, newBuildings = 0, openLand = null, lotsToParcels = [], timeOfDay = 'dusk', audit = true, coverRepair = true, enforceGates = false } = {}) {
     const L = readLayers(layers), F = L.frame, W = F.width, D = F.depth, codes = L.landUse.codes;
     const fam = family || THEME_FAMILY[theme] || 'urban', openMode = openLand || THEME_OPEN_LAND[theme] || 'parcels';
     const report = { source: L.format, theme, family: fam, size: [W, D], theta: F.theta ?? 0, buildings: [], dropped: [], storeys: [], roads: [], lots: [], landmarks: [], units: [], terrain: null };
@@ -206,12 +206,13 @@ export function buildPlaceMission({ layers, id = 'place', name = 'Imported place
         // open land stays untagged ("plain"): the parcel fill below decides what it becomes
     }
     let realTrees = 0;
+    const realTreeCells = [];
     for (const t of (L.furniture || []).filter(f => f.kind === 'tree' && Array.isArray(f.at))) {
         const x = Math.floor(t.at[0]), y = Math.floor(t.at[1]); if (!inMapC(x, y) || occupied.has(k2(x, y))) continue;
         const role = roadAt.get(k2(x, y))?.role, land = landAt.get(k2(x, y));
         if (role && role !== 'sidewalk' || !role && !land) continue;
         if (role === 'sidewalk') tag(m, x, y, 'verge', { force: true }); else if (!tagAt(m, x, y) || tagAt(m, x, y) === 'plain') tag(m, x, y, 'green', { force: true });
-        if (plantTree(m, x, y, role === 'sidewalk' ? 'road:osm/street-tree' : 'place:osm/tree')) realTrees++;
+        if (plantTree(m, x, y, role === 'sidewalk' ? 'road:osm/street-tree' : 'place:osm/tree')) { realTrees++; realTreeCells.push([x, y]); }
         if (role === 'sidewalk') tag(m, x, y, 'sidewalk', { force: true });
     }
     report.realTrees = realTrees;
@@ -352,7 +353,7 @@ export function buildPlaceMission({ layers, id = 'place', name = 'Imported place
             }
         }
     }
-    let trees = 0;
+    let trees = 0, streetTreesSuppressed = 0;
     for (const r of roads) if (r.sidewalk) {
         let acc = 0;
         for (let i = 1; i < r.line.length; i++) {
@@ -363,6 +364,7 @@ export function buildPlaceMission({ layers, id = 'place', name = 'Imported place
                 for (const side of [-1, 1]) {
                     const off = r.half + 1 + r.sidewalk - 0.5, x = Math.floor(ax + ux * t - uy * off * side), y = Math.floor(ay + uy * t + ux * off * side);
                     if (roadAt.get(k2(x, y))?.role !== 'sidewalk' || m.keep.has(k2(x, y))) continue;
+                    if (realTreeCells.some(([tx, ty]) => Math.hypot(tx - x, ty - y) <= 4)) { streetTreesSuppressed++; continue; }
                     tag(m, x, y, 'verge', { force: true });
                     const ok = plantTree(m, x, y, `road:${r.id}/street-tree`);
                     tag(m, x, y, 'sidewalk', { force: true });
@@ -372,6 +374,7 @@ export function buildPlaceMission({ layers, id = 'place', name = 'Imported place
             acc += Ls;
         }
     }
+    report.streetTreesSuppressed = streetTreesSuppressed;
     const kerbVehicles = placeKerbVehicles(m, seed);
     // road paint: Geo-voxel's plan as exported, plus the car-park stripes (thin lines, not painted voxels)
     const quads = (L.paint?.quads || []).map(q => ({ c: q.c, z: q.z, color: q.color }));

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { Fx, TRACER_SPEED, TRACER_LENGTH, BURST_GAP } from '../Fx.js';
 import { EventPlayer } from '../../anim/EventPlayer.js';
+import { CutInDirector } from '../../anim/CutInDirector.js';
 
 const fxOf = () => new Fx({ scene: new THREE.Scene(), clipping: [], shake: 0 }, null);
 
@@ -44,4 +45,19 @@ test('burst rounds leave the muzzle one after another; impacts leave no spherica
     const added = fx.items.filter(x => !before.has(x));
     assert.ok(added.some(x => x.kind === 'spark'), 'metal throws sparks');
     assert.ok(added.every(x => x.kind === 'spark' && x.obj.geometry.type !== 'SphereGeometry'));
+});
+
+test('the rendered barrel supplies the tracer and flash origin without moving the authoritative impact', async () => {
+    const camera=new THREE.PerspectiveCamera(38,16/9,.08,300);camera.position.set(0,3,8);camera.lookAt(0,2,0);camera.updateMatrixWorld(true);
+    const director=Object.create(CutInDirector.prototype),muzzle={x:0,y:0,h:2},impact={x:0,y:-10,h:2};
+    Object.assign(director,{cameraDirector:{scene:{camera}},aiming:{figure:{},art:{staticPose:true,width:1000,height:1000,screenHeight:1},weapon:{targets:{muzzle:[.4,.53]}}}});
+    const origin=director.tracerOrigin(muzzle,impact),ndc=new THREE.Vector3(origin.x,origin.h,origin.y).project(camera);
+    assert.ok(Math.abs((ndc.x+1)/2-.225)<1e-9&&Math.abs((1-ndc.y)/2-.53)<1e-9,'the tracer starts exactly at the rendered barrel tip');
+    const fx=fxOf();let flash;fx.flash=at=>{flash=at;};
+    const player=new EventPlayer({fx,voxelView:{flush(){}},hud:{refresh(){}},battle:null,views:new Map(),cutins:{tracerOrigin:(m,t)=>director.tracerOrigin(m,t)}});
+    player.speed=1000;
+    await player.play({t:'shot',unitId:'x',weaponId:'repeater',muzzle,aim:impact,rounds:1,reaction:false,projectiles:[{to:impact,kind:'none'}]});
+    const tracer=fx.items.find(x=>x.kind==='tracer');
+    assert.deepEqual(tracer.a,new THREE.Vector3(origin.x,origin.h,origin.y));assert.deepEqual(tracer.b,new THREE.Vector3(impact.x,impact.h,impact.y));
+    assert.deepEqual(flash,origin);
 });

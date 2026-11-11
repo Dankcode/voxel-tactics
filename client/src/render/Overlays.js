@@ -391,9 +391,14 @@ function tileMesh(cells, material) {
     return m;
 }
 
-/** Edge strips just inside a cell's border, on the tile top. edges: [node, dx, dy]. */
-function edgeMesh(edges, material) {
-    const pos = [], idx = [], w = 0.09, y0 = 0.035;
+/** Connected edge strips just inside cell borders, with square joins at shared grid vertices. */
+export function edgeMesh(edges, material) {
+    const pos = [], idx = [], joins = new Map(), w = 0.09, y0 = 0.035;
+    const quad = (a,b,c,d,y) => {
+        const base=pos.length/3;
+        for(const p of [a,b,c,d])pos.push(p[0],y,p[1]);
+        idx.push(base,base+2,base+1,base,base+3,base+2);
+    };
     for (const [n, dx, dy] of edges) {
         const y = n.z + 1 + y0 - dropAt(n.x, n.y, n.z), x0 = n.x, z0 = n.y;
         let a, b, c, d;
@@ -401,10 +406,10 @@ function edgeMesh(edges, material) {
         else if (dy === 1) { a = [x0, z0 + 1 - w]; b = [x0 + 1, z0 + 1 - w]; c = [x0 + 1, z0 + 1]; d = [x0, z0 + 1]; }
         else if (dx === -1) { a = [x0, z0]; b = [x0 + w, z0]; c = [x0 + w, z0 + 1]; d = [x0, z0 + 1]; }
         else { a = [x0 + 1 - w, z0]; b = [x0 + 1, z0]; c = [x0 + 1, z0 + 1]; d = [x0 + 1 - w, z0 + 1]; }
-        const base = pos.length / 3;
-        for (const p of [a, b, c, d]) pos.push(p[0], y, p[1]);
-        idx.push(base, base + 2, base + 1, base, base + 3, base + 2);
+        quad(a,b,c,d,y);
+        for(const [x,z] of dy?[a,b]:dx<0?[a,d]:[b,c])joins.set(`${x},${z},${y}`,[x,z,y]);
     }
+    for(const [x,z,y] of joins.values())quad([x-w/2,z-w/2],[x+w/2,z-w/2],[x+w/2,z+w/2],[x-w/2,z+w/2],y);
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
     const m = new THREE.Mesh(g, material); m.renderOrder = 6;
     return m;

@@ -87,10 +87,12 @@ test('new double-tile curve modules load alongside an existing baked library',as
  for(const kind of ['wall','floor','glass'])for(let turn=0;turn<4;turn++)for(let dx=0;dx<2;dx++)for(let dy=0;dy<2;dy++)assert.ok(kit.piece(`double_curve_${kind}_${turn}_${dx}_${dy}`));
 });
 
-test('aim clearance removes foreground geometry without cutting target cover',()=>{
- const c=new CameraDirector({aspect:16/9}),s=new VoxelStore(24,24,10);c.store=s;
+test('aiming keeps the complete map rendered while choosing clear positions around walls',()=>{
+ const c=new CameraDirector({aspect:16/9}),s=new VoxelStore(24,24,10),xrayCalls=[];c.store=s;c.xray=value=>xrayCalls.push(value);
  s.fill(7,4,2,9,4,4,'concrete_wall');s.fill(7,12,2,9,12,4,'concrete_wall');
- const cells=c.foregroundCells(new THREE.Vector3(8.5,3,2.5),new THREE.Vector3(8.5,3,18.5),new THREE.Vector3(8.5,2,6.5));
- assert.ok([...cells].some(k=>k.split(',')[1]==='4'));
- assert.ok([...cells].every(k=>k.split(',')[1]!=='12'));
+ const shooter=new THREE.Vector3(8.5,2,6.5),target=new THREE.Vector3(8.5,3,18.5);
+ c.prepareAim(shooter,target);
+ assert.equal(c.phase,'prepare');assert.equal(c.xrayCells,null);assert.deepEqual(xrayCalls,[null]);
+ c.track(target,1/60);
+ assert.equal(c.xrayCells,null);assert.deepEqual(xrayCalls,[null]);
 });

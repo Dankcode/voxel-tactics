@@ -294,16 +294,18 @@ Overwatch reactions (both sides) and every NPC shot now roll an XCOM 2-style per
   reactions for that step (the soldier is exposed: known overwatch fires, reaction shots use the peek tile's cover),
   fires (leans and step-outs still apply from the peek tile), then steps back home (`peekBack`). A soldier killed on
   the peek tile stays there. The reticle line shows the peek tile's cover (`peekExposure`) and any known overwatch.
-  Esc steps back from a peek before it leaves aiming. Strafing translates the muzzle and every aim-state point by the
-  same displacement, preserving shot direction and distance. The shoulder camera keeps its viewing direction even when
-  the shoulder changes or a wall pulls it in; the next mouse movement releases that fixed direction.
+  Esc steps back from a peek before it leaves aiming. Strafing preserves the world aim point, reticle target and raw
+  mouse-derived point while recalculating the muzzle from the new tile. The shoulder camera keeps its viewing direction
+  even when the shoulder changes or a wall pulls it in; the next mouse movement releases that fixed direction.
 - **Free aim**: mouse movement preserves the exact derived point and distance, with no target, body-part, or surface
-  snapping. `partUnderRay` passively identifies a visible hostile under the reticle for target-dependent modifiers.
-  Hit detection is refreshed from the current stance muzzle every aiming frame, including immediately after a strafe.
-  Entering aim starts eight tiles along the soldier's facing rather than selecting a spotted enemy.
+  snapping. `partUnderRay` passively identifies a visible hostile under the reticle for target-dependent modifiers,
+  but bullet-stopping cover occludes that hitbox just as it stops the leading projectile. Hit detection is refreshed
+  from the current stance muzzle every aiming frame, including immediately after a strafe. Entering aim starts eight
+  tiles along the soldier's facing rather than selecting a spotted enemy. Tracers and muzzle flashes start at the
+  rendered barrel tip and finish at the authoritative projectile impact; they do not alter collision resolution.
 - **Shotgun reticle**: one angular accuracy circle uses the live perspective field of view, so zooming changes its
   projected radius in exact proportion to magnification. The shotgun's base spread is 4°; range and status modifiers
   still apply. Only the distance readout accompanies it.
-- **Aim camera** (`CameraDirector.track`): wall tests always run from the current shooter (home or peek); the
-  shoulder pulls in continuously and then tries 0.6 tiles higher; the camera is never placed inside a solid voxel; the
-  x-ray cut keeps a cell for 0.4 s after it stops blocking, so fast swings do not flash walls back in.
+- **Aim camera** (`CameraDirector.track`): shooting renders the complete map without hiding foreground or target-cover
+  voxels. Wall tests always run from the current shooter (home or peek); the shoulder pulls in continuously and then
+  tries 0.6 tiles higher or moves to another clear position.

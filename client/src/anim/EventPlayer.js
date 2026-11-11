@@ -124,7 +124,8 @@ export class EventPlayer {
                 if (e.aim) v?.face(e.aim.x - (v.unit.x + 0.5), e.aim.y - (v.unit.y + 0.5));
                 const w = WEAPONS[e.weaponId],audible=v&&(v.unit.side==='player'||g.isVisible(v.unit));
                 if(audible)g.audio.play(weaponSound(e.weaponId),{volume:e.weaponId==='longrifle'?.72:.58});
-                fx.flash(e.muzzle, 0xffe08a, 0.25);
+                const tracerFrom=g.cutins?.tracerOrigin?.(e.muzzle,e.aim)||e.muzzle;
+                fx.flash(tracerFrom, 0xffe08a, 0.25);
                 // PLAN-07 tracers: squad warm white, enemies red-orange, overwatch amber, elemental shots in colour.
                 // Burst/auto rounds leave BURST_GAP apart; pellets of one shell fly together.
                 const shooter = this.view(e.unitId)?.unit;
@@ -134,8 +135,9 @@ export class EventPlayer {
                 e.projectiles.forEach((p, i) => {
                     const delay = Math.floor(i / perRound) * BURST_GAP / this.speed;
                     const d = Math.hypot(p.to.x - e.muzzle.x, p.to.y - e.muzzle.y, p.to.h - e.muzzle.h);
-                    last = Math.max(last, delay + d / (TRACER_SPEED * this.speed));
-                    fx.tracer(e.muzzle, p.to, color, { delay, speed: TRACER_SPEED * this.speed, light: i === 0, onArrive: () => {
+                    const travel = Math.hypot(p.to.x - tracerFrom.x, p.to.y - tracerFrom.y, p.to.h - tracerFrom.h);
+                    last = Math.max(last, delay + travel / (TRACER_SPEED * this.speed));
+                    fx.tracer(tracerFrom, p.to, color, { delay, speed: TRACER_SPEED * this.speed, light: i === 0, onArrive: () => {
                         const family=p.kind==='voxel'?materialById(g.battle?.store.get(p.voxel?.x, p.voxel?.y, p.voxel?.z) ?? 0).family||'stone':p.kind==='unit'?'unit':null;
                         if(family){fx.impact(p.to,family);if(audible&&i%perRound===0)g.audio.play(impactSound(family),{volume:.28});}
                         if (p.kind === 'unit' && p.crit) fx.float(new THREE.Vector3(p.to.x, p.to.h - 1.6, p.to.y), 'CRITICAL', '#ffd34d', 20);

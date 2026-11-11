@@ -329,14 +329,14 @@ export class Game {
         if (td.resetPeek) this.setPeek(null, { reframe: false });
         this.cancelAutoEnd();
         if (this.cameraDirector.phase === 'prepare') this.cameraDirector.end();
-        this.mode = m;this.aimDrag=null;this.rawAim=null;this.aimPick=null;
+        const wasShooting=this.mode.kind==='shoot';this.mode = m;this.aimDrag=null;this.rawAim=null;this.aimPick=null;
         if (['throw','gadget','breach'].includes(m.kind)) this.views.get(this.selected)?.flashStatus?.(); this.freeAim=null;this.freeAimManual=false;this.moveConfirmation=null;this.aim.clear();this.aimStance=null;
         this.aimPointer.setEnabled(m.kind==='shoot');
         if(m.kind!=='shoot')this.hud.el('.aim-reticle')?.classList.add('hidden');   // PLAN-15: never a reticle beside another tool
         this.overlays.clearAim();
         this.overlays.clearPath();
         this.overlays.showCover(this.battle?.store, null);
-        if (m.kind === 'shoot') this.enterTargeting();
+        if (m.kind === 'shoot') this.enterTargeting();else if(wasShooting)this.focusFloor(this.selectedUnit());
         this.refreshRange();
         this.hud.refresh();
     }
@@ -411,7 +411,7 @@ export class Game {
         const u = this.selectedUnit(); if (!u) return;
         this.freeAim = this.defaultAimPoint(u);
         this.aim.snap(this.freeAim); this.freeAimManual = true;
-        this.frameAim(u, this.freeAim); this.focusFloor(u);
+        this.frameAim(u, this.freeAim); this.setLevel(Infinity);
         if(navigator.userActivation?.isActive&&!this.aimPointer.unavailable)this.aimPointer.request();
     }
     confirmFire() {
@@ -421,29 +421,32 @@ export class Game {
             if (!target) { this.hud.toast('Put the reticle on an enemy to suppress', 'warn'); return; }
             return this.intent({ type: 'ability', abilityId: 'suppress', targetId: target.id });
         }
-        if (this.freeAim) this.intent({type:'shoot',weaponId:this.mode.weaponId,aim:{point:{...this.freeAim}},...(this.peek?{from:{...this.peek}}:{})});
+        if (this.freeAim) return this.intent({type:'shoot',weaponId:this.mode.weaponId,aim:{point:{...this.freeAim}},...(this.peek?{from:{...this.peek}}:{})});
     }
 
     // ------------------------------------------------------------------ intents
-    canAct() { return this.battle && !this.battle.outcome && (!this.session.local || this.player.idle()) && this.session.canAct?.() !== false && (this.battle.activeSide === 'player' || this.debug.manualEnemy) && !this.aiRunning; }
+    canAct() { return this.battle && !this.actionPending && !this.battle.outcome && (!this.session.local || this.player.idle()) && this.session.canAct?.() !== false && (this.battle.activeSide === 'player' || this.debug.manualEnemy) && !this.aiRunning; }
     async intent(partial) {
         const u = this.selectedUnit();
         if (!this.canAct()) return { ok: false };
-        const intent = { unitId: u?.id, by: this.session.playerId || 'player', ...partial };
-        this.overlays.clearRange(); this.overlays.clearPath(); this.overlays.showCover(this.battle.store, null); this.hud.cursorTip(null);
-        const r = await this.session.submit(intent);
-        if (!r.ok) { this.hud.toast(`Can't: ${reasonText(r.reason)}`, 'warn'); this.refreshRange(); return r; }
-        this.player.enqueue(r.events || []);
-        await this.player.whenIdle();
-        if (partial.type === 'reload' && u) this.views.get(u.id)?.flashStatus?.();
-        if(['inventoryMove','equipCargo','setFireMode','mark','formation_plan'].includes(partial.type)){this.refreshRange();this.hud.refresh();return r;}
-        if (this.battle.outcome) return r;
-        const continuousAim=this.cameraDirector.phase==='prepare'&&this.cameraDirector.aimContinuity&&this.cameraDirector.aimUnitId===u?.id;
-        if (u && alive(u) && this.mode.kind === 'shoot' && partial.type === 'shoot' && u.ap >= this.battle.shotAp(u, WEAPONS[this.mode.weaponId])) {
-            if(!continuousAim)this.setMode({ kind: 'shoot', weaponId: this.mode.weaponId });
-        } else this.setMode({ kind: 'move' });
-        await this.afterUnitAction(u);
-        return r;
+        this.actionPending=true;
+        try {
+            const intent = { unitId: u?.id, by: this.session.playerId || 'player', ...partial };
+            this.overlays.clearRange(); this.overlays.clearPath(); this.overlays.showCover(this.battle.store, null); this.hud.cursorTip(null);
+            const r = await this.session.submit(intent);
+            if (!r.ok) { this.hud.toast(`Can't: ${reasonText(r.reason)}`, 'warn'); this.refreshRange(); return r; }
+            this.player.enqueue(r.events || []);
+            await this.player.whenIdle();
+            if (partial.type === 'reload' && u) this.views.get(u.id)?.flashStatus?.();
+            if(['inventoryMove','equipCargo','setFireMode','mark','formation_plan'].includes(partial.type)){this.refreshRange();this.hud.refresh();return r;}
+            if (this.battle.outcome) return r;
+            const continuousAim=this.cameraDirector.phase==='prepare'&&this.cameraDirector.aimContinuity&&this.cameraDirector.aimUnitId===u?.id;
+            if (u && alive(u) && this.mode.kind === 'shoot' && partial.type === 'shoot' && u.ap >= this.battle.shotAp(u, WEAPONS[this.mode.weaponId])) {
+                if(!continuousAim)this.setMode({ kind: 'shoot', weaponId: this.mode.weaponId });
+            } else this.setMode({ kind: 'move' });
+            await this.afterUnitAction(u);
+            return r;
+        } finally { this.actionPending=false; }
     }
     /** XCOM flow: a spent soldier hands over to the next ready one; a spent squad prompts the player to end the phase. */
     async afterUnitAction(u) {
@@ -940,29 +943,17 @@ export class Game {
         if(next===undefined){this.hud.toast('No room to lean that way','warn');return;}
         this.setPeek(next&&(next.x!==u.x||next.y!==u.y)?next:null);
     }
-    /** PLAN-15: set or clear the peek tile; the sprite and aim camera translate without turning the shot. */
+    /** PLAN-15: strafe without turning the camera or moving the world point under the reticle. */
     setPeek(cell,{reframe=true}={}){
         const u=this.selectedUnit(),prev=this.peek;if(!cell&&!prev&&!reframe)return;
         const aiming=reframe&&u&&this.mode.kind==='shoot'&&this.freeAim&&(prev?.x!==cell?.x||prev?.y!==cell?.y);
-        const oldOrigin=aiming?this.aimOrigin(u):null,oldAim=aiming?{...this.freeAim}:null;
         this.peek=cell||null;this.peekInfo=null;
         if(u){
             this.peekSide=null;
             if(cell){const f=new THREE.Vector3();this.cameraDirector.cam.getWorldDirection(f);const rx=-f.z,ry=f.x,d=(cell.x-u.x)*rx+(cell.y-u.y)*ry;this.peekSide=d<-0.2?'left':d>0.2?'right':null;}
             const v=this.views.get(u.id),to=cell||u;
             if(v){const from=v.pos.clone();this.peekGlide={view:v,from,to:new THREE.Vector3(to.x+.5,to.z+1,to.y+.5),t:0,dur:0.14};}
-            if(aiming){
-                const shift=(p,d)=>({...p,x:p.x+d.x,y:p.y+d.y,h:p.h+d.h});
-                const tileDelta={x:(cell?.x??u.x)-(prev?.x??u.x),y:(cell?.y??u.y)-(prev?.y??u.y),h:(cell?.z??u.z)-(prev?.z??u.z)};
-                const firstMuzzle=this.aimMuzzle(u,shift(oldAim,tileDelta));
-                let delta={x:firstMuzzle.x-oldOrigin.x,y:firstMuzzle.y-oldOrigin.y,h:firstMuzzle.h-oldOrigin.h};
-                const finalMuzzle=this.aimMuzzle(u,shift(oldAim,delta));
-                delta={x:finalMuzzle.x-oldOrigin.x,y:finalMuzzle.y-oldOrigin.y,h:finalMuzzle.h-oldOrigin.h};
-                this.freeAim=shift(oldAim,delta);
-                this.aim.current=shift(this.aim.current,delta);this.aim.target=shift(this.aim.target,delta);
-                if(this.rawAim)this.rawAim=shift(this.rawAim,delta);
-                this.aimStance=null;this.frameAim(u,this.freeAim,finalMuzzle,{preserveDirection:true});
-            }
+            if(aiming){this.aimStance=null;this.frameAim(u,this.freeAim,this.aimMuzzle(u,this.freeAim),{preserveDirection:true});}
         }
         this.hud.renderTarget?.();
     }
