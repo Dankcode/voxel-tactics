@@ -63,12 +63,15 @@ export class EventPlayer {
                 const sv = this.view(e.unitId), tv = target ? this.view(target.id) : null;
                 // A shot from a blocked angle is framed from the side tile the soldier steps out to.
                 const step = e.muzzle?.step, shooterPos = step && sv ? new THREE.Vector3(step.x + 0.5, sv.worldPosition().y, step.y + 0.5) : sv?.worldPosition();
+                const next = this.queue[0];
+                const aimImpact = u.side === 'player' && !target && next?.t === 'shot' && next.unitId === u.id
+                    ? next.projectiles[0]?.to : null;
                 const shotPoint=e.aimPoint||(target?{x:target.x+.5,y:target.y+.5,h:target.z+1.55}:null);
                 const spreadTarget=target||(e.aimPoint?aimedUnit(g.battle,u,shotPoint):null);
                 const spread=e.weaponId&&shotPoint?g.battle.spreadFor(u,WEAPONS[e.weaponId],shotPoint,{target:spreadTarget}).spread:1;
                 const aimDistance=e.muzzle&&shotPoint?Math.hypot(shotPoint.x-e.muzzle.x,shotPoint.y-e.muzzle.y,shotPoint.h-e.muzzle.h):undefined;
                 await g.cutins.play({ units: group, weaponId: e.weaponId, kind: e.kind, title, subtitle: sub, side: u.side, shoulder: e.muzzle?.side,spread,aimDistance,
-                    shooterPos, targetPos: e.aimPoint?new THREE.Vector3(e.aimPoint.x,e.aimPoint.h-1.1,e.aimPoint.y):tv ? tv.worldPosition() : sv?.worldPosition().clone().add(new THREE.Vector3(...faceVec(u)).multiplyScalar(4)) });
+                    shooterPos, targetPos: aimImpact ? new THREE.Vector3(aimImpact.x,aimImpact.h-1.1,aimImpact.y) : e.aimPoint?new THREE.Vector3(e.aimPoint.x,e.aimPoint.h-1.1,e.aimPoint.y):tv ? tv.worldPosition() : sv?.worldPosition().clone().add(new THREE.Vector3(...faceVec(u)).multiplyScalar(4)) });
                 break;
             }
             case 'move': case 'knockback': {
@@ -106,7 +109,13 @@ export class EventPlayer {
                                 px = a.x + (b.x - a.x) * hk; py = a.y + (b.y - a.y) * hk; pz = a.z + (b.z - a.z) * vk;
                             }
                             v.setCell(px, py, pz);
-                            g.updateEnemyVisibility();
+                            if (v.unit.side === 'enemy' && g.fog) {
+                                const cell = k < .5 ? a : b;
+                                if (s === 1 || s === Math.ceil(steps / 2)) {
+                                    const visible = g.discoveryVisible.has(v.id) || g.battle.unitsOf('player').some(u => g.battle.sees(u, {...v.unit, ...cell}));
+                                    v.setVisible(visible && !g.voxelView.interiorVisibility.hiddenAt(cell.x, cell.y, cell.z+1));
+                                }
+                            }
                             await wait(len / speed / steps);
                         }
                     }
@@ -125,11 +134,12 @@ export class EventPlayer {
                 const w = WEAPONS[e.weaponId],audible=v&&(v.unit.side==='player'||g.isVisible(v.unit));
                 if(audible)g.audio.play(weaponSound(e.weaponId),{volume:e.weaponId==='longrifle'?.72:.58});
                 const tracerFrom=g.cutins?.tracerOrigin?.(e.muzzle,e.aim)||e.muzzle;
-                fx.flash(tracerFrom, 0xffe08a, 0.25);
+
                 // PLAN-07 tracers: squad warm white, enemies red-orange, overwatch amber, elemental shots in colour.
                 // Burst/auto rounds leave BURST_GAP apart; pellets of one shell fly together.
                 const shooter = this.view(e.unitId)?.unit;
                 const color = w?.element ? new THREE.Color(ELEMENT_COLORS[w.element]).getHex() : e.reaction ? 0xffb347 : shooter?.side === 'enemy' ? 0xff6a4a : 0xfff0c8;
+                fx.flash(tracerFrom, color, shooter?.side === 'enemy' ? .36 : .25);
                 const perRound = Math.max(1, Math.round(e.projectiles.length / Math.max(1, e.rounds || 1)));
                 let last = 0;
                 e.projectiles.forEach((p, i) => {
@@ -138,7 +148,7 @@ export class EventPlayer {
                     const travel = Math.hypot(p.to.x - tracerFrom.x, p.to.y - tracerFrom.y, p.to.h - tracerFrom.h);
                     last = Math.max(last, delay + travel / (TRACER_SPEED * this.speed));
                     fx.tracer(tracerFrom, p.to, color, { delay, speed: TRACER_SPEED * this.speed, light: i === 0, onArrive: () => {
-                        const family=p.kind==='voxel'?materialById(g.battle?.store.get(p.voxel?.x, p.voxel?.y, p.voxel?.z) ?? 0).family||'stone':p.kind==='unit'?'unit':null;
+                        const family=p.kind==='voxel'?materialById(p.material ?? g.battle?.store.get(p.voxel?.x, p.voxel?.y, p.voxel?.z) ?? 0).family||'stone':p.kind==='unit'?'unit':null;
                         if(family){fx.impact(p.to,family);if(audible&&i%perRound===0)g.audio.play(impactSound(family),{volume:.28});}
                         if (p.kind === 'unit' && p.crit) fx.float(new THREE.Vector3(p.to.x, p.to.h - 1.6, p.to.y), 'CRITICAL', '#ffd34d', 20);
                         for (const q of p.pierced || []) { const k = q.t / Math.max(d, 1e-6); fx.impact({ x: e.muzzle.x + (p.to.x - e.muzzle.x) * k, y: e.muzzle.y + (p.to.y - e.muzzle.y) * k, h: e.muzzle.h + (p.to.h - e.muzzle.h) * k }, 'stone', { exit: true }); }
@@ -152,9 +162,21 @@ export class EventPlayer {
             }
             case 'melee': {
                 const v = this.view(e.unitId), t = this.view(e.targetId);
-                if (v && t) { v.face(t.unit.x - v.unit.x, t.unit.y - v.unit.y); v.animator.play('fire', { restart: true }); }
+                let start, contact;
+                if (v && t) {
+                    const dx = t.pos.x - v.pos.x, dy = t.pos.z - v.pos.z, distance = Math.hypot(dx,dy) || 1;
+                    v.face(dx, dy);
+                    v.animator.play('fire', { restart:true });
+                    start = {x:v.pos.x-.5, y:v.pos.z-.5, z:v.visualZ};
+                    contact = {...start, x:start.x+.32*dx/distance, y:start.y+.32*dy/distance};
+                    await this.slide(v, start, contact, .12);
+                }
                 if(v&&(v.unit.side==='player'||g.isVisible(v.unit)))g.audio.play('meleeHit',{volume:.5});
-                await this.d(0.3);
+                if (t && (t.unit.side === 'player' || g.isVisible(t.unit))) {
+                    const p = t.worldPosition();
+                    fx.impact({x:p.x, y:p.z, h:p.y+1}, 'unit');
+                }
+                if (contact) await this.slide(v, contact, start, .18);
                 break;
             }
             case 'throw': {

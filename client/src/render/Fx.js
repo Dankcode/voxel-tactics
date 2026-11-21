@@ -42,18 +42,17 @@ export class Fx {
         this.items.push(it);
         return it;
     }
-    /** Impact feedback is limited to brief sparks; physical damage and sound carry the other material families. */
+    /** Short material-colored fragments at the projectile contact point. */
     impact(at, family = 'stone') {
-        if (family === 'metal' || family === 'unit') {
-            const col = family === 'metal' ? 0xffd27a : 0xd04030;
-            const p = w2t(at);
-            const n = family === 'metal' ? 4 : 3;
-            for (let i = 0; i < n; i++) {
-                const v = new THREE.Vector3(Math.cos(i * 2.4) * 2.2, 1.4 + (i % 2), Math.sin(i * 2.4) * 2.2);
-                const s = new THREE.Mesh(this.sparkGeo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
-                s.position.copy(p); this.group.add(s);
-                this.items.push({ obj: s, life: 0.22, max: 0.22, kind: 'spark', v });
-            }
+        const col = family === 'metal' ? 0xffd27a : family === 'unit' ? 0xdb6254 : family === 'wood' ? 0xc49b6c : 0xc4beb4;
+        const p = w2t(at);
+        const n = family === 'metal' ? 4 : 3;
+        for (let i = 0; i < n; i++) {
+            const v = new THREE.Vector3(Math.cos(i * 2.4) * 2.2, 1.4 + (i % 2), Math.sin(i * 2.4) * 2.2);
+            const s = new THREE.Mesh(this.sparkGeo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+            s.scale.setScalar(family === 'unit' ? 1.8 : 1.4);
+            s.position.copy(p); this.group.add(s);
+            this.items.push({ obj: s, life: 0.22, max: 0.22, kind: 'spark', v });
         }
     }
     debris(at, material) {
@@ -153,7 +152,7 @@ export class Fx {
         if (it.wait > 0) { it.wait -= dt; if (it.wait > 0) return true; dt = -it.wait; }
         it.obj.visible = true;
         it.head += it.speed * dt;
-        if (!it.arrived && it.head >= it.dist) { it.arrived = true; it.onArrive?.(); }
+        if (!it.arrived && it.head >= it.dist) { it.arrived = true; it.head = it.dist; it.onArrive?.(); }
         const tail = Math.max(0, it.head - it.length), head = Math.min(it.head, it.dist);
         if (tail >= it.dist) { this.group.remove(it.obj); for (const c of it.obj.children) c.material?.dispose(); return false; }
         const len = Math.max(0.01, head - tail), mid = (head + tail) / 2;
@@ -164,7 +163,9 @@ export class Fx {
     update(dt) {
         const t = performance.now() / 1000;
         for (const c of this.fireGroup.children) if (c.material === this.fireMat) c.scale.y = 0.8 + Math.sin(t * 9 + c.position.x * 3) * 0.25;
-        this.items = this.items.filter(it => {
+        const active = this.items;
+        this.items = []; // Arrival callbacks can enqueue new effects during this pass.
+        const survivors = active.filter(it => {
             if (it.kind === 'tracer') return this.stepTracer(it, dt);
             if (it.kind === 'bomb') return this.stepBomb(it, dt);
             if (it.kind === 'explosion') {
@@ -191,6 +192,7 @@ export class Fx {
             if (it.life <= 0) { this.group.remove(it.obj); if (![this.sparkGeo, this.debrisGeo, this.dustGeo].includes(it.obj.geometry)) it.obj.geometry?.dispose(); it.obj.material?.dispose(); return false; }
             return true;
         });
+        this.items.push(...survivors);
         this.floats = this.floats.filter(f => {
             f.t += dt;
             if (f.t > 1.2) { f.el.remove(); return false; }

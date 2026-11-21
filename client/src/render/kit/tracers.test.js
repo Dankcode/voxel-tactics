@@ -26,6 +26,19 @@ test('a tracer streak travels from the muzzle to the impact and is removed after
     assert.deepEqual(fx.group.children, [fx.fireGroup], 'tracers and sparks are all disposed');
 });
 
+test('a short enemy tracer and its impact both render and expire at fast playback speeds', () => {
+    const fx = fxOf(), from = {x:0,y:0,h:2}, to = {x:2,y:0,h:2};
+    const tracer = fx.tracer(from, to, 0xff6a4a, {speed:3*TRACER_SPEED, onArrive:()=>fx.impact(to,'unit')});
+    fx.update(.05);
+    assert.ok(tracer.obj.visible && fx.group.children.includes(tracer.obj));
+    const sparks = fx.items.filter(item=>item.kind==='spark');
+    assert.ok(sparks.length);
+    fx.update(.05);
+    assert.ok(sparks[0].obj.position.y > to.h);
+    for(let i=0;i<6;i++) fx.update(.05);
+    assert.deepEqual(fx.group.children,[fx.fireGroup]);
+});
+
 test('burst rounds leave the muzzle one after another; impacts leave no spherical remnants', async () => {
     const fx = fxOf();
     const player = new EventPlayer({ fx, voxelView: { flush() {} }, hud: { refresh() {} }, battle: null, views: new Map() });
@@ -40,7 +53,7 @@ test('burst rounds leave the muzzle one after another; impacts leave no spherica
     assert.ok(Math.abs(waits[1] - BURST_GAP / player.speed) < 1e-9);
     const before = new Set(fx.items);
     fx.impact({ x: 1, y: 1, h: 1 }, 'stone');
-    assert.equal(fx.items.filter(x => !before.has(x)).length, 0, 'stone impacts create no impact ball');
+    assert.ok(fx.items.some(x => !before.has(x) && x.kind === 'spark'), 'stone impacts throw chips');
     fx.impact({ x: 1, y: 1, h: 1 }, 'metal');
     const added = fx.items.filter(x => !before.has(x));
     assert.ok(added.some(x => x.kind === 'spark'), 'metal throws sparks');

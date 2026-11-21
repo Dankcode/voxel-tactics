@@ -796,13 +796,15 @@ export class Battle {
         const dv = [aimPoint.x - muzzle.x, aimPoint.y - muzzle.y, aimPoint.h - muzzle.h];
         const dist = Math.hypot(...dv);
         const dir = dv.map(c => c / dist);
-        const maxDist = Math.min(w.maxRange, Math.max(dist + 10, dist * 1.6));
+        const maxDist = w.maxRange;
         const projectiles = [];
         const ws = this.weaponStats(w.id);
         ws.shots++; ws.projectiles += count; ws.ap += reaction ? 0 : this.shotAp(u, w);
         u.stats.shots++;
         let targetHit = false;
         const threatened=new Map();
+        const style = target ? { cover: coverAgainst(this.store, target.x, target.y, target.z, u.x, u.y, u.z), dist: +Math.hypot(target.x - u.x, target.y - u.y).toFixed(1) } : {};
+        this.emit({ t: 'shot', unitId: u.id, weaponId: w.id, muzzle, aim: aimPoint, projectiles, reaction, breach, rounds, ...style, ...(hc ? { chance: hc.chance, crit: hc.crit, rolls } : {}) });
         const changes = this.store.record(() => {
             let rollHit = false, rollCrit = false;
             for (let i = 0; i < count; i++) {
@@ -840,7 +842,7 @@ export class Battle {
                     if (w.element) this.elementImpact(w.element, res.point, 0.6);
                 } else if (res.kind === 'voxel') {
                     const v = res.voxel;
-                    p.voxel = v;
+                    p.voxel = v; p.material = this.store.get(v.x, v.y, v.z);
                     const r = damageVoxel(this.store, v.x, v.y, v.z, (w.voxel || 0) * mult, { element: w.element });
                     if (r.destroyed) { this.stats.voxelsDestroyed++; ws.voxels = (ws.voxels || 0) + 1; p.destroyed = true; }
                     if (r.explosion) this.explode({ ...r.explosion, by: u.id });
@@ -850,8 +852,6 @@ export class Battle {
             }
         });
         u.buffs.demolish = false;
-        const style = target ? { cover: coverAgainst(this.store, target.x, target.y, target.z, u.x, u.y, u.z), dist: +Math.hypot(target.x - u.x, target.y - u.y).toFixed(1) } : {};
-        this.emit({ t: 'shot', unitId: u.id, weaponId: w.id, muzzle, aim: aimPoint, projectiles, reaction, breach, rounds, ...style, ...(hc ? { chance: hc.chance, crit: hc.crit, rolls } : {}) });
         if(w.boltAction&&reserveAmmo(u,w)>0)u.ammo[w.id]+=consumeAmmo(u,w,1);
         if (changes.length) this.emit({ t: 'voxels', changes });
         if (target && alive(target) && !targetHit) this.addStress(target, B.stressOnNearMiss, 'near miss');
@@ -886,9 +886,10 @@ export class Battle {
         u.facing = facingToward(t.x - u.x, t.y - u.y);
         this.emit({ t: 'cutin', unitId: u.id, kind: 'melee', weaponId: w.id, targetIds: [t.id] });
         const part = intent.part || 'torso';
+        const strike = this.emit({ t: 'melee', unitId: u.id, targetId: t.id, part, weaponId: w.id });
         const dealt = this.dealDamage(t, part, w.damage, { pierce: w.pierce, shred: w.shred, source: u.id });
         const ws = this.weaponStats(w.id); ws.shots++; ws.hits++; ws.damage += dealt; ws.ap += w.ap; ws.projectiles++;
-        this.emit({ t: 'melee', unitId: u.id, targetId: t.id, part, damage: dealt, weaponId: w.id });
+        strike.damage = dealt;
         if (w.knockback && alive(t)) this.knockback(t, t.x - u.x, t.y - u.y, w.knockback);
         this.noise(u.x, u.y, u.z, w.noise ?? 4, u);
     }

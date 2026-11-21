@@ -242,7 +242,7 @@ export function estimateShot(battle, shooter, aim, { weapon, spread, samples = 9
     const frame = basis(dir);
     const parts = { head: 0, torso: 0, armL: 0, armR: 0, legs: 0 };
     let hit = 0, cover = 0, friendly = 0, other = 0, miss = 0, through = 0;
-    const maxDist = Math.min(weapon.maxRange ?? 40, Math.max(dist + 8, dist * 1.5));
+    const maxDist = weapon.maxRange ?? 40;
     for (let i = 0; i < samples; i++) {
         const d = sampleCone(dir, spread, rng, frame);
         const res = traceProjectile(battle, o, d, maxDist, { ignore: shooter.id, energy: weapon.energy || 0 });

@@ -59,7 +59,7 @@ test('aim entry supports diagonal soldier facing',()=>{
 });
 
 test('suppression fires only at the unit passively detected under the reticle',()=>{
-    const g=aimingGame(),target={id:'e1'};let intent,toast;
+    const g=aimingGame(),target={id:'e1',side:'enemy'};let intent,toast;
     g.mode.suppress=true;g.battle.unit=id=>id===target.id?target:null;g.intent=p=>{intent=p;};g.hud.toast=s=>{toast=s;};
     g.confirmFire();assert.equal(intent,undefined);assert.match(toast,/reticle on an enemy/);
     g.aimPick={unitId:target.id,part:'head'};g.confirmFire();
@@ -76,6 +76,26 @@ test('mouse aim never snaps depth or body parts even while a target is under the
     g.moveAim(1,0);
     assert.deepEqual(g.aim.target,g.rawAim,'the reticle keeps the exact mouse-derived point and distance');
     assert.equal(g.aimPick?.unitId,enemy.id,'hit detection remains passive and does not move the reticle');
+});
+
+test('the displayed centre trace reaches beyond the steering point and matches the first fired projectile', () => {
+    const store = new VoxelStore(48,8,8);
+    store.fill(0,0,0,47,7,0,MAT.bedrock);
+    const battle = new Battle({mission:{id:'aim-range',store,rooms:[],buildings:[],spawns:{
+        player:[{x:2,y:3,z:0}],enemy:[{type:'cultist',pos:{x:24,y:3,z:0},group:0}]
+    }},squad:[{type:'grenadier'}],seed:2});
+    const g = aimingGame(), u = battle.unit('p0');
+    Object.assign(g,{battle,selectedUnit:()=>u,isVisible:()=>true});
+    const point = {x:10.5,y:3.5,h:2.35};
+    const muzzle = g.aimMuzzle(u,point);
+    g.updateAimPick(u,muzzle,point);
+    const aim = {point};
+    const events = battle.apply({type:'shoot',unitId:u.id,weaponId:g.mode.weaponId,aim,by:'*'}).events;
+    const shot = events.find(e=>e.t==='shot');
+    assert.ok(g.aimTrace.t>18);
+    assert.deepEqual(shot.projectiles[0].to,g.aimTrace.point);
+    assert.equal(shot.projectiles[0].unitId,g.aimPick.unitId);
+    assert.ok(events.findIndex(e=>e.t==='damage')>events.indexOf(shot));
 });
 
 test('left and right peeks keep the reticle on the same target and use the authoritative muzzle',async()=>{

@@ -106,7 +106,17 @@ export class UnitView {
     }
     /** Visual position from the battle state (used after animations settle). */
     snap() { this.setCell(this.unit.x, this.unit.y, this.unit.z); this.facingVec = [...(FACING_VEC[this.unit.facing] || [0, 1])]; }
-    setCell(x, y, z) { this.pos.set(x + 0.5, z + 1 - dropAt(x, y, z), y + 0.5); this.group.position.copy(this.pos); }
+    setCell(x, y, z) {
+        // Advance the two enemy stride drawings by distance, even on a single-tile move.
+        if (this.striding()) {
+            const distance = Math.hypot(x + .5 - this.pos.x, y + .5 - this.pos.z);
+            const clip = this.animator.m.clips.run;
+            this.animator.update(distance * clip.frames / clip.fps);
+        }
+        this.visualZ = z;
+        this.pos.set(x + 0.5, z + 1 - dropAt(x, y, z), y + 0.5); this.group.position.copy(this.pos);
+    }
+    striding() { return !this.model && this.unit.side === 'enemy' && this.animator.clip === 'run'; }
     setWorld(x, y, h) { this.pos.set(x, h, y); this.group.position.copy(this.pos); }
     face(dx, dy) { if (dx || dy) this.facingVec = [dx, dy]; }
     worldPosition() { return this.pos.clone(); }
@@ -147,8 +157,8 @@ export class UnitView {
     }
     /** Open the status card for a moment (selection, reload, gadget choice). */
     flashStatus(ms=1800){this.detailUntil=performance.now()+ms;this.drawBar();clearTimeout(this.detailTimer);this.detailTimer=setTimeout(()=>this.drawBar(),ms+30);}
-    update(dt, yaw, camera = this.scene.camera) {
-        this.group.visible = this.visibilityRequested !== false && unitBelowCut(this.unit.z, this.scene.cutLevel);
+    update(dt, yaw, camera = this.scene.camera, playbackSpeed = 1) {
+        this.group.visible = this.visibilityRequested !== false && unitBelowCut(this.visualZ, this.scene.cutLevel);
         this.breathTime=(this.breathTime||0)+dt;
         // Screen-facing art retains its drawn proportions; the transparent foot baseline stays at local zero.
         // Only the sprite tilts. Ground rings, collision position and elevation cues stay on the world grid.
@@ -161,7 +171,18 @@ export class UnitView {
             this.bar.position.copy(this.billboardUp).multiplyScalar(this.spriteHeight+.4);
         } else this.sprite.rotation.y=yaw;
         this.animator.setScreenAngle(Math.atan2(this.facingVec[0], this.facingVec[1]) - yaw);
-        this.animator.update(dt);
+        if (!this.striding()) this.animator.update(dt * playbackSpeed);
+        // Enemy atlases hold one drawing for short actions. Give that drawing a physical reaction.
+        if (!this.model && this.unit.side === 'enemy') {
+            const { clip, t } = this.animator;
+            const progress = Math.min(1, t * this.animator.m.clips[clip].fps);
+            const pulse = Math.sin(Math.PI * progress);
+            if (clip === 'fire' || clip === 'hit' || clip === 'throw') {
+                const side = Math.sin(Math.atan2(this.facingVec[0], this.facingVec[1]) - yaw);
+                this.sprite.rotateZ(side * pulse * (clip === 'hit' ? .16 : .08));
+                this.sprite.position.y = pulse * (clip === 'throw' ? .14 : -.07);
+            } else this.sprite.position.y = 0;
+        }
         for (const map of [this.normal, this.lighting]) { map.repeat.copy(this.texture.repeat); map.offset.copy(this.texture.offset); }
         this.bar.visible = !this.unit.dead;
         // PLAN-15: the selection beacon bobs above the head; the selected ring breathes.
@@ -183,7 +204,7 @@ export class UnitView {
     setSelected(on) { this.selected = !!on; this.selRing.visible = on || !!this.hovered; this.beacon.visible = !!on && !this.unit.dead; this.drawBar(); }
     /** PLAN-15: hovering a squad portrait lights the soldier's ring in the world. */
     setHovered(on) { this.hovered = !!on; this.selRing.visible = this.selected || this.hovered; this.selRing.material.opacity = this.selected ? 0.95 : 0.6; }
-    setVisible(on) { this.visibilityRequested = on; this.group.visible = on && unitBelowCut(this.unit.z, this.scene.cutLevel); }
+    setVisible(on) { this.visibilityRequested = on; this.group.visible = on && unitBelowCut(this.visualZ, this.scene.cutLevel); }
     dispose() {
         this.model?.dispose();this.sprite.customDepthMaterial?.dispose(); this.scene.scene.remove(this.group); this.texture.dispose(); this.normal.dispose(); this.lighting.dispose(); this.material.dispose(); this.barTex.dispose(); }
 }

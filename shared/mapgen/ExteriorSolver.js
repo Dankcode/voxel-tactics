@@ -38,13 +38,13 @@ export function roadLotCells(c) {
         const bx = cy >= 2 && cy <= 5, by = cx >= 2 && cx <= 5;
         let asph = any && ((bx && ((cx < 2 && c.w) || (cx > 5 && c.e) || by)) || (by && ((cy < 2 && c.n) || (cy > 5 && c.s) || bx)));
         if (dead && cx >= 1 && cx <= 6 && cy >= 1 && cy <= 6) asph = true;
-        let mat = asph ? 'asphalt' : 'concrete', cls = asph ? 'asphalt' : 'sidewalk';
+        let mat = asph ? 'asphalt' : 'concrete', cls = asph ? 'carriageway' : 'sidewalk';
         const straightX = (c.e || c.w) && !c.n && !c.s, straightY = (c.n || c.s) && !c.e && !c.w;
         // PLAN-12: no painted voxel cells for lines — a whole 1 m cell cannot centre a line on a 4-cell carriageway or draw a
         // zebra. Road paint is drawn thin and centred by the client (client/src/render/RoadMarkings.js) from the asphalt.
         // Parking lane: carriageway cells next to the kerb on straight roads.
-        if (asph && straightX && cy >= 2 && cy <= 5) cls = 'lane_x';
-        if (asph && straightY && cx >= 2 && cx <= 5) cls = 'lane_y';
+        if (asph && c.e && c.w && straightX && cy >= 2 && cy <= 3) cls = 'lane_x';
+        if (asph && c.n && c.s && straightY && cx >= 2 && cx <= 3) cls = 'lane_y';
         cells.push({ cx, cy, mat, cls });
     }
     return cells;
@@ -371,7 +371,7 @@ export function solveBays({ plot, bayGrid, lotPool, roadAxis, fields, seed, pins
                 const pin=BAY_PIECES[pins.get(id)],surface=bay.cls.startsWith('parking_')||bay.cls==='carriageway'?'asphalt':bay.cls.startsWith('lane_')?'lane':bay.cls;
                 // A repair may introduce a compatible cover module outside the decorative pool. It still obeys
                 // collision reservations, real surface types and single-bay assembly constraints.
-                const valid=pin&&!bay.blocked&&!pin.parts&&pin.cells.every(([x,y])=>!bay.protected.some(([px,py])=>px===x&&py===y))&&(!pin.surfaces||pin.surfaces.includes(surface)||(surface==='lane'&&pin.surfaces.includes('asphalt')));
+                const valid=pin&&!onRoad(bay)&&!bay.blocked&&!pin.parts&&pin.cells.every(([x,y])=>!bay.protected.some(([px,py])=>px===x&&py===y))&&(!pin.surfaces||pin.surfaces.includes(surface)||(surface==='lane'&&pin.surfaces.includes('asphalt')));
                 if(domain.includes(pins.get(id))||valid){fixed.set(id,pins.get(id));domain=[pins.get(id)];}
             }
             domains.set(id, domain.length ? domain : ['open']);

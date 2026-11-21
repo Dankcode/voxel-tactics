@@ -46,7 +46,7 @@ import { reasonText } from './ui/Reasons.js';
 import { castRay } from '../../shared/voxel/Raycast.js';
 import { MAT, AIR, materialById } from '../../shared/voxel/Materials.js';
 import { nodeKey, pathTo } from '../../shared/world/PathSearch.js';
-import { estimateShot, partCentre, chooseMuzzle, occupiedBy, aimedUnit, partUnderRay } from '../../shared/battle/Ballistics.js';
+import { estimateShot, partCentre, chooseMuzzle, occupiedBy, aimedUnit, traceProjectile } from '../../shared/battle/Ballistics.js';
 import { coverAgainst, COVER } from '../../shared/voxel/Cover.js';
 import { decide, formationIntents, aiOrder } from '../../shared/battle/Ai.js';
 import { podRole } from '../../shared/battle/EnemyAi.js';
@@ -216,7 +216,7 @@ export class Game {
         for (const v of this.views.values()) {
             v.swayEnabled=this.options.aimSway;
             if(v.tagMode!==this.options.unitTags){v.tagMode=this.options.unitTags;v.drawBar();}
-            v.update(dt, cine ? Math.atan2(this.cameraDirector.cam.position.x - v.pos.x, this.cameraDirector.cam.position.z - v.pos.z) : yaw, this.scene.camera);
+            v.update(dt, cine ? Math.atan2(this.cameraDirector.cam.position.x - v.pos.x, this.cameraDirector.cam.position.z - v.pos.z) : yaw, this.scene.camera, this.player.speed);
             v.bar.visible = !cine && !v.unit.dead && v.group.visible && (v.unit.side==='player'||this.options.showEnemyBars);
             v.sprite.visible = !(cine && (this.cameraDirector.hidden?.has(v.id) || (v.unit.side===this.selectedUnit()?.side && this.cameraDirector.foregroundUnit(v.pos))));
             const ground = this.battle?.store.surfaces(Math.floor(v.pos.x), Math.floor(v.pos.z))[0];
@@ -245,7 +245,7 @@ export class Game {
         if (u.side === 'player') return this.session.local || u.owner===this.session.playerId;
         return this.debug.manualEnemy;
     }
-    isVisible(u) { return u.side==='player' || !this.fog || (this.battle.visible?.has(u.id) && !this.voxelView?.interiorVisibility?.hiddenAt(u.x,u.y,u.z+1)); }
+    isVisible(u) { return u.side==='player' || !this.fog || ((this.discoveryVisible.has(u.id) || this.battle.visible?.has(u.id)) && !this.voxelView?.interiorVisibility?.hiddenAt(u.x,u.y,u.z+1)); }
     updateEnemyVisibility() {
         for (const v of this.views.values()) {
             const u = v.unit;
@@ -418,7 +418,7 @@ export class Game {
         if (this.mode.kind !== 'shoot') return;
         if (this.mode.suppress) {
             const target = this.aimPick && this.battle.unit(this.aimPick.unitId);
-            if (!target) { this.hud.toast('Put the reticle on an enemy to suppress', 'warn'); return; }
+            if (!target || target.side === this.selectedUnit()?.side) { this.hud.toast('Put the reticle on an enemy to suppress', 'warn'); return; }
             return this.intent({ type: 'ability', abilityId: 'suppress', targetId: target.id });
         }
         if (this.freeAim) return this.intent({type:'shoot',weaponId:this.mode.weaponId,aim:{point:{...this.freeAim}},...(this.peek?{from:{...this.peek}}:{})});
@@ -871,7 +871,7 @@ export class Game {
      */
     stepAim(dt){
         const u=this.selectedUnit();
-        if(!u||this.mode.kind!=='shoot'||!this.aim.current)return;
+        if(!u||this.mode.kind!=='shoot'||!this.aim.current||this.player?.busy)return;
         const w=WEAPONS[this.mode.weaponId];let origin=this.aimOrigin(u);
         const p=this.aim.step(dt,{tau:aimTau(u,w),sway:this.options.aimSway?swayDegrees(u):0,origin,inertia:false});
         if(!p)return;
@@ -879,10 +879,10 @@ export class Game {
         // Blocked angles: the shot steps out to a side tile (shared chooseMuzzle); the shoulder camera and the reticle
         // follow it, so the view is from where the soldier will actually fire and not into the wall.
         const st=this.aimStance;
-        if(!st||st.unitId!==u.id||Math.hypot(p.x-st.at.x,p.y-st.at.y,p.h-st.at.h)>0.25){
+        if(!st||st.unitId!==u.id||(p.x!==st.at.x || p.y!==st.at.y || p.h!==st.at.h)){
             const m=this.aimMuzzle(u,p);
             if(!st||st.unitId!==u.id||aimStanceKey(m)!==st.key)this.frameAim(u,p,m);
-            else {Object.assign(st,{at:{...p},muzzle:m,side:m.side||'right',blocked:shotBlocked(this.battle.store,m,p)});this.cutins.beginAim(u,{shoulder:st.side,weaponId:this.mode.weaponId});}
+            else Object.assign(st,{at:{...p},muzzle:m,blocked:shotBlocked(this.battle.store,m,p)});
         }
         origin=this.aimOrigin(u);this.updateAimPick(u,origin,p);
         this.views.get(u.id)?.face(p.x-origin.x,p.y-origin.y);
@@ -902,8 +902,14 @@ export class Game {
     /** The shot's origin for aiming: the current stance muzzle (lean or step-out), else the shoulder on the unit's tile. */
     aimOrigin(u){const m=this.aimStance?.unitId===u.id?this.aimStance.muzzle:null,s=this.shooterOf(u);return m?{x:m.x,y:m.y,h:m.h}:{x:s.x+.5,y:s.y+.5,h:s.z+2.35};}
     updateAimPick(u,origin,p){
-        const under=this.battle?.store?partUnderRay(this.battle,u,origin,p,{filter:t=>this.isVisible(t)}):null;
-        this.aimPick=under?{unitId:under.unit.id,part:under.part}:null;
+        const delta = [p.x-origin.x, p.y-origin.y, p.h-origin.h];
+        const length = Math.hypot(...delta);
+        const weapon = weaponBuild(u, WEAPONS[this.mode.weaponId]);
+        this.aimTrace = this.battle?.store && length > 0
+            ? traceProjectile(this.battle, origin, delta.map(v => v / length), weapon.maxRange, { ignore:u.id, energy:weapon.energy || 0 })
+            : null;
+        const hit = this.aimTrace;
+        this.aimPick = hit?.unit && this.isVisible(hit.unit) ? {unitId:hit.unit.id, part:hit.part} : null;
     }
     /** PLAN-15: the shooter as it stands for this shot — on its peek tile while peeking. */
     shooterOf(u){return this.peek&&this.mode.kind==='shoot'?atCell(u,this.peek):u;}
