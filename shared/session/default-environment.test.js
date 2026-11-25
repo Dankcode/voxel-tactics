@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DEFAULT_MAP, mapById } from '../mission/Maps.js';
+import { PLOT_IDS } from '../mapgen/PlotCatalogue.js';
 import { sanitizeDesc, scenarioId } from './Scenarios.js';
 
 test('PLAN-10: default and fallback launches generate a map from a theme (downtown, seed 1)', () => {
@@ -13,7 +14,7 @@ test('PLAN-10: default and fallback launches generate a map from a theme (downto
 
 test('PLAN-10: players pick biomes; old map ids map to the closest biome; only the two test rigs remain as fixtures', async () => {
     const { THEMES, FIXTURES, plotForMap } = await import('./Scenarios.js');
-    assert.deepEqual(THEMES.map(t => t.id), ['downtown', 'industrial', 'suburb', 'harbor', 'winter_outpost', 'old_quarter', 'metro_hub', 'arid_compound']);
+    assert.deepEqual(THEMES.map(t => t.id), PLOT_IDS);
     assert.deepEqual(FIXTURES.map(f => f.id).sort(), ['architecture-yard', 'proving-grounds']);
     assert.equal(plotForMap('harbor-yard'), 'harbor');
     assert.equal(plotForMap('suburb-district'), 'suburb');
