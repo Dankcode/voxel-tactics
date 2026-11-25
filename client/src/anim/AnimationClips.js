@@ -28,7 +28,7 @@ export const EVENT_TO_CLIP = Object.freeze({
 });
 
 /** Seconds a one-shot clip should hold the unit before the event player moves on. */
-export const CLIP_HOLD = Object.freeze({ fire: 0.35, throw: 0.45, hit: 0.3, down: 0.6 });
+export const CLIP_HOLD = Object.freeze({ fire: 0.22, throw: 0.30, hit: 0.18, down: 0.38 });
 
 /**
  * TODO(animation): per-weapon / per-ability clip overrides, e.g. { longrifle: { fire: 'fire_heavy' } }.

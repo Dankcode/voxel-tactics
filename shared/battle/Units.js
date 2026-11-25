@@ -33,7 +33,7 @@ export function createUnit(typeId, side, pos, id, overrides = {}) {
         hp: def.hp, maxHp: def.hp, parts, accuracy: def.accuracy, mobility: def.mobility + (armor.mobility || 0),
         ap: B.apPerTurn, maxAp: B.apPerTurn, moveOnlyAp: 0, will: def.will, maxWill: def.will, stress: 0,
         weapons: def.weapons.slice(), weapon: def.weapons[0], ammo, items: { ...def.items }, inventory:packItems(def.items), abilities: def.abilities.slice(),
-        statuses: [], overwatch: null, reactionsLeft: 1, alerted: side === 'player', group: overrides.group ?? null,
+        statuses: [], overwatch: null, reactionsLeft: 1, recoilHeat: 0, alerted: side === 'player', group: overrides.group ?? null,
         down: false, dead: false, formationId: null, buffs: {}, stats: { shots: 0, hits: 0, damage: 0, kills: 0 },
         ...overrides.extra
     };

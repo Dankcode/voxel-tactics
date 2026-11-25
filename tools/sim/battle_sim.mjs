@@ -17,6 +17,7 @@ import { Worker, isMainThread, parentPort, workerData } from 'node:worker_thread
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBattle, sanitizeDesc, SCENARIOS } from '../../shared/session/Scenarios.js';
+import { PLOT_IDS } from '../../shared/mapgen/PlotCatalogue.js';
 import { battleReport, reportText } from '../../shared/session/BattleReport.js';
 import { runAiSide } from '../../shared/battle/Ai.js';
 import { WEAPONS, THROWABLES } from '../../shared/content/weapons.js';
@@ -27,8 +28,8 @@ const args = Object.fromEntries(process.argv.slice(2).reduce((acc, a, i, all) =>
     return acc;
 }, []));
 const SEEDS = Number(args.seeds) || 16, ROUNDS = Number(args.rounds) || 40;
-// --scenario operation [--plot downtown|industrial|suburb] runs generated operations (PLAN-04): every seed is a new map.
-const PLOTS = ['downtown', 'industrial', 'suburb'];
+// --scenario operation [--plot <id>] runs generated operations (PLAN-04): every seed is a new map.
+const PLOTS = PLOT_IDS;
 // Test-ground settings from flags (or a saved setup / downloaded report).
 const setup = args.setup ? JSON.parse(fs.readFileSync(args.setup, 'utf8')) : null;
 const setupDesc = setup ? (setup.desc || (setup.scenario?.id ? { scenario: setup.scenario.id, squad: setup.scenario.squad, operation: setup.scenario.operation, test: setup.scenario.test } : setup)) : null;

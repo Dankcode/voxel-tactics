@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { ELEMENT_COLORS } from '../../../shared/elements/Elements.js';
 
 const w2t = p => new THREE.Vector3(p.x, p.h, p.y);   // world {x,y,h} → three
-export const TRACER_SPEED = 260, TRACER_LENGTH = 5.2, BURST_GAP = 0.07;
+export const TRACER_SPEED = 310, TRACER_LENGTH = 5.2, BURST_GAP = 0.055;
 
 export class Fx {
     constructor(scene, floatRoot) {
@@ -27,8 +27,12 @@ export class Fx {
      * tiles/s and fades its tail out after it lands. `delay` staggers burst rounds. `onArrive` fires at the impact
      * (sparks). Returns the item so callers/tests can follow it.
      */
-    tracer(from, to, color = 0xfff0b0, { speed = TRACER_SPEED, length = TRACER_LENGTH, delay = 0, light = false, onArrive = null } = {}) {
-        const a = w2t(from), b = w2t(to), dist = a.distanceTo(b);
+    tracer(from, to, color = 0xfff0b0, { speed = TRACER_SPEED, length = TRACER_LENGTH, delay = 0, light = false, onArrive = null, arc = null } = {}) {
+        const a = w2t(from), b = w2t(to);
+        const pts = Array.isArray(arc) && arc.length >= 2 ? arc.map(w2t) : [a, b];
+        const cum = [0];
+        for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + pts[i - 1].distanceTo(pts[i]));
+        const dist = cum[cum.length - 1] || a.distanceTo(b);
         const obj = new THREE.Group();
         const core = new THREE.Mesh(this.tracerGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
         const halo = new THREE.Mesh(this.tracerGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
@@ -36,9 +40,9 @@ export class Fx {
         obj.add(halo, core);
         if (light) { const lamp = new THREE.PointLight(color, 3.2, 4.5, 2); lamp.castShadow = false; obj.add(lamp); }
         obj.visible = false;
-        obj.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+        obj.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pts[1].clone().sub(pts[0]).normalize());
         this.group.add(obj);
-        const it = { obj, kind: 'tracer', a, b, dist, speed, length, wait: delay, head: 0, onArrive, arrived: false, life: 1, max: 1 };
+        const it = { obj, kind: 'tracer', a, b, pts, cum, dist, speed, length, wait: delay, head: 0, onArrive, arrived: false, life: 1, max: 1 };
         this.items.push(it);
         return it;
     }
@@ -156,7 +160,16 @@ export class Fx {
         const tail = Math.max(0, it.head - it.length), head = Math.min(it.head, it.dist);
         if (tail >= it.dist) { this.group.remove(it.obj); for (const c of it.obj.children) c.material?.dispose(); return false; }
         const len = Math.max(0.01, head - tail), mid = (head + tail) / 2;
-        it.obj.position.copy(it.a).lerp(it.b, mid / Math.max(it.dist, 1e-6));
+        if (it.pts && it.cum && it.pts.length > 2) {
+            let si = 1;
+            while (si < it.cum.length - 1 && it.cum[si] < mid) si++;
+            const d0 = it.cum[si - 1], d1 = it.cum[si], k = d1 > d0 ? (mid - d0) / (d1 - d0) : 0;
+            it.obj.position.copy(it.pts[si - 1]).lerp(it.pts[si], k);
+            const segDir = it.pts[si].clone().sub(it.pts[si - 1]);
+            if (segDir.lengthSq() > 1e-8) it.obj.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), segDir.normalize());
+        } else {
+            it.obj.position.copy(it.a).lerp(it.b, mid / Math.max(it.dist, 1e-6));
+        }
         for (const c of it.obj.children) if (c.isMesh) c.scale.y = len;
         return true;
     }

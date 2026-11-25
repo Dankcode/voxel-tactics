@@ -30,11 +30,17 @@ test('moving cancels your own overwatch; knockback does not', () => {
     const b = arena(['grenadier']), u = b.unit('p0');
     assert.ok(b.apply({ type: 'overwatch', unitId: u.id, toward: { x: 12, y: 1 } }).ok);
     assert.ok(u.overwatch);
-    b.startSide('player');
+    // Moving voluntarily with remaining AP cancels your overwatch immediately.
+    u.ap = 2;
     const r = b.apply({ type: 'move', unitId: u.id, to: { x: 13, y: 23, z: 1 } });
     assert.ok(r.ok, JSON.stringify(r));
     assert.equal(u.overwatch, null);
     assert.ok(r.events.some(e => e.t === 'overwatchCancel' && e.unitId === u.id));
+    // Starting your next turn naturally expires last turn's overwatch.
+    const b3 = arena(['grenadier']), v = b3.unit('p0');
+    assert.ok(b3.apply({ type: 'overwatch', unitId: v.id, toward: { x: 12, y: 1 } }).ok);
+    b3.startSide('player');
+    assert.equal(v.overwatch, null);
     // Knockback is not a voluntary move.
     const b2 = arena(['grenadier']), w = b2.unit('p0');
     assert.ok(b2.apply({ type: 'overwatch', unitId: w.id, toward: { x: 12, y: 1 } }).ok);

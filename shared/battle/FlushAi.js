@@ -16,14 +16,14 @@
 // Read-only like the rest of the enemy brain: nothing here mutates the battle.
 import { DIRS4, COVER, coverAgainst } from '../voxel/Cover.js';
 import { materialById, coverWeight } from '../voxel/Materials.js';
-import { hitChance } from './HitChance.js';
+import { evaluateBallisticShot } from './Ballistics.js';
 import { FIRE_MODES, fireModes } from './FireControl.js';
 import { chooseMuzzle, occupiedBy, traceProjectile } from './Ballistics.js';
 import { WEAPONS } from '../content/weapons.js';
 import { alive } from './Units.js';
 
-/** Thresholds (hand-tunable, like balance.js): flush only targets this shooter hits below `chanceBelow` %. */
-export const FLUSH = Object.freeze({ chanceBelow: 45, hitShare: 0.75, followChance: 30, minScore: 0.6, maxAge: 1 });
+/** Thresholds (hand-tunable, like balance.js): flush only targets whose ballistic hit rate is below `hitBelow`. */
+export const FLUSH = Object.freeze({ hitBelow: 0.42, chanceBelow: 42, hitShare: 0.75, followChance: 30, minScore: 0.6, maxAge: 1 });
 
 const dist2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -81,7 +81,8 @@ export function flushShot(battle, u, w, threats, { T = { flush: 1 } } = {}) {
         if (cover === COVER.NONE) continue;
         // Only when shooting the unit itself is poor (unseen targets have no shot at all).
         const seen = !t.ghost && battle.sees(u, e);
-        if (seen && hitChance(battle, u, e, w).chance >= FLUSH.chanceBelow) continue;
+        const est = seen ? evaluateBallisticShot(battle, u, e, w, { samples: 16 }) : null;
+        if (est && est.directHitRate >= FLUSH.hitBelow) continue;
         const busy = new Set(battle.units.filter(alive).map(o => `${o.x},${o.y}`));
         const vox = coverVoxels(store, at, u).filter(v => v.breakable && !busy.has(`${v.x},${v.y}`));
         if (!vox.length) continue;
@@ -100,7 +101,7 @@ export function flushShot(battle, u, w, threats, { T = { flush: 1 } } = {}) {
                 return g && o.ap >= battle.shotAp(o, g) && dist2(o, at) <= (g.maxRange ?? g.range) && dist2(o, at) <= 18;
             });
             const faceHp = vox.filter(q => q.face === v.face).reduce((s, q) => s + q.hp, 0);
-            let score = (breaksNow ? 2 : Math.min(1, perAction / v.hp)) * (cover === COVER.FULL ? 1.3 : 1) * (follow ? 1.5 : 1) * (T.flush ?? 1);
+            let score = (breaksNow ? 2 : Math.min(1, perAction / v.hp)) * (cover === COVER.FULL ? 1.3 : 1) * (follow ? 1.5 : 1) * (T.flush ?? 1) * (T.coverBreakPriority ?? 1);
             if (e.hp <= e.maxHp * 0.5) score *= 1.2;
             if (perAction >= faceHp) score *= 1.25;        // the whole face goes: the target is in the open
             const intent = { type: 'shoot', unitId: u.id, weaponId: w.id, aim: { point }, ...(fireModes(w).length > 1 ? { fireMode: mode } : {}), flush: { targetId: e.id, voxel: { x: v.x, y: v.y, z: v.z }, material: v.key } };

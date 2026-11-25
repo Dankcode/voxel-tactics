@@ -13,7 +13,8 @@ const keep = p => { try { if (p) localStorage.setItem(KEY, JSON.stringify(p)); }
 export async function loadAiProfile() {
     if (SOLO_ONLY) return local();
     try {
-        const r = await fetch('/api/ai-cache', { cache: 'no-store' });
+        const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(250) : undefined;
+        const r = await fetch('/api/ai-cache', { cache: 'no-store', ...(signal ? { signal } : {}) });
         if (r.ok) { const c = await r.json(); if (c?.squad) { keep(c.squad); return sanitizeAiProfile(c.squad); } }
     } catch { /* no server: fall back */ }
     return local();
@@ -28,7 +29,7 @@ export async function recordLocalMatch(style, meta = {}) {
     if (SOLO_ONLY) return profile;
     try {
         const r = await fetch('/api/ai-cache', { method: 'POST', headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ style: { traits: style.traits, headline: style.headline }, meta }) });
+            body: JSON.stringify({ style: { traits: style.traits, extendedTraits: style.extendedTraits, headline: style.headline }, meta }) });
         if (r.ok) { const j = await r.json(); if (j?.squad) { profile = j.squad; keep(profile); } }
     } catch { /* offline: the browser copy stands */ }
     return profile;

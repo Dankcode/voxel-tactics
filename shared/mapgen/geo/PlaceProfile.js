@@ -42,7 +42,7 @@ export function sampleStoreys(profile, program, [lo, hi], key) {
     const dist = n >= 2 ? own : profile.all;
     const entries = Object.entries(dist || {}).map(([k, v]) => [Math.max(lo, Math.min(hi, Number(k))), v]);
     const total = entries.reduce((a, [, v]) => a + v, 0);
-    if (!total) return null;
+    if (total < 6 || (hi > lo && new Set(entries.map(([k]) => k)).size < 2)) return null;
     let r = unit(key) * total;
     for (const [k, v] of entries) { r -= v; if (r <= 0) return k; }
     return entries.at(-1)[0];

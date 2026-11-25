@@ -264,7 +264,7 @@ export class DebugTools {
         } else if (this.tab === 'view') {
             body = `<div class="row"><button data-d="fog" class="${g.fog ? 'on' : ''}">Fog of war: ${g.fog ? 'on' : 'off'}</button><button data-d="reveal">Reveal all rooms</button><button data-d="shadows">Shadows: ${g.scene.renderer.shadowMap.enabled ? 'on' : 'off'}</button></div>
                 <h5>Overlays</h5><div class="row">${OVERLAYS.map(([id, l]) => `<button data-d="overlay" data-arg="${id}" class="${this.overlay === id ? 'on' : ''}">${l}</button>`).join('')}</div>
-                <h5>Lighting</h5><div class="row">${['day', 'dusk', 'night'].map(l => `<button data-d="lighting" data-arg="${l}" class="${g.scene.lightingName === l ? 'on' : ''}">${l}</button>`).join('')}</div>
+                <h5>Lighting</h5><div class="row">${['day', 'dawn', 'overcast', 'dusk', 'night', 'night-ops'].map(l => `<button data-d="lighting" data-arg="${l}" class="${g.scene.lightingName === l ? 'on' : ''}">${l}</button>`).join('')}</div>
                 <div class="stats"></div>`;
         } else if (this.tab === 'mission') {
             const m = b.mission.metrics || {};

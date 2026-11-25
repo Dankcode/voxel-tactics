@@ -250,7 +250,8 @@ export class Formations {
         } else if(f.assignments)delete f.assignments[u.id];
         if (f.members.length < FORMATIONS[f.template].min && !f.assembling) this.dissolve(f.id, 'member lost'); else if(!f.assembling)this.recompute(f);
     }
-    onOverwatch(u) { const f = this.of(u); if (f?.template === 'crossfire') u.reactionsLeft = 1 + (FORMATIONS.crossfire.bonus.extraReactions || 0); }
+    extraReactions(u) { const f = this.of(u); return f?.template === 'crossfire' && this.tier(f) > 0 ? (FORMATIONS.crossfire.bonus.extraReactions || 0) : 0; }
+    onOverwatch(u) { const extra = this.extraReactions(u); if (extra) u.reactionsLeft = 1 + extra; }
     onBreach(units) {
         for (const u of units) { const f = this.of(u); if (f?.template === 'breach_stack') { this.battle.stats.formations.breach_stack.breaches++; this.dissolve(f.id, 'breached'); } }
     }

@@ -3,9 +3,12 @@ import { WALKERS } from './Walker.js';
 // It scores reachable tiles by cover against known threats, flanking chances, range and hazards, then
 // shoots (expected damage from the same ballistic estimate the HUD uses), throws, overwatches or reloads.
 import { WEAPONS, THROWABLES } from '../content/weapons.js';
+import { FIRE_MODES, fireModes } from './FireControl.js';
 import { coverAgainst, hardCoverAgainst, COVER } from '../voxel/Cover.js';
-import { estimateShot } from './Ballistics.js';
-import { alive, partArmor } from './Units.js';
+import { estimateShot, evaluateBallisticShot } from './Ballistics.js';
+import { flushShot } from './FlushAi.js';
+import { inWatchSector } from './WatchSector.js';
+import { alive, hasStatus } from './Units.js';
 import { nodeKey, pathTo, reachable } from '../world/PathSearch.js';
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
 import { MAT } from '../voxel/Materials.js';
@@ -89,8 +92,17 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
     }
     if (!ranged) return null;
 
+    const doc = policy.doctrine || null;
+    const pt = battle.playerTuning || DEFAULT_TUNING;
+    const effPolicy = doc ? { ...DEFAULT_POLICY, ...policy, ...doc } : policy;
+    const thresh = effPolicy.shootThreshold ?? DEFAULT_POLICY.shootThreshold;
+    const minGrenTargets = effPolicy.grenadeMinTargets ?? DEFAULT_POLICY.grenadeMinTargets;
+    const doBreach = effPolicy.breach !== false;
+    const coverBreakPrio = (doc?.coverBreakPriority ?? 1) * (pt.coverBreakPriority ?? 1);
+    const overwatchEager = (doc?.overwatchWeight ?? 1) * (pt.overwatchCaution ?? 1);
+
     // Breach a closed door to an unexplored room next to us (player autopilot / sim).
-    if (policy.breach && u.side === 'player' && u.ap >= 2) {
+    if (doBreach && u.side === 'player' && u.ap >= 2) {
         // Door entries only: floor charges (entry 'floor') have no room behind them and need their own intent.
         const bp = battle.breachPoints(u).find(p => p.entry === 'door' && !battle.revealedRooms.has(p.roomId));
         if (bp) {
@@ -99,6 +111,10 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
             return { type: 'breach', unitId: u.id, unitIds: squad.map(o => o.id), door: bp, entry };
         }
     }
+
+    const heal = u.side === 'player' ? healIntent(battle, u) : null;
+    const patient = heal ? battle.unit(heal.targetId) : null;
+    if (patient && (patient.hp <= 14 || hasStatus(patient, 'bleeding'))) return heal;
 
     const ammoOk = (u.ammo[ranged.id] ?? 0) >= 1;
     const canReload = !ranged.boltAction && reserveAmmo(u, ranged) > 0 && u.ap >= ranged.reloadAp;
@@ -109,30 +125,36 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
     // Grenades and flasks on clusters or dug-in targets.
     for (const [id, n] of Object.entries(u.items)) {
         const t = THROWABLES[id];
-        if (!n || !t || t.placed || !t.damage || u.ap < t.ap) continue;
+        if (!n || !t || t.placed || (!t.damage && !t.element) || u.ap < t.ap) continue;
         let best = null;
         for (const e of known) {
             if (Math.hypot(e.x - u.x, e.y - u.y) > t.range) continue;
             const hits = known.filter(o => Math.hypot(o.x - e.x, o.y - e.y) <= t.radius).length;
             const friendly = battle.unitsOf(u.side).filter(o => Math.hypot(o.x - e.x, o.y - e.y) <= t.radius + 0.5).length;
             const dug = coverAgainst(battle.store, e.x, e.y, e.z, u.x, u.y, u.z) === COVER.FULL ? 1 : 0;
-            const score = hits + dug * 0.6 - friendly * 3;
-            if (score >= policy.grenadeMinTargets - 0.5 && (!best || score > best.score)) best = { e, score };
+            const flushNeed = t.element ? 0.55 * (doc?.flushWeight ?? 1) * (coverBreakPrio >= 1.2 ? 1.2 : 1) : 0.6 * coverBreakPrio;
+            const baseHit = t.damage ? hits : hits * 0.8;
+            const score = baseHit + dug * flushNeed - friendly * 3;
+            if (score >= minGrenTargets - 0.5 && (!best || score > best.score)) best = { e, score };
         }
         if (best) return { type: 'throw', unitId: u.id, itemId: id, to: { x: best.e.x, y: best.e.y, z: best.e.z } };
     }
 
     // Shoot now if there is a good shot and we would not gain by moving first.
-    const shot = ammoOk && u.ap >= shotAp ? bestShot(battle, u, ranged, known, policy) : null;
+    const shot = ammoOk && u.ap >= shotAp ? bestShot(battle, u, ranged, known, effPolicy) : null;
+    const shotKills = !!(shot && shot.expectedDamage >= (battle.unit(shot.intent.aim.unitId)?.hp ?? Infinity));
+    if (patient && !shotKills) return heal;
     const canMoveAndShoot = u.ap + u.moveOnlyAp - shotAp >= 1;
-    if (shot && (!canMoveAndShoot || shot.value >= policy.shootThreshold * 2 || u.movedThisTurn)) return shot.intent;
+    const wantOverwatchInstead = ammoOk && overwatchEager >= 1.5 && known.length && (!shot || (shot.expectedDamage < 14 && shot.hitRate < 0.7)) && u.ap >= ranged.ap;
+    const wantFlankMove = (doc?.flankWeight ?? 1) >= 1.5 && !u.movedThisTurn && canMoveAndShoot && shot && shot.directHitRate < 0.55;
+    if (shot && !wantOverwatchInstead && !wantFlankMove && (!canMoveAndShoot || shot.value >= thresh * 2 || u.movedThisTurn)) return shot.intent;
 
     // Formation members hold their slots; the leader moves the whole formation (group move).
     const formation = battle.formations.of(u);
     const holdSlot = formation && formation.template !== 'crossfire' && formation.leaderId !== u.id;
     const group = !!formation && formation.leaderId === u.id;
     if (holdSlot) {
-        if (shot) return shot.intent;
+        if (shot && !wantOverwatchInstead) return shot.intent;
         if (ammoOk && u.ap >= ranged.ap && known.length) { const t = nearest(u, known); return { type: 'overwatch', unitId: u.id, weaponId: ranged.id, toward: { x: t.x, y: t.y } }; }
         return null;
     }
@@ -152,12 +174,22 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
         return step ? { type: 'move', unitId: u.id, to: step, group } : null;
     }
 
-    // Move to a better tile, keeping enough AP to shoot.
-    if (u.ap + u.moveOnlyAp > (ammoOk ? shotAp : 0) && !u.movedThisTurn) {
-        const budgetAp = Math.max(1, u.ap + u.moveOnlyAp - (ammoOk ? shotAp : 0));
-        const tile = bestTile(battle, u, ranged, known.length ? known : battle.enemiesOf(u), budgetAp, goal);
+    // Move to a better tile, keeping enough AP to shoot (or overwatch when anchoring traps).
+    const keepAp = ammoOk ? (wantOverwatchInstead ? ranged.ap : shotAp) : 0;
+    if (u.ap + u.moveOnlyAp > keepAp && !u.movedThisTurn) {
+        const budgetAp = Math.max(1, u.ap + u.moveOnlyAp - keepAp);
+        const tile = bestTile(battle, u, ranged, known.length ? known : battle.enemiesOf(u), budgetAp, goal, effPolicy);
         if (tile && group && battle.formations.blockedAt(formation, tile)) return { type: 'formation_break', unitId: u.id, formationId: formation.id };
         if (tile && (tile.x !== u.x || tile.y !== u.y || tile.z !== u.z)) return { type: 'move', unitId: u.id, to: tile, group };
+    }
+    if (wantOverwatchInstead) {
+        const t = nearest(u, known.length ? known : battle.enemiesOf(u));
+        if (t) return { type: 'overwatch', unitId: u.id, weaponId: ranged.id, toward: { x: t.x, y: t.y } };
+    }
+    if (coverBreakPrio >= 1.2 && ammoOk && u.ap >= shotAp && (!shot || shot.directHitRate < 0.42)) {
+        const threats = known.map(e => ({ u: e, x: e.x, y: e.y, z: e.z, ghost: false }));
+        const flush = flushShot(battle, u, ranged, threats, { T: { flush: coverBreakPrio, coverBreakPriority: coverBreakPrio } });
+        if (flush) return flush.intent;
     }
     if (shot) return shot.intent;
     if (ammoOk && u.ap >= ranged.ap) {
@@ -168,35 +200,87 @@ export function decide(battle, u, policy = DEFAULT_POLICY) {
     return null;
 }
 
+function healIntent(battle, u) {
+    if (u.side !== 'player' || u.ap < 1) return null;
+    const seen = battle.visibleTo(u.side);
+    const allies = battle.unitsOf(u.side);
+    if (u.abilities.includes('water_mend') && u.will >= 2) {
+        const patients = allies
+            .filter(o => (o.id === u.id || seen.has(o.id)) && Math.hypot(o.x - u.x, o.y - u.y) <= 6 && (o.hp <= o.maxHp * 0.6 || (hasStatus(o, 'burning') && o.hp < o.maxHp)))
+            .sort((a, b) => a.hp - b.hp);
+        if (patients.length) return { type: 'ability', unitId: u.id, abilityId: 'water_mend', targetId: patients[0].id };
+    }
+    if ((u.items?.medkit || 0) > 0) {
+        const patients = allies
+            .filter(o => Math.max(Math.abs(o.x - u.x), Math.abs(o.y - u.y)) <= 1 && Math.abs(o.z - u.z) <= 1 && (o.hp <= o.maxHp * 0.6 || hasStatus(o, 'bleeding')))
+            .sort((a, b) => a.hp - b.hp);
+        if (patients.length) return { type: 'gadget', unitId: u.id, itemId: 'medkit', targetId: patients[0].id };
+    }
+    return null;
+}
+
 function bestShot(battle, u, w, known, policy) {
     let best = null;
+    const modes = fireModes(w);
+    const ammo = u.ammo?.[w.id] ?? 0;
+    const apCost = Math.max(1, battle.shotAp(u, w));
+    const recD = policy.doctrine?.recoilDiscipline ?? battle.playerTuning?.recoilDiscipline ?? 1;
+    const preferMode = policy.doctrine?.preferMode || policy.preferMode || null;
     for (const e of known) {
-        if (Math.hypot(e.x - u.x, e.y - u.y) > w.maxRange) continue;
-        for (const part of ['torso', 'head']) {
-            const aim = { unitId: e.id, part };
-            const { spread } = battle.spreadFor(u, w, { x: e.x + 0.5, y: e.y + 0.5, h: e.z + 2 }, { target: e });
-            const est = estimateShot(battle, u, aim, { weapon: w, spread, samples: policy.samples });
-            const perHit = Math.max(0, w.damage - Math.max(0, partArmor(e, part) - w.pierce), Math.ceil(w.damage * (B.armorMinDamage || 0)));
-            let value = est.hit * w.projectiles * perHit / Math.max(1, w.ap) - est.friendly * 10;
-            if (value * Math.max(1, w.ap) >= e.hp) value *= 1.5;                    // likely kill
-            if (!best || value > best.value) best = { value, intent: { type: 'shoot', unitId: u.id, weaponId: w.id, aim } };
+        const d = Math.hypot(e.x - u.x, e.y - u.y);
+        if (d > w.maxRange) continue;
+        for (const fm of modes) {
+            const need = FIRE_MODES[fm] || 1;
+            if (fm !== modes[0] && ammo < need) continue;
+            const parts = (fm === 'single' || w.scoped || w.spread <= 1.2) && d <= w.range * 1.15 ? ['torso', 'head'] : ['torso'];
+            for (const part of parts) {
+                const aim = { unitId: e.id, part };
+                const { spread } = battle.spreadFor(u, w, { x: e.x + 0.5, y: e.y + 0.5, h: e.z + 2 }, { target: e, fireMode: fm });
+                const est = estimateShot(battle, u, aim, { weapon: w, spread, fireMode: fm, samples: policy.samples });
+                const climb = est.recoil?.totalClimbDeg ?? 0;
+                const rPen = climb > 1.5 && est.hit < 0.45 ? 1 / (1 + (climb - 1.5) * 0.2 * recD) : 1;
+                const modeBoost = preferMode === fm ? 1.18 : 1;
+                const coverFactor = est.throughCover > 0.5 ? 0.55 : 1;
+                let value = (est.expectedDamage * coverFactor * rPen * modeBoost) / apCost - est.friendly * 10;
+                if (est.expectedDamage >= e.hp) value *= 1.5;                    // likely kill
+                if (!best || value > best.value) {
+                    best = {
+                        value,
+                        hitRate: est.hit,
+                        directHitRate: est.directHit,
+                        expectedDamage: est.expectedDamage,
+                        intent: { type: 'shoot', unitId: u.id, weaponId: w.id, ...(modes.length > 1 ? { fireMode: fm } : {}), aim }
+                    };
+                }
+            }
         }
     }
     return best && best.value > 0.05 ? best : null;
 }
 
-function bestTile(battle, u, w, threats, budgetAp, goal = null) {
+function bestTile(battle, u, w, threats, budgetAp, goal = null, policy = DEFAULT_POLICY) {
     const o = battle.objective;
-    const pull = !goal ? 0 : (o.kind === 'extract' || o.item?.carrier === u.id) ? 2.2 : o.kind === 'hold' ? 1.2 : 0.8;
+    const doc = policy.doctrine || null, pt = battle.playerTuning || DEFAULT_TUNING;
+    const coverK = (doc?.coverWeight ?? 1) * (pt.flankGuard ?? 1);
+    const flankK = (doc?.flankWeight ?? 1) * (pt.flush ?? 1);
+    const rangeK = (doc?.rangePref ?? 1) / Math.max(0.6, pt.closeIn ?? 1);
+    const highK = (doc?.highGroundBias ?? 1) * (pt.highGroundBias ?? 1);
+    const indoorK = (doc?.indoorBias ?? 1) * (pt.indoorBias ?? 1);
+    const spreadK = pt.spread ?? 1;
+    const pull = !goal ? 0 : ((o.kind === 'extract' || o.item?.carrier === u.id) ? 2.2 : o.kind === 'hold' ? 1.2 : 0.8) * (doc?.aggression ?? 1);
     const search = battle.reach(u, budgetAp * battle.mobility(u));
     const nodes = [...search.nodes.values()];
     if (!nodes.length) return null;
     const stride = Math.max(1, Math.floor(nodes.length / 260));
     const allies = battle.unitsOf(u.side).filter(o => o.id !== u.id);
+    const seen = battle.visibleTo(u.side);
+    const watchers = battle.enemiesOf(u).filter(e => alive(e) && e.overwatch && seen.has(e.id));
     const pockets = battle.mission.meta?.pockets || [];
+    const lead = threats.length ? threats.reduce((a, t) => Math.hypot(t.x - u.x, t.y - u.y) < Math.hypot(a.x - u.x, a.y - u.y) ? t : a, threats[0]) : null;
     const scored = [];
-    for (let i = 0; i < nodes.length; i += stride) {
+    for (let i = 0; i < nodes.length; i++) {
         const n = nodes[i];
+        if (stride > 1 && i % stride && !(lead && coverAgainst(battle.store, n.x, n.y, n.z, lead.x, lead.y, lead.z) !== COVER.NONE)) continue;
         if (battle.occupant(n.x, n.y, n.z) && !(n.x === u.x && n.y === u.y && n.z === u.z)) continue;
         let s = 0;
         for (const e of threats) {
@@ -204,15 +288,17 @@ function bestTile(battle, u, w, threats, budgetAp, goal = null) {
             if (d > 30) continue;
             // PLAN-07: cover the threat's round would go straight through is worth half.
             const ew = WEAPONS[e.weapon], hc = hardCoverAgainst(battle.store, n.x, n.y, n.z, e.x, e.y, e.z, ew?.energy || 6), c = hc.level;
-            s += (c === COVER.FULL ? 14 : c === COVER.HALF ? 8 : -9) * (c && hc.soft ? 0.5 : 1);
-            if (d <= w.range && coverAgainst(battle.store, e.x, e.y, e.z, n.x, n.y, n.z) === COVER.NONE) s += 10;  // flanks it
+            s += (c === COVER.FULL ? 14 : c === COVER.HALF ? 8 : -9) * (c && hc.soft ? 0.5 : 1) * coverK;
+            if (d <= w.range && coverAgainst(battle.store, e.x, e.y, e.z, n.x, n.y, n.z) === COVER.NONE) s += 10 * flankK;  // flanks it
         }
         const nearestD = Math.min(...threats.map(e => Math.hypot(e.x - n.x, e.y - n.y)), 99);
-        s -= Math.abs(nearestD - w.range * 0.7) * 0.7;
+        s -= Math.abs(nearestD - w.range * 0.7 * rangeK) * 0.7;
         const surf = battle.field.surfaceAt(n.x, n.y, n.z);
         if (surf === 'burning' || battle.field.isBurning(n.x, n.y, n.z)) s -= 40;
-        s -= allies.filter(o => Math.max(Math.abs(o.x - n.x), Math.abs(o.y - n.y)) <= 2).length * 4;
-        if (threats.length) s += Math.max(0, n.z - Math.min(...threats.map(e => e.z))) * 2;
+        s -= allies.filter(o => Math.max(Math.abs(o.x - n.x), Math.abs(o.y - n.y)) <= 2).length * 4 * spreadK;
+        for (const wU of watchers) if (inWatchSector(wU, wU.overwatch, n)) s -= 14 * (pt.overwatchCaution ?? 1);
+        if (threats.length) s += Math.max(0, n.z - Math.min(...threats.map(e => e.z))) * 2 * highK;
+        if (battle.roomOf(n) >= 0) s += 1.5 * indoorK;
         // Enemies defend the engagement pockets the generator built along the line of play.
         if (u.side === 'enemy' && pockets.length && pockets.some(p => Math.hypot(p.x - n.x, p.y - n.y) <= 2.5)) s += 2.5;
         if (goal) {
@@ -222,10 +308,23 @@ function bestTile(battle, u, w, threats, budgetAp, goal = null) {
         scored.push({ n, s });
     }
     scored.sort((a, b) => b.s - a.s);
-    // Prefer tiles that can actually see a threat.
-    for (const c of scored.slice(0, 12)) {
-        const eye = { x: c.n.x + 0.5, y: c.n.y + 0.5, h: c.n.z + 2.4 };
-        if (threats.some(e => Math.hypot(e.x - c.n.x, e.y - c.n.y) <= w.maxRange && battle.sightLine(eye, battle.chest(e)))) c.s += 16;
+    // Prefer tiles that can see a threat, minimize incoming ballistic exposure, and avoid enemy overwatch paths.
+    for (const c of scored.slice(0, 14)) {
+        const n = c.n, eye = { x: n.x + 0.5, y: n.y + 0.5, h: n.z + 2.4 }, chest = { x: n.x + 0.5, y: n.y + 0.5, h: n.z + 2.05 };
+        if (threats.some(e => Math.hypot(e.x - n.x, e.y - n.y) <= w.maxRange && battle.sightLine(eye, battle.chest(e)))) c.s += 16;
+        let danger = 0;
+        for (const e of threats) {
+            const ew = WEAPONS[e.weapon];
+            const d = Math.hypot(e.x - n.x, e.y - n.y);
+            if (!ew || ew.kind !== 'ballistic' || d > ew.maxRange) continue;
+            const eEye = { x: e.x + 0.5, y: e.y + 0.5, h: e.z + 2.55 };
+            if (battle.sightLine(eEye, chest)) danger += evaluateBallisticShot(battle, e, u, ew, { from: e, at: n, samples: 8 }).effectiveHitRate;
+        }
+        c.s -= danger * 20 * coverK;
+        if (watchers.length) {
+            const path = pathTo(search, nodeKey(n));
+            c.s -= battle.overwatchThreats(u, path).length * 16 * (pt.overwatchCaution ?? 1);
+        }
     }
     scored.sort((a, b) => b.s - a.s);
     return scored[0]?.n || null;

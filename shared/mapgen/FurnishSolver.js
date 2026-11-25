@@ -209,6 +209,10 @@ export function furnishBuilding(m, b, out, { beats = [], seed = m.seed } = {}) {
                 const wc = room.cells.filter(([x, y]) => wallSides(x, y).length)[Math.floor(unit(`${seed}:${room.id}:art`) * 4)];
                 if (wc) { const [side] = wallSides(...wc)[0]; decor.push({ kind: 'wall_art', x: wc[0], y: wc[1], z: fz + 2, yaw: YAW_OF[side] + Math.PI / 2, side, room: room.id }); }
             }
+            if (room.gameplay !== false && !['restroom', 'bathroom', 'utility', 'bath'].includes(room.kind) && fz + 2 < s.height) {
+                const lc = room.cells.filter(([x, y]) => isFree(x, y) && wallSides(x, y).length >= 1)[0];
+                if (lc) decor.push({ kind: 'floor_lamp', x: lc[0], y: lc[1], z: fz + 1, yaw: 0, free: true, room: room.id });
+            }
             const mess = clutter > 0.62 ? Math.round((clutter - 0.55) * 10) : 0;
             for (const [x, y] of room.cells.filter(([x, y]) => isFree(x, y)).sort((a, c) => unit(`${room.id}:${a}`) - unit(`${room.id}:${c}`)).slice(0, mess))
                 decor.push({ kind: clutter > 0.78 && unit(`${room.id}:d:${x},${y}`) < 0.4 ? 'debris' : 'papers', x, y, z: fz + 1, yaw: unit(`${room.id}:p:${x},${y}`) * 6.28, room: room.id });

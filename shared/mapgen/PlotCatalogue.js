@@ -47,6 +47,94 @@ export const PLOT_FAMILIES = Object.freeze({
             for (let ly = 1; ly < row; ly++) cells.push([col, ly]);          // the close: a dead end with a turning circle
             return { cells, exits: [['w', row], ['e', row]], main: row };
         }
+    },
+    harbor: {
+        name: 'Harbor quay', theme: 'Waterfront', size: [48, 40], times: ['dawn', 'day', 'dusk', 'overcast', 'night'],
+        districts: { dock: 3.5, industrial: 1.8, commercial: 1.2 },
+        text: 'A working dockside quay with cargo depots, canal basins and waterfront warehouses.',
+        roads(rng, LW, LD) {
+            const row = LD - 2, col = rng.pick([2, LW - 3]), cells = [];
+            for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
+            for (let ly = 0; ly < LD; ly++) if (ly !== row) cells.push([col, ly]);
+            return { cells, exits: [['w', row], ['e', row], ['n', col], ['s', col]], main: row };
+        }
+    },
+    winter_outpost: {
+        name: 'Alpine outpost', theme: 'Alpine', size: [48, 40], times: ['overcast', 'dawn', 'day', 'night'],
+        districts: { alpine: 3.6, park: 1.4, yard: 1.0 },
+        text: 'A snowbound timber research station, frozen basin and plowed mountain pass.',
+        roads(rng, LW, LD) {
+            const row = rng.pick([LD - 2, LD - 3]), col = rng.int(2, LW - 3), cells = [];
+            for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
+            for (let ly = 0; ly <= row; ly++) if (ly !== row) cells.push([col, ly]);
+            return { cells, exits: [['w', row], ['e', row], ['n', col]], main: row };
+        }
+    },
+    old_quarter: {
+        name: 'Old Quarter', theme: 'Historic', size: [48, 40], times: ['day', 'dawn', 'dusk', 'night'],
+        districts: { historic: 3.8, plaza: 1.6, commercial: 1.0 },
+        text: 'Cobblestone market lanes, pitched-roof stone townhouses and a historic civic hall.',
+        roads(rng, LW, LD) {
+            const row = LD - 2, col = rng.pick([2, 3]), cells = [];
+            for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
+            for (let ly = 0; ly < LD; ly++) if (ly !== row) cells.push([col, ly]);
+            return { cells, exits: [['w', row], ['e', row], ['n', col], ['s', col]], main: row };
+        }
+    },
+    metro_hub: {
+        name: 'Metro concourse', theme: 'Transit', size: [48, 40], underground: 'subway', times: ['day', 'dusk', 'night-ops', 'night'],
+        districts: { transit: 3.5, commercial: 1.8, plaza: 1.4 },
+        text: 'A busy transit avenue linked by a subterranean subway flank and skybridge towers.',
+        roads(rng, LW, LD) {
+            const row = rng.pick([LD - 2, LD - 3]), col = rng.int(2, LW - 3), cells = [];
+            for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
+            for (let ly = 0; ly < LD; ly++) if (ly !== row) cells.push([col, ly]);
+            return { cells, exits: [['w', row], ['e', row], ['n', col], ['s', col]], main: row };
+        }
+    },
+    arid_compound: {
+        name: 'Arid compound', theme: 'Desert', size: [48, 40], times: ['day', 'dawn', 'dusk'],
+        districts: { desert: 3.8, yard: 1.6, industrial: 0.8 },
+        text: 'Sun-baked drystone walls, dusty patrol roads, checkpoint yards and desert bunkers.',
+        roads(rng, LW, LD) {
+            const row = LD - 2, col = rng.pick([1, LW - 2]), cells = [];
+            for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
+            for (let ly = 0; ly < row; ly++) cells.push([col, ly]);
+            return { cells, exits: [['w', row], ['e', row], ['n', col]], main: row };
+        }
+    },
+    canal_district: {
+        name: 'Canal Quarter', theme: 'Canal', size: [48, 40], times: ['day', 'dawn', 'overcast', 'dusk'],
+        districts: { canal: 3.6, civic: 1.0, industrial: 0.6 },
+        text: 'Sunken waterway locks with stone embankment quays, canal bridges and stair landings.',
+        roads(rng, LW, LD) {
+            const row = LD - 2, col = Math.floor(LW / 2), cells = [];
+            for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
+            for (let ly = 0; ly < LD; ly++) cells.push([col, ly]);
+            return { cells, exits: [['w', row], ['e', row], ['n', col], ['s', col]], main: row };
+        }
+    },
+    hillside_ridge: {
+        name: 'Hillside Ridge', theme: 'Highland', size: [48, 40], times: ['dawn', 'day', 'dusk', 'overcast'],
+        districts: { highland: 3.6, residential: 1.0, yard: 0.6 },
+        text: 'Stepped terraced bluffs rising to an elevated crest ridge with flanking stair ascents and highland relays.',
+        roads(rng, LW, LD) {
+            const row = LD - 2, col = rng.pick([1, LW - 2]), cells = [];
+            for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
+            for (let ly = 0; ly < row; ly++) cells.push([col, ly]);
+            return { cells, exits: [['w', row], ['e', row], ['n', col]], main: row };
+        }
+    },
+    sunken_basin: {
+        name: 'Sunken Valley', theme: 'Basin', size: [48, 40], times: ['overcast', 'dusk', 'day', 'night'],
+        districts: { basin: 3.6, industrial: 1.0, commercial: 0.6 },
+        text: 'Recessed drainage basin below retaining parapets, descending stairways and floodwall catwalks.',
+        roads(rng, LW, LD) {
+            const row = 1, col = rng.pick([1, LW - 2]), cells = [];
+            for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
+            for (let ly = 1; ly < LD; ly++) cells.push([col, ly]);
+            return { cells, exits: [['w', row], ['e', row], ['s', col]], main: row };
+        }
     }
 });
 export const PLOT_IDS = Object.freeze(Object.keys(PLOT_FAMILIES));
@@ -54,7 +142,11 @@ export const PLOT_IDS = Object.freeze(Object.keys(PLOT_FAMILIES));
 /** The picture read picks a family: its theme first, then road cues. */
 export function familyForSite(site) {
     if (site?.plot && PLOT_FAMILIES[site.plot]) return site.plot;
-    return { Downtown: 'downtown', Industrial: 'industrial', Suburbs: 'suburb', Roadside: 'suburb' }[site?.theme] || 'downtown';
+    return {
+        Downtown: 'downtown', Industrial: 'industrial', Suburbs: 'suburb', Roadside: 'suburb',
+        Waterfront: 'harbor', Alpine: 'winter_outpost', Historic: 'old_quarter', Transit: 'metro_hub',
+        Desert: 'arid_compound', Canal: 'canal_district', Highland: 'hillside_ridge', Basin: 'sunken_basin'
+    }[site?.theme] || 'downtown';
 }
 
 /** Road connections of a road lot to its road neighbours (and off-map exits). */

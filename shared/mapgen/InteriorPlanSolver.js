@@ -128,9 +128,52 @@ export function solveInteriorPlan(b, programme, { seed = 1, core = null, keepGam
         const d = Math.abs(si - i) + Math.abs(sj - j);
         return (r.areaShare || 1) * placed.length / (0.35 + d * d) * (0.6 + noise(i + si * 0.13, j + sj * 0.17));
     };
-    // Rooms whose kinds must touch (programme adjacencies) may not be split by a third room along a shared edge.
+    // Real WFC adjacency rules: keep service rooms apart, isolate wet-prep/noisy rooms from quiet quarters,
+    // pull paired rooms (dining<->galley, shop<->storeroom, warehouse<->loading, office<->meeting) closer via nodeWeights,
+    // and fall back gracefully on tight footprints where fixed Voronoi seeds force a touch.
+    const roomById = new Map(placed.map(r => [r.id, r]));
+    const SVC_KINDS = new Set(['restroom', 'bathroom', 'utility', 'bath']);
+    const QUIET_KINDS = new Set(['bedroom', 'ward', 'reading']);
+    const NOISY_KINDS = new Set(['workshop', 'garage_bay', 'loading', 'dispatch']);
+    const PAIRED_KINDS = {
+        dining: ['galley'], galley: ['dining', 'barroom'], barroom: ['galley'],
+        sales: ['storeroom'], grocery: ['storeroom'], hardware: ['storeroom'], market: ['storeroom'], convenience: ['storeroom'],
+        storeroom: ['sales', 'grocery', 'hardware', 'market', 'convenience', 'warehouse', 'packing', 'workshop', 'garage_bay'],
+        warehouse: ['loading', 'dispatch'], packing: ['loading', 'dispatch'], cold_storage: ['loading', 'dispatch'],
+        loading: ['warehouse', 'packing', 'cold_storage'], dispatch: ['warehouse', 'packing', 'cold_storage'],
+        office: ['meeting', 'lobby'], open_office: ['meeting', 'office'], meeting: ['office', 'open_office', 'lobby'],
+        living: ['kitchen', 'dining'], unit: ['kitchen'], kitchen: ['living', 'unit'],
+        workshop: ['storeroom'], garage_bay: ['storeroom'], lobby: ['office', 'meeting', 'unit', 'ward', 'reading']
+    };
+    const isSvc = id => { const r = roomById.get(id); return r?.gameplay === false || !!r?.service || SVC_KINDS.has(r?.kind); };
+    const planCompatible = (aId, bId) => {
+        if (aId === bId) return true;
+        if (isSvc(aId) && isSvc(bId)) return false;
+        const ka = roomById.get(aId)?.kind, kb = roomById.get(bId)?.kind;
+        if ((ka === 'galley' && QUIET_KINDS.has(kb)) || (kb === 'galley' && QUIET_KINDS.has(ka))) return false;
+        if ((NOISY_KINDS.has(ka) && QUIET_KINDS.has(kb)) || (NOISY_KINDS.has(kb) && QUIET_KINDS.has(ka))) return false;
+        return true;
+    };
+    const planWeight = (id, tile) => {
+        let w = weight(id, tile);
+        const partners = PAIRED_KINDS[roomById.get(tile)?.kind];
+        if (!partners) return w;
+        const [i, j] = id.split(',').map(Number);
+        for (const p of placed) if (p.id !== tile && partners.includes(p.kind)) {
+            const [pi, pj] = seeds.get(p.id);
+            w *= 1 + 0.35 / (1 + Math.abs(i - pi) + Math.abs(j - pj));
+        }
+        return w;
+    };
     let assignment = new Map();
-    if (nodes.length) assignment = solveWaveFunctionCollapse({ nodes, tiles: placed.map(r => ({ id: r.id, weight: 1 })), domains, fixed, nodeWeights: weight, compatible: () => true, seed: `${seed}:${b.id}:plan:${floor}` });
+    if (nodes.length) {
+        const base = { nodes, tiles: placed.map(r => ({ id: r.id, weight: 1 })), domains, fixed, nodeWeights: planWeight, seed: `${seed}:${b.id}:plan:${floor}` };
+        try { assignment = solveWaveFunctionCollapse({ ...base, compatible: planCompatible }); }
+        catch {
+            try { assignment = solveWaveFunctionCollapse({ ...base, compatible: (a, c) => a === c || !(isSvc(a) && isSvc(c)) }); }
+            catch { assignment = solveWaveFunctionCollapse({ ...base, compatible: () => true }); }
+        }
+    }
     for (const [id, t] of assignment) region.set(id, t);
     // Repair 1: one connected piece per room; stray pieces join their best neighbour (or the hall).
     for (const r of placed) {

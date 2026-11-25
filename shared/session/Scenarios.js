@@ -35,6 +35,7 @@ export function sanitizeDesc(d = {}) {
     const out = { scenario, seed: seed || 1, squad: d.squad || 'standard', debug: d.debug === true, intel: d.intel === true, asyncCoop: d.asyncCoop === true, support: d.support === 'orbital_laser' ? 'orbital_laser' : 'carpet_bomb' };
     if (DISTRICT_MAP_IDS.includes(scenario)&&d.district) out.district=districtParameters(scenario==='terrace-district'?{...d.district,shape:'rectangle'}:d.district);
     if (scenario === OPERATION_ID) out.operation = operationOptions(d.operation);
+    if (typeof d.campaignOpId === 'string' && /^[a-z0-9-]+$/.test(d.campaignOpId) && d.campaignOpId.length <= 40) out.campaignOpId = d.campaignOpId;
     if (d.inventories!==undefined) {
         const size=Array.isArray(out.squad)?out.squad.length:(SQUADS[out.squad]||SQUADS.standard).length;
         if(!Array.isArray(d.inventories)||d.inventories.length>size)throw Error('Invalid inventory: expected one pack per soldier');
@@ -49,24 +50,52 @@ export function sanitizeDesc(d = {}) {
     return out;
 }
 
-// Generated operations are cached as data (site, layout after repairs, design): a preview in the menu and the
-// battle that follows, or a restart, recompile the same layout instead of solving it again.
+// Generated operations & compiled missions are LRU-cached (cloning mutable stores/structures per battle) so preview -> play -> restart stays instantaneous.
 const operationCache = new Map();
+const missionCache = new Map();
 const operationKey = desc => JSON.stringify({ ...operationOptions(desc.operation), seed: desc.seed ?? 1 });
+const missionKey = desc => {
+    const id = scenarioId(desc.scenario);
+    return JSON.stringify({ id, seed: desc.seed ?? 1, ...(id === OPERATION_ID ? operationOptions(desc.operation) : desc.district || {}) });
+};
+const setLru = (map, k, v, max = 4) => {
+    if (map.has(k)) map.delete(k);
+    map.set(k, v);
+    while (map.size > max) map.delete(map.keys().next().value);
+};
+export function cloneMission(m) {
+    return {
+        ...m,
+        store: m.store.clone(),
+        rooms: structuredClone(m.rooms || []),
+        buildings: structuredClone(m.buildings || []),
+        spawns: structuredClone(m.spawns || { player: [], enemy: [] }),
+        objective: structuredClone(m.objective || null),
+        meta: structuredClone(m.meta || {}),
+        visual: structuredClone(m.visual || {}),
+        metrics: structuredClone(m.metrics || null)
+    };
+}
 /** Generate (or fetch) an operation's data: { site, layout, design }. Deterministic per descriptor. */
 export function operationFor(desc) {
     const key = operationKey(desc);
     if (!operationCache.has(key)) {
-        const { site, layout, design } = generateOperation({ ...operationOptions(desc.operation), seed: desc.seed ?? 1 });
-        operationCache.set(key, { site, layout, design });
-        while (operationCache.size > 4) operationCache.delete(operationCache.keys().next().value);
+        const { site, layout, design, mission } = generateOperation({ ...operationOptions(desc.operation), seed: desc.seed ?? 1 });
+        setLru(operationCache, key, { site, layout, design });
+        if (mission) setLru(missionCache, missionKey({ ...desc, scenario: OPERATION_ID }), mission);
     }
     return operationCache.get(key);
 }
 
 export function buildMission(desc) {
-    if (scenarioId(desc.scenario) === OPERATION_ID) return compileV3Map(structuredClone(operationFor(desc)), { seed: desc.seed ?? 1 });
-    return mapById(scenarioId(desc.scenario)).build({ ...desc.district, seed: desc.seed ?? 1 });
+    const key = missionKey(desc);
+    if (!missionCache.has(key)) {
+        const built = scenarioId(desc.scenario) === OPERATION_ID
+            ? compileV3Map(structuredClone(operationFor(desc)), { seed: desc.seed ?? 1 })
+            : mapById(scenarioId(desc.scenario)).build({ ...desc.district, seed: desc.seed ?? 1 });
+        setLru(missionCache, key, built);
+    }
+    return cloneMission(missionCache.get(key));
 }
 
 export function squadFor(desc) {
@@ -81,5 +110,5 @@ export function createBattle(desc, mission = null) {
     mission.spawns.player=spreadInsertion(mission.store,mission.spawns.player);
     // The test ground applies to the compiled mission on every peer (and the server) alike.
     const enemies = desc.test ? applyTestGround(mission, sanitizeTest(desc.test), desc.seed ?? 1) : null;
-    return new Battle({ mission, squad, seed: desc.seed ?? 1, debug: !!desc.debug, enemies, intel: !!desc.intel, asyncCoop: !!desc.asyncCoop, support: desc.support, testArsenal:!!desc.test, aiProfile: desc.aiProfile || null });
+    return new Battle({ mission, squad, seed: desc.seed ?? 1, debug: !!desc.debug, enemies, intel: !!desc.intel, asyncCoop: !!desc.asyncCoop, support: desc.support, testArsenal:!!desc.test, aiProfile: desc.aiProfile || null, biomeMemory: desc.aiProfile?.biomeMemory || null });
 }

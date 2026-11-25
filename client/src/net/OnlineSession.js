@@ -11,7 +11,7 @@ export class OnlineSession {
         room.onMessage('intent', m => early.push(m));
         room.onMessage('hash', () => {}); room.onMessage('players', () => {});
         const init = await new Promise((resolve, reject) => {
-            const timer = setTimeout(() => reject(Error('Server did not send init')), 15000);
+            const timer = setTimeout(() => reject(Error('Server did not send init')), 35000);
             room.onMessage('init', m => { clearTimeout(timer); resolve(m); });
             room.onError((code, msg) => { clearTimeout(timer); reject(Error(`${code} ${msg}`)); });
         });

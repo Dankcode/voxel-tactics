@@ -112,7 +112,7 @@ test('wheel zoom survives camera movement and committing a shot preserves the ex
     assert.ok(cd.commitAim());cd.apply(1);
     assert.ok(cd.cam.position.distanceTo(position)<1e-9);assert.ok(cd.look.distanceTo(look)<1e-9);assert.equal(cd.cam.fov,fov);
     assert.ok(cd.resumeAim());assert.equal(cd.phase,'prepare');assert.equal(cd.aimFov,zoom);
-    cd.zoomAim(.001);assert.equal(cd.aimFov,14);cd.zoomAim(100);assert.equal(cd.aimFov,60);
+    cd.zoomAim(.001);assert.equal(cd.aimFov,14);cd.zoomAim(100);assert.equal(cd.aimFov,48);
     cd.end();cd.prepareAim(shooter,target);assert.equal(cd.cam.fov,38,'free aim starts wide');
 });
 

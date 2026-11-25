@@ -40,7 +40,7 @@ export function roomsFor(b) {
     return Math.max(1, Math.min(4, Math.round((rest - corridor) / 6)));
 }
 
-export function designProgrammes({ buildings, target, plot, seed, objectiveKind = null, timeOfDay = 'dusk', name = null, spread: spreadPods = false }) {
+export function designProgrammes({ buildings, target, plot, seed, objectiveKind = null, verticalFlow = 'auto', timeOfDay = 'dusk', name = null, spread: spreadPods = false }) {
     const programs = [];
     for (const b of buildings) {
         const table = PROGRAMMES[b.program] || PROGRAMMES.office, count = roomsFor(b);
@@ -61,23 +61,38 @@ export function designProgrammes({ buildings, target, plot, seed, objectiveKind 
             programs.push({ building: b.id, floor, rooms, adjacencies: [] });
         }
     }
-    const top = target.storeys - 1, topRooms = programs.find(p => p.building === target.id && p.floor === top).rooms.filter(r => r.gameplay);
+    const top = target.storeys - 1;
     const kinds = ['recover', 'recover', 'recover', 'extract', 'hold', 'hold', 'eliminate'];
     const kind = objectiveKind || pick(kinds, `${plot.family}:${seed}:objective`);
+    const targetFloor = verticalFlow === 'top_to_bottom' ? 0 : top;
+    const topRooms = programs.find(p => p.building === target.id && p.floor === targetFloor).rooms.filter(r => r.gameplay);
     const code = `Operation ${pick(CODE_A, `${seed}:code-a`)} ${pick(CODE_B, `${seed}:code-b:${plot.family}`)}`;
-    const where = { downtown: 'downtown block', industrial: 'freight yard', suburb: 'residential close' }[plot.family] || 'city block';
-    const goal = { recover: `recover the intelligence from the ${ORDINAL[top]}-floor ${topRooms[0].kind.replace('_', ' ')}`, extract: `get three soldiers to the ${ORDINAL[top]}-floor rendezvous`, hold: `take and hold the ${ORDINAL[top]}-floor ${topRooms[0].kind.replace('_', ' ')}`, eliminate: 'clear every Syndicate cell in the block' }[kind];
+    const where = {
+        downtown: 'downtown block', industrial: 'freight yard', suburb: 'residential close',
+        harbor: 'harbor waterfront', winter_outpost: 'snowbound ridge outpost', old_quarter: 'cobblestone historic quarter',
+        metro_hub: 'transit interchange and subway', arid_compound: 'desert mesa compound',
+        canal_district: 'sunken canal locks and stone embankments',
+        hillside_ridge: 'terraced highland ridge',
+        sunken_basin: 'recessed drainage valley'
+    }[plot.family] || 'city block';
+    const flowNote = {
+        high_to_low: 'Insert on the high ridge, push downhill, and finish at the lower field.',
+        low_to_high_to_low: 'Start in the lower sector, fight uphill to the objective, then descend to the lower extraction point.',
+        bottom_to_top: 'Deploy in the lower basin and fight uphill to seize the upper crest.',
+        top_to_bottom: 'Hold the elevated crest and sweep down into the lower compound.'
+    }[verticalFlow] || null;
+    const goal = { recover: `recover the intelligence from the ${ORDINAL[targetFloor]}-floor ${topRooms[0].kind.replace('_', ' ')}`, extract: `get three soldiers to the ${ORDINAL[targetFloor]}-floor rendezvous`, hold: `take and hold the ${ORDINAL[targetFloor]}-floor ${topRooms[0].kind.replace('_', ' ')}`, eliminate: 'clear every Syndicate cell in the block' }[kind];
     const under = { subway: 'the subway tunnel', 'storm-drain': 'the storm drain' }[plot.underground];
     const flank = under ? `use ${under} or a fire escape` : 'use a fire escape';
     const design = {
         version: 1, generated: true,
-        mission: { kind, title: name || code, timeOfDay, target: { building: target.id, floor: top, room: topRooms[0].id },
-            briefing: `The Syndicate has fortified a ${where}. Insert on the street, push from cover to cover along the line of advance, ${flank} to flank the ${target.program === 'apartment' ? 'apartment block' : target.program}, and ${goal}.` },
+        mission: { kind, title: name || code, timeOfDay, target: { building: target.id, floor: targetFloor, room: topRooms[0].id },
+            briefing: `${flowNote ? `${flowNote} ` : ''}The Syndicate has fortified a ${where}. Insert along the approach, ${flank} to flank the ${target.program === 'apartment' ? 'apartment block' : target.program}, and ${goal}.` },
         programs,
         beats: [
             { id: 'approach', text: 'Reach the cover outside the objective.', building: target.id, floor: 0, room: 'hall' },
             { id: 'escalation', text: 'Push past the guarded stair core.', building: target.id, floor: Math.min(1, top), room: 'hall' },
-            { id: 'climax', text: kind === 'eliminate' ? 'Break the cell holding the top floor.' : 'Secure the command room.', building: target.id, floor: top, room: topRooms[0].id }
+            { id: 'climax', text: kind === 'eliminate' ? 'Break the cell holding the objective.' : 'Secure the command room.', building: target.id, floor: targetFloor, room: topRooms[0].id }
         ],
         encounters: []
     };

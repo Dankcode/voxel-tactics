@@ -13,14 +13,15 @@
 // decide() never mutates the battle: everything here only reads state and returns one intent.
 import { WALKERS, occupiedCells } from './Walker.js';
 import { WEAPONS, THROWABLES } from '../content/weapons.js';
+import { FIRE_MODES, fireModes } from './FireControl.js';
 import { ABILITIES } from '../content/units.js';
 import { coverAgainst, hardCoverAgainst, COVER } from '../voxel/Cover.js';
-import { alive, hasStatus, partArmor } from './Units.js';
+import { alive, hasStatus } from './Units.js';
 import { nodeKey, pathTo } from '../world/PathSearch.js';
 import { reserveAmmo } from '../inventory/Equipment.js';
 import { inWatchSector, watchSector } from './WatchSector.js';
 import { MAT } from '../voxel/Materials.js';
-import { hitChance } from './HitChance.js';
+import { evaluateBallisticShot } from './Ballistics.js';
 import { DEFAULT_TUNING } from '../session/Playstyle.js';
 import { B } from '../content/balance.js';
 import { hashString } from '../util/Rng.js';
@@ -95,25 +96,7 @@ function decideEnemyCore(battle, u, policy) {
     if (known.length) { const g = gadget(battle, u, known, T, role); if (g) return why(g, `${role}: ${g.type === 'throw' ? 'grenade' : g.type} before the shots`); }
     if (!ammoOk && canReload) return { type: 'reload', unitId: u.id, weaponId: ranged.id };
 
-    const shot = ammoOk && u.ap >= shotAp ? bestEnemyShot(battle, u, ranged, known) : null;
-    const canMoveAndShoot = u.ap + u.moveOnlyAp - shotAp >= 1;
-    // XCOM habit: take a good shot; with a bad one, reposition first if there is AP for both.
-    if (shot && (shot.chance >= 70 || shot.kill && shot.chance >= 45 || (!canMoveAndShoot && shot.chance >= 30) || (u.movedThisTurn && shot.chance >= 30)))
-        return why(shot.intent, `shot ${shot.chance}%${shot.kill ? ' (kill)' : ''}${shot.focus ? ' on pod focus' : ''}`);
-
-    // Formation members hold their slots (enemy formations are rare, kept for parity with the squad AI).
-    // Formation members: the leader's group move carries them; get back into the slot if left behind, then cover.
-    const formation = battle.formations.of(u);
-    if (formation && formation.template !== 'crossfire' && formation.leaderId !== u.id) {
-        if (shot && shot.chance >= 30) return shot.intent;
-        const slot = battle.formations.slotsFor(formation)?.[formation.members.indexOf(u.id)];
-        if (slot && !battle.formations.inSlot(u, slot) && !u.movedThisTurn && u.ap + u.moveOnlyAp >= 1) {
-            const step = approachCovered(battle, u, slot, ammoOk ? ranged.ap : 0, threats);
-            if (step) return { type: 'move', unitId: u.id, to: step };
-        }
-        return overwatchToward(battle, u, ranged, nearestOf(u, threats)) || (shot ? shot.intent : null);
-    }
-
+    const shot = ammoOk && u.ap >= shotAp ? bestEnemyShot(battle, u, ranged, known, T) : null;
     // PLAN-10: hide for real reasons only (wounded, or the pod half gone); a healthy pod presses the attack.
     const wounded = u.hp <= u.maxHp * 0.5;
     const near = battle.unitsOf(u.side).filter(o => o.id !== u.id && dist2(o, u) <= 10).length + 1;
@@ -121,11 +104,34 @@ function decideEnemyCore(battle, u, policy) {
     const pod = battle.units.filter(o => o.side === u.side && (o.group ?? 0) === (u.group ?? 0) && !WALKERS[o.type]);
     const depleted = pod.length >= 2 && pod.filter(alive).length * 2 <= pod.length;
     const pushed = known.some(t => dist2(t, u) <= 6) && T.ambush >= 1.15 && u.hp < u.maxHp;
-    const hide = (wounded || depleted || outnumbered || pushed) && !(shot && shot.chance >= 55);
+    const hide = (wounded || depleted || outnumbered || pushed) && !(shot && shot.kill && shot.effectiveHitRate >= 0.65);
+
+    // Physical ballistics: take a strong unobstructed or likely-kill shot when not retreating/hiding.
+    // Exposed units prioritize getting into cover before firing unless the shot is highly certain.
+    const exposed = known.some(t => coverAgainst(battle.store, u.x, u.y, u.z, t.x, t.y, t.z) === COVER.NONE);
+    const strongShot = !u.movedThisTurn && exposed
+        ? (shot && (shot.effectiveHitRate >= 0.72 || (shot.kill && shot.effectiveHitRate >= 0.50)))
+        : (shot && (shot.effectiveHitRate >= 0.60 || (shot.kill && shot.effectiveHitRate >= 0.42)));
+    if (!hide && strongShot)
+        return why(shot.intent, `shot ${shot.chance}%${shot.kill ? ' (kill)' : ''}${shot.focus ? ' on pod focus' : ''}`);
+
+    // Formation members hold their slots (enemy formations are rare, kept for parity with the squad AI).
+    // Formation members: the leader's group move carries them; get back into the slot if left behind, then cover.
+    const formation = battle.formations.of(u);
+    if (formation && formation.template !== 'crossfire' && formation.leaderId !== u.id) {
+        if (!hide && shot && shot.effectiveHitRate >= 0.28) return shot.intent;
+        const slot = battle.formations.slotsFor(formation)?.[formation.members.indexOf(u.id)];
+        if (slot && !battle.formations.inSlot(u, slot) && !u.movedThisTurn && u.ap + u.moveOnlyAp >= 1) {
+            const step = approachCovered(battle, u, slot, ammoOk ? ranged.ap : 0, threats);
+            if (step) return { type: 'move', unitId: u.id, to: step };
+        }
+        return overwatchToward(battle, u, ranged, nearestOf(u, threats), { force: true }) || (shot ? shot.intent : null);
+    }
+
     // Flush (FlushAi): a squad member dug in behind breakable cover that this unit cannot hit well. Break the cover
     // now when it gives way this action and a pod-mate can take the exposed shot; otherwise it is the fallback below.
-    const flush = !hide && ammoOk && !(shot && shot.chance >= FLUSH.chanceBelow) ? flushShot(battle, u, ranged, threats, { T }) : null;
-    if (flush && flush.breaksNow && flush.follow) return why(flush.intent, 'flush: break the cover for a pod-mate');
+    const flush = !hide && ammoOk && !(shot && shot.directHitRate >= FLUSH.hitBelow) ? flushShot(battle, u, ranged, threats, { T }) : null;
+    if (flush && flush.breaksNow && (flush.follow || (T.coverBreakPriority ?? 1) >= 1.25)) return why(flush.intent, 'flush: break the cover for a pod-mate');
 
     if (!threats.length) {
         // Nobody known: hold an ambush, or sweep toward the squad's general direction (alerted pods do not idle).
@@ -135,7 +141,7 @@ function decideEnemyCore(battle, u, policy) {
         if (search) return why(search, 'search: running down a sound');
         const t = fallbackTarget(battle, u);
         if (!t) return null;
-        const tile = enemyTile(battle, u, ranged, [{ u: t.u, x: t.x, y: t.y, z: t.z, ghost: true, age: 9 }], Math.max(1, u.ap + u.moveOnlyAp - (ammoOk ? ranged.ap : 0)), { role, hide: false, T, ammoOk, sweep: t });
+        const tile = enemyTile(battle, u, ranged, [], Math.max(1, u.ap + u.moveOnlyAp - (ammoOk ? ranged.ap : 0)), { role, hide: false, T, ammoOk, sweep: t });
         if (tile && !same(tile, u)) return moveIntent(battle, u, tile);
         return ammoOk && u.ap >= ranged.ap ? overwatchToward(battle, u, ranged, t) : null;
     }
@@ -146,13 +152,13 @@ function decideEnemyCore(battle, u, policy) {
         const best = enemyTile(battle, u, ranged, threats, budgetAp, { role, hide, T, ammoOk, detail: true });
         // PLAN-10, XCOM dash: no worthwhile shot from anywhere this turn → spend everything closing in on the target.
         const fullAp = u.ap + u.moveOnlyAp;
-        if (!hide && target && fullAp > budgetAp && (!best || best.offense < B.aiDashIfOffenseBelow) && !(shot && shot.chance >= 30)) {
+        if (!hide && target && fullAp > budgetAp && (!best || best.offense < B.aiDashIfOffenseBelow) && !(shot && shot.hitRate >= 0.28)) {
             const dash = enemyTile(battle, u, ranged, threats, fullAp, { role, hide: false, T, ammoOk, pursue: target, detail: true });
             if (dash && !same(dash.n, u) && dist2(dash.n, target) < dist2(u, target) - 1) return why(moveIntent(battle, u, dash.n), `dash: best reachable offense ${Math.round((best?.offense ?? 0) * 100)}% < ${Math.round(B.aiDashIfOffenseBelow * 100)}%`);
         }
         if (best && !same(best.n, u)) return why(moveIntent(battle, u, best.n), `${role}: ${hide ? 'fall back' : 'reposition'} (offense ${Math.round((best.offense ?? 0) * 100)}%, danger ${(best.danger ?? 0).toFixed(2)})`);
     }
-    if (shot && shot.chance >= 30) return why(shot.intent, `shot ${shot.chance}% after moving`);
+    if (shot && (flush ? shot.directHitRate >= FLUSH.hitBelow : shot.effectiveHitRate >= 0.22)) return why(shot.intent, `shot ${Math.round(shot.hitRate * 100)}% after moving`);
     // Moved, still no shot and AP left: keep closing instead of parking on overwatch out of range or out of sight.
     if (!hide && target && u.movedThisTurn && u.ap + u.moveOnlyAp >= 1 && (dist2(u, target) > ranged.range || !shot)) {
         const keep = ammoOk && u.ap - shotAp >= 0 && u.ap + u.moveOnlyAp - shotAp >= 1 ? shotAp : 0;
@@ -164,7 +170,7 @@ function decideEnemyCore(battle, u, policy) {
     if (wall) return why(wall, 'caught in the open: raise cover');
     // No shot worth taking and nowhere better to stand: dig them out rather than wait on overwatch.
     if (flush && u.ap >= battle.shotAp(u, ranged)) return why(flush.intent, 'flush: dig them out');
-    if (ammoOk && u.ap >= ranged.ap) return why(overwatchToward(battle, u, ranged, nearestOf(u, threats)), 'overwatch: no shot, nowhere better');
+    if (ammoOk && u.ap >= ranged.ap) return why(overwatchToward(battle, u, ranged, nearestOf(u, threats), { force: hide }), 'overwatch: no shot, nowhere better');
     if (!ammoOk && canReload) return { type: 'reload', unitId: u.id, weaponId: ranged.id };
     if (shot) return shot.intent;
     return null;
@@ -179,34 +185,68 @@ function moveIntent(battle, u, to) {
     return { type: 'move', unitId: u.id, to, ...(group ? { group: true } : {}) };
 }
 function nearestOf(u, list) { let b = null, bd = Infinity; for (const e of list) { const d = dist2(e, u); if (d < bd) { bd = d; b = e; } } return b; }
-/** Alerted with no intel at all: the squad's nearest member, approached as a rumour (cover first, never a charge). */
-function fallbackTarget(battle, u) { const e = nearestOf(u, battle.enemiesOf(u)); return e ? { x: e.x, y: e.y, z: e.z, u: e } : null; }
+/** Alerted with no intel at all: sweep the objective, a nearby tactical pocket, or home post — never hidden player coordinates. */
+function fallbackTarget(battle, u) {
+    const o = battle.objective;
+    const obj = o?.zone ? { x: Math.round((o.zone.x0 + o.zone.x1) / 2), y: Math.round((o.zone.y0 + o.zone.y1) / 2), z: o.zone.z ?? u.z }
+        : o?.item && o.item.x != null ? { x: o.item.x, y: o.item.y, z: o.item.z ?? u.z } : null;
+    if (obj && dist2(u, obj) > 3) return obj;
+    const pockets = battle.mission.meta?.pockets || [];
+    if (pockets.length) {
+        const p = pockets[Math.floor(unitHash(`${u.id}:sweep:${Math.floor(battle.round / 2)}`) * pockets.length)];
+        if (p && dist2(u, p) > 3) return { x: p.x, y: p.y, z: battle.mission.meta?.streetDatum ?? u.z };
+    }
+    return u.home && dist2(u, u.home) > 2 ? u.home : null;
+}
 
-function overwatchToward(battle, u, w, t) {
+function overwatchToward(battle, u, w, t, { force = false } = {}) {
     if (!t || !w || (u.ammo[w.id] ?? 0) < 1 || u.ap < w.ap) return null;
+    if (!force) {
+        const podCap = (tuningOf(battle).ambush ?? 1) >= 1.25 ? 2 : 1;
+        const sideCap = 3;
+        const allies = battle.unitsOf(u.side).filter(o => o.id !== u.id && o.overwatch);
+        const podWatchers = allies.filter(o => (o.group ?? 0) === (u.group ?? 0)).length;
+        if (podWatchers >= podCap || allies.length >= sideCap) return null;
+    }
     const toward = { x: t.x, y: t.y };
     return watchSector(u, toward, w.id) ? { type: 'overwatch', unitId: u.id, weaponId: w.id, toward } : null;
 }
 
-/** Best shot by XCOM hit chance and expected damage. */
-export function bestEnemyShot(battle, u, w, known) {
+/** Best shot by simulated recoil, fire mode, and ballistic trajectory. */
+export function bestEnemyShot(battle, u, w, known, T = DEFAULT_TUNING) {
     let best = null;
     const focus = planFocus(battle, u);   // PLAN-15: pods fire on one agreed target
+    const apCost = Math.max(1, battle.shotAp(u, w));
+    const modes = fireModes(w);
+    const ammo = u.ammo?.[w.id] ?? 0;
     for (const t of known) {
         const e = t.u;
-        if (dist2(e, u) > w.maxRange) continue;
+        const d = dist2(e, u);
+        if (d > w.maxRange) continue;
         if (!battle.sees(u, e)) continue;
-        const hc = hitChance(battle, u, e, w);
-        const perHit = Math.max(0, w.damage - Math.max(0, partArmor(e, 'torso') - w.pierce), Math.ceil(w.damage * (B.armorMinDamage || 0)));
-        const expect = hc.chance / 100 * w.projectiles * perHit * (1 + hc.crit / 100 * (B.critDamageMult - 1));
-        const kill = w.projectiles * perHit * (hc.crit > 0 ? B.critDamageMult : 1) >= e.hp;
-        // A frozen, wet or flanked target is worth extra; a friendly in the line of fire is not worth it.
-        let value = expect / Math.max(1, w.ap) * (kill ? 1.6 : 1) * (hasStatus(e, 'frozen') ? 1.3 : 1);
-        const friendly = battle.unitsOf(u.side).some(o => o.id !== u.id && segDist(u, e, o) < 0.7 && dist2(o, u) < dist2(e, u));
-        if (friendly) value *= 0.2;
-        if (focus && e.id === focus) value *= 1.35;
-        if (e.hp < e.maxHp) value *= 1.15;   // finish the wounded
-        if (!best || value > best.value) best = { value, chance: hc.chance, crit: hc.crit, kill, intent: { type: 'shoot', unitId: u.id, weaponId: w.id, aim: { unitId: e.id, part: 'torso' } }, focus: e.id === focus };
+        for (const m of modes) {
+            const need = FIRE_MODES[m] || 1;
+            if (m !== modes[0] && ammo < need) continue;
+            const est = evaluateBallisticShot(battle, u, e, w, { fireMode: m, samples: 16 });
+            const expDmg = est.expectedDamage;
+            const kill = expDmg >= e.hp || (est.hitRate >= 0.65 && expDmg >= e.hp * 0.8);
+            const climb = est.recoil?.totalClimbDeg ?? 0;
+            const recoilPenalty = climb > 1.5 && est.hitRate < 0.45 ? 1 / (1 + (climb - 1.5) * 0.25 * (T.recoilDiscipline ?? 1)) : 1;
+            // Frozen targets and pod focuses are worth extra; a friendly in the line of fire is not worth it.
+            let value = (expDmg / apCost) * recoilPenalty * (kill ? 1.35 : 1) * (hasStatus(e, 'frozen') ? 1.3 : 1);
+            const friendly = battle.unitsOf(u.side).some(o => o.id !== u.id && segDist(u, e, o) < 0.7 && dist2(o, u) < dist2(e, u));
+            if (friendly) value *= 0.2;
+            if (focus && e.id === focus) value *= 1.18;
+            if (e.hp < e.maxHp) value *= 1.1;   // finish the wounded
+            if (!best || value > best.value) {
+                best = {
+                    value, hitRate: est.hitRate, directHitRate: est.directHitRate, effectiveHitRate: est.effectiveHitRate, chance: Math.round(est.hitRate * 100), expectedDamage: expDmg,
+                    kill, fireMode: m, recoilClimb: climb,
+                    intent: { type: 'shoot', unitId: u.id, weaponId: w.id, ...(modes.length > 1 ? { fireMode: m } : {}), aim: { unitId: e.id, part: 'torso' } },
+                    focus: e.id === focus
+                };
+            }
+        }
     }
     return best && best.value > 0.05 ? best : null;
 }
@@ -227,7 +267,8 @@ export function enemyTile(battle, u, w, threats, budgetAp, { role = 'anchor', hi
     const stride = Math.max(1, Math.floor(nodes.length / 260));
     const allies = battle.unitsOf(u.side).filter(o => o.id !== u.id);
     const pockets = battle.mission.meta?.pockets || [];
-    const watchers = battle.enemiesOf(u).filter(p => alive(p) && p.overwatch && !hasStatus(p, 'surprised'));
+    const seen = battle.visibleTo(u.side);
+    const watchers = battle.enemiesOf(u).filter(p => alive(p) && p.overwatch && !hasStatus(p, 'surprised') && seen.has(p.id));
     const brawlers = battle.enemiesOf(u).filter(p => WEAPONS[p.weapon]?.kind === 'melee' || WEAPONS[p.weapon]?.range <= 8);
     const flankK = role === 'flanker' ? 1.8 : role === 'support' ? 0.6 : 1;
     const want = role === 'support' ? w.range * 0.85 : role === 'flanker' ? w.range * 0.5 : w.range * 0.7;
@@ -267,16 +308,16 @@ export function enemyTile(battle, u, w, threats, budgetAp, { role = 'anchor', hi
         if (battle.field.surfaceAt(n.x, n.y, n.z) === 'wet') s -= 4;         // cryo bait
         s -= allies.filter(o => cheb(o, n) <= 2).length * 4 * T.spread;
         if (role !== 'flanker') s += Math.min(2, allies.filter(o => cheb(o, n) <= 7).length) * 1.5 * T.flankGuard;   // stay in mutual support
-        if (threats.length) s += Math.max(0, n.z - Math.min(...threats.map(t => t.z))) * 2;
+        if (threats.length) s += Math.max(0, n.z - Math.min(...threats.map(t => t.z))) * 2 * (T.highGroundBias ?? 1);
         if (pockets.length && pockets.some(p => Math.hypot(p.x - n.x, p.y - n.y) <= 2.5)) s += 2.5;
-        if (battle.roomOf(n) >= 0) s += hide ? 10 * T.ambush : 1;
+        if (battle.roomOf(n) >= 0) s += (hide ? 10 * T.ambush : 1.5) * (T.indoorBias ?? 1);
         if (nextToDoor(battle, n)) s -= 6 * T.doorWatch;
         for (const p of brawlers) if (dist2(p, n) <= 3) s -= 5 * T.keepAway;
         for (const p of watchers) if (inWatchSector(p, p.overwatch, n)) s -= 14 * T.overwatchCaution;
         scored.push({ n, s });
     }
     scored.sort((a, b) => b.s - a.s);
-    // Pass 2: line of sight and hit chance, both ways.
+    // Pass 2: line of sight and simulated physical trajectory offense/danger both ways.
     const top = scored.slice(0, 20);
     for (const c of top) {
         const n = c.n, eye = { x: n.x + 0.5, y: n.y + 0.5, h: n.z + 2.4 }, chest = { x: n.x + 0.5, y: n.y + 0.5, h: n.z + 2.05 };
@@ -288,11 +329,11 @@ export function enemyTile(battle, u, w, threats, budgetAp, { role = 'anchor', hi
             const los = d <= B.sightRange && battle.sightLine(tEye, chest);
             if (los) {
                 seenBy++;
-                if (ew && d <= ew.maxRange) danger += hitChance(battle, t.u, u, ew, { from: t, at: n }).chance / 100 * (t.ghost ? 0.6 : 1);
+                if (ew && d <= ew.maxRange) danger += evaluateBallisticShot(battle, t.u, u, ew, { from: t, at: n, samples: 10 }).effectiveHitRate * (t.ghost ? 0.6 : 1);
                 else if (d <= 2) danger += 0.8;
             }
             if (ammoOk && !t.ghost && d <= w.maxRange && battle.sightLine(eye, battle.chest(t.u)))
-                offense = Math.max(offense, hitChance(battle, u, t.u, w, { from: n }).chance / 100);
+                offense = Math.max(offense, evaluateBallisticShot(battle, u, t.u, w, { from: n, samples: 10 }).effectiveHitRate);
         }
         c.s += offense * (hide ? 6 : 26) - danger * 28 * T.flankGuard * (role === 'flanker' ? 0.75 : 1);
         if (!seenBy) c.s += hide ? 26 : 5 * T.closeIn;
@@ -406,10 +447,11 @@ export function gadget(battle, u, known, T = DEFAULT_TUNING, role = 'anchor') {
                 score = burnable.length * 1.2 + dug * 0.9 * T.flush;
             } else if (t.damage) {
                 const dug = coverAgainst(battle.store, e.x, e.y, e.z, u.x, u.y, u.z) === COVER.FULL ? 1 : 0;
-                score = hit.length + dug * 0.6 * T.flush;
+                const cp = T.coverBreakPriority ?? 1;
+                score = hit.length + dug * 0.6 * T.flush * cp;
                 // Frag that takes the cover down with it: count the dug-in targets' breakable cover in the blast.
                 const entrenched = known.filter(k => coverAgainst(battle.store, k.x, k.y, k.z, u.x, u.y, u.z) !== COVER.NONE);
-                score += Math.min(1.5, 0.25 * blastCoverValue(battle.store, e, t.radius, t.power || 0, entrenched, u)) * T.flush;
+                score += Math.min(1.5, 0.25 * blastCoverValue(battle.store, e, t.radius, t.power || 0, entrenched, u)) * T.flush * cp;
             }
             if (role === 'support') score *= 1.2;
             if (score >= 2.2) plays.push({ score, intent: { type: 'throw', unitId: u.id, itemId: id, to: { x: e.x, y: e.y, z: e.z } } });
@@ -459,7 +501,7 @@ export function decideMonster(battle, u) {
         }
     }
     const ranged = u.weapons.map(id => WEAPONS[id]).find(w => w?.kind === 'ballistic' && (u.ammo[w.id] || 0) > 0);
-    if (ranged && u.ap >= battle.shotAp(u, ranged)) { const s = bestEnemyShot(battle, u, ranged, threats.filter(t => !t.ghost)); if (s && s.chance >= 35) return s.intent; }
+    if (ranged && u.ap >= battle.shotAp(u, ranged)) { const s = bestEnemyShot(battle, u, ranged, threats.filter(t => !t.ghost)); if (s && s.hitRate >= 0.35) return s.intent; }
     const keep = claws ? claws.ap : 0;
     const step = monsterStep(battle, u, prey, keep);
     const smash = u.abilities?.includes('smash') && u.ap >= ABILITIES.smash.ap ? smashToward(battle, u, prey) : null;

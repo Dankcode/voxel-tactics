@@ -9,8 +9,14 @@
 // uses travels in the scenario descriptor (desc.aiProfile) so every lockstep peer builds the same AI.
 import { THROWABLES } from '../content/weapons.js';
 import { ABILITIES } from '../content/units.js';
+import {
+    EXTENDED_TRAITS, TUNING_KEYS, BIOME_DOCTRINE_NOTES, BIOME_PRIORS,
+    analyzeSideBehavior, counterTuningFrom, updateBiomeMemory
+} from '../ai/AdaptivePolicy.js';
 
 export const PLAYSTYLE_VERSION = 1;
+export const ALL_TRAITS = EXTENDED_TRAITS;
+export { BIOME_DOCTRINE_NOTES };
 /** Every trait, 0..1, with what a high value means. */
 export const TRAITS = Object.freeze({
     aggression: 'pushes forward and fights up close',
@@ -25,70 +31,23 @@ export const TRAITS = Object.freeze({
     melee: 'closes to melee'
 });
 const NEUTRAL = Object.freeze(Object.fromEntries(Object.keys(TRAITS).map(k => [k, 0.5])));
-const clamp01 = x => Math.max(0, Math.min(1, Number.isFinite(x) ? x : 0.5));
+const NEUTRAL_EXT = Object.freeze(Object.fromEntries(Object.keys(EXTENDED_TRAITS).map(k => [k, 0.5])));
+const clamp = (x, lo = 0, hi = 1) => Math.max(lo, Math.min(hi, Number.isFinite(x) ? x : (lo + hi) / 2));
+const clamp01 = x => clamp(x, 0, 1);
 const r2 = x => Math.round(x * 100) / 100;
-const EXPLOSIVE = new Set(['powder_bomb', 'breach_charge']);
-const ELEMENTAL = new Set(['fire_flask', 'frost_flask', 'water_flask', 'gale_flask']);
 
-/** One finished (or abandoned) battle -> { version, metrics, traits }. */
+/** One finished (or abandoned) battle -> { version, metrics, traits, extendedTraits }. Delegates log parsing to AdaptivePolicy. */
 export function playstyleFromBattle(b) {
-    const side = id => b.units.find(u => u.id === id)?.side;
-    const squad = b.units.filter(u => u.side === 'player');
-    const n = Math.max(1, squad.length);
-    const m = { rounds: 1, shots: 0, shotDist: 0, shotsWithTarget: 0, flankShots: 0, closeShots: 0, longShots: 0, tilesMoved: 0,
-        overwatch: 0, reactions: 0, explosives: 0, elements: 0, intel: 0, breaches: 0, melee: 0, firstAlertRound: null,
-        flankSteps: b.stats?.flankSteps || 0, ...(b.stats?.turnEnds || { inCover: 0, exposed: 0, unseen: 0 }) };
-    for (const e of b.log) {
-        m.rounds = Math.max(m.rounds, e.round || 1);
-        switch (e.t) {
-            case 'shot':
-                if (side(e.unitId) !== 'player' || e.reaction) break;
-                m.shots++;
-                if (e.dist != null) {
-                    m.shotsWithTarget++; m.shotDist += e.dist;
-                    if (e.cover === 0) m.flankShots++;
-                    if (e.dist <= 6) m.closeShots++; else if (e.dist >= 14) m.longShots++;
-                }
-                break;
-            case 'reaction': if (side(e.watcherId) === 'player') m.reactions++; break;
-            case 'overwatch': if (side(e.unitId) === 'player') m.overwatch++; break;
-            case 'move': if (side(e.unitId) === 'player' && !e.scatter) m.tilesMoved += Math.max(0, (e.path?.length || 1) - 1); break;
-            case 'throw':
-                if (side(e.unitId) !== 'player') break;
-                if (EXPLOSIVE.has(e.itemId)) m.explosives++;
-                else if (ELEMENTAL.has(e.itemId) || THROWABLES[e.itemId]?.element) m.elements++;
-                break;
-            case 'ability': {
-                if (side(e.unitId) !== 'player') break;
-                const a = ABILITIES[e.abilityId];
-                if (a?.intel && !a.support) m.intel++;
-                else if (a?.element) m.elements++;
-                break;
-            }
-            case 'intel': case 'drone': if (side(e.unitId) === 'player') m.intel++; break;
-            case 'breach': m.breaches++; break;
-            case 'melee': if (side(e.unitId) === 'player') m.melee++; break;
-            case 'alert': if (m.firstAlertRound == null) m.firstAlertRound = e.round || 1; break;
-        }
-    }
-    const turns = n * m.rounds, avgDist = m.shotsWithTarget ? m.shotDist / m.shotsWithTarget : null;
-    const faced = m.inCover + m.exposed;
-    const traits = {
-        aggression: 0.5 * (m.shotsWithTarget ? m.closeShots / m.shotsWithTarget : 0.5) + 0.5 * Math.min(1, m.tilesMoved / turns / 8),
-        flanking: Math.min(1, (m.shotsWithTarget ? m.flankShots / m.shotsWithTarget : 0) + m.flankSteps / turns / 6),
-        overwatch: Math.min(1, m.overwatch / turns * 3),
-        explosives: Math.min(1, m.explosives / n),
-        elements: Math.min(1, m.elements / n),
-        stealth: Math.min(1, (m.firstAlertRound == null ? 1 : (m.firstAlertRound - 1) / 4) * 0.7 + Math.min(1, m.intel / n) * 0.3),
-        range: avgDist == null ? 0.5 : Math.min(1, Math.max(0, (avgDist - 3) / 15)),
-        cover: faced ? m.inCover / faced : 0.5,
-        breach: Math.min(1, m.breaches / 2),
-        melee: Math.min(1, m.melee / n)
+    const res = analyzeSideBehavior(b, 'player');
+    const traits = {};
+    for (const k of Object.keys(TRAITS)) traits[k] = r2(clamp01(res.traits[k] ?? 0.5));
+    return {
+        version: PLAYSTYLE_VERSION,
+        metrics: res.metrics,
+        traits,
+        extendedTraits: res.traits,
+        headline: headline(traits)
     };
-    for (const k of Object.keys(traits)) traits[k] = r2(clamp01(traits[k]));
-    m.avgShotDist = avgDist == null ? null : r2(avgDist);
-    delete m.shotDist;
-    return { version: PLAYSTYLE_VERSION, metrics: m, traits, headline: headline(traits) };
 }
 
 /** The 1-3 traits that stand out most (far from neutral), as short labels. */
@@ -102,17 +61,28 @@ export function headline(traits) {
 
 /**
  * Roll a match into the cached profile. Newer matches weigh more (at least 30 %), the first few settle quickly.
- * `meta` is stored with the history entry ({ outcome, scenario, at } - the caller supplies the time).
+ * `meta` stores { outcome, scenario, biome, tuning, margin, at }.
  */
 export function mergeProfile(profile, style, meta = {}) {
-    const p = sanitizeAiProfile(profile) || { version: PLAYSTYLE_VERSION, matches: 0, traits: { ...NEUTRAL }, history: [] };
+    const p = sanitizeAiProfile(profile) || { version: PLAYSTYLE_VERSION, matches: 0, traits: { ...NEUTRAL }, extendedTraits: { ...NEUTRAL_EXT }, biomeMemory: {}, history: [] };
     const k = Math.max(0.3, 1 / (p.matches + 1));
     const traits = {};
     for (const t of Object.keys(TRAITS)) traits[t] = r2(p.traits[t] + (clamp01(style.traits[t]) - p.traits[t]) * k);
-    const history = [...(p.history || []), { ...pick(meta, ['outcome', 'scenario', 'at']), traits: style.traits, headline: style.headline || headline(style.traits) }].slice(-10);
-    const out = { version: PLAYSTYLE_VERSION, matches: p.matches + 1, traits, headline: headline(traits), history };
-    out.tuning = aiTuningFrom(out);
-    out.adaptation = adaptationNotes(out);
+    const prevExt = p.extendedTraits || { ...NEUTRAL_EXT, ...p.traits };
+    const srcExt = style.extendedTraits || style.traits || {};
+    const extendedTraits = {};
+    for (const t of Object.keys(EXTENDED_TRAITS)) {
+        const val = srcExt[t] ?? traits[t] ?? 0.5;
+        extendedTraits[t] = r2(prevExt[t] + (clamp01(val) - prevExt[t]) * k);
+    }
+    const biome = meta.biome || meta.plot || null;
+    const biomeMemory = (biome && BIOME_PRIORS[biome])
+        ? updateBiomeMemory(p.biomeMemory || {}, biome, meta.tuning || null, meta.outcome === 'enemy', meta.margin ?? 1)
+        : (p.biomeMemory || {});
+    const history = [...(p.history || []), { ...pick(meta, ['outcome', 'scenario', 'biome', 'at']), traits: style.traits, headline: style.headline || headline(style.traits) }].slice(-10);
+    const out = { version: PLAYSTYLE_VERSION, matches: p.matches + 1, traits, extendedTraits, biomeMemory, headline: headline(traits), history };
+    out.tuning = aiTuningFrom(out, { biome });
+    out.adaptation = adaptationNotes(out, { biome });
     return out;
 }
 const pick = (o, keys) => Object.fromEntries(keys.filter(k => o?.[k] != null).map(k => [k, String(o[k]).slice(0, 80)]));
@@ -121,33 +91,44 @@ const pick = (o, keys) => Object.fromEntries(keys.filter(k => o?.[k] != null).ma
 export const DEFAULT_TUNING = Object.freeze(aiTuningFrom(null));
 
 /**
- * Cached profile -> the weights the AI plays with this match. Each weight is ~1 for an average player and moves
- * toward 0.5..2 as the matching trait stands out. Rounded so every peer hashes the same numbers.
+ * Cached profile -> the weights the AI plays with this match. Blends legacy player traits, extended ballistic/vertical/indoor
+ * traits, learned `biomeMemory`, and distilled `BIOME_PRIORS` / `ARENA_BIOME_PRIORS` deterministically.
  */
-export function aiTuningFrom(profile) {
+export function aiTuningFrom(profile, { biome = null, biomeMemory = null } = {}) {
     const p = sanitizeAiProfile(profile);
     const t = p ? p.traits : NEUTRAL;
-    // Low match counts trust the profile less.
+    const extT = p?.extendedTraits || t;
+    const mem = biomeMemory || p?.biomeMemory || null;
+    if ((biome && BIOME_PRIORS[biome]) || (biome && mem?.[biome])) {
+        const symProfile = p ? { version: 2, matches: p.matches, traits: { ...NEUTRAL_EXT, ...t, ...extT }, biomeMemory: mem } : null;
+        return counterTuningFrom(symProfile, { biome, biomeMemory: mem });
+    }
     const conf = p ? Math.min(1, p.matches / 3) : 0;
-    const w = v => r2(1 + (v - 0.5) * 2 * conf);            // 0.5 -> 1, 1 -> 2, 0 -> 0 (at full confidence)
+    const w = v => r2(Math.max(0.5, 1 + (clamp01(v) - 0.5) * 2 * conf));
     return {
-        overwatchCaution: r2(Math.max(0.5, w(t.overwatch))),   // weight on staying out of known overwatch cones
-        flankGuard: r2(Math.max(0.5, w(t.flanking))),          // wants cover from every side, sticks with the pod
-        spread: r2(Math.max(0.5, w((t.explosives + t.elements) / 2))),   // keeps apart from allies (grenade bait)
-        ambush: r2(Math.max(0.5, w(t.aggression))),            // holds rooms and corners to ambush a rushing squad
-        hunt: r2(Math.max(0.5, w(t.stealth))),                 // sweeps toward last known positions, investigates noise
-        closeIn: r2(Math.max(0.5, w(t.range))),                // breaks sight lines and closes on long-range shooters
-        flush: r2(Math.max(0.5, w(t.cover))),                  // flanks and throws fire/frag at dug-in targets
-        doorWatch: r2(Math.max(0.5, w(t.breach))),             // stays off door/breach lines, covers entries
-        keepAway: r2(Math.max(0.5, w(t.melee)))                // keeps distance from melee units
+        overwatchCaution: w(t.overwatch),
+        flankGuard: w(t.flanking),
+        spread: w((t.explosives + t.elements) / 2),
+        ambush: w(t.aggression),
+        hunt: w(t.stealth),
+        closeIn: w(t.range),
+        flush: w(t.cover),
+        doorWatch: w(t.breach),
+        keepAway: w(t.melee),
+        highGroundBias: w((extT.verticality ?? 0.5) * 0.7 + t.range * 0.3),
+        recoilDiscipline: w(extT.recoilDiscipline ?? 0.5),
+        coverBreakPriority: w(Math.max(t.cover, (extT.coverDestruction ?? t.cover) * 0.85)),
+        indoorBias: w((extT.indoorControl ?? 0.5) * 0.75 + t.breach * 0.25)
     };
 }
 
 /** Plain-language adaptation lines for the report. */
-export function adaptationNotes(profile) {
+export function adaptationNotes(profile, { biome = null } = {}) {
     const p = sanitizeAiProfile(profile);
-    if (!p) return [];
-    const t = p.traits, out = [];
+    const out = [];
+    if (biome && BIOME_DOCTRINE_NOTES[biome]) out.push(BIOME_DOCTRINE_NOTES[biome]);
+    if (!p) return out;
+    const t = { ...p.traits, ...(p.extendedTraits || {}) };
     const hi = (k, at = 0.62) => t[k] >= at;
     if (hi('flanking')) out.push('You flank often: enemies favour cover that protects from several sides and stay closer to their pod.');
     if (hi('overwatch')) out.push('You set overwatch traps: enemies avoid tiles your watchers cover and wait you out.');
@@ -159,7 +140,28 @@ export function adaptationNotes(profile) {
     if (hi('cover')) out.push('You hold good cover: enemies flank wider and burn or blast you out of it.');
     if (hi('breach')) out.push('You breach rooms: defenders stay off the door lines and cover the entries.');
     if (hi('melee')) out.push('You close to melee: enemies keep their distance from your brawlers.');
+    if (hi('verticality')) out.push('You seize high ground: hostiles climb elevated perches earlier to contest angles.');
+    if (hi('coverDestruction')) out.push('You shred destructible cover: enemies break stubborn fortifications back and stay mobile.');
+    if (hi('recoilDiscipline')) out.push('You manage controlled shots well: enemies tighten fire discipline at range.');
     if (!out.length) out.push('No strong habits yet: the AI plays its standard tactics.');
+    return out;
+}
+
+function sanitizeBiomeMemory(raw) {
+    if (!raw || typeof raw !== 'object') return {};
+    const out = {};
+    for (const [biome, rec] of Object.entries(raw)) {
+        if (!BIOME_PRIORS[biome] || !rec || typeof rec !== 'object') continue;
+        const deltas = {};
+        if (rec.deltas && typeof rec.deltas === 'object') {
+            for (const k of TUNING_KEYS) {
+                if (rec.deltas[k] != null) deltas[k] = r2(clamp(Number(rec.deltas[k]), 0.65, 1.75));
+            }
+        }
+        const matches = Math.max(0, Math.min(1e5, Math.floor(Number(rec.matches) || 0)));
+        const wins = Math.max(0, Math.min(matches, Math.floor(Number(rec.wins) || 0)));
+        out[biome] = { matches, wins, winRate: matches ? r2(wins / matches) : 0, deltas };
+    }
     return out;
 }
 
@@ -168,24 +170,44 @@ export function sanitizeAiProfile(p) {
     if (!p || typeof p !== 'object' || !p.traits || typeof p.traits !== 'object') return null;
     const traits = {};
     for (const k of Object.keys(TRAITS)) traits[k] = r2(clamp01(Number(p.traits[k] ?? 0.5)));
+    const extendedTraits = {};
+    const srcExt = p.extendedTraits && typeof p.extendedTraits === 'object' ? p.extendedTraits : p.traits;
+    for (const k of Object.keys(EXTENDED_TRAITS)) extendedTraits[k] = r2(clamp01(Number(srcExt[k] ?? traits[k] ?? 0.5)));
     const matches = Math.max(0, Math.min(1e6, Math.floor(Number(p.matches) || 0)));
     const history = Array.isArray(p.history) ? p.history.slice(-10).filter(h => h && typeof h === 'object').map(h => ({
-        ...pick(h, ['outcome', 'scenario', 'at']),
+        ...pick(h, ['outcome', 'scenario', 'biome', 'at']),
         traits: Object.fromEntries(Object.keys(TRAITS).map(k => [k, r2(clamp01(Number(h.traits?.[k] ?? 0.5)))])),
         headline: Array.isArray(h.headline) ? h.headline.slice(0, 3).map(s => String(s).slice(0, 40)) : []
     })) : [];
-    return { version: PLAYSTYLE_VERSION, matches, traits, history };
+    const biomeMemory = sanitizeBiomeMemory(p.biomeMemory);
+    return { version: PLAYSTYLE_VERSION, matches, traits, extendedTraits, biomeMemory, history };
 }
-/** The part of a profile a battle needs (keeps scenario descriptors small). */
+/** The part of a profile a battle needs (keeps scenario descriptors compact & deterministic). */
 export function profileForDesc(p) {
     const s = sanitizeAiProfile(p);
-    return s ? { version: s.version, matches: s.matches, traits: s.traits } : null;
+    if (!s) return null;
+    const out = { version: s.version, matches: s.matches, traits: s.traits, extendedTraits: s.extendedTraits };
+    if (Object.keys(s.biomeMemory).length) out.biomeMemory = s.biomeMemory;
+    return out;
 }
 /** Average several players' profiles (co-op squads) into one the AI plays against. */
 export function blendProfiles(list) {
     const ps = list.map(sanitizeAiProfile).filter(Boolean);
     if (!ps.length) return null;
-    const traits = {};
+    const traits = {}, extendedTraits = {};
     for (const k of Object.keys(TRAITS)) traits[k] = r2(ps.reduce((s, p) => s + p.traits[k], 0) / ps.length);
-    return { version: PLAYSTYLE_VERSION, matches: Math.min(...ps.map(p => p.matches)), traits };
+    for (const k of Object.keys(EXTENDED_TRAITS)) extendedTraits[k] = r2(ps.reduce((s, p) => s + (p.extendedTraits?.[k] ?? 0.5), 0) / ps.length);
+    const biomeMemory = {};
+    for (const biome of Object.keys(BIOME_PRIORS)) {
+        const recs = ps.map(p => p.biomeMemory?.[biome]).filter(Boolean);
+        if (!recs.length) continue;
+        const deltas = {};
+        for (const k of TUNING_KEYS) {
+            deltas[k] = r2(recs.reduce((s, r) => s + (r.deltas?.[k] ?? 1), 0) / recs.length);
+        }
+        const matches = recs.reduce((s, r) => s + r.matches, 0);
+        const wins = recs.reduce((s, r) => s + r.wins, 0);
+        biomeMemory[biome] = { matches, wins, winRate: matches ? r2(wins / matches) : 0, deltas };
+    }
+    return { version: PLAYSTYLE_VERSION, matches: Math.min(...ps.map(p => p.matches)), traits, extendedTraits, biomeMemory };
 }

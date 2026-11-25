@@ -62,7 +62,21 @@ export class SoundPlayer {
         });
     }
 
-    // Browsers require a real pointer/key gesture before starting audio.
+    loadBuffer(name) {
+        if (!this.context || !SOUNDS[name]) return Promise.resolve(null);
+        if (this.buffers.has(name)) return this.buffers.get(name);
+        const p = fetch(`/assets/audio/${SOUNDS[name]}`)
+            .then(response => {
+                if (!response.ok) throw Error(`HTTP ${response.status}`);
+                return response.arrayBuffer();
+            })
+            .then(bytes => this.context.decodeAudioData(bytes))
+            .catch(error => { console.warn(`Sound unavailable: ${name}`, error.message); return null; });
+        this.buffers.set(name, p);
+        return p;
+    }
+
+    // Browsers require a real pointer/key gesture before starting audio; decode audio lazily on demand.
     unlock() {
         try {
             if (!this.context) {
@@ -71,16 +85,10 @@ export class SoundPlayer {
                 this.master = this.context.createGain();
                 this.master.gain.value = this.volume;
                 this.master.connect(this.context.destination);
-                for (const [name, file] of Object.entries(SOUNDS)) {
-                    const buffer = fetch(`/assets/audio/${file}`)
-                        .then(response => {
-                            if (!response.ok) throw Error(`HTTP ${response.status}`);
-                            return response.arrayBuffer();
-                        })
-                        .then(bytes => this.context.decodeAudioData(bytes))
-                        .catch(error => { console.warn(`Sound unavailable: ${name}`, error.message); return null; });
-                    this.buffers.set(name, buffer);
-                }
+                setTimeout(() => {
+                    if (!this.context || !this.active) return;
+                    for (const k of ['uiSelect', 'uiConfirm', 'footsteps']) this.loadBuffer(k);
+                }, 400);
             }
             if (this.context.state === 'suspended') this.context.resume().catch(() => {});
         } catch { /* Audio is optional on browsers without Web Audio. */ }
@@ -94,7 +102,7 @@ export class SoundPlayer {
 
     play(name, { loop = false, volume = 1, rate = 1 } = {}) {
         const silent = () => {};
-        if (!name || !this.active || !this.volume || globalThis.document?.hidden || !this.buffers.has(name)) return silent;
+        if (!name || !this.active || !this.volume || globalThis.document?.hidden || !this.context || !SOUNDS[name]) return silent;
         // Cap simultaneous blast tails (e.g. a carpet-bomb strike).
         if (this.voices.size >= 12) this.voices.values().next().value();
         let source, gain, stopped = false;
@@ -106,7 +114,7 @@ export class SoundPlayer {
             this.voices.delete(stop);
         };
         this.voices.add(stop);
-        this.buffers.get(name).then(buffer => {
+        this.loadBuffer(name).then(buffer => {
             if (stopped) return;
             // Do not replay a one-shot late after loading or a suspended browser tab.
             if (!buffer || !this.active || !this.volume || globalThis.document?.hidden || this.context.state !== 'running' || (!loop && performance.now() - started > 400)) { stop(); return; }

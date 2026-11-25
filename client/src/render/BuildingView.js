@@ -22,7 +22,12 @@ export class BuildingView {
             const floor=Math.max(0,Math.min(Math.max(0,(b.storeys??1)-1),zoomFloor===null?Math.min(maxFloor,Math.floor((z-base)/3)):zoomFloor-1));
             next.set(b,base+floor*3);
         }
-        const changed=next.size!==this.active.size||[...next].some(([b,z])=>this.active.get(b)!==z);
+        const lastChanged = [];
+        for (const b of this.buildings) {
+            if (next.get(b) !== this.active.get(b)) lastChanged.push(b);
+        }
+        this.lastChanged = lastChanged;
+        const changed = lastChanged.length > 0;
         this.active=next;return changed;
     }
     hiddenAt(x,y,z) {

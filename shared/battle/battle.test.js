@@ -174,15 +174,15 @@ test('water mend heals and extinguishes but cannot revive or repair a disabled l
     assert.equal(b.apply({...cast,targetId:'e0'}).reason,'no_target');
 });
 
-test('overwatch rejects forged weapons and invalid directions, ignores enemies behind the wedge', () => {
+test('overwatch rejects forged weapons and invalid directions, ignores enemies behind the wedge, and spends one reaction per turn', () => {
     const b=arena({squad:['marksman']});const u=b.unit('p0');
     const intent={type:'overwatch',unitId:u.id,weaponId:'handcannon',toward:{x:10,y:6}};
     for(const toward of [{x:u.x,y:u.y},{x:Infinity,y:1},null]) assert.equal(b.apply({...intent,toward}).reason,'bad_intent');
     assert.equal(b.apply({...intent,weaponId:'repeater'}).reason,'bad_intent');
     assert.ok(b.apply(intent).ok);b.apply({type:'endTurn',side:'player'});
     const e=b.unit('e0');e.x=10;e.y=18;e.alerted=true;b.checkReactions(e,[e]);assert.equal(b.stats.reactions,0);
-    e.x=10;e.y=12;b.checkReactions(e,[e]);assert.equal(b.stats.reactions,1);assert.ok(u.overwatch);
-    b.checkReactions(e,[e]);assert.equal(b.stats.reactions,2);
+    e.x=10;e.y=12;b.checkReactions(e,[e]);assert.equal(b.stats.reactions,1);assert.equal(u.overwatch,null);assert.equal(u.reactionsLeft,0);
+    b.checkReactions(e,[e]);assert.equal(b.stats.reactions,1);
 });
 
 test('elemental intents replay deterministically and blocked cover casts never spend resources', () => {

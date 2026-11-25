@@ -7,18 +7,38 @@ const pct = v => (v == null ? '–' : `${v}%`);
 const REASONS = { recovered: 'Package recovered', held: 'Zone held', extracted: 'Squad extracted', eliminated: 'All hostiles down', timer: 'Deadline passed', 'squad lost': 'The squad was lost', abandoned: 'Battle abandoned' };
 const STATUS = { unhurt: 'Unhurt', wounded: 'Wounded', down: 'Down', killed: 'KIA', extracted: 'Extracted' };
 const TABS = [['squad', 'Squad'], ['hostiles', 'Hostiles'], ['weapons', 'Weapons'], ['playstyle', 'Playstyle & AI'], ['field', 'Field & objective'], ['timeline', 'Timeline']];
-const TRAIT_LABEL = { aggression: 'Aggression', flanking: 'Flanking', overwatch: 'Overwatch', explosives: 'Explosives', elements: 'Elements', stealth: 'Stealth & intel', range: 'Range', cover: 'Cover discipline', breach: 'Breaching', melee: 'Melee' };
+const TRAIT_LABEL = {
+    aggression: 'Aggression', flanking: 'Flanking', overwatch: 'Overwatch', explosives: 'Explosives',
+    elements: 'Elements', stealth: 'Stealth & intel', range: 'Range', cover: 'Cover discipline',
+    breach: 'Breaching', melee: 'Melee',
+    recoilDiscipline: 'Recoil discipline', verticality: 'High ground', coverDestruction: 'Cover breaking', indoorControl: 'Room control'
+};
 
-/** PLAN-09: the playstyle tab - this match's traits, the profile the AI played against, and how it adapts next. */
+const TUNE_LABEL = {
+    overwatchCaution: 'Overwatch caution', flankGuard: 'Flank guard', spread: 'Pod spread',
+    ambush: 'Ambush', hunt: 'Intel hunt', closeIn: 'Close distance', flush: 'Flush cover',
+    doorWatch: 'Door watch', keepAway: 'Anti-melee spacing', highGroundBias: 'Elevation priority',
+    recoilDiscipline: 'Burst discipline', coverBreakPriority: 'Cover destruction', indoorBias: 'Interior hold'
+};
+
+/** PLAN-09: the playstyle tab - this match's 14 traits, biome adaptation, and next-match tuning. */
 function playstyleMarkup(ps) {
     if (!ps) return '<p class="rnone">No playstyle data in this report.</p>';
+    const traits = { ...(ps.traits || {}), ...(ps.extendedTraits || {}) };
     const bar = (v, was) => `<span class="rtrait"><i style="width:${Math.round(v * 100)}%"></i>${was != null ? `<em style="left:${Math.round(was * 100)}%" title="profile the AI played against"></em>` : ''}</span><span class="num">${Math.round(v * 100)}</span>`;
-    const rows = Object.keys(TRAIT_LABEL).map(k => `<tr><td><b>${TRAIT_LABEL[k]}</b></td><td>${bar(ps.traits[k] ?? 0.5, ps.faced?.traits?.[k])}</td></tr>`).join('');
-    const hc = ps.hitChance || {};
-    const tun = ps.nextTuning ? Object.entries(ps.nextTuning).map(([k, v]) => `<span class="rtune ${v > 1.05 ? 'up' : v < 0.95 ? 'down' : ''}">${esc(k)} ×${v}</span>`).join(' ') : '';
+    const rows = Object.keys(TRAIT_LABEL).map(k => `<tr><td><b>${TRAIT_LABEL[k]}</b></td><td>${bar(traits[k] ?? 0.5, ps.faced?.traits?.[k])}</td></tr>`).join('');
+    const bl = ps.ballistics || {};
+    const ad = ps.aiAdaptation;
+    const bm = ps.biomeMemory;
+    const tun = ps.nextTuning ? Object.entries(ps.nextTuning).map(([k, v]) => `<span class="rtune ${v > 1.05 ? 'up' : v < 0.95 ? 'down' : ''}">${esc(TUNE_LABEL[k] || k)} ×${v}</span>`).join(' ') : '';
+    const liveHtml = ad?.shifts?.length
+        ? `<div class="rbiome"><b>Mid-battle AI shift (${Math.round((ad.liveWeight || 0) * 100)}% live read):</b> ${ad.shifts.map(s => `${esc(TUNE_LABEL[s.key] || s.key)} ${s.from}→${s.to}`).join(' · ')}</div>` : '';
+    const biomeHtml = ps.biome || bm
+        ? `<div class="rbiome">${ps.biome ? `<b>Biome doctrine:</b> ${esc(ps.biome.replace(/_/g, ' '))}` : ''}${bm ? ` · recorded ${bm.matches} match${bm.matches === 1 ? '' : 'es'} (${Math.round((bm.winRate || 0) * 100)}% hostile win rate)` : ''}</div>` : '';
     return `<p class="rsub">${ps.headline?.length ? `This match read as: <b>${esc(ps.headline.join(' · '))}</b>` : 'This match read as a balanced playstyle.'}${ps.faced ? ` · the AI had studied ${ps.faced.matches} earlier match${ps.faced.matches === 1 ? '' : 'es'} (marker = what it expected)` : ' · the AI had no profile of you yet'}</p>
+      ${biomeHtml}${liveHtml}
       <div class="rtable"><table><tbody>${rows}</tbody></table></div>
-      ${hc.shots ? `<div class="rgrid"><div><b>${hc.shots}</b><span>rolled shots</span></div><div><b>${hc.avg}%</b><span>avg chance to hit</span></div><div><b>${hc.hits}/${hc.rolls}</b><span>rolls hit</span></div><div><b>${hc.crits}</b><span>crits</span></div></div>` : ''}
+      ${bl.shots ? `<div class="rgrid"><div><b>${bl.shots}</b><span>shots fired</span></div><div><b>${bl.hits}/${bl.projectiles}</b><span>rounds landed (${bl.hitRate ?? '–'}%)</span></div><div><b>${bl.headshots}</b><span>headshots</span></div><div><b>${bl.avgSpread ?? '–'}°</b><span>avg spread</span></div></div>` : ''}
       <h4>How the AI adapts next match</h4><ul class="radapt">${(ps.adaptation || []).map(a => `<li>${esc(a)}</li>`).join('')}</ul>
       ${tun ? `<p class="rtunes">${tun}</p>` : ''}`;
 }
@@ -44,7 +64,7 @@ function testSummary(test) {
 }
 
 /** HTML for the report card. `opts.saved` notes whether it went into the browser's report history. */
-export function reportMarkup(r, { saved = true, canEdit = true, tab = 'squad' } = {}) {
+export function reportMarkup(r, { saved = true, canEdit = true, tab = 'squad', campaign = null } = {}) {
     const P = r.totals.player, E = r.totals.enemy, sc = r.scenario;
     const tiles = [
         [r.outcome.rounds, 'rounds'],
@@ -67,9 +87,10 @@ export function reportMarkup(r, { saved = true, canEdit = true, tab = 'squad' } 
     const section = (id, body) => `<section class="rsec ${id === tab ? '' : 'hidden'}" data-tab="${id}" role="tabpanel">${body}</section>`;
     return `<div class="rcard ${r.outcome.winner}" role="dialog" aria-label="After-action report">
       <header class="rtop">
-        <div><span class="kicker">After-action report${sc.test ? ' · Test ground' : ''}${sc.rules === 'intel' ? ' · Intel co-op rules' : ''}</span><h2>${title(r)}</h2>
-          <p class="rsub">${esc(REASONS[r.outcome.reason] || r.outcome.reason)} · ${esc(sc.name)} · seed ${esc(sc.seed)}${sc.timeOfDay ? ` · ${esc(sc.timeOfDay)}` : ''}</p></div>
-        <div class="ractions"><button data-act="restart" class="primary">Replay</button>${canEdit ? '<button data-act="reportEdit">Edit setup</button>' : ''}<button data-act="menu">Menu</button></div>
+        <div><span class="kicker">After-action report${sc.test ? ' · Test ground' : ''}${sc.rules === 'intel' ? ' · Intel co-op rules' : ''}${campaign ? ' · Campaign Operation' : ''}</span><h2>${title(r)}</h2>
+          <p class="rsub">${esc(REASONS[r.outcome.reason] || r.outcome.reason)} · ${esc(sc.name)} · seed ${esc(sc.seed)}${sc.timeOfDay ? ` · ${esc(sc.timeOfDay)}` : ''}</p>
+          ${campaign?.earned ? `<p class="rcampaign"><b>${campaign.firstClear ? 'Sector Secured' : campaign.won ? 'Operation Complete' : 'Partial Salvage'}</b> · +${campaign.earned.materials} Mat · +${campaign.earned.intel} Intel · +${campaign.earned.supplies} Supply${campaign.nextOp ? ` · Ready: ${esc(campaign.nextOp.code)} ${esc(campaign.nextOp.name)}` : ''}</p>` : ''}</div>
+        <div class="ractions">${campaign?.nextOp ? `<button data-act="nextOp" data-arg="${esc(campaign.nextOp.id)}" class="primary">Next: ${esc(campaign.nextOp.name)}</button>` : ''}<button data-act="restart" ${campaign?.nextOp ? '' : 'class="primary"'}>Replay</button>${canEdit ? '<button data-act="reportEdit">Edit setup</button>' : ''}<button data-act="menu">${campaign ? 'Theater Menu' : 'Menu'}</button></div>
       </header>
       <div class="rtiles">${tiles.map(([v, l]) => `<div><b>${esc(v)}</b><span>${l}</span></div>`).join('')}</div>
       <nav class="rtabs" role="tablist">${tabsHtml}</nav>

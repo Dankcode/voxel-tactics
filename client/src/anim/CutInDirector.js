@@ -13,7 +13,7 @@ import * as THREE from 'three';
 import { SpriteWeapon, sortedSpriteLayers, spriteLayerOrder } from './SpriteWeapon.js';
 import { WorldAimSprite, worldAimSide } from './WorldAimSprite.js';
 import { PRESETS } from './CutInTimeline.js';
-import { loadCharacterArt } from '../units/UnitView.js';
+import { loadCharacterCutin } from '../units/UnitView.js';
 import { projectedSpreadRadius } from '../ui/AimReticle.js';
 
 export const CUTIN_MODES = ['always'];
@@ -85,7 +85,7 @@ export class CutInDirector {
         this.root.addEventListener('click', () => this.skip());
     }
     newTurn() { this.shownThisTurn.clear(); }
-    /** A complete aiming character at the unit's world position; no screen-edge overlay. */
+    /** Live 3D shoulder aiming uses the battlefield character sprite directly; do not mount pinned 2D .static-aimshot overlays. */
     async beginAim(unit, { shoulder = 'right', weaponId = unit.weapon } = {}) {
         const cur=this.aiming;
         if(cur?.unitId===unit.id&&cur.weaponId===weaponId){cur.shoulder=shoulder;return;}
@@ -93,18 +93,9 @@ export class CutInDirector {
         const view=this.unitView?.(unit.id);
         if(!view||view.model)return;
         const token=this.aiming={unitId:unit.id,weaponId,shoulder,view};
-        const loaded=await loadCharacterArt(unit.art);
+        const loaded = await loadCharacterCutin(unit.art);
         if(this.aiming!==token)return;
-        if(loaded.cutin.staticPose){
-            token.art=loaded.cutin;
-            token.figure=document.createElement('div');token.figure.className='static-aimshot';
-            Object.assign(token.figure.style,{position:'fixed',pointerEvents:'none',zIndex:'3',visibility:token.suspended?'hidden':''});
-            const content=paintFigure(token.figure,loaded);
-            (document.getElementById('aimshot-layer')||this.root).appendChild(token.figure);
-            token.weapon=new SpriteWeapon(content,loaded.cutin,unit,weaponId,this.cameraDirector.scene,loaded.base);
-            this.placeAim();return;
-        }
-        if(!loaded.cutin.worldAim)return;
+        if(loaded.cutin?.staticPose||!loaded.cutin?.worldAim)return;
         token.world=new WorldAimSprite(view,loaded.cutin.worldAim,weaponId,loaded.base);
     }
     tracerOrigin(fallback, target) {
@@ -143,8 +134,8 @@ export class CutInDirector {
      */
     async play(o) {
         const shoulder = o.shoulder === 'left' ? 'left' : 'right';
-        const shooterHud = !!o.weaponId && ['shot','burst','heavy'].includes(o.kind);
-        const continuousAim = shooterHud && o.side === 'player' && o.units.length === 1 && this.cameraDirector.commitAim(o.units[0].id);
+        const shooterHud = o.side === 'player' && !!o.weaponId && ['shot','burst','heavy'].includes(o.kind);
+        const continuousAim = shooterHud && o.units.length === 1 && this.cameraDirector.commitAim(o.units[0].id);
         if (!continuousAim) {
             this.endAim();
             if (o.shooterPos && o.targetPos) this.cameraDirector.begin(o.shooterPos, o.targetPos);
@@ -159,7 +150,7 @@ export class CutInDirector {
         // The look point of the action camera is the aim point (targetPos + 1.1 up); the barrel goes there.
         const aimWorld = o.targetPos ? o.targetPos.clone().add(new THREE.Vector3(0, 1.1, 0)) : null;
         const timeline = (PRESETS[o.kind] || PRESETS.shot)(o.side === 'enemy' ? 0.95 : undefined);
-        const arts = (await Promise.all(o.units.map(u => loadCharacterArt(u.art)))).map(a => ({ ...a, cutin: sideCutin(a.cutin, shoulder) }));
+        const arts = (await Promise.all(o.units.map(u => loadCharacterCutin(u.art)))).map(a => ({ ...a, cutin: sideCutin(a.cutin, shoulder) }));
         const el = document.createElement('div');
         el.className = `cutin cutin-${o.kind} side-${o.side}${shooterHud?' shooter-shot':''}`;
         el.innerHTML = `<div class="bar top"></div><div class="bar bottom"></div><div class="flash"></div>

@@ -18,9 +18,12 @@ export class MaterialLibrary {
         this.aniso = Math.min(QUALITY.anisotropy, renderer.capabilities.getMaxAnisotropy());
         this.water = [];
     }
-    /** Preload every texture the table references (resolves even if some fail: those fall back to flat colour). */
+    /** Preload needed PBR textures (skipping procedural-only CONTINUOUS_SURFACES unless shared by KitLibrary SLOTS). */
     async load() {
-        const names = new Set(Object.values(RENDER).map(r => r.tex).filter(Boolean));
+        const KIT_KEEP = new Set(['concrete', 'oak_floor', 'deck', 'carpet']);
+        const names = new Set(Object.entries(RENDER)
+            .filter(([k, r]) => r.tex && (!CONTINUOUS_SURFACES.has(k) || KIT_KEEP.has(r.tex)))
+            .map(([, r]) => r.tex));
         await Promise.all([...names].map(n => Promise.all([this.texture(n, false), this.texture(n, true)])));
     }
     texture(name, normal) {

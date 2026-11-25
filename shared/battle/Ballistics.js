@@ -9,8 +9,11 @@ import { intersectCellShape } from '../voxel/ConnectedShapes.js';
 // is a deterministic Monte-Carlo of the same trace, so preview and resolution agree.
 import { castRay } from '../voxel/Raycast.js';
 import { materialById } from '../voxel/Materials.js';
+import { coverAgainst, COVER } from '../voxel/Cover.js';
 import { createRng, hashString } from '../util/Rng.js';
-import { FACING_VEC, alive, SHOULDER } from './Units.js';
+import { FACING_VEC, alive, hasStatus, partArmor, SHOULDER } from './Units.js';
+import { projectileDamage, roundsFor, weaponBuild, fireMode as resolveFireMode } from './FireControl.js';
+import { B } from '../content/balance.js';
 
 export const HITBOX = Object.freeze({
     legs: { off: 0, r: 0.2, h0: 0, h1: 0.72 },
@@ -79,7 +82,6 @@ export function rayUnit(o, d, u, maxT, store=null) {
     const len = Math.hypot(fx, fy) || 1, rx = -fy / len, ry = fx / len;
     let best = null;
     for (const part of ['head', 'armL', 'armR', 'torso', 'legs']) {
-        if (u.parts[part].hp <= 0 && part !== 'torso') continue;   // a destroyed arm no longer stops bullets... it is gone
         const hb = HITBOX[part];
         const t = rayCylinder(o, d, cx + rx * hb.off, cy + ry * hb.off, hb.r, u.z + 1 + hb.h0, u.z + 1 + hb.h1);
         if (t < (best?.t ?? Infinity) && t <= maxT) best = { part, t };
@@ -117,7 +119,7 @@ export function stepOutTiles(store, u, aimPoint, { occupied = null } = {}) {
  * corner or past a pillar. A step-out muzzle carries `step: {x,y,z}` and `side`; the soldier does not move.
  * `occupied(x,y,z)` keeps steps off tiles other units stand on.
  */
-export function chooseMuzzle(store, u, aimPoint, { occupied = null } = {}) {
+export function chooseMuzzle(store, u, aimPoint, { occupied = null, allowStepOut = true } = {}) {
     const base = { x: u.x + 0.5, y: u.y + 0.5, h: u.z + 1 + SHOULDER };
     const dx = aimPoint.x - base.x, dy = aimPoint.y - base.y, len = Math.hypot(dx, dy) || 1;
     const rx = -dy / len, ry = dx / len;
@@ -125,6 +127,7 @@ export function chooseMuzzle(store, u, aimPoint, { occupied = null } = {}) {
     const clear = c => !materialById(store.get(Math.floor(c.x), Math.floor(c.y), Math.floor(c.h))).solid
         && !castRay(store, c, aimPoint, { blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile !== 'pass', shapedVehicles: true }).hit;
     for (const c of [base, ...leans]) if (clear(c)) return c;
+    if (!allowStepOut) return base;
     for (const t of stepOutTiles(store, u, aimPoint, { occupied })) {
         const c = { x: t.x + 0.5, y: t.y + 0.5, h: base.h, lean: `step-${t.side}`, side: t.side, step: { x: t.x, y: t.y, z: t.z } };
         if (clear(c)) return c;
@@ -145,24 +148,109 @@ function basis(d) {
     return { u, v };
 }
 
-/** A direction inside the cone of half-angle `spreadDeg` around `dir`, drawn from rng. */
-export function sampleCone(dir, spreadDeg, rng, frame = basis(dir)) {
-    const phi = rng.next() * Math.PI * 2, rho = Math.tan(spreadDeg * DEG) * Math.sqrt(rng.next());
+/** Phoenix Point dual-ring cone ratio: 50% of shots land in the inner half-radius, 50% in the outer annulus. */
+export const INNER_RING_RATIO = 0.5;
+
+/** Sample a ray inside the dual-ring accuracy cone and report whether it landed inside the inner ring. */
+export function sampleConeRay(dir, spreadDeg, rng, frame = basis(dir)) {
+    const u = rng.next(), inner = u < 0.5;
+    const r2 = INNER_RING_RATIO * INNER_RING_RATIO;
+    const frac = inner ? INNER_RING_RATIO * Math.sqrt(u * 2) : Math.sqrt(r2 + (1 - r2) * ((u - 0.5) * 2));
+    const phi = rng.next() * Math.PI * 2, rho = Math.tan(spreadDeg * DEG) * frac;
     const d = [dir[0] + (frame.u[0] * Math.cos(phi) + frame.v[0] * Math.sin(phi)) * rho,
         dir[1] + (frame.u[1] * Math.cos(phi) + frame.v[1] * Math.sin(phi)) * rho,
         dir[2] + (frame.u[2] * Math.cos(phi) + frame.v[2] * Math.sin(phi)) * rho];
-    const l = Math.hypot(...d); return [d[0] / l, d[1] / l, d[2] / l];
+    const l = Math.hypot(...d);
+    return { dir: [d[0] / l, d[1] / l, d[2] / l], inner };
+}
+
+/** A direction inside the dual-ring cone of half-angle `spreadDeg` around `dir`, drawn from rng. */
+export function sampleCone(dir, spreadDeg, rng, frame = basis(dir)) {
+    return sampleConeRay(dir, spreadDeg, rng, frame).dir;
+}
+
+/** Compute local horizontal `right` and vertical-plane `up` perpendicular to aim `dir`. */
+export function recoilFrame(dir) {
+    let rx = dir[1], ry = -dir[0], rl = Math.hypot(rx, ry);
+    if (rl < 1e-6) { rx = 1; ry = 0; rl = 1; }
+    const right = [rx / rl, ry / rl, 0];
+    const ux = right[1] * dir[2] - right[2] * dir[1];
+    const uy = right[2] * dir[0] - right[0] * dir[2];
+    const uz = right[0] * dir[1] - right[1] * dir[0];
+    const ul = Math.hypot(ux, uy, uz) || 1;
+    return { right, up: [ux / ul, uy / ul, uz / ul] };
+}
+
+/** Recoil control multiplier from shooter accuracy, arm wounds, suppression, and firing posture. */
+export function recoilStability(shooter, { highGround = false } = {}) {
+    let mult = 1 / Math.max(0.45, shooter?.accuracy ?? 0.85);
+    const arms = ['armL', 'armR'].filter(p => shooter?.parts?.[p]?.disabled).length;
+    if (arms === 1) mult *= 1.25;
+    else if (arms >= 2) mult *= 1.6;
+    if (shooter?.statuses) {
+        if (hasStatus(shooter, 'suppressed')) mult *= 1.3;
+        if (hasStatus(shooter, 'panicked')) mult *= 1.35;
+        if (hasStatus(shooter, 'staggered')) mult *= 1.2;
+    }
+    if (shooter?.buffs?.deadeye) mult *= 0.8;
+    if (highGround) mult *= 0.85;
+    return Math.max(0.55, Math.min(2.2, mult));
+}
+
+/** Gravity-induced bullet drop (metres) beyond weapon zeroed range for muzzle velocity `velocity` (m/s). */
+export function ballisticDropAt(dist, velocity, zeroRange = 0) {
+    if (!velocity || velocity <= 0 || dist <= zeroRange) return 0;
+    const s = (dist - zeroRange) / (velocity / 100);
+    return 0.5 * (B.ballisticDropG || 0.14) * s * s;
+}
+
+/** Per-round salvo ray combining physical muzzle climb, lateral drift, recoil bloom, and dual-ring cone sampling. */
+export function sampleSalvoRay(dir, baseSpread, weapon, roundIndex, rng, { heat = 0, stability = 1, frame = null } = {}) {
+    const k = Math.max(0, roundIndex + (heat || 0));
+    const rec = weapon?.recoil || { climb: 0, drift: 0, bloom: 0 };
+    const climbDeg = k * (rec.climb || 0) * (B.recoilClimbMult || 1) * stability;
+    const driftDeg = k > 0 ? (rng.next() * 2 - 1) * (rec.drift || 0) * Math.sqrt(k) * (B.recoilDriftMult || 1) * stability : 0;
+    const roundSpread = Math.max(0.08, baseSpread + k * (rec.bloom || 0) * (B.recoilBloomMult || 1) * stability);
+    const f = frame || recoilFrame(dir);
+    const tc = Math.tan(climbDeg * DEG), td = Math.tan(driftDeg * DEG);
+    const rx = dir[0] + f.up[0] * tc + f.right[0] * td;
+    const ry = dir[1] + f.up[1] * tc + f.right[1] * td;
+    const rz = dir[2] + f.up[2] * tc + f.right[2] * td;
+    const rl = Math.hypot(rx, ry, rz) || 1;
+    const recoilDir = [rx / rl, ry / rl, rz / rl];
+    const sampled = sampleConeRay(recoilDir, roundSpread, rng);
+    return { dir: sampled.dir, inner: sampled.inner, climbDeg, driftDeg, roundSpread, recoilDir };
+}
+
+/** Summarized physical recoil & drop profile for HUD display and AI evaluation. */
+export function ballisticProfile(shooter, weapon, aimPoint, { spread, rounds = 1, heat = shooter?.recoilHeat || 0, muzzle = null, highGround = false } = {}) {
+    const built = weaponBuild(shooter, weapon);
+    const o = muzzle || { x: (shooter?.x ?? 0) + 0.5, y: (shooter?.y ?? 0) + 0.5, h: (shooter?.z ?? 0) + 1 + SHOULDER };
+    const dist = Math.hypot(aimPoint.x - o.x, aimPoint.y - o.y, aimPoint.h - o.h);
+    const rec = built.recoil || { climb: 0, drift: 0, bloom: 0 };
+    const stab = recoilStability(shooter, { highGround });
+    const maxK = Math.max(0, (rounds - 1) + heat);
+    const finalSpread = Math.max(0.08, spread + maxK * (rec.bloom || 0) * (B.recoilBloomMult || 1) * stab);
+    const totalClimbDeg = maxK * (rec.climb || 0) * (B.recoilClimbMult || 1) * stab;
+    const maxDriftDeg = maxK > 0 ? (rec.drift || 0) * Math.sqrt(maxK) * (B.recoilDriftMult || 1) * stab : 0;
+    const dropMeters = ballisticDropAt(dist, built.velocity || 0, built.range || 0);
+    return {
+        baseSpread: +spread.toFixed(2),
+        finalSpread: +finalSpread.toFixed(2),
+        totalClimbDeg: +totalClimbDeg.toFixed(2),
+        maxDriftDeg: +maxDriftDeg.toFixed(2),
+        dropMeters: +dropMeters.toFixed(2),
+        velocity: built.velocity || 0,
+        zeroRange: built.range || 0,
+        rounds,
+        heat: +heat.toFixed(2),
+        distance: +dist.toFixed(1),
+        stabilityMult: +stab.toFixed(2)
+    };
 }
 
 /**
- * Trace one projectile. Does not mutate anything.
- * @returns { kind: 'unit'|'voxel'|'none', unit?, part?, voxel?, t, point, glass: [x,y,z][] }
- */
-/**
- * PLAN-07 penetration. A projectile carries `energy` from its round; every blocking voxel it meets costs that
- * material's `resistance`. While energy > resistance the ray goes through (the voxel is listed in `pierced`, and the
- * damage of whatever it hits next is scaled by the energy left); otherwise it stops there, as before. Glancing hits
- * cost more (cost ÷ max(0.5, |d · normal|)). Materials without a resistance (ground, floors, steel) always stop it.
+ * Trace one projectile through voxels (with penetration) and body-part hitboxes along a physically dropping trajectory.
  */
 export function crossingCost(store, x, y, z, normal, d) {
     const m = materialById(store.get(x, y, z));
@@ -172,54 +260,91 @@ export function crossingCost(store, x, y, z, normal, d) {
     return r / Math.max(0.5, cos);
 }
 const MAX_PIERCE = 6;
-export function traceProjectile(battle, o, d, maxDist, { ignore = null, energy = 0 } = {}) {
+export function traceProjectile(battle, o, d, maxDist, { ignore = null, energy = 0, velocity = 0, zeroRange = 0 } = {}) {
     const store = battle.store;
     const glass = [], pierced = [];
-    const origin = [o.x, o.y, o.h];
-    const at = t => ({ x: o.x + d[0] * t, y: o.y + d[1] * t, h: o.h + d[2] * t });
-    const end = at(maxDist);
-    let start = 0, e = energy, stop = null;
-    for (let seg = 0; seg <= MAX_PIERCE; seg++) {
-        const from = at(start);
-        const r = castRay(store, from, end, {
-            skipStart: seg === 0,
-            blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile === 'block',
-            shapedVehicles: true,
-            visit: (x, y, z, t) => { if (materialById(store.get(x, y, z)).shatters) {
-                let exit = maxDist;
-                [x, y, z].forEach((c, i) => { if (d[i]) exit = Math.min(exit, ((d[i] > 0 ? c + 1 : c) - origin[i]) / d[i]); });
-                const hit = intersectCellShape(store, x, y, z, origin, d, start + t, exit);
-                if (hit) glass.push([x, y, z, hit.t]);
-            } }
-        });
-        if (!r.hit) break;
-        const tHit = start + r.t, v = r.hit;
-        const cost = crossingCost(store, v.x, v.y, v.z, r.normal, d);
-        if (seg < MAX_PIERCE && e > cost) {
-            // Leave through the far side of this cell and keep going with what is left.
-            let exit = maxDist;
-            [v.x, v.y, v.z].forEach((c, i) => { if (d[i]) exit = Math.min(exit, ((d[i] > 0 ? c + 1 : c) - origin[i]) / d[i]); });
-            pierced.push({ x: v.x, y: v.y, z: v.z, t: tHit, cost, before: e });
-            e -= cost;
-            start = Math.max(exit, tHit) + 1e-4;
-            if (start >= maxDist) break;
-            continue;
-        }
-        stop = { voxel: v, t: tHit, point: at(tHit) };
-        break;
-    }
-    const voxT = stop ? stop.t : maxDist;
-    let best = null;
-    for (const u of battle.units) {
-        if (!alive(u) || (Array.isArray(ignore) ? ignore.includes(u.id) : u.id === ignore)) continue;
-        const h = rayUnit(o, d, u, voxT, store);
-        if (h && h.t < (best?.t ?? Infinity)) best = { unit: u, part: h.part, t: h.t };
-    }
     const scaleAt = t => { if (!energy) return 1; let left = energy; for (const p of pierced) if (p.t < t) left -= p.cost; return Math.max(0.25, left / energy); };
     const upTo = t => ({ glass: glass.filter(g => g[3] < t), pierced: pierced.filter(p => p.t < t) });
-    if (best) return { kind: 'unit', unit: best.unit, part: best.part, t: best.t, point: at(best.t), scale: scaleAt(best.t), ...upTo(best.t) };
-    if (stop) return { kind: 'voxel', voxel: stop.voxel, t: stop.t, point: stop.point, scale: scaleAt(stop.t), ...upTo(stop.t) };
-    return { kind: 'none', t: maxDist, point: end, scale: scaleAt(maxDist), glass, pierced };
+    const traceFlat = (originPt, dir, distLimit, tOffset, startE, skipFirst) => {
+        const origArr = [originPt.x, originPt.y, originPt.h];
+        const at = t => ({ x: originPt.x + dir[0] * t, y: originPt.y + dir[1] * t, h: originPt.h + dir[2] * t });
+        const end = at(distLimit);
+        let start = 0, e = startE, stop = null;
+        for (let seg = 0; seg <= MAX_PIERCE; seg++) {
+            const from = at(start);
+            const r = castRay(store, from, end, {
+                skipStart: skipFirst && seg === 0,
+                blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile === 'block',
+                shapedVehicles: true,
+                visit: (x, y, z, t) => {
+                    if (materialById(store.get(x, y, z)).shatters) {
+                        let exit = distLimit;
+                        [x, y, z].forEach((c, i) => { if (dir[i]) exit = Math.min(exit, ((dir[i] > 0 ? c + 1 : c) - origArr[i]) / dir[i]); });
+                        const hit = intersectCellShape(store, x, y, z, origArr, dir, start + t, exit);
+                        if (hit) glass.push([x, y, z, tOffset + hit.t]);
+                    }
+                }
+            });
+            if (!r.hit) break;
+            const tHit = start + r.t, v = r.hit;
+            const cost = crossingCost(store, v.x, v.y, v.z, r.normal, dir);
+            if (seg < MAX_PIERCE && e > cost) {
+                let exit = distLimit;
+                [v.x, v.y, v.z].forEach((c, i) => { if (dir[i]) exit = Math.min(exit, ((dir[i] > 0 ? c + 1 : c) - origArr[i]) / dir[i]); });
+                pierced.push({ x: v.x, y: v.y, z: v.z, t: tOffset + tHit, cost, before: e });
+                e -= cost;
+                start = Math.max(exit, tHit) + 1e-4;
+                if (start >= distLimit) break;
+                continue;
+            }
+            stop = { voxel: v, t: tHit, point: at(tHit) };
+            break;
+        }
+        const voxT = stop ? stop.t : distLimit;
+        let best = null;
+        for (const u of battle.units) {
+            if (!alive(u) || (Array.isArray(ignore) ? ignore.includes(u.id) : u.id === ignore)) continue;
+            const h = rayUnit(originPt, dir, u, voxT, store);
+            if (h && h.t < (best?.t ?? Infinity)) best = { unit: u, part: h.part, t: h.t };
+        }
+        return { best, stop, end, endE: e, at };
+    };
+
+    if (!velocity || maxDist <= zeroRange) {
+        const res = traceFlat(o, d, maxDist, 0, energy, true);
+        if (res.best) return { kind: 'unit', unit: res.best.unit, part: res.best.part, t: res.best.t, point: res.at(res.best.t), drop: 0, scale: scaleAt(res.best.t), ...upTo(res.best.t) };
+        if (res.stop) return { kind: 'voxel', voxel: res.stop.voxel, t: res.stop.t, point: res.stop.point, drop: 0, scale: scaleAt(res.stop.t), ...upTo(res.stop.t) };
+        return { kind: 'none', t: maxDist, point: res.end, drop: 0, scale: scaleAt(maxDist), glass, pierced };
+    }
+
+    const segs = [];
+    if (zeroRange > 0) segs.push([0, Math.min(zeroRange, maxDist)]);
+    for (let s = Math.min(zeroRange, maxDist); s < maxDist - 1e-6; s += 4) segs.push([s, Math.min(maxDist, s + 4)]);
+    const ptAt = s => ({ x: o.x + d[0] * s, y: o.y + d[1] * s, h: o.h + d[2] * s - ballisticDropAt(s, velocity, zeroRange) });
+    const arc = [{ x: o.x, y: o.y, h: o.h }];
+    let curE = energy;
+    for (let si = 0; si < segs.length; si++) {
+        const [s0, s1] = segs[si];
+        const p0 = ptAt(s0), p1 = ptAt(s1);
+        const cdv = [p1.x - p0.x, p1.y - p0.y, p1.h - p0.h], segDist = Math.hypot(...cdv);
+        if (segDist < 1e-6) continue;
+        const cd = cdv.map(c => c / segDist);
+        const res = traceFlat(p0, cd, segDist, s0, curE, si === 0);
+        curE = res.endE;
+        if (res.best) {
+            const tGlobal = s0 + (res.best.t / segDist) * (s1 - s0);
+            const point = res.at(res.best.t);
+            arc.push(point);
+            return { kind: 'unit', unit: res.best.unit, part: res.best.part, t: tGlobal, point, arc, drop: ballisticDropAt(tGlobal, velocity, zeroRange), scale: scaleAt(tGlobal), ...upTo(tGlobal) };
+        }
+        if (res.stop) {
+            const tGlobal = s0 + (res.stop.t / segDist) * (s1 - s0);
+            arc.push(res.stop.point);
+            return { kind: 'voxel', voxel: res.stop.voxel, t: tGlobal, point: res.stop.point, arc, drop: ballisticDropAt(tGlobal, velocity, zeroRange), scale: scaleAt(tGlobal), ...upTo(tGlobal) };
+        }
+        arc.push(p1);
+    }
+    return { kind: 'none', t: maxDist, point: arc[arc.length - 1], arc, drop: ballisticDropAt(maxDist, velocity, zeroRange), scale: scaleAt(maxDist), glass, pierced };
 }
 
 /** Where to aim: a body part of a unit, or a free-aim point (e.g. a wall voxel to destroy). */
@@ -229,37 +354,123 @@ export function aimPointOf(battle, aim) {
     return partCentre(u, aim.part || 'torso');
 }
 
+/** Shared hit/armor damage calculation for a single projectile hitting `unit`.`part`. */
+export function projectileHitDamage(unit, part, rawAmount, { pierce = 0, headMult = 1, flankMult = 1, minShare = B.armorMinDamage || 0 } = {}) {
+    const raw = Math.round(rawAmount * headMult * flankMult);
+    if (raw <= 0) return 0;
+    const armor = Math.max(0, partArmor(unit, part) - (pierce || 0));
+    return Math.max(0, raw - armor, Math.ceil(raw * minShare));
+}
+
 /**
- * Deterministic hit estimate (what the HUD shows). Same tracer, fixed seed, no side effects.
+ * Deterministic physical recoil & trajectory telemetry estimate (replaces XCOM hit-chance formula).
  */
-export function estimateShot(battle, shooter, aim, { weapon, spread, samples = 96, muzzle = null } = {}) {
+export function estimateShot(battle, shooter, aim, { weapon, spread, rounds = null, fireMode: requestedMode = null, samples = 96, muzzle = null, allowStepOut = true } = {}) {
+    const built = weaponBuild(shooter, weapon);
     const target = aimPointOf(battle, aim);
-    const o = muzzle || chooseMuzzle(battle.store, shooter, target, { occupied: occupiedBy(battle, shooter) });
+    const o = muzzle || chooseMuzzle(battle.store, shooter, target, { occupied: occupiedBy(battle, shooter), allowStepOut });
     const dv = [target.x - o.x, target.y - o.y, target.h - o.h];
-    const dist = Math.hypot(...dv);
+    const dist = Math.hypot(...dv) || 1;
     const dir = dv.map(c => c / dist);
-    const rng = createRng(hashString(`${shooter.id}:${shooter.x},${shooter.y},${shooter.z}:${target.x.toFixed(2)},${target.y.toFixed(2)},${target.h.toFixed(2)}:${spread.toFixed(3)}`));
-    const frame = basis(dir);
+    const fm = resolveFireMode(shooter, built, requestedMode);
+    const rng = createRng(hashString(`${shooter.id}:${shooter.x},${shooter.y},${shooter.z}:${target.x.toFixed(2)},${target.y.toFixed(2)},${target.h.toFixed(2)}:${spread.toFixed(3)}:${built.id}:${fm}:${shooter.recoilHeat || 0}`));
+    const frame = recoilFrame(dir);
     const parts = { head: 0, torso: 0, armL: 0, armR: 0, legs: 0 };
-    let hit = 0, cover = 0, friendly = 0, other = 0, miss = 0, through = 0;
-    const maxDist = weapon.maxRange ?? 40;
+    const partDamage = { head: 0, torso: 0, armL: 0, armR: 0, legs: 0 };
+    let hit = 0, innerHit = 0, cover = 0, friendly = 0, other = 0, miss = 0, through = 0, hitScaleSum = 0;
+    let damageSum = 0, lethalHits = 0;
+    const maxDist = built.maxRange ?? 40;
+    const pellets = built.pellets || 1;
+    const roundsCount = Math.max(1, rounds ?? (shooter.ammo ? Math.max(1, roundsFor(shooter, built, fm)) : 1));
+    const totalProjectiles = roundsCount * (pellets > 1 ? pellets : (built.projectiles || 1));
+    const focusUnit = aim.unitId ? battle.unit?.(aim.unitId) : (aimedUnit(battle, shooter, target) || partUnderRay(battle, shooter, o, target)?.unit || null);
+    const focusFlanked = focusUnit && focusUnit.side !== shooter.side
+        ? coverAgainst(battle.store, focusUnit.x, focusUnit.y, focusUnit.z, shooter.x, shooter.y, shooter.z) === COVER.NONE
+        : false;
+    const stability = recoilStability(shooter, { highGround: !!(focusUnit && shooter.z - focusUnit.z >= 2) });
+    const heat = shooter.recoilHeat || 0;
     for (let i = 0; i < samples; i++) {
-        const d = sampleCone(dir, spread, rng, frame);
-        const res = traceProjectile(battle, o, d, maxDist, { ignore: shooter.id, energy: weapon.energy || 0 });
+        const ray = sampleSalvoRay(dir, spread, built, i % roundsCount, rng, { heat, stability, frame });
+        const res = traceProjectile(battle, o, ray.dir, maxDist, { ignore: shooter.id, energy: built.energy || 0, velocity: built.velocity || 0, zeroRange: built.range || 0 });
         if (res.kind === 'unit') {
-            if (aim.unitId && res.unit.id === aim.unitId) { hit++; parts[res.part]++; if (res.pierced.length) through++; }
-            else if (res.unit.side === shooter.side) friendly++;
+            const matches = aim.unitId ? res.unit.id === aim.unitId : (!focusUnit || res.unit.id === focusUnit.id);
+            if (matches && res.unit.side !== shooter.side) {
+                hit++; if (ray.inner) innerHit++;
+                parts[res.part]++;
+                if (res.pierced.length) through++;
+                hitScaleSum += res.scale ?? 1;
+                const headK = res.part === 'head' && !res.unit.drone ? B.headshotMult : 1;
+                const hitFlanked = coverAgainst(battle.store, res.unit.x, res.unit.y, res.unit.z, shooter.x, shooter.y, shooter.z) === COVER.NONE;
+                const flankK = hitFlanked ? (B.flankExposureMult || 1) : 1;
+                const baseDmg = projectileDamage(built, res.t, i % pellets) * (res.scale ?? 1);
+                const dealt = projectileHitDamage(res.unit, res.part, baseDmg, { pierce: built.pierce, headMult: headK, flankMult: flankK });
+                damageSum += dealt;
+                partDamage[res.part] += dealt;
+                if (dealt * totalProjectiles >= res.unit.hp) lethalHits++;
+            } else if (res.unit.side === shooter.side) friendly++;
             else other++;
         } else if (res.kind === 'voxel' && res.t < dist - 0.3) cover++;
         else miss++;
     }
     const f = n => n / samples;
+    const expectedDamage = Math.round(f(damageSum) * totalProjectiles);
+    const focusPart = aim.part || (focusUnit ? partUnderRay(battle, shooter, o, target)?.part : null) || 'torso';
+    const expectedPartDamage = Math.round(f(partDamage[focusPart] || 0) * totalProjectiles);
+    const focusPartHp = focusUnit?.parts?.[focusPart]?.hp ?? 0;
+    const recoil = ballisticProfile(shooter, built, target, { spread, rounds: roundsCount, heat, muzzle: o, highGround: !!(focusUnit && shooter.z - focusUnit.z >= 2) });
     return {
-        hit: f(hit), cover: f(cover), throughCover: hit ? through / hit : 0, friendly: f(friendly), other: f(other), miss: f(miss),
+        hit: f(hit), innerHit: f(innerHit), directHit: f(hit - through), effectiveHit: f(hitScaleSum), cover: f(cover), throughCover: hit ? through / hit : 0, friendly: f(friendly), other: f(other), miss: f(miss),
         parts: Object.fromEntries(Object.entries(parts).map(([k, v]) => [k, f(v)])),
-        partHit: aim.part ? f(parts[aim.part]) : f(hit),
-        expectedHits: f(hit) * (weapon.projectiles || 1), distance: dist, spread, muzzle: o, lean: o.lean || null
+        partHit: aim.part ? f(parts[aim.part]) : focusPart ? f(parts[focusPart]) : f(hit),
+        expectedHits: f(hit) * totalProjectiles, expectedDamage, expectedPartDamage,
+        lethalChance: focusUnit ? f(lethalHits) : 0,
+        disableChance: focusUnit && focusPart !== 'torso' && focusPartHp > 0 && expectedPartDamage >= focusPartHp ? f(parts[focusPart]) : 0,
+        flanked: focusFlanked, headshotMult: focusPart === 'head' ? B.headshotMult : 1,
+        targetId: focusUnit?.id || null, targetPart: focusUnit ? focusPart : null,
+        rounds: roundsCount, totalProjectiles, distance: dist, spread, recoil, dropMeters: recoil.dropMeters, muzzle: o, lean: o.lean || null
     };
+}
+export const estimateShotTelemetry = estimateShot;
+
+/** Cached physical trajectory evaluator for AI scoring & tactical previews (replaces legacy XCOM accuracy formula). */
+export function evaluateBallisticShot(battle, shooter, target, weapon, { from = shooter, at = target, reaction = false, breach = false, fireMode = null, samples = 16, part = 'torso' } = {}) {
+    const wObj = typeof weapon === 'string' ? weapon : weapon;
+    if (!wObj || !shooter || !target) return { hitRate: 0, directHitRate: 0, effectiveHitRate: 0, expectedDamage: 0, coverBlocked: 1, throughCover: 0, flanked: false, recoil: null, dropMeters: 0, spread: 0, fireMode: 'single', rounds: 1 };
+    const fm = fireMode || resolveFireMode(shooter, wObj);
+    const cache = battle._ballisticCache ||= { seq: -1, map: new Map() };
+    if (cache.seq !== battle.seq) { cache.seq = battle.seq; cache.map.clear(); }
+    const key = `${shooter.id}:${from.x},${from.y},${from.z}->${target.id}:${at.x},${at.y},${at.z}:${wObj.id}:${fm}:${part}:${reaction ? 1 : 0}:${breach ? 1 : 0}:${samples}`;
+    if (cache.map.has(key)) return cache.map.get(key);
+    const sProxy = from === shooter ? shooter : { ...shooter, x: from.x, y: from.y, z: from.z };
+    const tProxy = at === target ? target : { ...target, x: at.x, y: at.y, z: at.z };
+    const bProxy = (from === shooter && at === target) || !battle.units
+        ? battle
+        : Object.assign(Object.create(Object.getPrototypeOf(battle)), battle, {
+            units: battle.units.map(x => x.id === target.id ? tProxy : x.id === shooter.id ? sProxy : x),
+            unit: id => id === target.id ? tProxy : id === shooter.id ? sProxy : battle.unit(id)
+        });
+    const pt = partCentre(tProxy, part);
+    const { spread } = bProxy.spreadFor
+        ? bProxy.spreadFor(sProxy, wObj, pt, { reaction, breach, target: tProxy, fireMode: fm })
+        : { spread: wObj.spread || 1.5 };
+    const est = estimateShot(bProxy, sProxy, { unitId: target.id, part }, { weapon: wObj, spread, fireMode: fm, samples });
+    const out = {
+        hitRate: est.hit,
+        directHitRate: est.directHit,
+        effectiveHitRate: est.effectiveHit,
+        innerHit: est.innerHit,
+        expectedDamage: est.expectedDamage,
+        coverBlocked: est.cover,
+        throughCover: est.throughCover,
+        flanked: est.flanked,
+        recoil: est.recoil,
+        dropMeters: est.dropMeters,
+        spread: est.spread,
+        fireMode: fm,
+        rounds: est.rounds
+    };
+    cache.map.set(key, out);
+    return out;
 }
 
 /**

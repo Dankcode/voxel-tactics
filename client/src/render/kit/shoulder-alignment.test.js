@@ -54,11 +54,13 @@ test('live reticle shows only distance and never requests hit odds or pellet est
  g.cutins={current:{}};updateReticle(g);assert.ok(el.classList.contains('hidden'),'no duplicate live reticle during firing');
 });
 
-test('aim HUD replaces tactical panels and restores them on exit',()=>{
+test('aim HUD renders Phoenix Point telemetry, fire-mode switcher, and restores tactical view on exit',()=>{
  const el={classList:classList()},root={classList:classList()},unit={ap:4,ammo:{repeater:30},items:{},inventory:[]};
- const g={mode:{kind:'shoot',weaponId:'repeater'},selectedUnit:()=>unit,battle:{shotAp:()=>2},aimPointer:{unavailable:true}};
+ const focus={id:'e0',name:'Gunman',hp:30,maxHp:30,statuses:[],parts:{head:{hp:12,max:12,armor:0},torso:{hp:30,max:30,armor:1},armL:{hp:12,max:12,armor:0},armR:{hp:12,max:12,armor:0},legs:{hp:17,max:17,armor:0}}};
+ const g={mode:{kind:'shoot',weaponId:'repeater',fireMode:'burst'},selectedUnit:()=>unit,battle:{shotAp:()=>2,unit:id=>id==='e0'?focus:null},partChance:()=>({part:42,any:76}),aimTelemetry:()=>({hit:0.76,innerHit:0.52,partHit:0.42,expectedDamage:18,distance:10,flanked:true,dropMeters:0.04,recoil:{climb:0.45,drift:0.15,bloom:0.35,heat:0,velocity:820,dropMeters:0.04},targetPart:'torso',focusUnit:focus,mods:[],weapon:{maxRange:32}})};
  const hud={game:g,root,el:()=>el};Hud.prototype.renderTarget.call(hud);
- assert.ok(root.classList.contains('shooter-mode'));assert.match(el.innerHTML,/shooter-ammo/);assert.doesNotMatch(el.innerHTML,/PELLETS|ANY HIT|%|lean out|body part|AP/);
+ assert.ok(root.classList.contains('shooter-mode'));assert.match(el.innerHTML,/shooter-ammo/);
+ assert.match(el.innerHTML,/aim-modes/);assert.match(el.innerHTML,/aim-ballistics/);assert.match(el.innerHTML,/76%/);assert.match(el.innerHTML,/aim-parts/);assert.doesNotMatch(el.innerHTML,/CRIT/);
  g.mode.kind='move';Hud.prototype.renderTarget.call(hud);assert.ok(!root.classList.contains('shooter-mode'));assert.ok(el.classList.contains('hidden'));
 });
 

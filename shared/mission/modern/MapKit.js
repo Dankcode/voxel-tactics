@@ -11,6 +11,8 @@ import { createRng, hashString } from '../../util/Rng.js';
 import { buildModern } from './ModernBuilder.js';
 import { scatterCover } from '../CoverScatter.js';
 import { finalizeMission } from '../MissionCommon.js';
+import { TREE_SPECIES } from '../../mapgen/district/Props.js';
+import { placeStreetVehicle } from '../../mapgen/StreetDressing.js';
 
 export const CAR_COLORS = [[0.92, 0.93, 0.94], [0.18, 0.2, 0.23], [0.42, 0.5, 0.47], [0.62, 0.66, 0.7], [0.55, 0.14, 0.12], [0.2, 0.3, 0.45], [0.75, 0.7, 0.6]];
 export const CONTAINER_COLORS = [[0.62, 0.2, 0.14], [0.16, 0.3, 0.5], [0.2, 0.42, 0.3], [0.78, 0.5, 0.16], [0.55, 0.57, 0.6]];
@@ -87,6 +89,11 @@ export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'l
             const tint = color || CAR_COLORS[Math.floor(rng.next() * CAR_COLORS.length)];
             m.object('car', cells, { axis, dir, size: [L, Wd], tint });
         },
+        vehicle(kind, x, y, axis = 'x', dir = 1, color = null, z = 1) {
+            if (kind === 'car') { m.car(x, y, axis, dir, color, z); return; }
+            const placed = placeStreetVehicle(m, kind, x, y, { axis, z });
+            if (!placed && kind === 'abandoned_car') m.car(x, y, axis, dir, color || [0.27, 0.25, 0.22], z);
+        },
         /** Shipping container: 2 wide × 5 long × 2 high (full cover, very tough). */
         container(x, y, axis = 'x', color = null, z = 1, stacked = false) {
             const L = 5, Wd = 2, cells = [];
@@ -114,25 +121,31 @@ export function createMap({ id, width, depth, height = 14, seed = 1, ground = 'l
             registerVehicleCollision(store,piece,cells.map(c=>c.join(',')),materials);
             for (const c of cells) if (c.join(',') !== ak) ctx.hints[c.join(',')] = { member: ak };
         },
-        /** Tree: trunk + canopy voxels (cover and sight); drawn as one tree while its trunk stands. kind 'round' | 'conifer' | 'palm'. */
+        /** Tree: trunk + canopy voxels (cover and sight); supports all 6 TREE_SPECIES plus 'round' alias. */
         tree(x, y, kind = 'round', z = 1) {
             const cells = [];
-            // PLAN-14: a canopy only fills empty air (never a ladder rung, railing or other non-solid fixture).
             const put = (cx, cy, cz, key) => { if (store.inBounds(cx, cy, cz) && store.get(cx, cy, cz) === 0) { store.set(cx, cy, cz, MAT[key]); cells.push([cx, cy, cz]); } };
+            const sp = TREE_SPECIES[kind === 'round' ? 'maple' : kind] || TREE_SPECIES.maple;
             if (kind === 'conifer') {
                 put(x, y, z + 1, 'trunk');
                 for (let h = 2; h <= 5; h++) put(x, y, z + h, 'leaves');
                 for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) put(x + dx, y + dy, z + 2, 'leaves');
-            } else {
+            } else if (kind === 'round' || kind === 'maple') {
                 for (let h = 1; h <= 3; h++) put(x, y, z + h, 'trunk');
                 for (let dz = 3; dz <= 5; dz++) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
                     if (Math.abs(dx) + Math.abs(dy) + (dz === 5 ? 1 : 0) > 2 || (dx === 0 && dy === 0 && dz < 4)) continue;
                     put(x + dx, y + dy, z + dz, 'leaves');
                 }
+            } else {
+                for (let h = 1; h <= sp.trunk; h++) put(x, y, z + h, 'trunk');
+                for (const [dz, r] of sp.crown) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+                    if (Math.abs(dx) + Math.abs(dy) > r || (dx === 0 && dy === 0 && dz <= sp.trunk)) continue;
+                    put(x + dx, y + dy, z + dz, 'leaves');
+                }
             }
             if (!cells.length) return;
             const base = `${x},${y},${z + 1}`;
-            ctx.hints[base] = { piece: kind === 'conifer' ? 'tree_conifer' : 'tree_round', yaw: rng.next() * 6.28, scale: 0.9 + rng.next() * 0.25, tree: true, cells: cells.map(c => c.join(',')) };
+            ctx.hints[base] = { piece: sp.piece, yaw: rng.next() * 6.28, scale: 0.9 + rng.next() * 0.25, tree: true, cells: cells.map(c => c.join(',')) };
             for (const c of cells) if (c.join(',') !== base) ctx.hints[c.join(',')] = { member: base, tree: true };
         },
         decorAt(kind, x, y, extra = {}) {

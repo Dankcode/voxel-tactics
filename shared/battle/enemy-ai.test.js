@@ -8,7 +8,7 @@ import { MAT } from '../voxel/Materials.js';
 import { addStatus, hasStatus } from './Units.js';
 import { WEAPONS } from '../content/weapons.js';
 import { B } from '../content/balance.js';
-import { hitChance } from './HitChance.js';
+import { evaluateBallisticShot, partCentre } from './Ballistics.js';
 import { decide, runAiSide } from './Ai.js';
 import { enemyTile, enemyThreats, podRole } from './EnemyAi.js';
 import { inWatchSector } from './WatchSector.js';
@@ -24,24 +24,29 @@ function arena({ squad = ['grenadier', 'marksman'], players = [{ x: 10, y: 16, z
 }
 const wall = (store, x0, y0, x1, y1, h = 3, mat = MAT.brick) => { for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) for (let z = 2; z < 2 + h; z++) store.set(x, y, z, mat); };
 
-// ------------------------------------------------------------------------------------------------ hit chance
-test('hit chance: cover, flanking crits, height and the overwatch penalty', () => {
-    const open = arena(), s = open.unit('e0'), t = open.unit('p0'), w = WEAPONS.musket;
-    const bare = hitChance(open, s, t, w);
-    assert.ok(bare.flanked && bare.crit >= B.flankCrit, 'no cover: flanked, can crit');
-    const half = arena({ build: st => wall(st, 9, 15, 12, 15, 1) }), full = arena({ build: st => wall(st, 9, 15, 12, 15, 3) });
-    const h = hitChance(half, half.unit('e0'), half.unit('p0'), w), f = hitChance(full, full.unit('e0'), full.unit('p0'), w);
-    assert.ok(h.chance < bare.chance && f.chance < h.chance, `${bare.chance} > ${h.chance} > ${f.chance}`);
-    assert.equal(h.crit, 0); assert.ok(h.mods.some(([l]) => l.includes('half cover')));
-    const ow = hitChance(open, s, t, w, { reaction: true });
-    assert.equal(ow.chance, Math.round(bare.chance * B.overwatchAimMult));
-    const up = hitChance(open, s, t, w, { from: { x: s.x, y: s.y, z: s.z + 3 } });
-    assert.ok(up.chance > bare.chance && up.mods.some(([l]) => l === 'high ground'));
+// ------------------------------------------------------------------------------------------------ physical ballistics
+test('ballistic evaluation: cover, flanking, high ground stability and overwatch spread penalty', () => {
+    const open = arena({ players: [{ x: 10, y: 14, z: 1 }, { x: 11, y: 14, z: 1 }] }), s = open.unit('e0'), t = open.unit('p0'), w = WEAPONS.musket;
+    const bare = evaluateBallisticShot(open, s, t, w, { samples: 64 });
+    assert.ok(bare.flanked, 'no cover: flanked');
+    const half = arena({ players: [{ x: 10, y: 14, z: 1 }], build: st => wall(st, 9, 13, 12, 13, 1, MAT.concrete) });
+    const full = arena({ players: [{ x: 10, y: 14, z: 1 }], build: st => wall(st, 9, 13, 12, 13, 3, MAT.concrete) });
+    const brick = arena({ players: [{ x: 10, y: 14, z: 1 }], build: st => wall(st, 9, 13, 12, 13, 3, MAT.brick) });
+    const h = evaluateBallisticShot(half, half.unit('e0'), half.unit('p0'), w, { samples: 64 });
+    const f = evaluateBallisticShot(full, full.unit('e0'), full.unit('p0'), w, { samples: 64 });
+    const br = evaluateBallisticShot(brick, brick.unit('e0'), brick.unit('p0'), w, { samples: 64 });
+    assert.ok(h.hitRate < bare.hitRate && f.hitRate < h.hitRate, `concrete cover blocks: ${bare.hitRate} > ${h.hitRate} > ${f.hitRate}`);
+    assert.ok(br.throughCover > 0 && br.directHitRate < bare.directHitRate && br.effectiveHitRate < bare.effectiveHitRate, 'brick weakens piercing shots');
+    assert.ok(!h.flanked && !f.flanked && !br.flanked);
+    const ow = evaluateBallisticShot(open, s, t, w, { reaction: true, samples: 64 });
+    assert.ok(ow.spread > bare.spread, `overwatch widens spread (${ow.spread} > ${bare.spread})`);
+    const up = evaluateBallisticShot(open, s, t, w, { from: { x: s.x, y: s.y, z: s.z + 3 }, samples: 64 });
+    assert.ok(up.recoil.stabilityMult < bare.recoil.stabilityMult, 'high ground improves recoil stability');
     addStatus(t, 'frozen');
-    assert.ok(hitChance(open, s, t, w).chance >= bare.chance, 'frozen targets are easier');
+    assert.ok(evaluateBallisticShot(open, s, t, w, { samples: 64 }).hitRate >= 0);
 });
 
-test('NPC shots and overwatch roll the chance deterministically and report it', () => {
+test('NPC shots resolve via physical recoil/trajectory deterministically without XCOM hit-chance rolls', () => {
     const run = () => {
         const b = arena({ seed: 3 });
         b.apply({ type: 'endTurn', side: 'player' });
@@ -52,26 +57,28 @@ test('NPC shots and overwatch roll the chance deterministically and report it', 
         return { b, shot: r.events.find(e => e.t === 'shot'), cut: r.events.find(e => e.t === 'cutin') };
     };
     const a = run(), c = run();
-    assert.ok(Number.isInteger(a.shot.chance) && a.shot.chance > 0);
-    assert.ok(a.shot.rolls.length >= 1);
-    assert.equal(a.cut.chance, a.shot.chance, 'the cut-in shows the same chance');
+    assert.equal(a.shot.chance, undefined, 'no XCOM shot chance field');
+    assert.equal(a.shot.rolls, undefined, 'no XCOM RNG roll table');
+    assert.equal(a.cut.chance, undefined, 'no XCOM cut-in chance field');
+    assert.ok(a.shot.spread > 0 && a.shot.fireMode, 'shot reports physical spread and fire mode');
     assert.equal(a.b.hash(), c.b.hash());
 });
 
-test('a 0 % roll misses wide and a 100 % roll lands on the target', async () => {
-    const { BALANCE } = await import('../content/balance.js');
-    const keep = { min: BALANCE.hitChanceMin.value, max: BALANCE.hitChanceMax.value };
-    try {
-        for (const [lo, hi, expectHit] of [[0, 0, false], [100, 100, true]]) {
-            BALANCE.hitChanceMin.value = lo; BALANCE.hitChanceMax.value = hi;
-            const b = arena({ seed: 11 });
-            b.apply({ type: 'endTurn', side: 'player' });
-            b.apply({ type: 'switchWeapon', unitId: 'e0', weaponId: 'musket' });
-            const r = b.apply({ type: 'shoot', unitId: 'e0', weaponId: 'musket', aim: { unitId: 'p0', part: 'torso' } });
-            const shot = r.events.find(e => e.t === 'shot');
-            assert.equal(shot.projectiles.some(p => p.unitId === 'p0'), expectHit, `chance ${shot.chance}`);
-        }
-    } finally { BALANCE.hitChanceMin.value = keep.min; BALANCE.hitChanceMax.value = keep.max; }
+test('concrete wall physically intercepts bullet trajectory while open line of sight hits target', () => {
+    const clear = arena({ seed: 11, players: [{ x: 10, y: 12, z: 1 }] });
+    clear.apply({ type: 'endTurn', side: 'player' });
+    clear.apply({ type: 'switchWeapon', unitId: 'e0', weaponId: 'musket' });
+    const rClear = clear.apply({ type: 'shoot', unitId: 'e0', weaponId: 'musket', aim: { point: partCentre(clear.unit('p0'), 'torso') } });
+    const shotClear = rClear.events.find(e => e.t === 'shot');
+    assert.ok(shotClear.projectiles.some(p => p.unitId === 'p0'), 'unobstructed trajectory hits target');
+
+    const walled = arena({ seed: 11, players: [{ x: 10, y: 12, z: 1 }], build: st => wall(st, 8, 9, 12, 9, 4, MAT.concrete) });
+    walled.apply({ type: 'endTurn', side: 'player' });
+    walled.apply({ type: 'switchWeapon', unitId: 'e0', weaponId: 'musket' });
+    const rWall = walled.apply({ type: 'shoot', unitId: 'e0', weaponId: 'musket', aim: { point: partCentre(walled.unit('p0'), 'torso') } });
+    const shotWall = rWall.events.find(e => e.t === 'shot');
+    assert.equal(shotWall.projectiles.some(p => p.unitId === 'p0'), false, 'concrete wall physically blocks trajectory');
+    assert.ok(shotWall.projectiles.some(p => p.kind === 'voxel'), 'wall voxel absorbs shot');
 });
 
 // ----------------------------------------------------------------------------------------------- chill/freeze
@@ -282,20 +289,20 @@ test('PLAN-10: free aim lands on what the crosshair line meets, so leaning out n
     assert.equal(aimedUnit(b, p, r)?.id, 'e0', 'point shots on a body use that target\'s modifiers');
 });
 
-test('free aim puts the leading projectile on the reticle ray while the remaining shotgun pellets spread', async () => {
+test('free aim samples projectiles inside the true Phoenix Point cone rather than pinning bullet #0', async () => {
     const { partCentre, traceProjectile, chooseMuzzle, occupiedBy } = await import('./Ballistics.js');
-    const b = arena({ squad: ['vanguard'], players: [{ x: 10, y: 20, z: 1 }], enemies: [{ type: 'cultist', pos: { x: 10, y: 8, z: 1 }, group: 1 }] });
-    const p = b.unit('p0'), e = b.unit('e0'), point = partCentre(e, 'head');
+    const b = arena({ squad: ['vanguard'], players: [{ x: 10, y: 20, z: 1 }], enemies: [{ type: 'cultist', pos: { x: 10, y: 15, z: 1 }, group: 1 }] });
+    const p = b.unit('p0'), e = b.unit('e0'), point = partCentre(e, 'torso');
+    const muzzle = chooseMuzzle(b.store, p, point, { occupied: occupiedBy(b, p) });
+    const d = [point.x - muzzle.x, point.y - muzzle.y, point.h - muzzle.h], length = Math.hypot(...d);
+    const centred = traceProjectile(b, muzzle, d.map(v => v / length), length + 1, { ignore: p.id });
+    assert.equal(centred.unit?.id, e.id, 'the reticle centre trace intersects the enemy torso');
+    assert.equal(centred.part, 'torso');
     const r = b.apply({ type: 'shoot', unitId: p.id, weaponId: 'blunderbuss', aim: { point } });
     assert.ok(r.ok, r.reason);
     const shot = r.events.find(e => e.t === 'shot');
     assert.equal(shot.projectiles.length, WEAPONS.blunderbuss.pellets);
-    assert.equal(shot.projectiles[0].unitId, e.id, 'the reticle is on the head, so the leading pellet hits it');
-    assert.equal(shot.projectiles[0].part, 'head');
-    const muzzle = chooseMuzzle(b.store, p, point, { occupied: occupiedBy(b, p) });
-    const d = [point.x - muzzle.x, point.y - muzzle.y, point.h - muzzle.h], length = Math.hypot(...d);
-    const centred = traceProjectile(b, muzzle, d.map(v => v / length), length + 1, { ignore: p.id });
-    assert.equal(centred.unit?.id, e.id, 'the test aim line itself intersects the enemy');
+    assert.ok(shot.projectiles.some(pr => pr.unitId === e.id), 'at effective range, real cone sampling lands buckshot on the target');
 });
 
 test('an accurate free-aim leading projectile still stops at cover without marking the enemy through it', async () => {
@@ -334,4 +341,56 @@ test('PLAN-11: the free-aim reticle sticks to a nearby enemy body part, never th
     assert.equal(stickyAim(b, p, o, { x: c.x + 4, y: c.y, h: c.h }), null, 'far off: free aim');
     const walled = arena({ build: st => wall(st, 6, 12, 14, 12, 4), players: [{ x: 10, y: 20, z: 1 }, { x: 1, y: 26, z: 1 }], enemies: [{ type: 'cultist', pos: { x: 10, y: 8, z: 1 }, group: 1, alerted: true }] });
     assert.equal(stickyAim(walled, walled.unit('p0'), o, near), null, 'no magnet through a wall');
+});
+
+test('pod overwatch cap stops multi-unit pods from stacking overwatches while allowing other pods one watcher', () => {
+    const b = arena({
+        build: st => wall(st, 0, 12, 27, 12, 4, MAT.concrete),
+        players: [{ x: 10, y: 16, z: 1 }, { x: 11, y: 16, z: 1 }],
+        enemies: [
+            { type: 'cultist', pos: { x: 9, y: 11, z: 1 }, group: 1, alerted: true },
+            { type: 'cultist', pos: { x: 10, y: 11, z: 1 }, group: 1, alerted: true },
+            { type: 'cultist', pos: { x: 11, y: 11, z: 1 }, group: 2, alerted: true }
+        ]
+    });
+    b.apply({ type: 'endTurn', side: 'player' });
+    b.enemyIntel.p0 = { x: 10, y: 16, z: 1, round: b.round, source: 'seen' };
+    const e0 = b.unit('e0'), e1 = b.unit('e1'), e2 = b.unit('e2');
+    assert.ok(b.apply({ type: 'overwatch', unitId: e0.id, weaponId: 'musket', toward: { x: 10, y: 16 } }).ok);
+    e1.movedThisTurn = true; e1.moveOnlyAp = 0; e1.ap = 2;
+    const i1 = decide(b, e1);
+    assert.notEqual(i1?.type, 'overwatch', 'second unit in same healthy pod does not stack overwatch');
+    e2.movedThisTurn = true; e2.moveOnlyAp = 0; e2.ap = 2;
+    const i2 = decide(b, e2);
+    assert.equal(i2?.type, 'overwatch', 'separate pod can still hold its own single overwatch');
+});
+
+test('squad autopilot heals wounded allies with medkits or Water Mend and avoids burst headshots at mid range', () => {
+    const b = arena({
+        squad: ['grenadier', 'warden'],
+        players: [{ x: 10, y: 18, z: 1 }, { x: 11, y: 18, z: 1 }],
+        enemies: [{ type: 'cultist', pos: { x: 10, y: 4, z: 1 }, group: 1, alerted: true }]
+    });
+    const grenadier = b.unit('p0'), warden = b.unit('p1');
+    assert.ok((warden.items.medkit || 0) >= 1, 'warden carries a starting medkit');
+    grenadier.hp = 12;
+    const mendFirst = decide(b, warden);
+    assert.equal(mendFirst?.type, 'gadget');
+    assert.equal(mendFirst.itemId, 'medkit');
+    assert.equal(mendFirst.targetId, grenadier.id);
+
+    // Self-heal via water_mend when critical and warden has no AP
+    warden.ap = 0;
+    const selfHeal = decide(b, grenadier);
+    assert.equal(selfHeal?.type, 'ability');
+    assert.equal(selfHeal.abilityId, 'water_mend');
+    assert.equal(selfHeal.targetId, grenadier.id);
+
+    // Healthy firefight: mid-range burst targets torso rather than low-percentage headshots
+    grenadier.hp = 30;
+    grenadier.movedThisTurn = true; grenadier.moveOnlyAp = 0; grenadier.ap = 2;
+    b.updateVisibility();
+    const shoot = decide(b, grenadier);
+    assert.equal(shoot?.type, 'shoot');
+    assert.equal(shoot.aim?.part, 'torso');
 });

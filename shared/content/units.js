@@ -13,20 +13,20 @@ export const PARTS = Object.freeze(['head', 'torso', 'armL', 'armR', 'legs']);
 // `name` is the classic (default) role. Intel co-op rules (experimental, opt-in) add sensing abilities and show
 // `intelName` / `intelRole` instead; see displayName().
 export const CLASSES = Object.freeze({
-    vanguard: { id: 'vanguard', name: 'Assault', role: 'Close quarters: shotgun, sidearm, knife', intelName: 'Faultfinder', intelRole: 'Seismic sensing through grounded terrain; terrain shaping', art: 'vanguard', hp: UNIT_HP, accuracy: 0.9, mobility: 3.4, will: 6, armor: 'medium',
+    vanguard: { id: 'vanguard', name: 'Assault', role: 'Close quarters: shotgun, sidearm, knife', intelName: 'Faultfinder', intelRole: 'Seismic sensing through grounded terrain; terrain shaping', art: 'vanguard', hp: UNIT_HP, accuracy: 0.95, mobility: 3.4, will: 6, armor: 'medium',
         weapons: ['blunderbuss', 'handcannon', 'sword'], items: { fire_flask: 1, smoke_pot: 1 }, abilities: ['seismic_sense', 'earth_cover', 'dash'] },
-    grenadier: { id: 'grenadier', name: 'Grenadier', role: 'Assault rifle, frag grenades, demolition', intelName: 'Tidekeeper', intelRole: 'Water-linked enemy sensing; healing and suppression', art: 'grenadier', hp: UNIT_HP, accuracy: 0.85, mobility: 2.9, will: 6, armor: 'heavy',
+    grenadier: { id: 'grenadier', name: 'Grenadier', role: 'Assault rifle, frag grenades, demolition', intelName: 'Tidekeeper', intelRole: 'Water-linked enemy sensing; healing and suppression', art: 'grenadier', hp: UNIT_HP, accuracy: 0.92, mobility: 2.9, will: 6, armor: 'heavy',
         weapons: ['repeater'], items: { powder_bomb: 2, gale_flask: 1 }, abilities: ['water_sense', 'water_mend', 'demolish', 'suppress'] },
     marksman: { id: 'marksman', name: 'Sharpshooter', role: 'Sniper rifle and sidearm; overwatch from height', intelName: 'Skywatch', intelRole: 'Scout drone reconnaissance; precision engagement', art: 'marksman', hp: UNIT_HP, accuracy: 1.0, mobility: 3.1, will: 7, armor: 'light',
-        weapons: ['longrifle', 'handcannon'], items: { smoke_pot: 1, frost_flask: 1 }, abilities: ['scout_drone', 'quick_aim', 'deadeye'] },
-    warden: { id: 'warden', name: 'Breacher', role: 'Ballistic shield, suppressed carbine, breaching charges', intelName: 'Ghostwright', intelRole: 'Quiet wall cutting; protected infiltration', art: 'warden', hp: UNIT_HP, accuracy: 0.88, mobility: 2.9, will: 7, armor: 'plate',
-        weapons: ['crossbow', 'sword'], items: { breach_charge: 2, water_flask: 1 }, abilities: ['quiet_cut', 'brace', 'rally'] }
+        weapons: ['longrifle', 'handcannon'], items: { smoke_pot: 1, frost_flask: 1, medkit: 1 }, abilities: ['scout_drone', 'quick_aim', 'deadeye'] },
+    warden: { id: 'warden', name: 'Breacher', role: 'Ballistic shield, suppressed carbine, breaching charges', intelName: 'Ghostwright', intelRole: 'Quiet wall cutting; protected infiltration', art: 'warden', hp: UNIT_HP, accuracy: 0.94, mobility: 2.9, will: 7, armor: 'plate',
+        weapons: ['crossbow', 'sword'], items: { breach_charge: 2, water_flask: 1, medkit: 1 }, abilities: ['quiet_cut', 'brace', 'rally'] }
 });
 
 export const ENEMIES = Object.freeze({
     wall_strider: {id:'wall_strider',name:'Wall Strider',faction:'construct',art:'wall_strider',hp:60,accuracy:.7,mobility:2.6,will:6,armor:'medium',weapons:['strider_claws'],items:{},abilities:['smash'],role:'Four-legged melee monster; five occupied tiles. Climbs facades, smashes through walls and claws whatever it reaches.'},
     siege_weaver: {id:'siege_weaver',name:'Siege Weaver',faction:'construct',art:'siege_weaver',hp:90,accuracy:.65,mobility:1.8,will:8,armor:'heavy',weapons:['repeater'],items:{},abilities:[],role:'Six articulated legs; seven occupied tiles across a five-tile span. Armoured climbing gun platform.'},
-    cultist: { id: 'cultist', name: 'Gunman', faction: 'syndicate', art: 'cultist', hp: UNIT_HP, accuracy: 0.55, mobility: 3, will: 4, armor: 'light',
+    cultist: { id: 'cultist', name: 'Gunman', faction: 'syndicate', art: 'cultist', hp: UNIT_HP, accuracy: 0.62, mobility: 3, will: 4, armor: 'light',
         weapons: ['musket', 'sword'], items: { fire_flask: 1, water_flask: 1 }, abilities: [] },
     archer: { id: 'archer', name: 'Lookout', intelName: 'Drone Hunter', droneDetector: true, faction: 'syndicate', art: 'archer', hp: UNIT_HP, accuracy: 0.64, mobility: 3.2, will: 4, armor: 'hide',
         weapons: ['shortbow'], items: { frost_flask: 1, smoke_pot: 1 }, abilities: [] },
@@ -34,18 +34,18 @@ export const ENEMIES = Object.freeze({
         weapons: ['firelance'], items: { fire_flask: 2 }, abilities: [] },
     brute: { id: 'brute', name: 'Enforcer', faction: 'syndicate', art: 'brute', hp: UNIT_HP, accuracy: 0.6, mobility: 3.2, will: 6, armor: 'heavy',
         weapons: ['maul'], items: { smoke_pot: 1 }, abilities: [] },
-    warden_foe: { id: 'warden_foe', name: 'Riot Guard', faction: 'syndicate', art: 'guard', hp: UNIT_HP, accuracy: 0.62, mobility: 2.8, will: 6, armor: 'plate',
+    warden_foe: { id: 'warden_foe', name: 'Riot Guard', faction: 'syndicate', art: 'guard', hp: UNIT_HP, accuracy: 0.64, mobility: 2.8, will: 6, armor: 'plate',
         weapons: ['musket', 'sword'], items: {}, abilities: ['brace', 'earth_cover'] },
     // PLAN-14: the drone tech runs search drones ahead of the pod. The drones are unarmed eyes: they sweep toward noise
     // and last-known positions, everything they see the whole enemy side sees, and one hit brings one down.
-    tech: { id: 'tech', name: 'Drone Tech', faction: 'syndicate', art: 'tech', hp: UNIT_HP, accuracy: 0.56, mobility: 3, will: 5, armor: 'light',
+    tech: { id: 'tech', name: 'Drone Tech', faction: 'syndicate', art: 'tech', hp: UNIT_HP, accuracy: 0.64, mobility: 3, will: 5, armor: 'light',
         weapons: ['handcannon'], items: { smoke_pot: 1 }, abilities: ['launch_drone'], role: 'Launches and steers search drones (two in the air at most); keeps back and relays what they see.' },
     search_drone: { id: 'search_drone', name: 'Search Drone', faction: 'syndicate', art: 'drone', drone: true, hp: 1, accuracy: 0, mobility: 4.2, will: 9, armor: 'drone',
         weapons: [], items: {}, abilities: [], role: 'Unarmed quadcopter. Searches toward noise and last-known positions and spots for every enemy. One hit destroys it.' }
 });
 
 export const ABILITIES = Object.freeze({
-    killstreak_strike:{id:'killstreak_strike',name:'Airstrike',commander:true,targeting:'tile',wp:0,ap:0,range:40,text:'Ready at the start of the mission and again 10 rounds after each use. Three bombs fall together somewhere inside the marked 15 x 9 rectangle (long side along your facing; each blast stays inside it). Craters stay one level deep on open ground; buildings lose up to two storeys. Damages allies too.'},
+    killstreak_strike:{id:'killstreak_strike',name:'Airstrike',commander:true,targeting:'tile',wp:0,ap:1,range:40,text:'Unlocks Round 2 and recharges 10 rounds after each use. Three bombs fall inside the marked 15 × 9 rectangle onto a spotted area (long side along your facing). Damages allies too.'},
     seismic_sense: {id:'seismic_sense',name:'Seismic Sense',intel:true,wp:1,ap:1,text:'Share grounded enemy contacts within 14 tiles and two levels, through walls. Contacts are snapshots.'},
     water_sense: {id:'water_sense',name:'Water Sense',intel:true,wp:1,ap:1,text:'Share contacts within 14 tiles near water, through walls. Contacts are snapshots.'},
     scout_drone: {id:'scout_drone',name:'Scout Drone',intel:true,targeting:'tile',range:18,wp:1,ap:1,text:'Scout from a tile within 18. Drone sees 10 tiles through clear sight. Enemies detect within 2; Drone Hunters within 8. Recast to reposition.'},
@@ -61,7 +61,7 @@ export const ABILITIES = Object.freeze({
     suppress: { id: 'suppress', name: 'Suppressive Fire', wp: 2, ap: 2, text: 'Burst at a visible target; it is Suppressed (accuracy ×0.6) for two own turns.' },
     quick_aim: { id: 'quick_aim', name: 'Snap Shot', wp: 2, ap: 0, text: 'Next shot costs 1 AP less.' },
     deadeye: { id: 'deadeye', name: 'Deadeye', wp: 3, ap: 0, text: 'Next shot has half the spread.' },
-    brace: { id: 'brace', name: 'Shield Wall', wp: 1, ap: 1, text: '+4 armour on every part until your next turn.' },
+    brace: { id: 'brace', name: 'Shield Wall', wp: 1, ap: 1, text: '+2 armour on every part until your next turn.' },
     // PLAN-14
     recon_scan: { id: 'recon_scan', name: 'Recon Scan', squad: true, wp: 1, ap: 1, range: 40, radius: 3, cooldown: 3, text: 'Sweep for hostiles within 40 tiles. Each contact shows as a red search circle (3-tile radius) around its approximate position for two rounds, on its floor; the exact tile stays hidden. Any soldier can use it; the squad shares one cooldown of 3 rounds.' },
     launch_drone: { id: 'launch_drone', name: 'Launch Drone', wp: 0, ap: 1, cooldown: 3, max: 2, text: 'Enemy techs: put a search drone in the air beside them (two at most, one launch every 3 rounds).' }

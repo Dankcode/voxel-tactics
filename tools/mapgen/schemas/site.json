@@ -33,7 +33,12 @@
         "Suburbs",
         "Downtown",
         "Industrial",
-        "Roadside"
+        "Roadside",
+        "Waterfront",
+        "Alpine",
+        "Historic",
+        "Transit",
+        "Desert"
       ]
     },
     "timeOfDay": {

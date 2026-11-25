@@ -46,6 +46,27 @@ export class VoxelView {
         this.refreshConcealment();
         return keys.length;
     }
+    /** Rebuild only chunks overlapping the given boxes ({ x0, y0, w, d }), leaving unrelated map chunks intact. */
+    rebuildBoxes(boxes = []) {
+        if (!boxes?.length) { this.rebuildAll(); return; }
+        const s = this.store;
+        const maxCx = Math.ceil(s.width / CHUNK) - 1;
+        const maxCy = Math.ceil(s.depth / CHUNK) - 1;
+        const maxCz = Math.ceil(s.height / CHUNK) - 1;
+        const keys = new Set();
+        for (const b of boxes) {
+            const cx0 = Math.max(0, Math.floor((b.x0 - 1) / CHUNK));
+            const cy0 = Math.max(0, Math.floor((b.y0 - 1) / CHUNK));
+            const cx1 = Math.min(maxCx, Math.floor((b.x0 + b.w) / CHUNK));
+            const cy1 = Math.min(maxCy, Math.floor((b.y0 + b.d) / CHUNK));
+            for (let cz = 0; cz <= maxCz; cz++)
+                for (let cy = cy0; cy <= cy1; cy++)
+                    for (let cx = cx0; cx <= cx1; cx++) keys.add(`${cx},${cy},${cz}`);
+        }
+        for (const k of [...keys]) for (const a of this.deps.get(k) || []) keys.add(a);
+        for (const k of keys) this.rebuild(k);
+        this.refreshConcealment();
+    }
     rebuild(key) {
         const [cx, cy, cz] = key.split(',').map(Number);
         if (cx < 0 || cy < 0 || cz < 0 || cx * CHUNK >= this.store.width || cy * CHUNK >= this.store.depth || cz * CHUNK >= this.store.height) return;

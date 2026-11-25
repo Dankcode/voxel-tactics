@@ -17,9 +17,12 @@ const PORT = Number(process.env.PORT) || 2567;
 const development = process.argv.includes('--dev');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '64kb' }));
 app.get('/health', (_, res) => res.json({ ok: true }));
-app.get('/rooms', async (_, res) => res.json(await matchMaker.query({ name: 'mission' })));
+app.get('/rooms', async (_, res) => {
+    try { res.json(await matchMaker.query({ name: 'mission' })); }
+    catch (error) { res.status(500).json({ error: error.message }); }
+});
 aiCacheRoutes(app);   // PLAN-09: GET/POST /api/ai-cache -> server/data/ai-cache.json
 const dist = path.join(ROOT, 'client/dist');
 if (development) {

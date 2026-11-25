@@ -22,7 +22,7 @@ test('partial final salvo fires remaining rounds; invalid modes and NaN aims nev
  const r=b.apply({type:'shoot',unitId:u.id,fireMode:'auto',aim:{point:{x:12,y:3,h:2}}});assert.equal(r.events.find(e=>e.t==='shot').rounds,2);
 });
 test('caliber damage and falloff: shotgun pellets sum to one shell, armor absorbs only unpenetrated damage',()=>{
- for(const [id,close,far]of [['repeater',10,5],['longrifle',30,10],['blunderbuss',30,5],['firelance',30,5]]){const w=WEAPONS[id],n=w.pellets||1;assert.equal(Array.from({length:n},(_,i)=>projectileDamage(w,5,i)).reduce((a,b)=>a+b),close);assert.equal(Array.from({length:n},(_,i)=>projectileDamage(w,6,i)).reduce((a,b)=>a+b),far);}
+ for(const [id,close,far]of [['repeater',10,7],['longrifle',30,24],['blunderbuss',30,13],['firelance',18,8]]){const w=WEAPONS[id],n=w.pellets||1;assert.equal(Array.from({length:n},(_,i)=>projectileDamage(w,w.range,i)).reduce((a,b)=>a+b),close);assert.equal(Array.from({length:n},(_,i)=>projectileDamage(w,w.maxRange,i)).reduce((a,b)=>a+b),far);}
  const b=arena(),e=b.unit('e0');e.parts.torso.armor=6;assert.equal(b.dealDamage(e,'torso',10,{pierce:2}),6);
 });
 test('reload transfers real reserve rounds; a bolt-action cycles a single round without reload',()=>{
@@ -30,10 +30,11 @@ test('reload transfers real reserve rounds; a bolt-action cycles a single round 
  u.rigInventory=[];u.ammo.repeater=0;assert.equal(b.apply({type:'reload',unitId:u.id}).reason,'no_ammo');
  const sniper=arena(['marksman']),s=sniper.unit('p0'),r=reserveAmmo(s,WEAPONS.longrifle);assert.equal(sniper.apply({type:'reload',unitId:s.id}).reason,'bad_intent');assert.ok(sniper.apply({type:'shoot',unitId:s.id,aim:{point:{x:12.5,y:3,h:2}}}).ok);assert.equal(s.ammo.longrifle,1);assert.equal(reserveAmmo(s,WEAPONS.longrifle),r-1);
 });
-test('persistent overwatch survives phase refresh, consumes ammo repeatedly, and breaks on wounds/status',()=>{
- const b=arena(['vanguard']),u=b.unit('p0');u.weapon='handcannon';assert.ok(b.apply({type:'overwatch',unitId:u.id,toward:{x:12,y:1}}).ok);b.startSide('player');assert.ok(u.overwatch);
+test('one-turn overwatch consumes one reaction by default, clears on phase refresh, and breaks on wounds/status',()=>{
+ const b=arena(['vanguard']),u=b.unit('p0');u.weapon='handcannon';assert.ok(b.apply({type:'overwatch',unitId:u.id,toward:{x:12,y:1}}).ok);assert.ok(u.overwatch);assert.equal(u.reactionsLeft,1);
  const e=b.unit('e0');e.hp=e.maxHp=500;e.parts.torso.hp=e.parts.torso.max=500;e.x=12;e.y=17;const before=u.ammo.handcannon;
- b.checkReactions(e,[e]);b.checkReactions(e,[e]);assert.ok(u.overwatch);assert.equal(u.ammo.handcannon,before-2);
+ b.checkReactions(e,[e]);assert.equal(u.overwatch,null);assert.equal(u.reactionsLeft,0);assert.equal(u.ammo.handcannon,before-1);
+ b.startSide('player');assert.ok(b.apply({type:'overwatch',unitId:u.id,toward:{x:12,y:1}}).ok);b.startSide('player');assert.equal(u.overwatch,null);
  b.dealDamage(u,'torso',1,{pierce:99});assert.equal(u.overwatch,null);u.overwatch={weaponId:'handcannon'};b.giveStatus(u,'suppressed',2);assert.equal(u.overwatch,null);
 });
 test('nested rigs store real ammo, remain bounded and acyclic, and opening storage never mutates state',()=>{
@@ -77,8 +78,10 @@ test('a patrol file repositions only on unseen incoming fire and spends members 
  const b=arena(['grenadier','vanguard']),u=b.unit('p0'),ally=b.unit('p1'),enemy=b.unit('e0');b.apply({type:'formation_plan',unitId:u.id,template:'file',facing:'n'});const f=b.formations.of(u);assert.ok(b.apply({type:'move',unitId:ally.id,to:b.formations.plannedSlots(f)[1]}).ok);
  const pos=()=>[u.x,u.y,ally.x,ally.y],before=pos(),ap=u.ap+ally.ap;b.formations.onIncomingFire(u,enemy,true);assert.deepEqual(pos(),before);b.formations.onIncomingFire(u,enemy,false);assert.notDeepEqual(pos(),before);assert.ok(u.ap+ally.ap<ap);
 });
-test('a commander strike is ready at the start without kills and recharges 10 rounds after use (PLAN-07)',()=>{
- const b=arena(),u=b.unit('p0'),i={type:'ability',unitId:u.id,abilityId:'killstreak_strike',to:{x:4,y:4,z:1}};assert.equal(u.stats.kills,0);assert.ok(b.apply(i).ok);assert.equal(b.supportUsed,1);assert.equal(b.apply(i).reason,'support_cooldown');
+test('commander strike unlocks on round 2 with line of sight and recharges 10 rounds after use',()=>{
+ const b=arena(),u=b.unit('p0'),i={type:'ability',unitId:u.id,abilityId:'killstreak_strike',to:{x:4,y:4,z:1}};assert.equal(u.stats.kills,0);assert.equal(b.apply(i).reason,'support_cooldown');
+ b.round=2;b.store.fill(8,10,2,8,16,5,'concrete');assert.equal(b.apply(i).reason,'no_target');
+ b.store.fill(8,10,2,8,16,5,'air');assert.ok(b.apply(i).ok);assert.equal(b.supportUsed,1);assert.equal(b.apply(i).reason,'support_cooldown');
  b.round+=9;assert.equal(b.apply(i).reason,'support_cooldown');b.round+=1;assert.ok(b.apply(i).ok);assert.equal(b.strikeReadyAt,b.round+10);
 });
 test('an AI with exhausted reserves does not loop on impossible reloads',()=>{

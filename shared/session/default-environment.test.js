@@ -11,11 +11,11 @@ test('PLAN-10: default and fallback launches generate a map from a theme (downto
     assert.equal(mapById(DEFAULT_MAP).concept, '/maps/burger-district/concept/reference.png', 'the picture package stays as a mapgen fixture');
 });
 
-test('PLAN-10: players pick themes; old map ids map to the closest theme; only the two test rigs remain as fixtures', async () => {
+test('PLAN-10: players pick biomes; old map ids map to the closest biome; only the two test rigs remain as fixtures', async () => {
     const { THEMES, FIXTURES, plotForMap } = await import('./Scenarios.js');
-    assert.deepEqual(THEMES.map(t => t.id), ['downtown', 'industrial', 'suburb']);
+    assert.deepEqual(THEMES.map(t => t.id), ['downtown', 'industrial', 'suburb', 'harbor', 'winter_outpost', 'old_quarter', 'metro_hub', 'arid_compound']);
     assert.deepEqual(FIXTURES.map(f => f.id).sort(), ['architecture-yard', 'proving-grounds']);
-    assert.equal(plotForMap('harbor-yard'), 'industrial');
+    assert.equal(plotForMap('harbor-yard'), 'harbor');
     assert.equal(plotForMap('suburb-district'), 'suburb');
     assert.equal(plotForMap('main-street'), 'downtown');
 });

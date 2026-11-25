@@ -38,6 +38,7 @@ export function evaluateGeneratedGates(mission,{site,layout,design}) {
         closedRooms:mission.rooms.filter(r=>!r.gameplay).every(r=>!reaches(r)),
         storyBeats:design.beats.every(p=>reaches(room(p))),
         objectiveReachable:reaches(room(design.mission.target)),
+        objectiveZoneReachable:!mission.objective?.zone||(()=>{const z=mission.objective.zone;for(let y=z.y0;y<=z.y1;y++)for(let x=z.x0;x<=z.x1;x++)if(mission.store.surfaces(x,y).some(s=>(z.z==null||Math.abs(s.z-z.z)<=(z.dz??1))&&search.costs.has(nodeKey(s))))return true;return false;})(),
         windowLines:mission.buildings.every(b=>Array.from({length:b.storeys},(_,s)=>b.windows.some(w=>w.storey===s)).every(Boolean)),
         firstContact:mission.metrics.firstContact>=12,
         heightBudget:mission.store.height<=18&&mission.store.width<=(site.maxDimension??64)&&mission.store.depth<=(site.maxDimension??64),
@@ -48,7 +49,7 @@ export function evaluateGeneratedGates(mission,{site,layout,design}) {
     // PLAN-11 cover chain: no open dash longer than ~two moves along the main line of advance (generated maps).
     if(site?.generated)checks.advanceCover=(mission.metrics.advanceExposure??0)<=7;
     if(mission.meta.underground)Object.assign(checks,checkLayerGates(mission));
-    if(layout?.version===3)Object.assign(checks,checkV3Gates(mission,layout));
+    if(layout?.version===3)Object.assign(checks,checkV3Gates(mission,layout,{checkClutter:!!site?.generated}));
     mission.metrics.hallEscapes=Object.fromEntries(mission.rooms.filter(r=>r.kind==='hall').map(r=>[`${r.buildingId}:${r.storey}`,!!reaches(r,escapes)]));
     mission.metrics.gates={...mission.metrics.gates,...checks};
     mission.metrics.pass=Object.values(mission.metrics.gates).every(Boolean);
@@ -87,16 +88,16 @@ export function checkInteriorGates(mission,search) {
  * PLAN-04 gates: the map edge is closed (world pieces or buildings on every border cell that is not a road exit),
  * engagement pockets sit along the line of play, and every flank route is still walkable on the compiled matrix.
  */
-export function checkV3Gates(mission,layout) {
+export function checkV3Gates(mission,layout,{checkClutter=true}={}) {
     const {store}=mission,G=mission.meta.streetDatum,W=store.width,D=store.depth;
     let open=0,border=0;
     for(let x=0;x<W;x++)for(const y of [0,D-1]){if(!store.isSolid(x,y,G))continue;border++;if(!store.isSolid(x,y,G+1)&&!mission.buildings.some(b=>x>=b.x0&&x<b.x0+b.w&&y>=b.y0&&y<b.y0+b.d))open++;}
     for(let y=1;y<D-1;y++)for(const x of [0,W-1]){if(!store.isSolid(x,y,G))continue;border++;if(!store.isSolid(x,y,G+1)&&!mission.buildings.some(b=>x>=b.x0&&x<b.x0+b.w&&y>=b.y0&&y<b.y0+b.d))open++;}
     const search=reachable(store,mission.spawns.player[0],Infinity,AGENT_PROFILES.player);
     const flanks=(layout.lineOfPlay?.flanks||[]).filter(f=>f.path.length);
-    const walkable=f=>f.path.filter(([x,y])=>search.costs.has(nodeKey({x,y,z:G}))).length/f.path.length;
-    // PLAN-10: no random clutter outdoors (crates, pallets, drums).
-    const noClutter=!(layout.pieces||[]).some(p=>CLUTTER_BASES.includes(BAY_PIECES[p.id]?.base));
+    const walkable=f=>f.path.filter(([x,y])=>search.costs.has(nodeKey({x,y,z:G}))||store.surfaces(x,y).some(s=>search.costs.has(nodeKey(s)))).length/f.path.length;
+    // PLAN-10: no random clutter outdoors (crates, pallets, drums) on generated operations.
+    const noClutter=!checkClutter||!(layout.pieces||[]).some(p=>CLUTTER_BASES.includes(p.base||BAY_PIECES[p.piece]?.base));
     return {worldEdges:border===0||open/border<=0.02,pockets:(layout.pockets||[]).length>=2,flanksWalkable:flanks.length>=1&&flanks.every(f=>walkable(f)>=0.95),noClutter};
 }
 

@@ -126,6 +126,7 @@ test('strikes take at most two storeys off a building and the laser cuts its who
 
 test('PLAN-12: the classic killstreak is the same three-bomb airstrike over a rectangle, with no soldier cut-in', () => {
     const b = arena(), u = b.unit('p0'), to = { x: 20, y: 20, z: 2 };
+    b.round = 2;
     const s = STRIKES.killstreak_strike;
     assert.equal(footprint(b, 'killstreak_strike', to, u).length, (2 * s.halfLength + 1) * (2 * s.halfWidth + 1));
     const before = b.log.length;

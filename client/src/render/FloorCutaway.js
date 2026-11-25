@@ -24,7 +24,8 @@ export function navigationFloors(mission) {
 export function unitCutLevel(mission,{x,y,z}) {
     const base=mission.meta?.streetDatum??1,levels=floorCutLevels(mission);
     const inside=(mission.buildings||[]).some(b=>x>=b.x0&&x<b.x0+b.w&&y>=b.y0&&y<b.y0+b.d);
-    if(z<base)return levels.includes(base)?base:levels.find(l=>l>z+1)??Infinity;
+    const isUnderground = z <= 1 || !!mission.meta?.underground?.cells?.some(c => c.x === x && c.y === y);
+    if(z<base && isUnderground)return levels.includes(base)?base:levels.find(l=>l>z+1)??Infinity;
     if(!inside&&z<=base)return null;
     return levels.find(l=>l>z+1)??Infinity;
 }

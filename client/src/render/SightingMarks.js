@@ -48,8 +48,8 @@ export class SightingMarks {
         const key = `${b.seq}:${game.visualInterior?.size ?? 0}:${b.round}`;
         if (key !== this.key) { this.key = key; this.refresh(game); }
         this.stepScan(game, time);
-        // The shoulder / cut-in cameras look at the target itself: markers would only cover it there.
-        if (game.cameraDirector?.active) { this.group.visible = false; return; }
+        // Hide sighting markers during full action cut-ins, but keep them visible during live prepare aiming.
+        if (game.cameraDirector?.active && game.cameraDirector.phase !== 'prepare') { this.group.visible = false; return; }
         const cut = game.cutLevel ?? Infinity;
         for (let i = this.flashes.length - 1; i >= 0; i--) {
             const f = this.flashes[i]; f.t += dt;

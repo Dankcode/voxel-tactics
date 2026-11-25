@@ -14,9 +14,10 @@ import { CameraRig } from './CameraRig.js';
 export const LIGHTING = {
     dawn: { sun: 0xffd4ad, sunI: 1.9, sky: 0x98b7ce, ground: 0x454b4f, hemiI: 0.4, env: 0.3, exposure: 1.05, bgTop: '#455a70', bgBottom: '#b6afb0', fog: 0x7a8c9a, sunDir: [0.85, 0.35, -0.4] },
     overcast: { sun: 0xdce7ee, sunI: 1.3, sky: 0xb0c0cc, ground: 0x505b62, hemiI: 0.55, env: 0.3, exposure: 1, bgTop: '#596b79', bgBottom: '#96a5ae', fog: 0x798c98, sunDir: [-0.4, 1, -0.3] },
-    day: { sun: 0xfff1dd, sunI: 2.1, sky: 0xb9d4ec, ground: 0x686968, hemiI: 0.65, env: 0.4, exposure: 1.0, bgTop: '#0d151d', bgBottom: '#2b3843', fog: 0x1b252e, sunDir: [-0.55, 1, -0.35] },
+    day: { sun: 0xfff5e4, sunI: 2.35, sky: 0xd0e6fb, ground: 0x72787e, hemiI: 0.85, env: 0.5, exposure: 1.04, bgTop: '#4a78a8', bgBottom: '#c9dde8', fog: 0x9eb8cc, sunDir: [-0.55, 1, -0.35] },
     dusk: { sun: 0xffb27a, sunI: 2.2, sky: 0x7f8fb8, ground: 0x3a2e2a, hemiI: 0.35, env: 0.25, exposure: 1.05, bgTop: '#2c3550', bgBottom: '#c98a63', fog: 0x6d6a78, sunDir: [-0.9, 0.45, -0.2] },
-    night: { sun: 0x9fb4ff, sunI: 0.55, sky: 0x31406b, ground: 0x15161c, hemiI: 0.24, env: 0.1, exposure: 1.18, bgTop: '#070b16', bgBottom: '#1b2438', fog: 0x111725, sunDir: [-0.4, 1, 0.5], backI: 0.45 }
+    night: { sun: 0x9fb4ff, sunI: 0.55, sky: 0x31406b, ground: 0x15161c, hemiI: 0.24, env: 0.1, exposure: 1.18, bgTop: '#070b16', bgBottom: '#1b2438', fog: 0x111725, sunDir: [-0.4, 1, 0.5], backI: 0.45 },
+    'night-ops': { sun: 0x9eb8ff, sunI: 0.72, sky: 0x3d4d7c, ground: 0x1a1d24, hemiI: 0.3, env: 0.14, exposure: 1.2, bgTop: '#0b1020', bgBottom: '#222d46', fog: 0x151d30, sunDir: [-0.4, 1, 0.5], backI: 0.5 }
 };
 
 LIGHTING['night-ops']={...LIGHTING.night,sunI:0.42,hemiI:0.22,exposure:1.12,backI:0.4};
@@ -93,17 +94,27 @@ export class Scene {
         this.hemi.color.set(L.sky); this.hemi.groundColor.set(L.ground); this.hemi.intensity = L.hemiI;
         this.scene.environmentIntensity = L.env;
         this.renderer.toneMappingExposure = L.exposure;
-        if(!this.backgroundImage){this.backgroundImage=new THREE.TextureLoader().load('/assets/backgrounds/district.svg');this.backgroundImage.colorSpace=THREE.SRGBColorSpace;}
-        this.scene.background=this.backgroundImage;
+        this.bgCache ||= new Map();
+        const key = `${L.bgTop}|${L.bgBottom}`;
+        if (!this.bgCache.has(key)) this.bgCache.set(key, gradientTexture(L.bgTop, L.bgBottom));
+        this.scene.background = this.bgCache.get(key);
         this.scene.fog = new THREE.Fog(L.fog, 45, 145);
         this.sunDir = new THREE.Vector3(...L.sunDir).normalize();
         this.back.intensity = (L.backI ?? 0.55);
         this.placeSun();
     }
     setMission(mission) {
-        this.backdrop?.userData.dispose();
+        this.backdrop?.userData.dispose?.();
         if (this.backdrop) this.scene.remove(this.backdrop);
-        this.backdrop=null;this.mission=mission;
+        this.backdrop = null; this.mission = mission;
+        if (mission?.store) {
+            this.backdrop = missionBackdrop(mission.store.width, mission.store.depth, mission.id || 'mission', {
+                ...(mission.meta?.backdrop || {}),
+                family: mission.meta?.plot?.family || mission.meta?.backdrop?.family,
+                theme: mission.meta?.theme
+            });
+            this.scene.add(this.backdrop);
+        }
     }
     /** Fit the sun's shadow camera to the battlefield. */
     setBounds(w, d, h) {

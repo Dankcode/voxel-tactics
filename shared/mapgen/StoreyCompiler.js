@@ -11,7 +11,7 @@ import { STOREY } from './KitMetric.js';
 import { buildingEra, roundedBuilding, markBuildingEdges } from '../mission/BuildingEra.js';
 import { furnishBuilding } from './FurnishSolver.js';
 const key=(x,y)=>`${x},${y}`;
-const WALLS=new Set(['stucco','brick','concrete_wall','siding']);
+const WALLS=new Set(['stucco','brick','concrete_wall','siding','stone','city_wall','timber','metal','drystone']);
 const SIDE_OUT={n:[0,-1],s:[0,1],e:[1,0],w:[-1,0]};
 
 /** Which side of the footprint a perimeter cell (local) lies on. Corners report the first matching side. */
@@ -24,16 +24,25 @@ export function compileBuilding(m,b,{roomById=id=>m.ctx.rooms.find(r=>r.id===id)
     const out={id:b.id,name:b.id,program:b.program,role:b.program,x0,y0,w,d,baseZ:m.G,top,storeys,front:b.front,wall:wallKey,district:b.district||null,era:buildingEra(b),rooms:[],doors:[],windows:[],stairs:[],escapes:[],approach:[],exits:[],access:[]};
     out.rounded=roundedBuilding(b);markBuildingEdges(store,out,out.rounded?'modern':'old');
     const world=([x,y])=>[x+x0,y+y0];
+    const roofSlab=b.roof==='pitched'?MAT.roof:MAT.concrete;
     for(let y=y0;y<y0+d;y++)for(let x=x0;x<x0+w;x++) {
         for(let z=m.G;z<=top+2;z++)store.set(x,y,z,AIR);
         for(let s=0;s<=storeys;s++) {
-            const fz=m.G+s*STOREY;store.set(x,y,fz,s===storeys?MAT.concrete:MAT.oak_floor);
+            const fz=m.G+s*STOREY;store.set(x,y,fz,s===storeys?roofSlab:MAT.oak_floor);
             if(s<storeys&&(x===x0||y===y0||x===x0+w-1||y===y0+d-1))for(let h=1;h<=2;h++)store.set(x,y,fz+h,WALL);
         }
     }
+    if(b.roof==='pitched') {
+        for(let layer=1;layer<=2&&top+layer<Math.min(store.height-1,17);layer++) {
+            if(w-layer*2<3||d-layer*2<3)break;
+            for(let y=y0+layer;y<y0+d-layer;y++)for(let x=x0+layer;x<x0+w-layer;x++)store.set(x,y,top+layer,MAT.roof);
+        }
+        out.lowRoof=true;
+    }
     const perStorey=b.facade.some(p=>p.storey!=null);
     const windowPalette={
-        brick:['divided','shuttered','sash'],siding:['factory','hopper'],stucco:['sash','shuttered','hopper'],concrete_wall:['ribbon','divided']
+        brick:['divided','shuttered','sash'],siding:['factory','hopper'],stucco:['sash','shuttered','hopper'],concrete_wall:['ribbon','divided'],
+        stone:['divided','shuttered'],city_wall:['divided','shuttered'],timber:['sash','shuttered'],metal:['factory','ribbon'],drystone:['shuttered','hopper']
     }[wallKey]||['sash'];
     const buildingWindow=windowPalette[hashString(`${m.id}:${b.id}:windows`)%windowPalette.length];
     for(const f of b.floors) {
@@ -149,6 +158,7 @@ reserveFireEscape(m,f);
     }
     for(const rec of out.access)if(rec.module!=='roof_stair')validateAccessModule(store,rec);
     if(b.wingOf)out.wing=b.wingOf;   // PLAN-14: an attached wing (its low roof need not be reachable)
+    out.roof=b.roof||'flat';out.objective=!!b.objective;
     dressRoof(m,out);
     if(b.floors.some(f=>f.layout==='v3'))furnishBuilding(m,b,out,{beats:(m.beats||[]).filter(bt=>bt.building===b.id)});
     else for(const f of b.floors) {
@@ -173,6 +183,7 @@ reserveFireEscape(m,f);
  * one cell inside the parapet, keep two cells clear of every access landing, and never touch each other.
  */
 export function dressRoof(m,out) {
+    if(out.roof==='pitched')return;
     const s=m.store,z=out.top+1,h=hashString(`${m.id}:${out.id}:roof`),ox=h%3,oy=(h>>>3)%3;
     const entries=out.access.flatMap(rec=>rec.module==='fire_escape'?rec.landings.filter(l=>l.toRoof).flatMap(l=>l.cells):[[rec.landing.x,rec.landing.y]]);
     const nearEntry=(x,y)=>entries.some(([ex,ey])=>Math.max(Math.abs(ex-x),Math.abs(ey-y))<=3);
@@ -180,7 +191,14 @@ export function dressRoof(m,out) {
     for(let y=out.y0+2+oy;y<=out.y0+out.d-3;y+=5)for(let x=out.x0+2+ox;x<=out.x0+out.w-3;x+=5) {
         const alongX=((x+y+h)&1)===0,cells=[[x,y],alongX?[x+1,y]:[x,y+1]];
         if(cells.some(([cx,cy])=>cx>out.x0+out.w-3||cy>out.y0+out.d-3||nearEntry(cx,cy)||s.get(cx,cy,z)!==AIR||!s.isSolid(cx,cy,z-1)))continue;
-        for(const [cx,cy] of cells){s.set(cx,cy,z,MAT.appliance);m.ctx.hints[`${cx},${cy},${z}`]={piece:'hvac',yaw:alongX?0:Math.PI/2};}
+        const kind=((x+y+h)%5===0)?'rooftop_ac':'hvac';
+        for(const [cx,cy] of cells){s.set(cx,cy,z,MAT.appliance);m.ctx.hints[`${cx},${cy},${z}`]={piece:kind,yaw:alongX?0:Math.PI/2};}
         out.roofPlant.push(cells);
+    }
+    const vx=out.x0+2,vy=out.y0+out.d-3;
+    if(!nearEntry(vx,vy)&&s.get(vx,vy,z)===AIR&&s.isSolid(vx,vy,z-1))m.decorAt('rooftop_vent',vx,vy,{z,free:true});
+    if(out.objective) {
+        const bx=out.x0+out.w-3,by=out.y0+2;
+        if(!nearEntry(bx,by)&&s.get(bx,by,z)===AIR&&s.isSolid(bx,by,z-1))m.decorAt('floodlight',bx,by,{z,free:true});
     }
 }

@@ -51,7 +51,12 @@ export function roadLotCells(c) {
 }
 
 // ------------------------------------------------------------------------------------------------ districts
-const FORBIDDEN = new Set(['industrial|residential', 'residential|industrial', 'park|industrial', 'industrial|park', 'plaza|industrial', 'industrial|plaza']);
+const FORBIDDEN_PAIRS = [
+    ['industrial', 'residential'], ['industrial', 'park'], ['industrial', 'plaza'],
+    ['industrial', 'alpine'], ['industrial', 'historic'],
+    ['dock', 'residential'], ['dock', 'alpine'], ['desert', 'park']
+];
+const FORBIDDEN = new Set(FORBIDDEN_PAIRS.flatMap(([a, b]) => [`${a}|${b}`, `${b}|${a}`]));
 export function solveDistricts(plot, fields, seed) {
     const QW = Math.ceil(plot.LW / 2), QD = Math.ceil(plot.LD / 2), nodes = [], ids = new Set();
     for (let qy = 0; qy < QD; qy++) for (let qx = 0; qx < QW; qx++) {
@@ -87,16 +92,18 @@ function lotTileCatalog(family) {
         if (!k.building && k.size[0] === 1 && k.size[1] === 1) { add({ id: kind, kind, front: null, i: 0, j: 0, gw: 1, gd: 1, open: true }); continue; }
         for (const front of SIDES) {
             const [gw, gd] = groupSize(kind, front);
-            for (let j = 0; j < gd; j++) for (let i = 0; i < gw; i++) add({ id: `${kind}|${front}|${i},${j}`, kind, front, i, j, gw, gd, open: false, objective: !!k.objective });
+            for (let j = 0; j < gd; j++) for (let i = 0; i < gw; i++) add({ id: `${kind}|${front}|${i},${j}`, kind, front, i, j, gw, gd, open: !k.building, objective: !!k.objective });
         }
     }
-    // Side sockets: P inside a parcel, else the template's S / W / O.
+    // Side sockets: P inside a multi-lot parcel, else the template's S / W / O (S on frontage of multi-lot open setpieces).
     for (const t of tiles.values()) {
         t.sockets = {};
         const rect = t.open ? null : buildingRect(t.kind, { x0: 0, y0: 0, w: t.gw * LOT, d: t.gd * LOT }, t.front);
         for (const s of SIDES) {
             const [dx, dy] = SIDE_VEC[s], ii = t.i + dx, jj = t.j + dy;
-            t.sockets[s] = !t.open && ii >= 0 && jj >= 0 && ii < t.gw && jj < t.gd ? 'P' : rect ? rect.sockets[s] : 'O';
+            t.sockets[s] = (t.gw > 1 || t.gd > 1) && ii >= 0 && jj >= 0 && ii < t.gw && jj < t.gd
+                ? 'P'
+                : rect ? rect.sockets[s] : (t.gw > 1 || t.gd > 1) && s === t.front ? 'S' : 'O';
         }
     }
     return tiles;
@@ -145,15 +152,15 @@ export function solveLots(plot, districts, fields, seed) {
                 const gx = ox + i, gy = oy + j;
                 if (!inside(gx, gy) || isRoad(gx, gy) || objective.has(`${gx},${gy}`) || (k.districts && !k.districts.includes(districts.at(gx, gy)))) ok = false;
             }
-            if (ok && !t.open) {
-                // Every lot along the frontage edge faces a road.
+            if (ok && (!t.open || t.gw > 1 || t.gd > 1)) {
+                // Every lot along the frontage edge faces a road (for multi-lot buildings and multi-lot open setpieces).
                 const [dx, dy] = SIDE_VEC[t.front];
                 for (let j = 0; j < t.gd && ok; j++) for (let i = 0; i < t.gw && ok; i++) {
                     const edge = i + dx < 0 || i + dx >= t.gw || j + dy < 0 || j + dy >= t.gd;
                     if (edge && !isRoad(ox + i + dx, oy + j + dy)) ok = false;
                 }
             }
-            if (ok && t.open && k.districts && !k.districts.includes(districts.at(lot.lx, lot.ly))) ok = false;
+            if (ok && t.open && t.gw === 1 && t.gd === 1 && k.districts && !k.districts.includes(districts.at(lot.lx, lot.ly))) ok = false;
             if (ok) domain.push(t.id);
         }
         if (!domain.length) domain.push('vacant_lot');
@@ -166,12 +173,12 @@ export function solveLots(plot, districts, fields, seed) {
         const t = tiles.get(tileId), k = LOT_KINDS[t.kind], [lx, ly] = nodeId.split(',').map(Number), x0 = lx * LOT, y0 = ly * LOT;
         const P = fields.prior, built = Math.max(0.15, Math.min(0.9, P.building.mean(x0, y0, x0 + 7, y0 + 7))), green = P.green.mean(x0, y0, x0 + 7, y0 + 7), paved = P.paved.mean(x0, y0, x0 + 7, y0 + 7);
         let prior = (k.building ? built / share.get(nodeId).b * 4 : (1 - built) / share.get(nodeId).o * 4);
-        if (['pocket_park', 'backyard', 'community_garden', 'civic_green', 'house'].includes(t.kind)) prior *= 0.6 + green;
-        if (['plaza', 'parking_lot', 'subway_plaza'].includes(t.kind)) prior *= 0.6 + paved;
+        if (['pocket_park', 'backyard', 'community_garden', 'civic_green', 'house', 'frozen_pond'].includes(t.kind)) prior *= 0.6 + green;
+        if (['plaza', 'parking_lot', 'subway_plaza', 'market_square', 'civic_plaza', 'transit_bay', 'canal_dock'].includes(t.kind)) prior *= 0.6 + paved;
         const n = noisePref(`lot:${t.kind}`, noiseAt(seed, 'lot', x0 + 4, y0 + 4));
         const dl = fields.play.dist.get(x0 + 4, y0 + 4), H = fields.height.get(x0 + 4, y0 + 4);
         let g = 1;
-        if (dl <= 6) g *= k.building ? 0.8 : ['parking_lot', 'plaza', 'depot_yard', 'construction_site', 'container_yard'].includes(t.kind) ? 1.8 : 1.2;
+        if (dl <= 6) g *= k.building ? 0.8 : ['parking_lot', 'plaza', 'depot_yard', 'construction_site', 'container_yard', 'market_square', 'civic_plaza', 'transit_bay', 'container_depot', 'fuel_forecourt', 'checkpoint_yard', 'canal_dock'].includes(t.kind) ? 1.8 : 1.2;
         else if (dl <= 14) g *= k.building ? 1.25 : 0.9;
         if (k.building) g *= 0.6 + H * (k.building.storeys[1] >= 3 ? 1.2 : 0.6);
         return (k.w ?? 1) * Math.max(0.02, prior) * n * g;
@@ -221,8 +228,17 @@ export function placeBuildings(plot, parcels, fields, seed) {
         const walls = DISTRICT_WALLS[p.district] || DISTRICT_WALLS.commercial;
         const palette = DISTRICT_PALETTE[p.district] || DISTRICT_PALETTE.commercial;
         const wall = walls[Math.floor(n * walls.length) % walls.length];
+        const pitchedOk = ['house', 'duplex', 'townhouses', 'diner', 'bar', 'corner_store', 'shop', 'library', 'bungalow'].includes(t.program);
+        const metalOk = ['warehouse', 'garage', 'lockup', 'trailer'].includes(t.program);
+        const roof = !p.objective && storeys <= 2
+            ? (['residential', 'park', 'alpine', 'historic'].includes(p.district) && pitchedOk && unit(`${seed}:${p.id}:roof`) < 0.72
+                ? 'pitched'
+                : ['industrial', 'dock', 'yard', 'desert'].includes(p.district) && metalOk
+                    ? 'metal'
+                    : 'flat')
+            : 'flat';
         const main = { id: p.objective ? 'objective' : `b${out.length}`, parcel: p.id, kind: p.kind, program: t.program, district: p.district, x0: rect.x0, y0: rect.y0, w: rect.w, d: rect.d,
-            storeys, front: p.front, margins: rect.margins, wall, roof: 'flat',
+            storeys, front: p.front, margins: rect.margins, wall, roof,
             accent: palette[Math.floor(unit(`${seed}:${p.id}:accent`) * palette.length)], objective: p.objective };
         out.push(main);
         if (wantWing) {
@@ -266,8 +282,22 @@ function planWing(main, p, seed, wall, palette) {
     main.margins = { ...main.margins, [touch]: 0 };   // the main block loses that side for doors and access
     const big = Math.max(w, d) >= 9 && Math.min(w, d) >= 7 && main.storeys >= 3;   // a stair core needs room beside the rooms
     const storeys = big && unit(`${seed}:${p.id}:wing-h`) < 0.4 ? 2 : 1;
-    return { parcel: p.id, kind: `${p.kind}_wing`, program: WING_PROGRAM[main.program] || 'shop', district: p.district, x0, y0, w, d, storeys, front, margins, wall, roof: 'flat',
-        accent: palette[Math.floor(unit(`${seed}:${p.id}:wing-accent`) * palette.length)], objective: false, wingOf: main.id };
+    // Shared party-wall doorway between main and wing (flush-adjacent exterior walls at interior overlap span).
+    const spanX = touch === 'n' || touch === 's';
+    const lo = Math.max(spanX ? main.x0 : main.y0, spanX ? x0 : y0) + 1;
+    const hi = Math.min(spanX ? main.x0 + main.w : main.y0 + main.d, spanX ? x0 + w : y0 + d) - 2;
+    let wingLink = null;
+    if (lo <= hi) {
+        let c = lo + Math.floor((hi - lo) / 2);
+        if ((c - (spanX ? main.x0 : main.y0)) % 2 === 0 && c + 1 <= hi) c++;
+        else if ((c - (spanX ? main.x0 : main.y0)) % 2 === 0 && c - 1 >= lo) c--;
+        const mainCell = touch === 'n' ? [c, main.y0] : touch === 's' ? [c, main.y0 + main.d - 1] : touch === 'w' ? [main.x0, c] : [main.x0 + main.w - 1, c];
+        const wingCell = touch === 'n' ? [c, y0 + d - 1] : touch === 's' ? [c, y0] : touch === 'w' ? [x0 + w - 1, c] : [x0, c];
+        wingLink = { target: main.id, side: touch, mainCell, wingCell };
+    }
+    const wingRoof = storeys <= 2 && ['industrial', 'dock', 'yard', 'desert'].includes(p.district) ? 'metal' : 'flat';
+    return { parcel: p.id, kind: `${p.kind}_wing`, program: WING_PROGRAM[main.program] || 'shop', district: p.district, x0, y0, w, d, storeys, front, margins, wall, roof: wingRoof,
+        accent: palette[Math.floor(unit(`${seed}:${p.id}:wing-accent`) * palette.length)], objective: false, wingOf: main.id, wingLink };
 }
 
 // ------------------------------------------------------------------------------------------------ bays
@@ -367,18 +397,39 @@ export function solveBays({ plot, bayGrid, lotPool, roadAxis, fields, seed, pins
             // Multi-bay objects must finish inside this lot.
             domain = domain.filter(t => { const p = BAY_PIECES[t]; if (!p.parts) return true; const off = p.axis === 'x' ? bx - lx * LB : by - ly * LB; return off - p.part >= 0 && off - p.part + p.parts <= LB; });
             free.set(id, domain.filter(t => !BAY_PIECES[t].parts));
-            if(pins.has(id)) {
-                const pin=BAY_PIECES[pins.get(id)],surface=bay.cls.startsWith('parking_')||bay.cls==='carriageway'?'asphalt':bay.cls.startsWith('lane_')?'lane':bay.cls;
-                // A repair may introduce a compatible cover module outside the decorative pool. It still obeys
-                // collision reservations, real surface types and single-bay assembly constraints.
-                const valid=pin&&!onRoad(bay)&&!bay.blocked&&!pin.parts&&pin.cells.every(([x,y])=>!bay.protected.some(([px,py])=>px===x&&py===y))&&(!pin.surfaces||pin.surfaces.includes(surface)||(surface==='lane'&&pin.surfaces.includes('asphalt')));
-                if(domain.includes(pins.get(id))||valid){fixed.set(id,pins.get(id));domain=[pins.get(id)];}
+            if (pins.has(id)) {
+                const pin = BAY_PIECES[pins.get(id)], surface = bay.cls.startsWith('parking_') || bay.cls === 'carriageway' ? 'asphalt' : bay.cls.startsWith('lane_') ? 'lane' : bay.cls;
+                const bayOk = (b, piece) => piece && !onRoad(b) && !b.blocked && piece.cells.every(([x, y]) => !b.protected.some(([px, py]) => px === x && py === y))
+                    && (!piece.surfaces || piece.surfaces.includes(surface) || (surface === 'lane' && piece.surfaces.includes('asphalt')));
+                let valid = bayOk(bay, pin);
+                if (valid && pin.parts) {
+                    const startX = bx - (pin.axis === 'x' ? pin.part : 0), startY = by - (pin.axis === 'y' ? pin.part : 0);
+                    valid = (pin.axis === 'x' ? startX >= lx * LB && startX + pin.parts <= (lx + 1) * LB : startY >= ly * LB && startY + pin.parts <= (ly + 1) * LB);
+                    for (let k = 0; k < pin.parts && valid; k++) {
+                        const sx = startX + (pin.axis === 'x' ? k : 0), sy = startY + (pin.axis === 'y' ? k : 0), sid = `${sx},${sy}`;
+                        const sb = bayGrid.at(sx, sy), sp = BAY_PIECES[pins.get(sid)];
+                        if (!local.has(sid) || !sb || !sp || sp.base !== pin.base || sp.axis !== pin.axis || sp.part !== k || !bayOk(sb, sp)) valid = false;
+                    }
+                }
+                if (domain.includes(pins.get(id)) || valid) { fixed.set(id, pins.get(id)); domain = [pins.get(id)]; }
             }
             domains.set(id, domain.length ? domain : ['open']);
         }
         // PLAN-13: pins never contradict each other. Where two fixed bays would touch (the no-touch socket rule),
         // the weaker pin is released: already-solved context > pocket / repair pins > parcel-layout pins (`soft`).
         const rank = id => context.has(id) ? 3 : soft?.has(id) ? 1 : 2;
+        const releaseFixed = (fid) => {
+            const tile = fixed.get(fid);
+            if (!tile || context.has(fid)) return;
+            const fp = BAY_PIECES[tile];
+            fixed.delete(fid);
+            domains.set(fid, (free.get(fid) || ['open']).filter(t => t !== tile).concat('open').filter((t, i, l) => l.indexOf(t) === i));
+            if (fp?.parts) {
+                const [bx, by] = fid.split(',').map(Number);
+                const sx0 = bx - (fp.axis === 'x' ? fp.part : 0), sy0 = by - (fp.axis === 'y' ? fp.part : 0);
+                for (let k = 0; k < fp.parts; k++) releaseFixed(`${sx0 + (fp.axis === 'x' ? k : 0)},${sy0 + (fp.axis === 'y' ? k : 0)}`);
+            }
+        };
         for (let changed = true; changed;) {
             changed = false;
             for (const node of nodes) {
@@ -387,7 +438,7 @@ export function solveBays({ plot, bayGrid, lotPool, roadAxis, fields, seed, pins
                 if (!nb) continue;
                 const loser = rank(node.id) < rank(nb.id) ? node.id : rank(nb.id) < rank(node.id) ? nb.id : (node.id > nb.id ? node.id : nb.id);
                 if (context.has(loser)) continue;
-                fixed.delete(loser); domains.set(loser, (free.get(loser) || ['open']).filter(t => t !== a && t !== fixed.get(nb.id)).concat('open').filter((t, i, l) => l.indexOf(t) === i));
+                releaseFixed(loser);
                 changed = true; break;
             }
         }
@@ -444,9 +495,13 @@ export function piecesFromBays(bays, bayGrid) {
  * of 2–4 cover pieces beside the route on alternating sides, facing the advance. Returned as bay pins.
  */
 const POCKET_COVER = Object.freeze({
-    lawn: ['low_wall', 'hedge', 'planter', 'bench'], yard: ['low_wall', 'planter', 'bench'],
+    lawn: ['low_wall', 'hedge', 'planter', 'bench'], grass: ['low_wall', 'hedge', 'planter', 'bench'],
+    forest_floor: ['boulder', 'low_wall', 'hedge'], yard: ['low_wall', 'planter', 'bench'],
     sidewalk: ['planter', 'tall_planter', 'low_wall', 'bench'], paving: ['planter', 'tall_planter', 'low_wall', 'bench'],
-    concrete: ['low_wall', 'planter', 'jersey'], gravel: ['low_wall', 'planter', 'jersey'], asphalt: ['jersey', 'planter']
+    cobble: ['planter', 'tall_planter', 'low_wall', 'bench'], stone_floor: ['planter', 'low_wall', 'bench'],
+    concrete: ['low_wall', 'planter', 'jersey'], gravel: ['low_wall', 'planter', 'jersey'],
+    deck: ['jersey', 'planter', 'bench'], snow: ['boulder', 'low_wall', 'jersey', 'planter'],
+    sand: ['drystone', 'boulder', 'jersey'], road: ['jersey', 'low_wall', 'planter'], asphalt: ['jersey', 'planter']
 });
 const bayCls = b => b.cls.startsWith('parking_') || b.cls === 'carriageway' ? 'asphalt' : b.cls.startsWith('lane_') ? 'lane' : b.cls;
 const onRoad = b => b.cls === 'carriageway' || b.cls.startsWith('lane_') || b.cls.startsWith('parking_');

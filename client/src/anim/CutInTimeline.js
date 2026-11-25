@@ -40,32 +40,32 @@ export class CutInTimeline {
  * TODO(animation): per-character overrides (a brute stomps in, a marksman settles the rifle).
  */
 export const PRESETS = {
-    shot: (d = 1.25) => new CutInTimeline(d, {
-        bars: [[0, 0], [0.15, 1], [d - 0.2, 1], [d, 0, 'inCubic']],
-        slide: [[0, 0], [0.32, 1, 'outBack'], [d - 0.15, 1], [d, 1.15, 'inCubic']],
-        push: [[0, 1], [d, 1.08, 'inOutSine']],
-        text: [[0.2, 0], [0.4, 1], [d - 0.2, 1], [d, 0]],
-        flash: [[0, 0], [d - 0.35, 0], [d - 0.3, 1, 'linear'], [d - 0.12, 0]],
+    shot: (d = 0.48) => new CutInTimeline(d, {
+        bars: [[0, 0], [0.08, 1], [d - 0.1, 1], [d, 0, 'inCubic']],
+        slide: [[0, 0], [0.16, 1, 'outBack'], [d - 0.08, 1], [d, 1.15, 'inCubic']],
+        push: [[0, 1], [d, 1.06, 'inOutSine']],
+        text: [[0.08, 0], [0.16, 1], [d - 0.08, 1], [d, 0]],
+        flash: [[0, 0], [d - 0.16, 0], [d - 0.12, 1, 'linear'], [d - 0.04, 0]],
         dolly: [[0, 0], [d, 1, 'inOutSine']]
     }),
-    skill: d => PRESETS.shot(d ?? 1.4),
-    burst: d => PRESETS.shot(d ?? 1.35),
-    heavy: d => PRESETS.shot(d ?? 1.6),
-    melee: (d = 1.1) => new CutInTimeline(d, {
-        bars: [[0, 0], [0.12, 1], [d - 0.15, 1], [d, 0]],
-        slide: [[0, 0], [0.25, 1, 'outBack'], [d - 0.3, 1], [d - 0.15, 1.3, 'inCubic'], [d, 1.3]],
-        push: [[0, 1], [d, 1.15, 'inCubic']],
-        text: [[0.15, 0], [0.3, 1], [d - 0.2, 1], [d, 0]],
-        flash: [[0, 0], [d - 0.25, 0], [d - 0.2, 1, 'linear'], [d, 0]],
+    skill: d => PRESETS.shot(d ?? 0.52),
+    burst: d => PRESETS.shot(d ?? 0.5),
+    heavy: d => PRESETS.shot(d ?? 0.56),
+    melee: (d = 0.45) => new CutInTimeline(d, {
+        bars: [[0, 0], [0.07, 1], [d - 0.08, 1], [d, 0]],
+        slide: [[0, 0], [0.14, 1, 'outBack'], [d - 0.12, 1], [d - 0.05, 1.25, 'inCubic'], [d, 1.25]],
+        push: [[0, 1], [d, 1.1, 'inCubic']],
+        text: [[0.06, 0], [0.14, 1], [d - 0.08, 1], [d, 0]],
+        flash: [[0, 0], [d - 0.14, 0], [d - 0.1, 1, 'linear'], [d, 0]],
         dolly: [[0, 0], [d, 1]]
     }),
-    throw: (d = 1.2) => PRESETS.shot(d),
-    breach: (d = 1.7) => new CutInTimeline(d, {
-        bars: [[0, 0], [0.15, 1], [d - 0.2, 1], [d, 0]],
-        slide: [[0, 0], [0.45, 1, 'outBack'], [d - 0.2, 1], [d, 1.2, 'inCubic']],
-        push: [[0, 1], [d, 1.05]],
-        text: [[0.25, 0], [0.45, 1], [d - 0.2, 1], [d, 0]],
-        flash: [[0, 0], [d - 0.4, 0], [d - 0.35, 1, 'linear'], [d - 0.1, 0]],
+    throw: (d = 0.48) => PRESETS.shot(d),
+    breach: (d = 0.62) => new CutInTimeline(d, {
+        bars: [[0, 0], [0.08, 1], [d - 0.1, 1], [d, 0]],
+        slide: [[0, 0], [0.2, 1, 'outBack'], [d - 0.1, 1], [d, 1.2, 'inCubic']],
+        push: [[0, 1], [d, 1.04]],
+        text: [[0.1, 0], [0.2, 1], [d - 0.1, 1], [d, 0]],
+        flash: [[0, 0], [d - 0.18, 0], [d - 0.14, 1, 'linear'], [d - 0.04, 0]],
         dolly: [[0, 0], [d, 1]]
     })
 };

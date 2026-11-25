@@ -12,9 +12,10 @@ import { watchWeapon, visionProfile } from '../../../shared/battle/WatchSector.j
 // Squad status, equipment workspace, skill dock and precision targeting.
 import { WEAPONS, THROWABLES } from '../../../shared/content/weapons.js';
 import { CALIBERS } from '../../../shared/content/calibers.js';
-import { ABILITIES, CLASSES, ENEMIES, displayName } from '../../../shared/content/units.js';
+import { ABILITIES, BODY, PARTS, CLASSES, ENEMIES, displayName } from '../../../shared/content/units.js';
 import { FORMATIONS } from '../../../shared/content/formations.js';
-import { alive } from '../../../shared/battle/Units.js';
+import { alive, partArmor } from '../../../shared/battle/Units.js';
+import { coverAgainst, COVER } from '../../../shared/voxel/Cover.js';
 import { inZone, extractionOpen, objectiveStatus } from '../../../shared/battle/Objectives.js';
 import { ICONS, weaponIcon } from './Icons.js';
 import { TERRAIN_CUES } from '../render/MaterialLibrary.js';
@@ -29,8 +30,8 @@ export class Hud {
         root.innerHTML = `
             <div class="topbar">
                 <div class="map-marks" aria-label="Map markers">${['red','blue','green'].map(c=>`<button data-act="mark" data-arg="${c}" aria-label="Mark ${c} block" title="Mark ${c} block · click again on the same block to clear" style="--mark:${c==='red'?'#ff4949':c==='blue'?'#4c9cff':'#56ef93'}">!</button>`).join('')}</div>
-                <div class="turnbox"><div class="round"></div><div class="phase"></div><div class="objstat hidden"></div><button data-act="endTurn" class="endturn" title="End turn (Enter)">END TURN</button></div>
-                <div class="tools"><button data-act="options" title="Settings" aria-label="Settings">${ICONS.gear}</button></div>
+                <div class="turnbox"><div class="round"></div><div class="phase"></div><div class="objstat hidden"></div><div class="ai-posture hidden"></div><button data-act="endTurn" class="endturn" title="End turn (Enter)">END TURN</button></div>
+                <div class="tools"><button class="speed-toggle" data-act="cycleSpeed" title="Turn & animation speed (Space during enemy turn)">1×</button><button data-act="options" title="Settings" aria-label="Settings">${ICONS.gear}</button></div>
             </div>
             <div class="camera-nav" aria-label="Camera controls">
                 <button data-act="lvlUp" class="nav-up" title="Upper floor · Z / Page Up" aria-label="Upper floor">${ICONS.up}</button>
@@ -44,7 +45,7 @@ export class Hud {
             <div class="unitcard hidden" aria-live="polite"></div>
             <div class="unit-callout"></div>
             <button class="autoend hidden" data-act="cancelAutoEnd" title="Cancel (Esc)"><b>ALL AP SPENT — ENDING TURN</b><i></i><small>click or Esc to stay</small></button>
-            <div class="unitpanel hidden"></div><div class="equipment-overlay hidden"></div><div class="aim-reticle hidden" aria-label="Weapon accuracy reticle"><i class="reticle-ring outer"></i><span class="read"></span></div>
+            <div class="unitpanel hidden"></div><div class="equipment-overlay hidden"></div><div class="aim-reticle hidden" aria-label="Weapon accuracy reticle"><i class="reticle-ring outer"></i><i class="reticle-ring inner"></i><i class="recoil-climb"></i><span class="read"></span></div>
             <div class="targets"></div>
             <div class="actionbar"><div class="slotname"></div><div class="slots"></div></div>
             <div class="target hidden"></div>
@@ -54,7 +55,7 @@ export class Hud {
             <div class="banner"><div class="b1"></div><div class="b2"></div></div>
             <div class="toast"></div>
             <div class="cursortip hidden"></div>
-            <div class="enemyturn hidden"><i></i>ENEMY ACTIVITY</div>
+            <div class="enemyturn hidden"><i></i><span>ENEMY ACTIVITY</span><button class="speed-pill" data-act="cycleSpeed" title="Fast-forward enemy turn (Space)">1×</button></div>
             <div class="outcome hidden"></div>
             `;
         this.el = sel => root.querySelector(sel);
@@ -82,6 +83,9 @@ export class Hud {
             case 'chooseFloor': g.chooseFloor(arg==='roof'?Infinity:Number(arg));break;
             case 'inventory': this.equipment.toggle();break;
             case 'mark': g.setMode({kind:'mark',color:arg});break;
+            case 'aimTarget': g.aimAtTarget?.(arg); return;
+            case 'aimPart': g.aimAtPart?.(arg); return;
+            case 'aimMode': g.setAimFireMode?.(arg); return;
             case 'fireMode': {const u=g.selectedUnit(),w=WEAPONS[u.weapon],modes=fireModes(w);g.intent({type:'setFireMode',mode:modes[(modes.indexOf(fireMode(u,w))+1)%modes.length]});break;}
             case 'equipmentTab': this.equipmentTab=arg;break;
             case 'view': g.cameraDirector.end();g.scene.rig.setPreset(arg); break;
@@ -96,6 +100,7 @@ export class Hud {
             case 'lvlUp': g.changeLevel(1); break; case 'lvlDown': g.changeLevel(-1); break;
             case 'debug': g.debug.toggle(); break;
             case 'options': this.toggleOptions(); break;
+            case 'cycleSpeed': g.cycleTurnSpeed?.(); break;
             case 'opt': g.options[arg] = !g.options[arg];localStorage.setItem('tactics-settings',JSON.stringify(g.options)); this.renderOptions(); break;
             case 'lighting': g.scene.setLighting(arg); g.options.lighting = arg; this.renderOptions(); break;
             case 'ao': g.scene.setAO(!g.scene.ao); this.renderOptions(); break;
@@ -118,6 +123,7 @@ export class Hud {
             case 'endTurn': g.endTurn(); break;
             case 'closePanel': this.hidePanel(); break;
             case 'restart': g.restart(); break;
+            case 'nextOp': g.deployNextOp(arg); return;
             case 'rtab': this.reportTab(arg); return;
             case 'reportCopy': this.copyReport(); return;
             case 'reportJson': if (this.report) downloadJson(`report-${this.report.scenario.id}-${this.report.scenario.seed}-${(this.report.run.at || '').replace(/[:.]/g, '-')}.json`, this.report); return;
@@ -139,11 +145,11 @@ export class Hud {
         el.innerHTML = `<h3>Settings <button data-act="options">✕</button></h3><h4>Gameplay</h4><label>Turn / animation speed<select data-setting="turnSpeed">${[.5,1,1.5,2,3].map(n=>`<option value="${n}" ${Number(o.turnSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label><label>Camera rotation<select data-setting="rotateSpeed">${[.5,1,1.5,2].map(n=>`<option value="${n}" ${Number(o.rotateSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('confirmMoves','Confirm movement destinations')}${row('showEnemyBars','Show enemy health')}<label>Aim sensitivity<select data-setting="aimSensitivity">${[.25,.5,.75,1].map(n=>`<option value="${n}" ${Number(o.aimSensitivity??.5)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('aimSway','Reticle breathing')}<label>Soldier name and AP tags<select data-setting="unitTags" data-type="string">${[['selected','Selected soldier'],['always','Whole squad'],['flash','Only briefly']].map(([v,l])=>`<option value="${v}" ${(o.unitTags||'selected')===v?'selected':''}>${l}</option>`).join('')}</select></label><button data-act="debug">Test / debug tools (F1)</button><button data-act="inventory">Equipment and body status (I)</button><button data-act="menu">Return to menu</button>${row('autoEndTurn', 'Auto end turn when the squad is spent')}${row('autoNext', 'Auto-select the next ready soldier')}${row('followCamera', 'Camera follows actions')}
             <h4>Audio</h4><label>Sound effects volume<input type="range" data-setting="soundVolume" min="0" max="1" step="0.05" value="${o.soundVolume ?? 0.65}" aria-label="Sound effects volume"></label>
             <h4>Camera</h4>${row('edgeScroll', 'Screen-edge scrolling')}<button data-act="proj" class="${g.scene.projection === 'ortho' ? 'on' : ''}">${g.scene.projection === 'ortho' ? '☑' : '☐'} Isometric (orthographic) view (V)</button>
-            <div class="camhint" style="font-size:11px;opacity:.7;line-height:1.5;margin:4px 0 2px">W / S floor up / down · A/D, arrows, screen edge pan · right-drag grab · middle-drag orbit · wheel zoom · Q/E rotate · H / Home centre on soldier · V isometric · while aiming: WASD lean out of cover, Esc steps back</div>
+            <div class="camhint" style="font-size:11px;opacity:.7;line-height:1.5;margin:4px 0 2px">Z / X floor up / down · WASD, arrows, screen edge pan · right-drag grab · middle-drag orbit · wheel zoom · Q/E rotate · H / Home centre on soldier · V isometric · while aiming: mouse aims freely · right-drag or Q/E orbit · wheel zoom · Tab next target · WASD lean out · click/Space fire · Esc back</div>
             <h4>Buildings</h4><div class="row"><button data-act="buildingCycle" class="${o.buildingView==='exterior'?'on':''}" aria-pressed="${o.buildingView==='exterior'}">Show outside only</button></div><small>Wheel zoom: roof → upper floors → ground floor. Selected floors stay fixed while zooming. Auto floors restores zoom cutaways. Use the cube arrows for floor changes. I opens equipment.</small>
             <h4>Graphics</h4><button data-act="quality" data-arg="mobile" class="${QUALITY.name === 'mobile' ? 'on' : ''}">${QUALITY.name === 'mobile' ? '◉' : '○'} Mobile (light textures, fast)</button><button data-act="quality" data-arg="high" class="${QUALITY.name === 'high' ? 'on' : ''}">${QUALITY.name === 'high' ? '◉' : '○'} High (full textures, AO) — reloads</button>
             <h4>Readability</h4><button data-act="cue" data-arg="uGrid" class="${TERRAIN_CUES.uGrid.value ? 'on' : ''}">${TERRAIN_CUES.uGrid.value ? '☑' : '☐'} Debug tile grid</button><button data-act="cue" data-arg="uRim" class="${TERRAIN_CUES.uRim.value ? 'on' : ''}">${TERRAIN_CUES.uRim.value ? '☑' : '☐'} Ledge rims (orange = 2+ drop)</button><button data-act="ao" class="${g.scene.ao ? 'on' : ''}">${g.scene.ao ? '☑' : '☐'} Ambient occlusion</button>
-            <h4>Lighting</h4><div class="row">${['day', 'dusk', 'night'].map(l => `<button data-act="lighting" data-arg="${l}" class="${g.scene.lightingName === l ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+            <h4>Lighting</h4><div class="row">${['day', 'dawn', 'overcast', 'dusk', 'night', 'night-ops'].map(l => `<button data-act="lighting" data-arg="${l}" class="${g.scene.lightingName === l ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     }
     log(text, cls = '') {
         this.lines.push(`<div class="${cls}">${esc(text)}</div>`);
@@ -162,7 +168,7 @@ export class Hud {
         b.querySelector('.b1').textContent = title; b.querySelector('.b2').textContent = sub || '';
         b.className = `banner show ${cls || ''}`;
         clearTimeout(this.bannerTimer);
-        this.bannerTimer = setTimeout(() => { b.className = `banner ${cls || ''}`; }, 1500);
+        this.bannerTimer = setTimeout(() => { b.className = `banner ${cls || ''}`; }, 850);
     }
     squadSpent(on) { this.spent = on; this.el('.endturn').classList.toggle('pulse', !!on); }
     cursorTip(x, y, html) {
@@ -179,7 +185,8 @@ export class Hud {
     slotsFor(u) {
         const b = this.game.battle, mode = this.game.mode, s = [];
         const ap = u.ap,w=WEAPONS[u.weapon];
-        s.push({act:w.kind==='melee'?'melee':'weapon',arg:w.id,group:'weapon',icon:weaponIcon(w),name:w.kind==='melee'?'Melee':'Shoot',cost:String(b.shotAp(u,w)),sub:w.ammo?`${u.ammo[w.id]||0} − ${reserveAmmo(u,w)} · ${fireMode(u,w).toUpperCase()}`:'',on:mode.kind==='shoot',disabled:ap<b.shotAp(u,w)||(w.ammo&&u.ammo[w.id]<1),tip:`${w.name} · put the reticle on an enemy's body part · Space fires`});
+        const armsOut = !!u.parts?.armL?.disabled && !!u.parts?.armR?.disabled && w.ap > 1 && w.id !== 'handcannon';
+        s.push({act:w.kind==='melee'?'melee':'weapon',arg:w.id,group:'weapon',icon:weaponIcon(w),name:w.kind==='melee'?'Melee':'Shoot',cost:String(b.shotAp(u,w)),sub:w.ammo?`${u.ammo[w.id]||0} − ${reserveAmmo(u,w)} · ${fireMode(u,w).toUpperCase()}`:'',on:mode.kind==='shoot',disabled:armsOut||ap<b.shotAp(u,w)||(w.ammo&&u.ammo[w.id]<1),tip:armsOut?'Both arms disabled — switch to sidearm':`${w.name} · put the reticle on an enemy's body part · Space fires`});
         const ow = WEAPONS[watchWeapon(u)];
         if (ow) s.push({ group:'weapon',act: 'overwatch', icon: ICONS.overwatch, name: 'Overwatch', cost: 'all', disabled: ap < ow.ap || (u.ammo[ow.id] ?? 0) < (ow.perShot || 1), on: mode.kind === 'overwatch', tip: '<b>Overwatch</b> · choose direction · all AP · <span style="color:#5ff2d6">Teal ≥65%</span> / <span style="color:#ffb347">Amber &lt;65%</span> estimated hit' });
         s.push({act:'reload',icon:ICONS.reload,name:'Reload',group:'weapon',cost:'1',disabled:w.boltAction||!w.ammo||ap<w.reloadAp||u.ammo[w.id]>=w.ammo||reserveAmmo(u,w)<1,tip:w.boltAction?'Bolt cycles loose rounds automatically':'Reload from carried loose rounds'});
@@ -194,20 +201,20 @@ export class Hud {
             ? { group:'commander',act: 'formation', icon: ICONS.formation, name: 'Switch', cost: '0', tip: '<b>Switch formation</b> (F) · same members, new shape (no AP). Click a highlighted spot to trade places for free.' }
             : !f ? { group:'commander',act: 'formation', icon: ICONS.formation, name: 'Formation', cost: '0', tip: '<b>Formation</b> (F) · plan slots, then assemble your squad' } : null);
         if (!s.at(-1)) s.pop();
-        if (b.breachPoints(u).length) s.push({ act: 'breach', icon: ICONS.breach, name: 'Breach', cost: '1', tip: '<b>Breach</b> (B) · stack up and storm the room; one free shot each' });
+        if (b.breachPoints(u).length) s.push({ group: 'tactical', act: 'breach', icon: ICONS.breach, name: 'Breach', cost: '1', tip: '<b>Breach</b> (B) · stack up and storm the room; one free shot each' });
         const o = b.objective;
         if (o?.kind === 'recover' && !o.item.carrier && !o.item.secured && Math.max(Math.abs(o.item.x - u.x), Math.abs(o.item.y - u.y)) <= 1 && Math.abs(o.item.z - u.z) <= 1)
-            s.push({ act: 'recover', icon: ICONS.ability, name: `Take ${o.item.label}`, cost: '1', disabled: ap < 1, tip: `<b>Recover</b> · 1 AP · pick up the ${esc(o.item.label.toLowerCase())}${o.zone ? ' — then get it to the extraction zone' : ''}` });
+            s.push({ group: 'tactical', act: 'recover', icon: ICONS.ability, name: `Take ${o.item.label}`, cost: '1', disabled: ap < 1, tip: `<b>Recover</b> · 1 AP · pick up the ${esc(o.item.label.toLowerCase())}${o.zone ? ' — then get it to the extraction zone' : ''}` });
         if (o && extractionOpen(o) && inZone(o.zone, u))
-            s.push({ act: 'extract', icon: ICONS.ability, name: 'Extract', cost: '1', disabled: ap < 1, tip: '<b>Extract</b> · 1 AP · leave the map from the extraction zone' });
+            s.push({ group: 'tactical', act: 'extract', icon: ICONS.ability, name: 'Extract', cost: '1', disabled: ap < 1, tip: '<b>Extract</b> · 1 AP · leave the map from the extraction zone' });
         const door=this.game.nearestDoor(u);
-        if(door) { const closed=b.store.get(door.x,door.y,door.z+1)===MAT.door; s.push({act:'door',icon:ICONS.door,name:closed?'Kick door':'Close door',cost:'1',disabled:ap<1,tip:closed?'Kick open the adjacent door · 1 AP · reveal the room':'Close the adjacent door · 1 AP'}); }
-        s.push({act:'wait',icon:ICONS.overwatch,name:'Finish soldier',cost:'all',disabled:ap+u.moveOnlyAp<=0,tip:'Spend remaining AP and select the next ready soldier. End Turn starts the enemy phase.'});
-        const groups=['weapon','equipment','augmentation','commander'];
+        if(door) { const closed=b.store.get(door.x,door.y,door.z+1)===MAT.door; s.push({ group: 'tactical', act:'door',icon:ICONS.door,name:closed?'Kick door':'Close door',cost:'1',disabled:ap<1,tip:closed?'Kick open the adjacent door · 1 AP · reveal the room':'Close the adjacent door · 1 AP'}); }
+        s.push({ group: 'end', act:'wait',icon:ICONS.overwatch,name:'Finish soldier',cost:'all',disabled:ap+u.moveOnlyAp<=0,tip:'Spend remaining AP and select the next ready soldier. End Turn starts the enemy phase.'});
+        const groups=['weapon','equipment','tactical','augmentation','commander','end'];
         return s.sort((a,b)=>groups.indexOf(a.group||'equipment')-groups.indexOf(b.group||'equipment'));
     }
     runSlot(i) {
-        const s = this.slots[i], g = this.game; if (!s || s.disabled) return;
+        const s = this.slots[i], g = this.game; if (!s || s.disabled || !g.canAct()) return;
         const u = g.selectedUnit(); if (!u) return;
         switch (s.act) {
             case 'grenades': if (g.mode.kind !== 'move') g.setMode({ kind: 'move' }); this.showGearPanel(); break;   // PLAN-15: never aim and gear at once
@@ -247,7 +254,7 @@ export class Hud {
         el.classList.toggle('hidden', !ms);
         if (ms) { const bar = el.querySelector('i'); bar.style.transition = 'none'; bar.style.width = '100%'; void bar.offsetWidth; bar.style.transition = `width ${ms}ms linear`; bar.style.width = '0%'; }
     }
-    /** PLAN-15: the active soldier card — portrait, name, AP pips, HP, weapon rounds, gadgets, statuses. */
+    /** PLAN-15: the active soldier card — portrait, name, AP pips, HP, Will, Stress, weapon rounds, gadgets, statuses. */
     renderUnitCard(u, canAct) {
         const el = this.el('.unitcard'), g = this.game, b = g.battle;
         if (!u || u.side !== 'player' || b.outcome || b.activeSide !== 'player') { el.classList.add('hidden'); return; }
@@ -259,9 +266,13 @@ export class Hud {
         const gadgets = Object.entries(u.items || {}).filter(([id, n]) => n > 0 && THROWABLES[id]).map(([id, n]) => `<span title="${esc(THROWABLES[id].name)}">${ICONS.grenade}${n}</span>`).join('');
         const statuses = (u.statuses || []).map(s => `<em>${esc(s.id)}</em>`).join('');
         const state = u.overwatch ? 'ON WATCH' : (u.ap + (u.moveOnlyAp || 0)) <= 0 ? 'NO AP LEFT' : canAct ? '' : 'WAITING';
+        const stress = Math.round(u.stress || 0);
+        const will = `${u.will ?? 0}/${u.maxWill ?? u.will ?? 0}`;
+        const stressCls = stress >= 75 ? 'high' : stress >= 40 ? 'mid' : '';
         el.innerHTML = `<img src="${portraitSrc(u)}" alt=""><div class="uc-main"><div class="uc-name"><b>${esc(u.name)}</b><span>${esc(displayName(u.type, b.intelMode))}</span>${state ? `<strong>${state}</strong>` : ''}</div>
-            <div class="uc-ap" title="Blue: AP that can still act · yellow: move only">${pipsHtml}<span>${u.ap}${u.moveOnlyAp ? `+${u.moveOnlyAp}` : ''} AP</span></div>
+            <div class="uc-ap" title="Blue: AP that can still act · yellow: move only">${pipsHtml}<span>${u.ap}${u.moveOnlyAp ? `+${u.moveOnlyAp}` : ''} AP</span><span class="uc-wp" title="Will Points">${will} WP</span><span class="uc-stress ${stressCls}" title="Stress (${stress}%)">${stress}% STR</span></div>
             <div class="uc-hp ${hpCls}"><div class="segbar">${segs(u.hp, u.maxHp)}</div><span>${u.hp}/${u.maxHp} HP</span></div>
+            <div class="uc-stressbar" title="Stress ${stress}%"><i style="width:${Math.min(100, stress)}%"></i></div>
             <div class="uc-kit">${w ? `<span class="uc-gun">${esc(w.name)} ${ammo}</span>` : ''}${gadgets}${statuses}</div></div>`;
     }
     tick() {}
@@ -272,13 +283,21 @@ export class Hud {
         for(const button of this.root.querySelectorAll('[data-act="mark"]')){const active=g.mode.kind==='mark'&&g.mode.color===button.dataset.arg;button.classList.toggle('on',active);button.setAttribute('aria-pressed',String(active));}
         this.root.classList.toggle('enemy-phase', b.activeSide !== 'player');
         this.root.classList.toggle('intel-mode',b.intelMode);
-        this.el('.turnbox .objstat').textContent = objectiveStatus(b.objective, id => b.unit(id)?.name || id);
+        const objText = objectiveStatus(b.objective, id => b.unit(id)?.name || id);
+        const objEl = this.el('.turnbox .objstat');
+        if (objEl) { objEl.textContent = objText; objEl.classList.toggle('hidden', !objText); }
+        this.renderAiPosture(b);
         this.el('.round').textContent = b.asyncCoop ? `ENEMY BEAT ${b.round} · YOUR TURN ${(b.personalTurns[g.session.local?'player':g.session.playerId]||0)+1}` : `ROUND ${b.round}`;
         this.el('.endturn').textContent=b.asyncCoop?'END MY TURN':'END TURN';
         const phase = this.el('.phase');
         phase.textContent = b.outcome ? 'MISSION OVER' : b.activeSide === 'player' ? (b.asyncCoop ? 'INDEPENDENT TURNS' : 'SQUAD PHASE') : 'ENEMY ACTIVITY';
         phase.className = `phase ${b.activeSide}`;
         this.el('.enemyturn').classList.toggle('hidden', !(b.activeSide !== 'player' && !b.outcome && !g.debug.manualEnemy));
+        const spd = g.player?.speed || g.options?.turnSpeed || 1;
+        for (const sb of this.root.querySelectorAll('[data-act="cycleSpeed"]')) {
+            sb.textContent = `${spd}×`;
+            sb.classList.toggle('fast', spd > 1);
+        }
         // Squad column.
         this.el('.squad').innerHTML = b.units.filter(u=>u.side==='player').map((u,i)=>`<button class="squad-head ${u.id===g.selected?'sel':''} ${u.dead?'dead':''} ${squadBadge(u).cls}" data-act="select" data-arg="${u.id}" aria-label="Select ${esc(u.name)}" title="${esc(u.name)} · ${u.hp}/${u.maxHp} HP · ${u.ap} AP"><img src="${portraitSrc(u)}" alt="${esc(u.name)}"><b>${u.hp}<small>/${u.maxHp}</small></b><span class="badge ${squadBadge(u).cls}">${squadBadge(u).text}</span><span class="pips">${Array.from({length:Math.max(u.maxAp??4,u.ap)},(_,i)=>`<i class="${i<u.ap?'on':''}"></i>`).join('')}</span>${!u.dead&&b.flankedBy(u).length?'<i class="flank-alert" title="Flanked by a visible enemy">!</i>':''}</button>`).join('')+(b.activeSide==='player'&&!b.outcome?`<button class="next-ready" data-act="nextReady" title="Next ready soldier (Tab)">NEXT ▸</button>`:'')+`<button class="inventory-toggle" data-act="inventory" aria-label="Open inventory">${ICONS.backpack}<kbd>I</kbd></button>`;
         const u=g.selectedUnit();this.equipment.render(u);
@@ -296,22 +315,111 @@ export class Hud {
         this.renderTargets();
         this.renderTarget();
     }
-    /** PLAN-14: no target portraits — targets are picked with the reticle only. */
-    renderTargets() { this.el('.targets').innerHTML = ''; }
-    /** Aiming uses an edge HUD; the only target annotation is distance below the circle. */
+    renderAiPosture(b) {
+        const el = this.el('.turnbox .ai-posture'); if (!el) return;
+        const ad = b.aiAdaptation || {};
+        const tuning = b.aiTuning || {};
+        const top = Object.entries(tuning).filter(([, v]) => v >= 1.08).sort((a, c) => c[1] - a[1]).slice(0, 3);
+        const label = s => s.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').trim().toUpperCase();
+        const biomeTag = ad.biome ? ad.biome.replace(/_/g, ' ').toUpperCase() : '';
+        if (!biomeTag && !ad.liveWeight && !top.length) { el.classList.add('hidden'); return; }
+        el.classList.remove('hidden');
+        el.classList.toggle('adapted', (ad.liveWeight || 0) > 0 || (ad.shifts?.length || 0) > 0);
+        if (ad.shifts?.length) {
+            el.textContent = `AI ADAPTED · ${label(ad.shifts[0].key)}`;
+        } else if (biomeTag) {
+            el.textContent = top.length ? `AI: ${biomeTag} · ${label(top[0][0])}` : `AI: ${biomeTag}`;
+        } else {
+            el.textContent = `AI COUNTER · ${label(top[0][0])}`;
+        }
+        const tipParts = [];
+        if (ad.biome) tipParts.push(`Biome posture: ${ad.biome.replace(/_/g, ' ')}`);
+        if (ad.detected?.length) tipParts.push(`Detected habits: ${ad.detected.join(', ')}`);
+        if (ad.liveWeight > 0) tipParts.push(`Live adaptation weight: ${Math.round(ad.liveWeight * 100)}%`);
+        if (top.length) tipParts.push(`Active focus: ${top.map(([k, v]) => `${k} ×${v}`).join(', ')}`);
+        el.title = tipParts.join(' · ');
+    }
+    /** Clickable visible hostile targets strip (also active in shoot mode for instant target switching). */
+    renderTargets() {
+        const el = this.el('.targets'), g = this.game, b = g.battle, u = g.selectedUnit?.();
+        if (!el) return;
+        if (!b || b.outcome || !u || (b.activeSide !== 'player' && !g.debug?.manualEnemy)) { el.innerHTML = ''; return; }
+        const list = g.visibleTargets?.(u) || b.enemiesOf(u).filter(t => alive(t) && g.isVisible?.(t));
+        const activeId = g.aimPick?.unitId || g.framedTargetId;
+        const s = g.shooterOf?.(u) || u;
+        el.innerHTML = list.map((t, i) => {
+            const cov = b.store ? coverAgainst(b.store, t.x, t.y, t.z, s.x, s.y, s.z) : COVER.HALF;
+            const flk = cov === COVER.NONE;
+            const on = t.id === activeId;
+            return `<button class="tgt ${on ? 'on' : ''} ${flk ? 'flk' : ''}" data-act="aimTarget" data-arg="${t.id}" title="${esc(t.name)} · ${t.hp}/${t.maxHp} HP${flk ? ' · FLANKED' : ''} · Click to frame (${i + 1})">
+                <img src="${portraitSrc(t)}" alt="${esc(t.name)}"><span>${t.hp}<i>/${t.maxHp}</i></span>${flk ? '<em title="Flanked">!</em>' : ''}</button>`;
+        }).join('');
+    }
+    /** Phoenix Point free-aim tactical readout + physical recoil/trajectory telemetry + 5-part hitbox strip. */
     renderTarget(){
         const g=this.game,el=this.el('.target'),aiming=g.mode.kind==='shoot';
         this.root.classList.toggle('shooter-mode',aiming);
         if(!aiming){el.classList.add('hidden');return;}
-        el.classList.remove('hidden');el.classList.add('slim');
-        const u=g.selectedUnit(),w=WEAPONS[g.mode.weaponId],locked=g.aimPointer?.locked;
+        el.classList.remove('hidden');el.classList.remove('slim');
+        const u=g.selectedUnit(),w=WEAPONS[g.mode.weaponId];
         if(!u||!w){el.classList.add('hidden');return;}
         const cost=g.mode.suppress?ABILITIES.suppress.ap:g.battle.shotAp(u,w),ammo=u.ammo?.[w.id]||0;
-        el.innerHTML=`<button class="aim-back" data-act="cancel" aria-label="${locked?'Release aim':'Back to tactics'}">${locked?'Release aim':'Back'} <kbd>Esc</kbd></button>
-            <div class="shooter-status"><span class="shooter-weapon">${esc(w.name)}</span><span class="shooter-ammo" aria-label="${ammo} loaded, ${reserveAmmo(u,w)} reserve"><b>${ammo}</b><small> / ${reserveAmmo(u,w)}</small></span></div>
-            <div class="tbtns">${!locked&&!g.aimPointer?.unavailable?'<button data-act="captureAim">Aim</button>':''}<button data-act="fire" class="fire" ${ammo<1||u.ap<cost?'disabled':''}>Fire <kbd>Space</kbd></button></div>`;
+        const res=(() => { try { return reserveAmmo(u,w); } catch { return 0; } })();
+        const modes=fireModes(w),fm=g.mode.fireMode||fireMode(u,w);
+        const tel=g.aimTelemetry?.(), rec=tel?.recoil;
+        const peek=g.peekStatus?.();
+        const focus=tel?.focusUnit||(g.framedTargetId&&g.battle?.unit?.(g.framedTargetId))||null;
+        const hitPct=tel?Math.round((tel.hit??0)*100):0;
+        const innerPct=tel?Math.round((tel.innerHit??0)*100):0;
+        const partPct=tel?Math.round((tel.partHit??0)*100):0;
+        const hitCls=hitPct>=65?'high':hitPct>=35?'mid':'low';
+        const activePart=g.aimPick?.unitId===focus?.id?g.aimPick?.part:(tel?.targetPart||'torso');
+        const bodyList=focus?(focus.drone?['torso']:PARTS):[];
+        const partRows=focus?bodyList.map(part=>{
+            const ps=focus.parts?.[part];if(!ps)return '';
+            const pc=g.partChance?.(focus,part);
+            const arm=partArmor(focus,part);
+            const active=activePart===part;
+            return `<button class="part-btn ${active?'on':''} ${ps.disabled?'dis':''}" data-act="aimPart" data-arg="${part}">
+                <b>${esc(BODY[part]?.label||part)}</b>
+                <small>${ps.disabled?'DISABLED':`${ps.hp}/${ps.max} HP${arm?` · ARM ${arm}`:''}`}</small>
+                <span>${pc?`${pc.part}%`:''}</span></button>`;
+        }).join(''):'';
+        const modTags=(tel?.mods||[]).filter(([,v])=>v!==1).map(([k,v])=>`<span>${esc(k)} ×${v}</span>`).join('');
+        const badges=[];
+        if(g.mode.suppress)badges.push('<span class="badge-warn">SUPPRESSIVE FIRE</span>');
+        if(tel?.outOfRange)badges.push(`<span class="badge-warn">OUT OF RANGE (${tel.distance.toFixed(1)}/${tel.weapon.maxRange}m)</span>`);
+        if(tel?.blocked)badges.push('<span class="badge-warn">✕ COVER BLOCKED</span>');
+        if(focus&&tel?.flanked)badges.push('<span class="badge-crit">FLANKED · EXPOSED +15%</span>');
+        if(focus&&activePart==='head'&&!focus.drone&&tel?.headshotMult>1)badges.push(`<span class="badge-crit">HEADSHOT ×${tel.headshotMult}</span>`);
+        if((u.recoilHeat||0)>0.2)badges.push(`<span class="badge-warn">RECOIL HEAT +${(u.recoilHeat||0).toFixed(1)}</span>`);
+        if(focus&&tel?.lethalChance>0.5)badges.push('<span class="badge-lethal">LETHAL</span>');
+        else if(focus&&tel?.disableChance>0.35&&activePart!=='torso')badges.push(`<span class="badge-crit">DISABLE ${(BODY[activePart]?.label||activePart).toUpperCase()}</span>`);
+        const vel=rec?.velocity||w.velocity||0;
+        const ballisticsRow=rec?`<div class="aim-ballistics">
+                <div><b>${rec.baseSpread}°${rec.finalSpread>rec.baseSpread?`→${rec.finalSpread}°`:''}</b><small>SPREAD</small></div>
+                <div><b>+${rec.totalClimbDeg}°</b><small>CLIMB</small></div>
+                <div><b>${rec.dropMeters>0.02?`-${rec.dropMeters}m`:'FLAT'}</b><small>DROP</small></div>
+                <div><b>${vel?`${vel} m/s`:'—'}</b><small>VEL</small></div></div>`:'';
+        el.innerHTML=`<div class="aim-top"><button class="aim-back" data-act="cancel" aria-label="Back to tactics">Back <kbd>Esc</kbd></button>
+                ${peek?`<span class="peek-badge ${peek.peeking?'on':''}">${peek.peeking?'LEANING':'HOME'}${peek.overwatch?` · ${peek.overwatch} OW`:''}</span>`:''}
+                ${peek?.peeking?'<button class="aim-peek-home" data-act="peekHome">Step back</button>':''}</div>
+            <div class="shooter-status"><div class="shooter-meta"><span class="shooter-weapon">${esc(w.name)}</span><small>${cost} AP${vel?` · ${vel} m/s`:''}${fm&&modes.length>1?` · ${fm.toUpperCase()}`:''}</small></div>
+                <span class="shooter-ammo" aria-label="${ammo} loaded, ${res} reserve"><b>${ammo}</b><small>/${res}</small></span></div>
+            ${modes.length>1&&!g.mode.suppress?`<div class="aim-modes">${modes.map(m=>`<button data-act="aimMode" data-arg="${m}" class="${m===fm?'on':''}">${m.toUpperCase()}</button>`).join('')}</div>`:''}
+            ${ballisticsRow}
+            ${badges.length?`<div class="aim-badges">${badges.join('')}</div>`:''}
+            ${focus&&tel?`<div class="thead aim-forecast"><div class="tinfo"><div class="tname">${esc(focus.name)}</div><small>${focus.hp}/${focus.maxHp} HP · ${tel.distance.toFixed(1)} m</small></div>
+                <div class="aim-nums"><div class="bigpct ${hitCls}">${hitPct}%<small>ON BODY · 1ST ${innerPct}%</small></div><div class="est-dmg"><b>~${tel.expectedDamage}</b><small>EST DMG${partPct?` · ${partPct}% PART`:''}</small></div></div></div>
+                <div class="parts aim-parts">${partRows}</div>`:tel?`<div class="aim-free-read"><b>FREE AIM · ${tel.distance.toFixed(1)} m</b><span>${tel.blocked?'Covers / wall in trajectory':'Clear ballistic trajectory'}</span></div>`:''}
+            ${modTags?`<div class="mods aim-mods">${modTags}</div>`:''}
+            <div class="tbtns"><span class="aim-hint">Tab: Target · R-drag/Q,E: Orbit · Wheel: Zoom</span><button data-act="fire" class="fire firebtn" ${ammo<1||u.ap<cost||tel?.outOfRange?'disabled':''}>Fire <kbd>Click / Space</kbd></button></div>`;
     }
-    showGearPanel(){const u=this.game.selectedUnit(),p=this.el('.panel');p.classList.remove('hidden');p.innerHTML=`<h3>Equipment <button data-act="closePanel">✕</button></h3><div class="gear-quick">${Object.entries(u.items).filter(([id,n])=>n>0&&THROWABLES[id]).map(([id,n])=>`<button data-act="item" data-arg="${id}">${ICONS.grenade}<b>${esc(THROWABLES[id].name)}</b><small>${n} carried · ${THROWABLES[id].ap} AP</small></button>`).join('')}</div>`;}
+    showGearPanel(){
+        const u=this.game.selectedUnit(),p=this.el('.panel');p.classList.remove('hidden');
+        const tag=t=>t.heal?`Heal ${t.heal} HP`:t.smoke?'Smoke cover':t.element?`${t.damage||0} ${t.element}`:t.damage?`${t.damage} dmg`:'';
+        p.innerHTML=`<h3>Equipment <button data-act="closePanel">✕</button></h3><div class="gear-quick">${Object.entries(u.items).filter(([id,n])=>n>0&&THROWABLES[id]).map(([id,n],i)=>{const t=THROWABLES[id],sub=tag(t);return `<button data-act="item" data-arg="${id}" ${u.ap<t.ap?'disabled':''}><kbd>${i+1}</kbd>${ICONS.grenade}<b>${esc(t.name)}</b><small>${n} carried · ${t.ap} AP${sub?` · ${esc(sub)}`:''}</small></button>`;}).join('')}</div>`;
+    }
     showFormationPanel() {
         const p=this.el('.panel');p.classList.toggle('hidden');if(p.classList.contains('hidden'))return;
         const cur=this.game.battle?.formations.of(this.game.selectedUnit());
@@ -328,8 +436,8 @@ export class Hud {
                 ${pt.entry==='floor'?`<button data-act="doBreach" data-arg="${i}:floor">Floor charge · 2×2 hole</button>`:`<button data-act="doBreach" data-arg="${i}:door">Door entry</button>`}${pt.entry!=='floor'&&charge ? `<button data-act="doBreach" data-arg="${i}:charge">Breach charge</button>` : ''}</div>`).join('');
     }
     /** After-action report (every battle). The old outcome card is folded into its header. */
-    showReport(report, { saved = true, canEdit = true } = {}) {
-        this.report = report; this.reportOpts = { saved, canEdit, tab: this.reportOpts?.tab || 'squad' };
+    showReport(report, { saved = true, canEdit = true, campaign = null } = {}) {
+        this.report = report; this.reportOpts = { saved, canEdit, campaign, tab: this.reportOpts?.tab || 'squad' };
         const el = this.el('.outcome'); el.classList.remove('hidden');
         el.innerHTML = reportMarkup(report, this.reportOpts);
     }
@@ -359,13 +467,13 @@ function pips(n, max, cls) { let s = ''; for (let i = 0; i < Math.max(max, n); i
 function modeText(m) {
     switch (m.kind) {
         case 'shoot': return `${WEAPONS[m.weaponId]?.name} — move the reticle, WASD leans out of cover, Space fires`;
-        case 'melee': return 'melee — click an adjacent enemy';
-        case 'gadget': return 'Medical kit — click an injured adjacent ally';
-        case 'throw': return `throw ${THROWABLES[m.itemId].name} — click a tile`;
-        case 'ability': return `${ABILITIES[m.abilityId]?.name} — click ${ABILITIES[m.abilityId]?.targeting === 'ally' ? 'an injured ally (self allowed)' : 'an empty visible tile'}`;
-        case 'overwatch': return 'overwatch — click the direction to watch';
+        case 'melee': return 'melee — click an adjacent enemy · Right-click or Esc to cancel';
+        case 'gadget': return 'Medical kit — click an injured adjacent ally (or self) · Right-click or Esc to cancel';
+        case 'throw': return `throw ${THROWABLES[m.itemId].name} — click a tile · Right-click or Esc to cancel`;
+        case 'ability': return `${ABILITIES[m.abilityId]?.name} — click ${ABILITIES[m.abilityId]?.targeting === 'ally' ? 'an injured ally (self allowed)' : 'an empty visible tile'} · Right-click or Esc to cancel`;
+        case 'overwatch': return 'overwatch — click the direction to watch · Right-click or Esc to cancel';
         case 'mark': return `click a block to mark ${m.color} · click it again to clear · Esc exits`;
-        default: return 'click a tile to move · <span class="blue">blue</span> keeps an action · <span class="yellow">yellow</span> is a dash';
+        default: return 'click a tile to move · click an enemy to aim · <span class="blue">blue</span> keeps an action · <span class="yellow">yellow</span> is a dash';
     }
 }
 export { alive };

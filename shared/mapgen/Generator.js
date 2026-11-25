@@ -23,6 +23,9 @@ import { fireEscapeTemplate, FIRE_ESCAPE, SIDE_FRAME, facadeOrigin, facadeLength
 import { hashString } from '../util/Rng.js';
 import { solveWaveFunctionCollapse } from '../generation/WaveFunctionCollapse.js';
 import { buildWithRepair } from './Repair.js';
+import { planTerrainFeatures, OPERATION_FLOWS } from './TerrainFeatures.js';
+
+export { OPERATION_FLOWS };
 
 export const GENERATOR_VERSION = '4.3.0';
 const unit = s => (hashString(s) >>> 0) / 4294967296;
@@ -31,11 +34,32 @@ const k2 = (x, y) => `${x},${y}`;
 
 // ------------------------------------------------------------------------------------------------ ground
 function groundFromPlot(plot, lotKind) {
-    const { W, D } = plot, mat = new Array(W * D).fill('concrete'), cls = new Array(W * D).fill('concrete');
+    const { W, D, family } = plot, mat = new Array(W * D).fill('concrete'), cls = new Array(W * D).fill('concrete');
+    const roadMat = {
+        old_quarter: c => (c.mat === 'asphalt' ? 'cobble' : 'stone_floor'),
+        winter_outpost: c => (c.mat === 'asphalt' ? 'asphalt' : 'snow'),
+        arid_compound: c => (c.mat === 'asphalt' ? 'road' : 'sand'),
+        harbor: c => (c.mat === 'asphalt' ? 'asphalt' : 'concrete'),
+        canal_district: c => (c.mat === 'asphalt' ? 'cobble' : 'stone_floor'),
+        hillside_ridge: c => (c.mat === 'asphalt' ? 'road' : 'cobble'),
+        sunken_basin: c => (c.mat === 'asphalt' ? 'asphalt' : 'concrete')
+    }[family];
+    const lotGround = g => {
+        if (family === 'winter_outpost') return (g === 'concrete' || g === 'asphalt') ? g : 'snow';
+        if (family === 'arid_compound') return (g === 'lawn' || g === 'paving') ? 'sand' : g;
+        if (family === 'old_quarter') return (g === 'asphalt' || g === 'concrete') ? 'cobble' : g;
+        if (family === 'hillside_ridge') return (g === 'concrete' || g === 'paving') ? 'gravel' : g;
+        return g;
+    };
     for (const lot of plot.lots) {
-        if (lot.road) for (const c of roadLotCells(lot.road)) { const i = lot.x0 + c.cx + (lot.y0 + c.cy) * W; mat[i] = c.mat; cls[i] = c.cls; }
-        else {
-            const g = LOT_KINDS[lotKind(lot)]?.ground || 'concrete';
+        if (lot.road) {
+            for (const c of roadLotCells(lot.road)) {
+                const i = lot.x0 + c.cx + (lot.y0 + c.cy) * W;
+                mat[i] = roadMat ? roadMat(c) : c.mat;
+                cls[i] = c.cls;
+            }
+        } else {
+            const g = lotGround(LOT_KINDS[lotKind(lot)]?.ground || 'concrete');
             for (let y = lot.y0; y < lot.y0 + LOT; y++) for (let x = lot.x0; x < lot.x0 + LOT; x++) { mat[x + y * W] = g; cls[x + y * W] = g; }
         }
     }
@@ -73,6 +97,7 @@ const inwardBay = (b, e) => [Math.max(0, Math.min(bayGridOf(b.w, b.d).nbx - 1, (
  * next to a corner. Returns null when no facade fits, and the building is regenerated rather than resized.
  */
 function planAccess(b, exits, W, D, seed = 1) {
+    if (b.storeys <= 2 && b.roof === 'pitched') return null;
     const sides = SIDES.filter(s => s !== b.front).sort((a, c) => b.margins[c] - b.margins[a] || (a === OPPOSITE[b.front] ? -1 : 1));
     // PLAN-14: fire escapes only on some tall blocks (the objective always keeps one: it is the flank into it); the rest
     // carry their stair core on up to the roof (a railed roof hatch), so not every building wears the same escape.
@@ -139,7 +164,7 @@ export function plotFromSite(site, seed) {
  * Solve a complete v3 layout. src: { plot } (a created plot) — picture plots carry their site solve.
  * opts: { seed, design (picture fixtures may pin one), objectiveKind, timeOfDay, id, name }
  */
-export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, objectiveKind = null, timeOfDay = null, id = null, name = null, siteRead = null, floorSpecs = [] } = {}) {
+export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, objectiveKind = null, verticalFlow = 'auto', timeOfDay = null, id = null, name = null, siteRead = null, floorSpecs = [] } = {}) {
     const { W, D } = plot, repairs = [];
     const inRegion=(x,y)=>pointInRegion(plot.site?.boundary,x,y);
     const toCell = ([u, v]) => plot.picture ? [Math.round(plot.site.transform.margin + u * plot.site.transform.frame.width * plot.site.transform.scale), Math.round(plot.site.transform.margin + v * plot.site.transform.frame.height * plot.site.transform.scale)] : [Math.round(u * W), Math.round(v * D)];
@@ -147,13 +172,17 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
     const prior = picturePrior(siteRead, W, D, toCell);
     if (!plot.picture) {
         // No picture: the family's own prior. Roads are known; building density is high along roads and varied by noise.
-        const density = { downtown: 0.75, industrial: 0.6, suburb: 0.55 }[plot.family] ?? 0.6;
+        const density = {
+            downtown: 0.75, industrial: 0.6, suburb: 0.55, harbor: 0.62, winter_outpost: 0.55,
+            old_quarter: 0.72, metro_hub: 0.76, arid_compound: 0.56,
+            canal_district: 0.56, hillside_ridge: 0.48, sunken_basin: 0.52
+        }[plot.family] ?? 0.6;
         const dn = noiseField(`${plot.family}:${seed}:density`, W, D, 'lot');
         for (const lot of plot.lots) for (let y = lot.y0; y < lot.y0 + LOT; y++) for (let x = lot.x0; x < lot.x0 + LOT; x++) {
             if (lot.road) { prior.road.set(x, y, 1); continue; }
             prior.building.set(x, y, Math.min(1, density * (0.55 + 0.9 * dn.get(x, y))));
-            prior.green.set(x, y, plot.family === 'suburb' ? 0.7 : 0.25 * dn.get(y, x));
-            prior.paved.set(x, y, plot.family === 'suburb' ? 0.2 : 0.6);
+            prior.green.set(x, y, ['suburb', 'winter_outpost', 'hillside_ridge'].includes(plot.family) ? 0.68 : 0.25 * dn.get(y, x));
+            prior.paved.set(x, y, ['suburb', 'winter_outpost', 'arid_compound', 'hillside_ridge'].includes(plot.family) ? 0.28 : 0.65);
             prior.height.set(x, y, Math.min(1, 0.25 + 0.6 * dn.get(y, x)));
         }
     }
@@ -262,7 +291,7 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
         for (const c of run?.cells || []) protect(c.x, c.y, 1);
     }
     // ---- design: programmes, objective, beats, pods
-    const design = pinnedDesign || designProgrammes({ buildings, target, plot, seed, objectiveKind, timeOfDay, name, pockets: [], spread: !!plot.operation });
+    const design = pinnedDesign || designProgrammes({ buildings, target, plot, seed, objectiveKind, verticalFlow, timeOfDay, name, pockets: [], spread: !!plot.operation });
     // ---- interiors and facades
     for (const b of buildings) {
         const programmes = design.programs.filter(p => p.building === b.id).sort((a, c) => a.floor - c.floor);
@@ -286,6 +315,8 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
     const blocked = (x, y) => !inRegion(x,y)||buildings.some(b => x >= b.x0 - 1 && y >= b.y0 - 1 && x <= b.x0 + b.w && y <= b.y0 + b.d);
     const ground = plot.picture ? pictureGround(plot, siteRead, W, D) : groundFromPlot(plot, lotKindAt);
     if (!plot.picture) markParking(plot, ground, lotKindAt);
+    const terrain = plot.picture ? null : planTerrainFeatures({ plot, ground, buildings, layers, flow: verticalFlow, seed });
+    for (const [px, py] of terrain?.protectedCoords || []) protect(px, py, 0);
     let bayGrid = classifyBays(W, D, ground, blocked, protectedCells);
     const sight = sightlineField(W, D, (x, y) => !blocked(x, y));
     fields.sight = (x, y) => sight.get(x, y);
@@ -328,7 +359,7 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
     const solveArgs = { plot, bayGrid, lotPool, roadAxis, fields, seed, objectiveAt: objectiveCell };
     // PLAN-13: designed parcels (ParcelTemplates) and street trees first; line-of-play pockets win where they meet.
     if (!plot.picture) {
-        const layoutPins = new Map([...planStreetTrees(bayGrid), ...planParcelPins(plot, bayGrid, lotKindAt, kind => LOT_KINDS[kind]?.pool)]);
+        const layoutPins = new Map([...planStreetTrees(bayGrid), ...planParcelPins(plot, bayGrid, lotKindAt, kind => LOT_KINDS[kind]?.pool, { parcels, seed })]);
         solveArgs.soft = new Set();
         for (const [id, piece] of layoutPins) if (!pins.has(id)) { pins.set(id, piece); solveArgs.soft.add(id); }
     }
@@ -345,7 +376,7 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
         buildings: buildings.map(b => ({ ...b, bounds: undefined })), pieces, edges, pockets, dressing,
         lineOfPlay: { main: play.main.path.map(p => [p.x, p.y]), cost: play.main.cost, flanks: play.flanks.map(f => ({ side: f.side, cost: f.cost, path: f.path.map(p => [p.x, p.y]) })) },
         insertion: plot.insertion, objective: { building: target.id, cell: objectiveCell },
-        flow: plot.picture ? plot.site.flow.map(([x, y]) => [x, y]) : flowWaypoints(play.main.path), layers, parcels: parcels4, repairs,
+        flow: plot.picture ? plot.site.flow.map(([x, y]) => [x, y]) : flowWaypoints(play.main.path), layers, terrain, parcels: parcels4, repairs,
         reference: buildings.map(b => ({ id: b.id, x0: b.x0, y0: b.y0, w: b.w, d: b.d, storeys: b.storeys })), congruence: buildings.map(b => ({ id: b.id, iou: 1, storeys: b.storeys })),
         transform: plot.picture ? plot.site.transform : { scale: 1, margin: 0, frame: { width: W, height: D } }, surfaces: []
     };
@@ -422,7 +453,8 @@ function flowWaypoints(path) {
     return out;
 }
 
-const GROUND_CODES = { air:'v',concrete: 'c', asphalt: 'a', road_mark: 'm', paving: 'p', lawn: 'l', gravel: 'g', deck: 'd', soil: 's' };
+const GROUND_CODES = { air: 'v', concrete: 'c', asphalt: 'a', road_mark: 'm', paving: 'p', lawn: 'l', gravel: 'g', deck: 'd', soil: 's',
+    snow: 'w', sand: 'n', grass: 'r', forest_floor: 'f', water: 'u', deep_water: 'U', ice: 'i', deep_ice: 'I', cobble: 'b', stone_floor: 'o', rubble: 'x', road: 't', ash: 'h' };
 const GROUND_KEYS = Object.fromEntries(Object.entries(GROUND_CODES).map(([k, v]) => [v, k]));
 export const encodeGround = mat => mat.map(m => GROUND_CODES[m] || 'c').join('');
 export const decodeGround = str => [...str].map(c => GROUND_KEYS[c] || 'concrete');
@@ -505,7 +537,7 @@ function pictureGround(plot, siteRead, W, D) {
  */
 export function planEdges(plot, ground, buildings, districts, seed, protectedCells) {
     const { W, D } = plot, out = [];
-    const isAsphalt = (x, y) => ['asphalt', 'road_mark'].includes(ground.mat[x + y * W]) && (plot.picture || !!plotLot(plot, Math.floor(x / LOT), Math.floor(y / LOT))?.road);
+    const isAsphalt = (x, y) => (['asphalt', 'road_mark', 'cobble', 'road'].includes(ground.mat[x + y * W]) && (plot.picture || !!plotLot(plot, Math.floor(x / LOT), Math.floor(y / LOT))?.road));
     const occupied = (x, y) => buildings.some(b => x >= b.x0 && y >= b.y0 && x < b.x0 + b.w && y < b.y0 + b.d);
     const runs = [];
     for (const side of SIDES) {
@@ -522,8 +554,8 @@ export function planEdges(plot, ground, buildings, districts, seed, protectedCel
     for (const run of runs) {
         const [mx, my] = run.cells[run.cells.length >> 1], district = districts?.at?.(Math.floor(mx / LOT), Math.floor(my / LOT)) || 'commercial';
         if (run.kind === 'road') { out.push({ kind: 'barricade', side: run.side, cells: run.cells }); continue; }
-        const style = district === 'commercial' || district === 'plaza' ? (unit(`${seed}:${mx},${my}:edge`) < 0.7 ? 'facade' : 'wall')
-            : district === 'industrial' || district === 'yard' ? 'chainlink' : 'fence';
+        const style = ['commercial', 'plaza', 'historic', 'transit'].includes(district) ? (unit(`${seed}:${mx},${my}:edge`) < 0.7 ? 'facade' : 'wall')
+            : ['industrial', 'yard', 'dock', 'desert'].includes(district) ? 'chainlink' : 'fence';
         out.push({ kind: style, side: run.side, cells: run.cells, height: style === 'facade' ? 6 + 3 * Math.floor(unit(`${seed}:${mx},${my}:h`) * 2) : 2 });
     }
     return out;
@@ -543,29 +575,31 @@ export const OPERATION_OBJECTIVES = Object.freeze(['recover', 'extract', 'hold',
 export const OPERATION_TIMES = Object.freeze(['day', 'dawn', 'dusk', 'overcast', 'night', 'night-ops']);
 /** Validate and normalise an operation descriptor (menu, URL, server room): unknown values fall back to auto. */
 export function operationOptions(o = {}) {
-    return { plot: PLOT_FAMILIES[o.plot] ? o.plot : 'downtown', objective: OPERATION_OBJECTIVES.includes(o.objective) ? o.objective : null, timeOfDay: OPERATION_TIMES.includes(o.timeOfDay) ? o.timeOfDay : null };
+    const opt = { plot: PLOT_FAMILIES[o.plot] ? o.plot : 'downtown', objective: OPERATION_OBJECTIVES.includes(o.objective) ? o.objective : null, timeOfDay: OPERATION_TIMES.includes(o.timeOfDay) ? o.timeOfDay : null };
+    if (OPERATION_FLOWS.includes(o.verticalFlow) && o.verticalFlow !== 'auto') opt.verticalFlow = o.verticalFlow;
+    return opt;
 }
 
 /**
- * The game's generated-map mode: plot family + seed (+ objective, time of day) → a playable, gate-checked mission.
+ * The game's generated-map mode: plot family + seed (+ objective, vertical flow, time of day) → a playable, gate-checked mission.
  * Solve, compile, repair locally; if the repair budget runs out, reseed deterministically (bounded).
  * Returns { site, layout, design, mission }.
  */
-export function generateOperation({ plot: family = 'downtown', seed = 1, objective = null, timeOfDay = null, compile = true } = {}) {
+export function generateOperation({ plot: family = 'downtown', seed = 1, objective = null, verticalFlow = 'auto', timeOfDay = null, compile = true } = {}) {
     if (!PLOT_FAMILIES[family]) throw Error(`operation.plot: unknown plot ${family}`);
     if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) throw Error('operation.seed: integer 0–4294967295 required');
     let last;
-    for (let attempt = 0; attempt < 6; attempt++) {
+    for (let attempt = 0; attempt < 16; attempt++) {
         const s = (seed + attempt * 7919) >>> 0;
         try {
             const plot = createPlot(family, s);
             plot.operation = true;   // PLAN-15: player maps — real-place profiles and spread pods (fixture maps keep their old rules)
             const time = timeOfDay || plot.times[Math.floor(unit(`${family}:${seed}:time`) * plot.times.length)];
-            const { layout, design, context } = solveLayoutV3(plot, { seed: s, objectiveKind: objective, timeOfDay: time, id: 'operation', name: null });
+            const { layout, design, context } = solveLayoutV3(plot, { seed: s, objectiveKind: objective, verticalFlow, timeOfDay: time, id: 'operation', name: null });
             if (attempt) layout.repairs.push({ kind: 'reseed-operation', from: seed, attempt, reason: last?.message?.slice(0, 160) });
             const site = siteFromLayout(layout, { family, time, seed });
             const op = { site, layout, design, context };
-            if (compile) op.mission = buildWithRepair(op, { seed });
+            if (compile) op.mission = buildWithRepair(op, { seed: attempt >= 6 ? s : seed });
             delete op.context;
             return op;
         } catch (e) { last = e; }

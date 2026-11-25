@@ -13,7 +13,7 @@ import { AGENT_PROFILES } from '../world/TraversalRules.js';
 export function validateSite(site) {
     const fail = reason => { throw new Error(`Invalid image map: ${reason}`); };
     if (site.name != null && (typeof site.name !== 'string' || site.name.length > 80 || /[<>]/.test(site.name))) fail('plain-text mission name required');
-    if (site.theme != null && !['Suburbs','Downtown','Industrial','Roadside'].includes(site.theme)) fail('theme');
+    if (site.theme != null && !['Suburbs', 'Downtown', 'Industrial', 'Roadside', 'Waterfront', 'Alpine', 'Historic', 'Transit', 'Desert', 'Canal', 'Highland', 'Basin'].includes(site.theme)) fail('theme');
     if (![1,2].includes(site.version) || !/^[a-z0-9-]+$/.test(site.id || '')) fail('version/id');
     if (!['day', 'dusk', 'night', 'dawn', 'overcast','night-ops'].includes(site.timeOfDay)) fail('timeOfDay');
     if (!Array.isArray(site.buildings) || !site.buildings.length) fail('buildings required');

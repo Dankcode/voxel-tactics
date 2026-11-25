@@ -8,7 +8,7 @@ import { WEAPONS } from '../content/weapons.js';
 import { coverAgainst, COVER } from '../voxel/Cover.js';
 import { decideEnemy, enemyThreats } from './EnemyAi.js';
 import { flushShot, coverVoxels, blastCoverValue, FLUSH } from './FlushAi.js';
-import { hitChance } from './HitChance.js';
+import { evaluateBallisticShot } from './Ballistics.js';
 
 function arena({ build = null, players = [{ x: 10, y: 16, z: 1 }], enemies = [{ type: 'cultist', pos: { x: 10, y: 8, z: 1 }, group: 1, alerted: true }], squad = ['marksman'] } = {}) {
     const store = new VoxelStore(28, 28, 12);
@@ -33,7 +33,8 @@ test('flush: with no good shot on a dug-in target the enemy shoots the cover (fa
     const b = arena({ build: wallFront() }), e = b.units.find(u => u.side === 'enemy'), p = b.unit('p0'), w = gunOf(e);
     seeAll(b);
     assert.equal(coverAgainst(b.store, p.x, p.y, p.z, e.x, e.y, e.z), COVER.FULL);
-    assert.ok(hitChance(b, e, p, w).chance < FLUSH.chanceBelow);
+    const est = evaluateBallisticShot(b, e, p, w);
+    assert.ok(est.directHitRate < FLUSH.hitBelow && est.effectiveHitRate < FLUSH.hitBelow);
     const f = flushShot(b, e, w, enemyThreats(b, e));
     assert.ok(f, 'a cover-breaking shot exists');
     assert.deepEqual([f.intent.flush.voxel.x, f.intent.flush.voxel.y], [10, 15]);

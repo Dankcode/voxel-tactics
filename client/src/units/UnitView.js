@@ -12,23 +12,36 @@ import { characterArtId } from './CharacterArt.js';
 
 const loader = new THREE.TextureLoader();
 const atlasCache = new Map();
+const cutinCache = new Map();
 /** Floor cutaways select complete characters by their occupied cell, never by head pixels. */
 export const unitBelowCut = (z, cut = Infinity) => z < cut;
 export function unitSpriteMaterial(texture, normal) {
     return new THREE.MeshStandardMaterial({ map:texture, normalMap:normal, normalScale:new THREE.Vector2(.65,.65),
         roughness:.95, metalness:0, transparent:true, alphaTest:.35, side:THREE.DoubleSide, toneMapped:false });
 }
+export function loadCharacterCutin(art) {
+    art = characterArtId(art);
+    if (cutinCache.has(art)) return cutinCache.get(art);
+    const base = `/assets/characters/${art}/`;
+    const p = fetch(base + 'cutin.json').then(r => r.json()).then(cutin => ({ cutin, base }));
+    cutinCache.set(art, p);
+    return p;
+}
 export async function loadCharacterArt(art) {
     art = characterArtId(art);
     if (atlasCache.has(art)) return atlasCache.get(art);
     const p = (async () => {
         const base = `/assets/characters/${art}/`;
-        const [field, cutin] = await Promise.all([fetch(base + 'field.json').then(r => r.json()), fetch(base + 'cutin.json').then(r => r.json())]);
-        const image = await new Promise((res, rej) => loader.load(base + field.image, res, undefined, rej));
+        const field = await fetch(base + 'field.json').then(r => r.json());
+        const [image, normal, lighting] = await Promise.all([
+            new Promise((res, rej) => loader.load(base + field.image, res, undefined, rej)),
+            loader.loadAsync(base + field.normal),
+            loader.loadAsync(base + field.lightingMask)
+        ]);
         image.colorSpace = THREE.SRGBColorSpace;
         image.magFilter = THREE.LinearFilter; image.minFilter = THREE.LinearMipmapLinearFilter; image.generateMipmaps = true; image.anisotropy = 4;
-        const [normal, lighting] = await Promise.all([loader.loadAsync(base + field.normal), loader.loadAsync(base + field.lightingMask)]);
-        return { field, cutin, image, normal, lighting, base };
+        image.needsUpdate = true;
+        return { field, image, normal, lighting, base };
     })();
     atlasCache.set(art, p);
     return p;
@@ -38,37 +51,46 @@ export class UnitView {
     constructor(scene, unit, art, store) {
         this.scene = scene; this.unit = unit; this.id = unit.id; this.art = unit.art;
         this.group = new THREE.Group();
-        const m = art.field;
-        const h = m.worldHeight, w = h * m.frameWidth / m.frameHeight;
-        const geo = new THREE.PlaneGeometry(w, h);
-        geo.translate(0, h / 2 - m.anchor[1] * h, 0);
-        this.texture = art.image.clone();
-        this.texture.needsUpdate = true;
-        this.normal = art.normal.clone(); this.normal.needsUpdate = true;
-        this.lighting = art.lighting.clone(); this.lighting.needsUpdate = true;
-        this.material = unitSpriteMaterial(this.texture, this.normal);
-        this.depthSlope=installBillboardDepth(this.material);
-        const depthCompile = this.material.onBeforeCompile;
-        this.material.onBeforeCompile = shader => {
-            depthCompile(shader);
-            shader.uniforms.spriteResponse = { value: this.lighting };
-            shader.fragmentShader = 'uniform sampler2D spriteResponse;\n' + shader.fragmentShader;
-            shader.fragmentShader = shader.fragmentShader.replace('vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;', `
-                vec3 response = texture2D(spriteResponse, vMapUv).rgb;
-                vec3 outgoingLight = (reflectedLight.directDiffuse + reflectedLight.directSpecular) * response.r
-                    + (reflectedLight.indirectDiffuse + reflectedLight.indirectSpecular) * response.b
-                    + totalEmissiveRadiance + diffuseColor.rgb * response.g;`);
-        };
-        this.material.customProgramCacheKey = () => 'ranger-edge-lit-billboard-v3';
-        this.sprite = new THREE.Mesh(geo, this.material);
-        this.spriteHeight=h;this.billboardUp=new THREE.Vector3();
-        this.sprite.userData.unitId = unit.id;
-        // The billboard casts a sun shadow through its alpha (same animated texture as the colour pass).
-        this.sprite.castShadow = true; this.sprite.receiveShadow = true;
-        this.sprite.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: this.texture, alphaTest: 0.5, side: THREE.DoubleSide });
-        this.group.add(this.sprite);
-        if(unit.drone){this.group.remove(this.sprite);this.sprite.geometry.dispose();this.sprite.customDepthMaterial.dispose();this.model=new DroneModel(unit,scene.clipping);this.sprite=this.model.root;this.spriteHeight=DRONE_HOVER+.15;this.group.add(this.sprite);}   // PLAN-14
-        else if(WALKERS[unit.type]){this.group.remove(this.sprite);this.sprite.geometry.dispose();this.sprite.customDepthMaterial.dispose();this.model=new WalkerModel(unit,store,scene.clipping);this.sprite=this.model.root;this.spriteHeight=WALKERS[unit.type].height+.5;this.group.add(this.sprite);}
+        const isModel = unit.drone || WALKERS[unit.type];
+        let h;
+        if (isModel) {
+            this.model = unit.drone ? new DroneModel(unit, scene.clipping) : new WalkerModel(unit, store, scene.clipping);
+            this.sprite = this.model.root;
+            h = unit.drone ? DRONE_HOVER + 0.15 : WALKERS[unit.type].height + 0.5;
+            this.spriteHeight = h;
+            this.group.add(this.sprite);
+            this.animator = null;
+        } else {
+            const m = art.field;
+            h = m.worldHeight;
+            const w = h * m.frameWidth / m.frameHeight;
+            const geo = new THREE.PlaneGeometry(w, h);
+            geo.translate(0, h / 2 - m.anchor[1] * h, 0);
+            this.texture = art.image.clone();
+            this.normal = art.normal.clone();
+            this.lighting = art.lighting.clone();
+            this.material = unitSpriteMaterial(this.texture, this.normal);
+            this.depthSlope = installBillboardDepth(this.material);
+            const depthCompile = this.material.onBeforeCompile;
+            this.material.onBeforeCompile = shader => {
+                depthCompile(shader);
+                shader.uniforms.spriteResponse = { value: this.lighting };
+                shader.fragmentShader = 'uniform sampler2D spriteResponse;\n' + shader.fragmentShader;
+                shader.fragmentShader = shader.fragmentShader.replace('vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;', `
+                    vec3 response = texture2D(spriteResponse, vMapUv).rgb;
+                    vec3 outgoingLight = (reflectedLight.directDiffuse + reflectedLight.directSpecular) * response.r
+                        + (reflectedLight.indirectDiffuse + reflectedLight.indirectSpecular) * response.b
+                        + totalEmissiveRadiance + diffuseColor.rgb * response.g;`);
+            };
+            this.material.customProgramCacheKey = () => 'ranger-edge-lit-billboard-v3';
+            this.sprite = new THREE.Mesh(geo, this.material);
+            this.spriteHeight = h; this.billboardUp = new THREE.Vector3();
+            this.sprite.userData.unitId = unit.id;
+            this.sprite.castShadow = true; this.sprite.receiveShadow = true;
+            this.sprite.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: this.texture, alphaTest: 0.5, side: THREE.DoubleSide });
+            this.group.add(this.sprite);
+            this.animator = new SpriteAnimator(m, this.texture, this);
+        }
         this.blob = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false, opacity: 0.55, clippingPlanes: scene.clipping }));
         this.blob.rotation.x = -Math.PI / 2; this.blob.position.y = 0.02;
         this.group.add(this.blob);
@@ -97,7 +119,6 @@ export class UnitView {
         this.dropLine.visible = this.dropRing.visible = false;
         this.group.add(this.dropLine, this.dropRing);
         this.dropHeight = 0;
-        this.animator = new SpriteAnimator(m, this.texture, this);
         this.pos = new THREE.Vector3();
         this.facingVec = [...(FACING_VEC[unit.facing] || [0, 1])];
         this.snap();
@@ -108,7 +129,7 @@ export class UnitView {
     snap() { this.setCell(this.unit.x, this.unit.y, this.unit.z); this.facingVec = [...(FACING_VEC[this.unit.facing] || [0, 1])]; }
     setCell(x, y, z) {
         // Advance the two enemy stride drawings by distance, even on a single-tile move.
-        if (this.striding()) {
+        if (this.striding() && this.animator) {
             const distance = Math.hypot(x + .5 - this.pos.x, y + .5 - this.pos.z);
             const clip = this.animator.m.clips.run;
             this.animator.update(distance * clip.frames / clip.fps);
@@ -116,7 +137,7 @@ export class UnitView {
         this.visualZ = z;
         this.pos.set(x + 0.5, z + 1 - dropAt(x, y, z), y + 0.5); this.group.position.copy(this.pos);
     }
-    striding() { return !this.model && this.unit.side === 'enemy' && this.animator.clip === 'run'; }
+    striding() { return !this.model && !!this.animator && this.unit.side === 'enemy' && this.animator.clip === 'run'; }
     setWorld(x, y, h) { this.pos.set(x, h, y); this.group.position.copy(this.pos); }
     face(dx, dy) { if (dx || dy) this.facingVec = [dx, dy]; }
     worldPosition() { return this.pos.clone(); }
@@ -170,20 +191,22 @@ export class UnitView {
             this.billboardUp.set(0,1,0).applyQuaternion(camera.quaternion);
             this.bar.position.copy(this.billboardUp).multiplyScalar(this.spriteHeight+.4);
         } else this.sprite.rotation.y=yaw;
-        this.animator.setScreenAngle(Math.atan2(this.facingVec[0], this.facingVec[1]) - yaw);
-        if (!this.striding()) this.animator.update(dt * playbackSpeed);
-        // Enemy atlases hold one drawing for short actions. Give that drawing a physical reaction.
-        if (!this.model && this.unit.side === 'enemy') {
-            const { clip, t } = this.animator;
-            const progress = Math.min(1, t * this.animator.m.clips[clip].fps);
-            const pulse = Math.sin(Math.PI * progress);
-            if (clip === 'fire' || clip === 'hit' || clip === 'throw') {
-                const side = Math.sin(Math.atan2(this.facingVec[0], this.facingVec[1]) - yaw);
-                this.sprite.rotateZ(side * pulse * (clip === 'hit' ? .16 : .08));
-                this.sprite.position.y = pulse * (clip === 'throw' ? .14 : -.07);
-            } else this.sprite.position.y = 0;
+        if (this.animator) {
+            this.animator.setScreenAngle(Math.atan2(this.facingVec[0], this.facingVec[1]) - yaw);
+            if (!this.striding()) this.animator.update(dt * playbackSpeed);
+            // Enemy atlases hold one drawing for short actions. Give that drawing a physical reaction.
+            if (!this.model && this.unit.side === 'enemy') {
+                const { clip, t } = this.animator;
+                const progress = Math.min(1, t * this.animator.m.clips[clip].fps);
+                const pulse = Math.sin(Math.PI * progress);
+                if (clip === 'fire' || clip === 'hit' || clip === 'throw') {
+                    const side = Math.sin(Math.atan2(this.facingVec[0], this.facingVec[1]) - yaw);
+                    this.sprite.rotateZ(side * pulse * (clip === 'hit' ? .16 : .08));
+                    this.sprite.position.y = pulse * (clip === 'throw' ? .14 : -.07);
+                } else this.sprite.position.y = 0;
+            }
+            for (const map of [this.normal, this.lighting]) { if (map) { map.repeat.copy(this.texture.repeat); map.offset.copy(this.texture.offset); } }
         }
-        for (const map of [this.normal, this.lighting]) { map.repeat.copy(this.texture.repeat); map.offset.copy(this.texture.offset); }
         this.bar.visible = !this.unit.dead;
         // PLAN-15: the selection beacon bobs above the head; the selected ring breathes.
         this.pulseT=(this.pulseT||0)+dt;
@@ -206,7 +229,12 @@ export class UnitView {
     setHovered(on) { this.hovered = !!on; this.selRing.visible = this.selected || this.hovered; this.selRing.material.opacity = this.selected ? 0.95 : 0.6; }
     setVisible(on) { this.visibilityRequested = on; this.group.visible = on && unitBelowCut(this.visualZ, this.scene.cutLevel); }
     dispose() {
-        this.model?.dispose();this.sprite.customDepthMaterial?.dispose(); this.scene.scene.remove(this.group); this.texture.dispose(); this.normal.dispose(); this.lighting.dispose(); this.material.dispose(); this.barTex.dispose(); }
+        this.model?.dispose();
+        this.sprite?.geometry?.dispose?.();
+        this.sprite?.customDepthMaterial?.dispose?.();
+        this.scene.scene.remove(this.group);
+        this.texture?.dispose(); this.normal?.dispose(); this.lighting?.dispose(); this.material?.dispose(); this.barTex.dispose();
+    }
 }
 
 let blobTex = null;

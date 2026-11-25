@@ -125,9 +125,19 @@ export function battleReport(battle, desc = {}, extra = {}) {
     const o = b.objective, outcome = b.outcome || { winner: 'none', reason: 'abandoned', round: b.round };
     // PLAN-09: what this match says about the squad's playstyle, and how the AI will adapt next time (the client and
     // server cache the merged profile; `adaptation` previews it from the profile this battle was played against).
+    const biome = b.biome || desc.operation?.plot || null;
+    const pLeft = b.unitsOf('player').filter(u => !u.drone).length;
+    const eLeft = b.unitsOf('enemy').filter(u => !u.drone).length;
+    const margin = Math.max(1, Math.abs(pLeft - eLeft));
     const style = playstyleFromBattle(b);
-    const next = mergeProfile(desc.aiProfile || null, style, { outcome: outcome.winner, scenario: desc.scenario || m.id });
-    const npcShots = b.log.filter(e => e.t === 'shot' && e.chance != null);
+    const next = mergeProfile(desc.aiProfile || null, style, { outcome: outcome.winner, scenario: desc.scenario || m.id, biome, tuning: b.aiTuning || null, margin });
+    const shotEvs = b.log.filter(e => e.t === 'shot');
+    const projs = shotEvs.flatMap(e => e.projectiles || []);
+    const projHits = projs.filter(p => p.kind === 'unit').length;
+    const headshots = projs.filter(p => p.headshot).length;
+    const pierced = projs.filter(p => p.pierced?.length).length;
+    const fireModes = shotEvs.reduce((a, e) => { const m = e.fireMode || 'single'; a[m] = (a[m] || 0) + 1; return a; }, {});
+    const avgSpread = shotEvs.length ? +(shotEvs.reduce((s, e) => s + (e.spread || 0), 0) / shotEvs.length).toFixed(2) : null;
     return {
         version: REPORT_VERSION,
         run: { ...extra },
@@ -150,11 +160,11 @@ export function battleReport(battle, desc = {}, extra = {}) {
             voxelsDestroyed: b.stats.voxelsDestroyed, fires: b.stats.fires, breaches: b.stats.breaches, reactionShots: b.stats.reactions,
             doorsKicked, collapses, drops: b.stats.drops || 0, undergroundSteps: b.stats.undergroundSteps || 0, flankSteps: b.stats.flankSteps || 0
         },
-        playstyle: { ...style, faced: desc.aiProfile ? { matches: desc.aiProfile.matches || 0, traits: desc.aiProfile.traits } : null,
+        playstyle: { ...style, biome, faced: desc.aiProfile ? { matches: desc.aiProfile.matches || 0, traits: desc.aiProfile.traits } : null,
             tuning: b.aiTuning || null, nextTuning: next.tuning, adaptation: next.adaptation,
-            hitChance: { shots: npcShots.length, avg: npcShots.length ? Math.round(npcShots.reduce((s, e) => s + e.chance, 0) / npcShots.length) : null,
-                hits: npcShots.reduce((s, e) => s + (e.rolls || []).filter(x => x.hit).length, 0), rolls: npcShots.reduce((s, e) => s + (e.rolls || []).length, 0),
-                crits: npcShots.reduce((s, e) => s + (e.rolls || []).filter(x => x.crit).length, 0) } },
+            aiAdaptation: b.aiAdaptation || null,
+            biomeMemory: biome ? (next.biomeMemory?.[biome] || null) : null,
+            ballistics: { shots: shotEvs.length, projectiles: projs.length, hits: projHits, hitRate: pct(projHits, projs.length), headshots, pierced, avgSpread, fireModes } },
         timeline
     };
 }
@@ -184,7 +194,7 @@ export function reportText(r) {
     if (r.playstyle) {
         const ps = r.playstyle;
         lines.push('', `Playstyle: ${ps.headline?.length ? ps.headline.join(', ') : 'balanced'} · ${Object.keys(TRAITS).map(k => `${k} ${Math.round(ps.traits[k] * 100)}`).join(' · ')}`);
-        if (ps.hitChance?.shots) lines.push(`Rolled shots (NPC + overwatch): ${ps.hitChance.shots} · average chance ${ps.hitChance.avg}% · ${ps.hitChance.hits}/${ps.hitChance.rolls} rolls hit · ${ps.hitChance.crits} crits`);
+        if (ps.ballistics?.shots) lines.push(`Ballistics: ${ps.ballistics.shots} shots (${ps.ballistics.projectiles} rounds) · ${ps.ballistics.hits}/${ps.ballistics.projectiles} landed (${ps.ballistics.hitRate ?? '–'}%) · ${ps.ballistics.headshots} headshots · avg spread ${ps.ballistics.avgSpread ?? '–'}°`);
         for (const a of ps.adaptation || []) lines.push(`  AI next time: ${a}`);
     }
     const env = r.environment;

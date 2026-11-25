@@ -45,16 +45,16 @@ test('a peek shot leaves from the peek tile, is validated, and the soldier steps
     assert.ok(back && u.x === 10 && u.y === 20, 'back home');
 });
 
-test('the leading projectile hits the reticle body part from home and either peek tile', async () => {
+test('a precision cone shot hits the aimed body part honestly from home and either peek tile', async () => {
     const { partCentre } = await import('./Ballistics.js');
     for (const from of [null, { x: 9, y: 20, z: 1 }, { x: 11, y: 20, z: 1 }]) {
-        const b = arena({ squad: ['grenadier'], enemies: [{ type: 'cultist', pos: { x: 10, y: 8, z: 1 }, group: 0 }] });
+        const b = arena({ squad: ['marksman'], enemies: [{ type: 'cultist', pos: { x: 10, y: 8, z: 1 }, group: 0 }] });
         const u = b.unit('p0'), e = b.unit('e0'), point = partCentre(e, 'torso');
-        const r = b.apply({ type: 'shoot', unitId: u.id, weaponId: u.weapon, aim: { point }, ...(from ? { from } : {}) });
+        const r = b.apply({ type: 'shoot', unitId: u.id, weaponId: 'longrifle', aim: { point }, ...(from ? { from } : {}) });
         assert.ok(r.ok, r.reason);
         const shot = r.events.find(ev => ev.t === 'shot');
         assert.ok(Math.abs(shot.muzzle.x - ((from?.x ?? u.x) + 0.5)) < 0.7, 'the trace starts at the requested firing tile');
-        assert.equal(shot.projectiles[0].unitId, e.id, `the leading projectile hits from ${from ? `x=${from.x}` : 'home'}`);
+        assert.equal(shot.projectiles[0].unitId, e.id, `precision cone hits from ${from ? `x=${from.x}` : 'home'}`);
         assert.equal(shot.projectiles[0].part, 'torso');
     }
 });

@@ -14,7 +14,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { mergeProfile, sanitizeAiProfile, blendProfiles, profileForDesc, headline, aiTuningFrom, adaptationNotes, PLAYSTYLE_VERSION, TRAITS } from '../../shared/session/Playstyle.js';
+import { mergeProfile, sanitizeAiProfile, blendProfiles, profileForDesc, headline, aiTuningFrom, adaptationNotes, PLAYSTYLE_VERSION, TRAITS, ALL_TRAITS } from '../../shared/session/Playstyle.js';
+import { BIOME_PRIORS, TUNING_KEYS } from '../../shared/ai/AdaptivePolicy.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 // Tests (node --test sets NODE_TEST_CONTEXT) never touch the real cache.
@@ -42,10 +43,12 @@ function full(p) {
 
 function writeAiCache(cache, file = AI_CACHE_FILE) {
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    const tmp = `${file}.${process.pid}.tmp`;
+    const tmp = `${file}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2, 6)}.tmp`;
     fs.writeFileSync(tmp, JSON.stringify(cache, null, 2));
     fs.renameSync(tmp, file);
 }
+
+const num = (v, fb) => { const n = Number(v); return Number.isFinite(n) ? n : fb; };
 
 /** The profile a new battle plays against: the named players' profiles blended, else the squad profile. */
 export function aiProfileFor(names = [], file = AI_CACHE_FILE) {
@@ -60,9 +63,18 @@ export function aiProfileFor(names = [], file = AI_CACHE_FILE) {
  */
 export function recordAiMatch(style, meta = {}, names = [], file = AI_CACHE_FILE) {
     if (!style?.traits || typeof style.traits !== 'object') throw Error('playstyle traits required');
-    const clean = { traits: Object.fromEntries(Object.keys(TRAITS).map(k => [k, Number(style.traits[k] ?? 0.5)])), headline: Array.isArray(style.headline) ? style.headline.slice(0, 3).map(s => String(s).slice(0, 40)) : undefined };
+    const srcExt = style.extendedTraits && typeof style.extendedTraits === 'object' ? style.extendedTraits : style.traits;
+    const clean = {
+        traits: Object.fromEntries(Object.keys(TRAITS).map(k => [k, num(style.traits[k], 0.5)])),
+        extendedTraits: Object.fromEntries(Object.keys(ALL_TRAITS).map(k => [k, num(srcExt[k], num(style.traits[k], 0.5))])),
+        headline: Array.isArray(style.headline) ? style.headline.slice(0, 3).map(s => String(s).slice(0, 40)) : undefined
+    };
     const c = readAiCache(file), at = new Date().toISOString();
-    const m = { outcome: meta.outcome, scenario: meta.scenario, at };
+    const biome = meta.biome && BIOME_PRIORS[meta.biome] ? meta.biome : null;
+    const tuning = meta.tuning && typeof meta.tuning === 'object'
+        ? Object.fromEntries(TUNING_KEYS.map(k => [k, Math.max(0.25, Math.min(4, num(meta.tuning[k], 1)))]))
+        : null;
+    const m = { outcome: meta.outcome, scenario: meta.scenario, ...(biome ? { biome } : {}), ...(tuning ? { tuning } : {}), ...(meta.margin != null ? { margin: Math.max(1, num(meta.margin, 1)) } : {}), at };
     c.squad = mergeProfile(c.squad, clean, m);
     for (const n of [...new Set(names.map(cleanName).filter(Boolean))]) c.players[n] = mergeProfile(c.players[n], clean, m);
     c.updatedAt = at;

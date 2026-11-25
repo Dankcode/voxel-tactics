@@ -15,6 +15,7 @@ import { createBattle, sanitizeDesc } from '../../shared/session/Scenarios.js';
 import { unpackMission } from '../../shared/session/MissionSnapshot.js';
 import { buildMissionAsync } from './MissionBuilder.js';
 import { decide, formationIntents, aiOrder } from '../../shared/battle/Ai.js';
+import { alive } from '../../shared/battle/Units.js';
 import { aiProfileFor, recordAiMatch } from './AiCache.js';
 import { playstyleFromBattle } from '../../shared/session/Playstyle.js';
 
@@ -108,7 +109,9 @@ export class MissionRoom extends Room {
         if (!r.ok) return r;
         if (this.battle.outcome && !this.aiRecorded) {
             this.aiRecorded = true;
-            try { recordAiMatch(playstyleFromBattle(this.battle), { outcome: this.battle.outcome.winner, scenario: this.desc.scenario }, this.players.map(p => p.name)); }
+            const pLeft = this.battle.unitsOf('player').filter(u => !u.drone).length;
+            const eLeft = this.battle.unitsOf('enemy').filter(u => !u.drone).length;
+            try { recordAiMatch(playstyleFromBattle(this.battle), { outcome: this.battle.outcome.winner, scenario: this.desc.scenario, biome: this.battle.biome, tuning: this.battle.aiTuning, margin: Math.max(1, Math.abs(pLeft - eLeft)) }, this.players.map(p => p.name)); }
             catch (error) { console.warn('AI cache:', error.message); }
         }
         const entry = { seq: this.log.length + 1, intent, nonce };
@@ -123,8 +126,10 @@ export class MissionRoom extends Room {
         const nonce = m?.nonce;
         const reject = reason => client.send('reject', { nonce, reason });
         if (typeof nonce !== 'string' || nonce.length < 1 || nonce.length > 128 || !m.intent || typeof m.intent !== 'object' || Array.isArray(m.intent)) return reject('bad_command');
+        let fingerprint;
+        try { fingerprint = JSON.stringify(m.intent); } catch { return reject('bad_command'); }
+        if (!fingerprint || fingerprint.length > 16384) return reject('bad_command');
         const key = `${player.id}:${nonce}`;
-        const fingerprint = JSON.stringify(m.intent);
         const prior = this.receipts.get(key);
         if (prior) {
             if (prior.fingerprint !== fingerprint) return reject('nonce_reused');
@@ -132,15 +137,22 @@ export class MissionRoom extends Room {
             return;
         }
         if (this.receipts.size >= 20000) return reject('command_limit');
+        if (!Number.isInteger(m.expectedSeq)) return reject('bad_command');
         if (m.expectedSeq !== this.log.length) return reject('stale_command');
         // Reserve the nonce before executing so retries cannot repeat votes, AP costs, or AI turns.
         const before = this.log.length;
         this.receipts.set(key, { fingerprint, result: { nonce, ok: false, reason: 'rejected', events: [] } });
-        this.executeIntent(client, m);
+        try {
+            this.executeIntent(client, m);
+        } catch (err) {
+            console.error('executeIntent error:', err);
+            this.rejectCommand(client, nonce, 'server_error');
+            return;
+        }
         const accepted = this.log.slice(before).find(entry => entry.nonce === nonce);
         const result = accepted ? { nonce, ok: true, events: [] } : this.receipts.get(key).result;
         this.receipts.get(key).result = result;
-        client.send('receipt', result);
+        if (result.ok) client.send('receipt', result);
     }
     rejectCommand(client, nonce, reason) {
         const key = `${this.playerOf(client)?.id}:${nonce}`;
@@ -180,20 +192,15 @@ export class MissionRoom extends Room {
     /** Enemy AI on the server; every decision is streamed as an intent. */
     runEnemyTurn() {
         const b = this.battle;
-        for (let guard = 0; guard < 200 && !b.outcome && b.activeSide === 'enemy'; guard++) {
-            let acted = false;
-            for (const intent of formationIntents(b, 'enemy')) this.commit({ ...intent, by: '*' });   // PLAN-09 enemy formations
-            for (const u of aiOrder(b, 'enemy')) {
-                for (let k = 0; k < 6 && !b.outcome; k++) {
-                    const intent = decide(b, u);
-                    if (!intent) break;
-                    if (!this.commit({ ...intent, by: '*' }).ok) break;
-                    acted = true;
-                }
+        if (b.outcome || b.activeSide !== 'enemy') return;
+        for (const intent of formationIntents(b, 'enemy')) this.commit({ ...intent, by: '*' });   // PLAN-09 enemy formations
+        for (const u of aiOrder(b, 'enemy')) {
+            for (let k = 0; k < 6 && alive(u) && !b.outcome; k++) {
+                const intent = decide(b, u);
+                if (!intent) break;
+                if (!this.commit({ ...intent, by: '*' }).ok) break;
             }
-            if (!b.outcome) this.commit({ type: 'endTurn', side: 'enemy', by: '*' });
-            void acted;
-            break;
         }
+        if (!b.outcome && b.activeSide === 'enemy') this.commit({ type: 'endTurn', side: 'enemy', by: '*' });
     }
 }

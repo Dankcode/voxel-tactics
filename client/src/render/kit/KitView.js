@@ -142,7 +142,7 @@ export class KitView {
             if (intactCache.has(ak)) return intactCache.get(ak);
             const h = this.hints[ak];
             const ok = !!h && h.cells.every((c,i) => { const [x, y, z] = c.split(',').map(Number); const kk = keyOf(store.get(x, y, z)); return h.tree ? true : h.materials?store.get(x,y,z)===h.materials[i]:OBJECTS.has(kk); })
-                && (!h.tree || keyOf(store.get(...ak.split(',').map(Number))) === 'trunk');
+                && (!h.tree || (keyOf(store.get(...ak.split(',').map(Number))) === 'trunk' && !h.cells.some(c => store.scars?.has(c))));
             intactCache.set(ak, ok);
             return ok;
         };

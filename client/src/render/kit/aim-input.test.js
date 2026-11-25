@@ -19,35 +19,42 @@ function aimingGame(){
     g.aim.snap({x:10,y:.5,h:2.35});g.freeAim={...g.aim.current};return g;
 }
 
-test('locked aim uses movement deltas even when the physical cursor coordinates stay fixed',()=>{
-    const g=aimingGame(),e={clientX:640,clientY:360,movementX:100,movementY:20};
-    g.onHover(e);const first={...g.aim.target};g.onHover(e);
-    assert.ok(g.aim.target.y>first.y);assert.ok(g.aim.target.h<first.h);
-    g.aimPointer.locked=false;const before={...g.aim.target};
-    g.onHover({...e,clientX:1200});assert.deepEqual(g.aim.target,before,'moving over HUD cannot drag the aim');
+test('direct-cursor hover steers aim on canvas, ignores HUD elements, and right-drag orbits camera',()=>{
+    const g=aimingGame();const pointed=[],orbited=[];
+    g.aimFromPointer=(x,y)=>pointed.push([x,y]);
+    g.cameraDirector.orbitAim=(dx,dy)=>orbited.push([dx,dy]);
+    g.onHover({clientX:640,clientY:360});
+    assert.deepEqual(pointed,[[640,360]]);
+    g.onHover({clientX:1200,clientY:680,target:{closest:sel=>sel==='#hud > *'?{}:null}});
+    assert.equal(pointed.length,1,'moving over HUD widgets does not steer aim');
+    g.orbitDrag={sx:640,sy:360,x:640,y:360,moved:false};
+    g.onHover({clientX:660,clientY:350});
+    assert.deepEqual(orbited,[[20,-10]]);
+    assert.equal(g.orbitDrag.moved,true);
 });
 
-test('the first click captures, a locked click fires the current reticle point, and fallback drag never fires',()=>{
-    const g=aimingGame();let captures=0,shot;
-    g.aimPointer.request=()=>captures++;g.intent=p=>shot=p;
-    g.aimPointer.locked=false;g.onClick({clientX:100,clientY:100});
-    assert.equal(captures,1);assert.equal(shot,undefined);
-    g.aimPointer.locked=true;g.aim.setTarget({x:20,y:5,h:1});
+test('first click in shoot mode fires immediately at current aim point while drag release never fires',()=>{
+    const g=aimingGame();let shot;
+    g.intent=p=>{shot=p;};
+    g.dragging={moved:true};
     g.onClick({clientX:100,clientY:100});
-    assert.deepEqual(shot.aim.point,g.freeAim,'fires the lagged reticle, not the desired destination or stale screen coordinates');
-    g.aimPointer.locked=false;g.aimPointer.unavailable=true;shot=undefined;
-    g.aimDrag={x:100,y:100};g.onHover({clientX:160,clientY:130});g.onClick({clientX:160,clientY:130});
-    assert.equal(shot,undefined);assert.equal(captures,1);
+    assert.equal(shot,undefined,'drag release never fires');
+    g.dragging=null;g.aim.setTarget({x:20,y:5,h:1});
+    g.onClick({clientX:100,clientY:100});
+    assert.deepEqual(shot.aim.point,g.freeAim,'direct click fires the active reticle point without capture');
 });
 
-test('aim entry follows the soldier facing without selecting a spotted enemy',()=>{
+test('aim entry auto-frames visible hostiles and falls back to soldier facing when none are visible',()=>{
     const g=aimingGame(),u=g.selectedUnit();u.facing='e';let framed;
-    g.battle.enemiesOf=()=>{throw Error('aim entry must not search for enemies');};g.isVisible=()=>{throw Error('aim entry must not test target visibility');};
-    g.aimAt=()=>{throw Error('aim entry must not lock on');};g.aimPointer.request=()=>{};
-    g.scene.camera={getWorldDirection:()=>{throw Error('aim entry must not use the tactical camera');}};g.frameAim=(unit,p)=>{framed={...p};};
+    g.frameAim=(unit,p)=>{framed={...p};};
+    const enemy={id:'e0',x:12,y:2,z:0,parts:{torso:{}}};
+    g.visibleTargets=()=>[enemy];g.battle.unit=id=>id===enemy.id?enemy:null;g.views=new Map();
     g.enterTargeting();
-    assert.ok(g.freeAimManual);assert.deepEqual(framed,g.aim.current);
-    assert.deepEqual(framed,{x:8.5,y:.5,h:u.z+2.1});assert.ok(g.aimPick==null);assert.ok(g.rawAim==null);
+    assert.equal(g.framedTargetId,'e0');assert.equal(g.aimPick?.unitId,'e0');
+    g.visibleTargets=()=>[];g.aimPick=null;g.framedTargetId=null;
+    g.enterTargeting();
+    assert.deepEqual(framed,g.aim.current);
+    assert.deepEqual(framed,{x:8.5,y:.5,h:u.z+2.1});assert.equal(g.aimPick,null);
 });
 
 test('aim entry supports diagonal soldier facing',()=>{
@@ -78,7 +85,7 @@ test('mouse aim never snaps depth or body parts even while a target is under the
     assert.equal(g.aimPick?.unitId,enemy.id,'hit detection remains passive and does not move the reticle');
 });
 
-test('the displayed centre trace reaches beyond the steering point and matches the first fired projectile', () => {
+test('the displayed centre trace reaches beyond the steering point and real shot projectiles disperse inside the cone', () => {
     const store = new VoxelStore(48,8,8);
     store.fill(0,0,0,47,7,0,MAT.bedrock);
     const battle = new Battle({mission:{id:'aim-range',store,rooms:[],buildings:[],spawns:{
@@ -93,8 +100,14 @@ test('the displayed centre trace reaches beyond the steering point and matches t
     const events = battle.apply({type:'shoot',unitId:u.id,weaponId:g.mode.weaponId,aim,by:'*'}).events;
     const shot = events.find(e=>e.t==='shot');
     assert.ok(g.aimTrace.t>18);
-    assert.deepEqual(shot.projectiles[0].to,g.aimTrace.point);
-    assert.equal(shot.projectiles[0].unitId,g.aimPick.unitId);
+    assert.equal(g.aimPick.unitId,'e0');
+    assert.equal(shot.projectiles.length,3);
+    for (const pr of shot.projectiles) {
+        const d=[pr.to.x-shot.muzzle.x,pr.to.y-shot.muzzle.y,pr.to.h-shot.muzzle.h];
+        const a=[point.x-shot.muzzle.x,point.y-shot.muzzle.y,point.h-shot.muzzle.h];
+        const cos=(d[0]*a[0]+d[1]*a[1]+d[2]*a[2])/(Math.hypot(...d)*Math.hypot(...a));
+        assert.ok(Math.acos(Math.min(1,cos))*180/Math.PI <= 4, 'projectile stays within burst cone');
+    }
     assert.ok(events.findIndex(e=>e.t==='damage')>events.indexOf(shot));
 });
 
@@ -127,7 +140,9 @@ test('left and right peeks keep the reticle on the same target and use the autho
         assert.deepEqual(g.freeAim,p,'returning home keeps the same target');
         assert.ok(camera.cam.quaternion.angleTo(quaternion)<1e-9,'returning home also preserves the viewing direction');
         g.moveAim(30,0);g.stepAim(1/60);
-        assert.ok(camera.cam.quaternion.angleTo(quaternion)>1e-4,'the next mouse movement resumes normal camera turning');
+        assert.ok(camera.cam.quaternion.angleTo(quaternion)<1e-9,'reticle aim steady-cam avoids unwanted spin loops');
+        camera.orbitAim(30,0);
+        assert.ok(camera.cam.quaternion.angleTo(quaternion)>1e-4,'explicit orbit rotates the shoulder camera');
     }
 });
 

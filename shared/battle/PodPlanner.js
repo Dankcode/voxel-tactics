@@ -8,8 +8,9 @@
 // Everything is read-only and deterministic (ties broken by id), so lockstep and the sim are unchanged in kind.
 import { WALKERS } from './Walker.js';
 import { WEAPONS, THROWABLES } from '../content/weapons.js';
+import { projectileDamage, roundsFor } from './FireControl.js';
 import { alive } from './Units.js';
-import { hitChance } from './HitChance.js';
+import { evaluateBallisticShot } from './Ballistics.js';
 import { enemyThreats } from './EnemyAi.js';
 
 const byId = (a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
@@ -38,8 +39,13 @@ export function podPlan(battle, group) {
         for (const m of members) {
             const w = ballistic(m); if (!w) continue;
             const d = Math.hypot(t.x - m.x, t.y - m.y); if (d > w.maxRange) continue;
-            const chance = t.ghost ? 0.15 : hitChance(battle, m, t.u, w).chance / 100;
-            value += chance * (w.damage || 0) * (w.projectiles || 1);
+            if (!t.ghost) {
+                value += evaluateBallisticShot(battle, m, t.u, w, { samples: 10 }).expectedDamage;
+            } else {
+                const rounds = Math.max(1, roundsFor(m, w)), pellets = w.pellets || 1;
+                let salvo = 0; for (let p = 0; p < pellets; p++) salvo += projectileDamage(w, d, p);
+                value += 0.15 * salvo * rounds;
+            }
         }
         value *= 1 + (1 - t.u.hp / Math.max(1, t.u.maxHp)) * 0.8;
         if (t.ghost) value *= 0.5;

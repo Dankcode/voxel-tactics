@@ -1,0 +1,531 @@
+{
+  "version": 2,
+  "generatedAt": "2026-11-24T06:50:02.979Z",
+  "staticBiomePriors": {
+    "downtown": {
+      "highGroundBias": 1.15,
+      "indoorBias": 1.1,
+      "coverBreakPriority": 1.1,
+      "doorWatch": 1.1
+    },
+    "industrial": {
+      "spread": 1.05,
+      "coverBreakPriority": 1.2,
+      "recoilDiscipline": 1.1,
+      "flankGuard": 1.1
+    },
+    "suburb": {
+      "indoorBias": 1.15,
+      "doorWatch": 1.15,
+      "overwatchCaution": 1.1,
+      "ambush": 1.1
+    },
+    "harbor": {
+      "closeIn": 1.1,
+      "recoilDiscipline": 1.15,
+      "flankGuard": 1.15,
+      "highGroundBias": 1.05
+    },
+    "winter_outpost": {
+      "indoorBias": 1.15,
+      "closeIn": 1.15,
+      "recoilDiscipline": 1.1,
+      "hunt": 1.1
+    },
+    "old_quarter": {
+      "ambush": 1.15,
+      "doorWatch": 1.2,
+      "closeIn": 1.1,
+      "indoorBias": 1.15
+    },
+    "metro_hub": {
+      "closeIn": 1.2,
+      "ambush": 1.15,
+      "keepAway": 1.05,
+      "recoilDiscipline": 1.1,
+      "hunt": 1.15
+    },
+    "arid_compound": {
+      "highGroundBias": 1.2,
+      "closeIn": 1.2,
+      "recoilDiscipline": 1.15,
+      "flankGuard": 1.15,
+      "coverBreakPriority": 1.1
+    }
+  },
+  "learnedBiomeMemory": {
+    "downtown": {
+      "matches": 6,
+      "wins": 4,
+      "winRate": 0.67,
+      "deltas": {
+        "overwatchCaution": 0.98,
+        "flankGuard": 0.97,
+        "spread": 1.07,
+        "ambush": 0.94,
+        "hunt": 0.94,
+        "closeIn": 1.02,
+        "flush": 0.96,
+        "doorWatch": 1.11,
+        "keepAway": 0.94,
+        "highGroundBias": 0.94,
+        "recoilDiscipline": 1.09,
+        "coverBreakPriority": 0.94,
+        "indoorBias": 0.99
+      }
+    },
+    "industrial": {
+      "matches": 6,
+      "wins": 2,
+      "winRate": 0.33,
+      "deltas": {
+        "overwatchCaution": 0.99,
+        "flankGuard": 1,
+        "spread": 1.03,
+        "ambush": 0.98,
+        "hunt": 0.98,
+        "closeIn": 1.03,
+        "flush": 0.98,
+        "doorWatch": 1.06,
+        "keepAway": 0.98,
+        "highGroundBias": 0.98,
+        "recoilDiscipline": 1.07,
+        "coverBreakPriority": 0.98,
+        "indoorBias": 0.99
+      }
+    },
+    "suburb": {
+      "matches": 6,
+      "wins": 3,
+      "winRate": 0.5,
+      "deltas": {
+        "overwatchCaution": 1,
+        "flankGuard": 0.98,
+        "spread": 0.98,
+        "ambush": 1,
+        "hunt": 1,
+        "closeIn": 1.01,
+        "flush": 0.99,
+        "doorWatch": 1.03,
+        "keepAway": 1,
+        "highGroundBias": 1,
+        "recoilDiscipline": 1.02,
+        "coverBreakPriority": 1,
+        "indoorBias": 0.99
+      }
+    },
+    "harbor": {
+      "matches": 6,
+      "wins": 4,
+      "winRate": 0.67,
+      "deltas": {
+        "overwatchCaution": 0.97,
+        "flankGuard": 0.99,
+        "spread": 1.12,
+        "ambush": 0.91,
+        "hunt": 0.89,
+        "closeIn": 1.01,
+        "flush": 0.93,
+        "doorWatch": 1.13,
+        "keepAway": 0.89,
+        "highGroundBias": 0.89,
+        "recoilDiscipline": 1.16,
+        "coverBreakPriority": 0.89,
+        "indoorBias": 0.97
+      }
+    },
+    "winter_outpost": {
+      "matches": 6,
+      "wins": 3,
+      "winRate": 0.5,
+      "deltas": {
+        "overwatchCaution": 0.93,
+        "flankGuard": 0.94,
+        "spread": 1.06,
+        "ambush": 0.9,
+        "hunt": 0.89,
+        "closeIn": 1.05,
+        "flush": 0.9,
+        "doorWatch": 1.16,
+        "keepAway": 0.89,
+        "highGroundBias": 0.89,
+        "recoilDiscipline": 1.18,
+        "coverBreakPriority": 0.89,
+        "indoorBias": 0.97
+      }
+    },
+    "old_quarter": {
+      "matches": 6,
+      "wins": 2,
+      "winRate": 0.33,
+      "deltas": {
+        "overwatchCaution": 1.02,
+        "flankGuard": 1.02,
+        "spread": 1.06,
+        "ambush": 1,
+        "hunt": 0.99,
+        "closeIn": 1.02,
+        "flush": 1,
+        "doorWatch": 1.05,
+        "keepAway": 0.99,
+        "highGroundBias": 0.99,
+        "recoilDiscipline": 1.03,
+        "coverBreakPriority": 0.99,
+        "indoorBias": 1.02
+      }
+    },
+    "metro_hub": {
+      "matches": 6,
+      "wins": 5,
+      "winRate": 0.83,
+      "deltas": {
+        "overwatchCaution": 0.95,
+        "flankGuard": 0.94,
+        "spread": 1.13,
+        "ambush": 0.89,
+        "hunt": 0.87,
+        "closeIn": 1.01,
+        "flush": 0.91,
+        "doorWatch": 1.15,
+        "keepAway": 0.87,
+        "highGroundBias": 0.87,
+        "recoilDiscipline": 1.16,
+        "coverBreakPriority": 0.87,
+        "indoorBias": 0.96
+      }
+    },
+    "arid_compound": {
+      "matches": 6,
+      "wins": 3,
+      "winRate": 0.5,
+      "deltas": {
+        "overwatchCaution": 1.04,
+        "flankGuard": 1.03,
+        "spread": 1.13,
+        "ambush": 1,
+        "hunt": 0.99,
+        "closeIn": 1.02,
+        "flush": 1.01,
+        "doorWatch": 1.07,
+        "keepAway": 0.99,
+        "highGroundBias": 0.98,
+        "recoilDiscipline": 1.08,
+        "coverBreakPriority": 0.99,
+        "indoorBias": 1.03
+      }
+    }
+  },
+  "effectiveBiomePriors": {
+    "downtown": {
+      "flankGuard": 0.97,
+      "spread": 1.07,
+      "ambush": 0.94,
+      "hunt": 0.94,
+      "flush": 0.96,
+      "doorWatch": 1.22,
+      "keepAway": 0.94,
+      "highGroundBias": 1.08,
+      "recoilDiscipline": 1.09,
+      "coverBreakPriority": 1.03,
+      "indoorBias": 1.09
+    },
+    "industrial": {
+      "flankGuard": 1.1,
+      "spread": 1.08,
+      "closeIn": 1.03,
+      "doorWatch": 1.06,
+      "recoilDiscipline": 1.18,
+      "coverBreakPriority": 1.18
+    },
+    "suburb": {
+      "overwatchCaution": 1.1,
+      "ambush": 1.1,
+      "doorWatch": 1.18,
+      "indoorBias": 1.14
+    },
+    "harbor": {
+      "overwatchCaution": 0.97,
+      "flankGuard": 1.14,
+      "spread": 1.12,
+      "ambush": 0.91,
+      "hunt": 0.89,
+      "closeIn": 1.11,
+      "flush": 0.93,
+      "doorWatch": 1.13,
+      "keepAway": 0.89,
+      "highGroundBias": 0.93,
+      "recoilDiscipline": 1.33,
+      "coverBreakPriority": 0.89,
+      "indoorBias": 0.97
+    },
+    "winter_outpost": {
+      "overwatchCaution": 0.93,
+      "flankGuard": 0.94,
+      "spread": 1.06,
+      "ambush": 0.9,
+      "closeIn": 1.21,
+      "flush": 0.9,
+      "doorWatch": 1.16,
+      "keepAway": 0.89,
+      "highGroundBias": 0.89,
+      "recoilDiscipline": 1.3,
+      "coverBreakPriority": 0.89,
+      "indoorBias": 1.12
+    },
+    "old_quarter": {
+      "spread": 1.06,
+      "ambush": 1.15,
+      "closeIn": 1.12,
+      "doorWatch": 1.26,
+      "recoilDiscipline": 1.03,
+      "indoorBias": 1.17
+    },
+    "metro_hub": {
+      "overwatchCaution": 0.95,
+      "flankGuard": 0.94,
+      "spread": 1.13,
+      "closeIn": 1.21,
+      "flush": 0.91,
+      "doorWatch": 1.15,
+      "keepAway": 0.91,
+      "highGroundBias": 0.87,
+      "recoilDiscipline": 1.28,
+      "coverBreakPriority": 0.87,
+      "indoorBias": 0.96
+    },
+    "arid_compound": {
+      "overwatchCaution": 1.04,
+      "flankGuard": 1.18,
+      "spread": 1.13,
+      "closeIn": 1.22,
+      "doorWatch": 1.07,
+      "highGroundBias": 1.18,
+      "recoilDiscipline": 1.24,
+      "coverBreakPriority": 1.09,
+      "indoorBias": 1.03
+    }
+  },
+  "biomeObservedStats": {
+    "downtown": {
+      "matches": 2,
+      "avgRounds": 12.5,
+      "playerHitRate": 0.426,
+      "enemyHitRate": 0.645,
+      "avgShotDist": 14.09,
+      "avgSpread": 2.14,
+      "coverDestroyed": 3,
+      "highGroundRate": 0.327,
+      "indoorRate": 0.481
+    },
+    "industrial": {
+      "matches": 2,
+      "avgRounds": 13,
+      "playerHitRate": 0.436,
+      "enemyHitRate": 0.261,
+      "avgShotDist": 15.87,
+      "avgSpread": 2.31,
+      "coverDestroyed": 0.5,
+      "highGroundRate": 0.239,
+      "indoorRate": 0.476
+    },
+    "suburb": {
+      "matches": 2,
+      "avgRounds": 13.5,
+      "playerHitRate": 0.353,
+      "enemyHitRate": 0.561,
+      "avgShotDist": 16.8,
+      "avgSpread": 2.24,
+      "coverDestroyed": 1.5,
+      "highGroundRate": 0.363,
+      "indoorRate": 0.56
+    },
+    "harbor": {
+      "matches": 2,
+      "avgRounds": 11,
+      "playerHitRate": 0.372,
+      "enemyHitRate": 0.5,
+      "avgShotDist": 15.47,
+      "avgSpread": 2.34,
+      "coverDestroyed": 1.5,
+      "highGroundRate": 0.24,
+      "indoorRate": 0.418
+    },
+    "winter_outpost": {
+      "matches": 2,
+      "avgRounds": 13,
+      "playerHitRate": 0.51,
+      "enemyHitRate": 0.526,
+      "avgShotDist": 14.46,
+      "avgSpread": 2.41,
+      "coverDestroyed": 4,
+      "highGroundRate": 0.137,
+      "indoorRate": 0.402
+    },
+    "old_quarter": {
+      "matches": 2,
+      "avgRounds": 16,
+      "playerHitRate": 0.315,
+      "enemyHitRate": 0.63,
+      "avgShotDist": 14.52,
+      "avgSpread": 1.49,
+      "coverDestroyed": 4.5,
+      "highGroundRate": 0.376,
+      "indoorRate": 0.648
+    },
+    "metro_hub": {
+      "matches": 2,
+      "avgRounds": 14,
+      "playerHitRate": 0.377,
+      "enemyHitRate": 0.549,
+      "avgShotDist": 9.47,
+      "avgSpread": 3.06,
+      "coverDestroyed": 1,
+      "highGroundRate": 0.253,
+      "indoorRate": 0.363
+    },
+    "arid_compound": {
+      "matches": 2,
+      "avgRounds": 11.5,
+      "playerHitRate": 0.398,
+      "enemyHitRate": 0.462,
+      "avgShotDist": 13.33,
+      "avgSpread": 1.94,
+      "coverDestroyed": 1,
+      "highGroundRate": 0.278,
+      "indoorRate": 0.572
+    }
+  },
+  "archetypeCounters": {
+    "cautious-sniper": {
+      "name": "Cautious Overwatching Marksmen",
+      "detectedHeadline": [
+        "Loud",
+        "Exposed",
+        "Patient",
+        "Never waits"
+      ],
+      "enemyWinRateBaseline": 0.375,
+      "enemyWinRateAdapted": 0.5,
+      "enemyWinRateDelta": 0.125,
+      "counterTuning": {
+        "overwatchCaution": 0.55,
+        "flankGuard": 1.13,
+        "spread": 1.14,
+        "ambush": 0.55,
+        "hunt": 0.55,
+        "closeIn": 1.53,
+        "flush": 0.55,
+        "doorWatch": 0.57,
+        "keepAway": 0.55,
+        "highGroundBias": 0.82,
+        "recoilDiscipline": 1.58,
+        "coverBreakPriority": 0.56,
+        "indoorBias": 0.55
+      }
+    },
+    "aggressive-breacher": {
+      "name": "Aggressive Door Breachers",
+      "detectedHeadline": [
+        "Loud",
+        "Exposed",
+        "Never waits",
+        "Breacher"
+      ],
+      "enemyWinRateBaseline": 0.625,
+      "enemyWinRateAdapted": 0.688,
+      "enemyWinRateDelta": 0.063,
+      "counterTuning": {
+        "overwatchCaution": 0.55,
+        "flankGuard": 1.23,
+        "spread": 0.7,
+        "ambush": 0.62,
+        "hunt": 0.55,
+        "closeIn": 1.3,
+        "flush": 0.55,
+        "doorWatch": 1.59,
+        "keepAway": 0.55,
+        "highGroundBias": 0.7,
+        "recoilDiscipline": 1.62,
+        "coverBreakPriority": 0.55,
+        "indoorBias": 1
+      }
+    },
+    "overwatch-turtle": {
+      "name": "Overwatch Turtle",
+      "detectedHeadline": [
+        "Loud"
+      ],
+      "enemyWinRateBaseline": 0.625,
+      "enemyWinRateAdapted": 0.563,
+      "enemyWinRateDelta": -0.062,
+      "counterTuning": {
+        "overwatchCaution": 1.08,
+        "flankGuard": 1.26,
+        "spread": 1.2,
+        "ambush": 0.64,
+        "hunt": 0.55,
+        "closeIn": 1.08,
+        "flush": 0.85,
+        "doorWatch": 0.58,
+        "keepAway": 0.55,
+        "highGroundBias": 0.69,
+        "recoilDiscipline": 1.47,
+        "coverBreakPriority": 0.67,
+        "indoorBias": 0.6
+      }
+    },
+    "grenade-demolisher": {
+      "name": "Demolitions & Elementalist",
+      "detectedHeadline": [
+        "Loud",
+        "Elementalist",
+        "Never waits",
+        "Patient"
+      ],
+      "enemyWinRateBaseline": 0.5,
+      "enemyWinRateAdapted": 0.563,
+      "enemyWinRateDelta": 0.063,
+      "counterTuning": {
+        "overwatchCaution": 0.55,
+        "flankGuard": 0.94,
+        "spread": 1.84,
+        "ambush": 0.55,
+        "hunt": 0.55,
+        "closeIn": 1.68,
+        "flush": 0.58,
+        "doorWatch": 0.87,
+        "keepAway": 0.55,
+        "highGroundBias": 0.74,
+        "recoilDiscipline": 1.51,
+        "coverBreakPriority": 0.6,
+        "indoorBias": 0.65
+      }
+    },
+    "flanker-skirmisher": {
+      "name": "Mobile Flanker Skirmishers",
+      "detectedHeadline": [
+        "Loud",
+        "Never waits",
+        "Controlled bursts"
+      ],
+      "enemyWinRateBaseline": 0.625,
+      "enemyWinRateAdapted": 0.563,
+      "enemyWinRateDelta": -0.062,
+      "counterTuning": {
+        "overwatchCaution": 0.55,
+        "flankGuard": 1.3,
+        "spread": 0.75,
+        "ambush": 0.7,
+        "hunt": 0.55,
+        "closeIn": 1.27,
+        "flush": 0.64,
+        "doorWatch": 1.14,
+        "keepAway": 0.55,
+        "highGroundBias": 0.81,
+        "recoilDiscipline": 1.64,
+        "coverBreakPriority": 0.66,
+        "indoorBias": 0.86
+      }
+    }
+  }
+}
