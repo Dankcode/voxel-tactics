@@ -246,7 +246,7 @@ export class Game {
             v.swayEnabled=this.options.aimSway;
             if(v.tagMode!==this.options.unitTags){v.tagMode=this.options.unitTags;v.drawBar();}
             v.update(dt, cine ? Math.atan2(this.cameraDirector.cam.position.x - v.pos.x, this.cameraDirector.cam.position.z - v.pos.z) : yaw, this.scene.camera, this.player.speed);
-            v.bar.visible = (!cine || (this.mode.kind === 'shoot' && v.unit.side !== 'player')) && !v.unit.dead && v.group.visible && (v.unit.side==='player'||this.options.showEnemyBars);
+            v.bar.visible = (!cine || (this.mode.kind === 'shoot' && v.unit.side !== 'player') || !!v.activeActor) && !v.unit.dead && v.group.visible && (v.unit.side==='player'||this.options.showEnemyBars||!!v.activeActor);
             const hideInAim = cine && (
                 this.cameraDirector.hidden?.has(v.id)
                 || (this.mode.kind === 'shoot' && v.id === this.selected)
@@ -256,8 +256,8 @@ export class Game {
                 ))
             );
             v.sprite.visible = !hideInAim;
-            if (v.beacon) v.beacon.visible = !cine && !!v.selected && !v.unit.dead;
-            if (v.selRing) v.selRing.visible = !cine && (!!v.selected || !!v.hovered);
+            if (v.beacon) v.beacon.visible = !cine && !v.unit.dead && (!!v.selected || !!v.activeActor);
+            if (v.selRing) v.selRing.visible = !cine && (!!v.selected || !!v.hovered || (!!v.activeActor && !v.unit.dead));
             if (v.ring) v.ring.visible = !hideInAim;
             if (v.blob) v.blob.visible = !hideInAim;
             const ground = this.battle?.store.surfaces(Math.floor(v.pos.x), Math.floor(v.pos.z))[0];
@@ -770,25 +770,29 @@ export class Game {
                     if (r.ok) { this.player.deferSettle = true; this.player.enqueue(r.events); await this.player.whenIdle(); }
                 }
                 for (const u of aiOrder(this.battle, side)) {
-                    let looked = false;
+                    let looked = false, actedVisible = false;
                     for (let k = 0; k < 6 && alive(u) && !this.battle.outcome; k++) {
                         if (this.debug.paused) await this.debug.waitStep();
                         const intent = decide(this.battle, u, { formations: side === 'player' });
                         if (!intent) break;
                         const visibleAct = u.side === 'player' || this.isVisible(u);
                         if (!looked && this.options.followCamera && visibleAct) {
+                            const unitPos = new THREE.Vector3(u.x + 0.5, u.z + 1, u.y + 0.5);
+                            const panDist = this.scene?.target ? this.scene.target.distanceTo(unitPos) : 0;
                             this.focusUnit(u);
                             if (!(this.levelLocked && this.levelSource === 'manual')) this.focusFloor(u);
                             looked = true;
-                            await wait(110 / this.player.speed);
+                            if (panDist > 3) await wait(Math.min(180, Math.round(panDist * 14)) / this.player.speed);
                         }
                         this.debug.aiLog?.(u, intent, u.side === 'enemy' ? podRole(this.battle, u) : null);   // PLAN-15 why log
                         const r = await this.session.submit(intent);
                         if (!r.ok) break;
+                        if (visibleAct) actedVisible = true;
                         this.player.deferSettle = !visibleAct;
                         this.player.enqueue(r.events);
                         await this.player.whenIdle();
                     }
+                    if (actedVisible && !this.battle?.outcome) await wait(80 / this.player.speed);
                 }
                 if (this.battle.outcome) break;
                 this.player.deferSettle = false;
@@ -818,6 +822,8 @@ export class Game {
         this.updateEnemyVisibility();this.overlays.showObjective(this.battle);
     }
     onTurn(e) {
+        this.player?.setActiveEnemy?.(null);
+        if (e.side === 'enemy' && this.cameraDirector?.active) this.cameraDirector.end();
         this.cutins.newTurn();
         this.hud.squadSpent(false);
         this.overlays.clearAim(); this.overlays.clearPath();

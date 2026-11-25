@@ -118,7 +118,7 @@ export class CameraRig {
         if (this.panVel.lengthSq() > 1e-6) { this.target.addScaledVector(this.panVel, dt); this.clamp(); }
         else this.panVel.set(0, 0, 0);
         if (this.glide) {
-            this.target.lerp(this.glide.to, Math.min(1, dt * this.glide.speed));
+            this.target.lerp(this.glide.to, ease(this.glide.speed, dt));
             this.clamp();
             if (this.target.distanceTo(this.glide.to) < 0.02) this.glide = null;
         }

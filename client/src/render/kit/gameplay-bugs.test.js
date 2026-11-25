@@ -569,3 +569,123 @@ test('unitCutLevel returns null on open-sky canal/sunken basin terrain and trigg
     assert.equal(unitCutLevel(mission, { x: 18, y: 18, z: 2 }), 4, 'underground subway tunnel triggers street datum cutaway');
     assert.equal(unitCutLevel(mission, { x: 10, y: 12, z: 1 }), 4, 'z <= 1 subsurface triggers street datum cutaway');
 });
+
+test('enemy cutins stay on overview camera without angle switches or 2D overlays and highlight the shooter', async () => {
+    const { CameraRig } = await import('../CameraRig.js');
+    const enemy = { id: 'e0', side: 'enemy', name: 'Gunman', x: 6, y: 6, z: 1, facing: 's', weapons: ['musket'], weapon: 'musket' };
+    const squad = { id: 'p0', side: 'player', name: 'Ranger', x: 14, y: 10, z: 1 };
+    const rig = new CameraRig(16 / 9);
+    rig.target.set(2, 2, 2);
+    const yaw0 = rig.yaw, pitch0 = rig.pitch(), dist0 = rig.distance;
+    const actorCalls = [], animatorPlays = [], floorFocus = [];
+    let cameraBegins = 0, cameraEnds = 0, cutinPlays = 0;
+    const enemySpan = { textContent: 'ENEMY ACTIVITY' };
+    const eView = {
+        id: 'e0', unit: enemy, pos: new THREE.Vector3(6.5, 2, 6.5), group: { scale: { y: 1 } },
+        animator: { play: c => animatorPlays.push(c) },
+        face() {}, drawBar() {}, worldPosition: () => new THREE.Vector3(6.5, 2, 6.5),
+        setActiveActor: (mode, label) => actorCalls.push([mode, label])
+    };
+    const pView = {
+        id: 'p0', unit: squad, pos: new THREE.Vector3(14.5, 2, 10.5), group: { scale: { y: 1 } },
+        animator: { play() {} }, face() {}, drawBar() {}, worldPosition: () => new THREE.Vector3(14.5, 2, 10.5)
+    };
+    const g = {
+        fog: true,
+        discoveryVisible: new Set(['e0']),
+        battle: {
+            unit: id => (id === 'e0' ? enemy : id === 'p0' ? squad : null),
+            unitsOf: s => (s === 'player' ? [squad] : [enemy])
+        },
+        views: new Map([['e0', eView], ['p0', pView]]),
+        options: { followCamera: true },
+        scene: { rig, target: rig.target, glideTo: (v, spd) => rig.glideTo(v, spd) },
+        cameraDirector: {
+            active: true, phase: 'action',
+            begin() { cameraBegins++; },
+            end() { cameraEnds++; this.active = false; this.phase = null; }
+        },
+        cutins: { async play() { cutinPlays++; } },
+        fx: new Proxy({}, { get: () => () => {} }),
+        audio: new Proxy({}, { get: () => () => {} }),
+        hud: {
+            el: s => (s === '.enemyturn span' ? enemySpan : null),
+            log() {}, banner() {}, refresh() {},
+            setEnemyActivity(text) { Hud.prototype.setEnemyActivity.call(this, text); }
+        },
+        isVisible: () => true,
+        focusFloor: u => floorFocus.push(u.id),
+        settleViews() {}
+    };
+    const player = new EventPlayer(g);
+    player.speed = 100;
+    for (const kind of ['shot', 'burst', 'heavy', 'melee', 'throw', 'skill', 'breach']) {
+        g.cameraDirector.active = true;
+        await player.play({ t: 'cutin', unitId: 'e0', weaponId: 'musket', itemId: 'powder_bomb', abilityId: 'rally', kind, targetIds: ['p0'] });
+    }
+    rig.update(0.2);
+    assert.equal(cutinPlays, 0, 'no 2D cut-in overlays for any enemy action kind');
+    assert.equal(cameraBegins, 0, 'no cameraDirector angle switch on enemy cutins');
+    assert.equal(cameraEnds, 7, 'active 3D cameraDirector is closed for enemy actions');
+    assert.ok(animatorPlays.includes('aim'), 'ballistic enemy cutin poses shooter to aim');
+    assert.ok(actorCalls.some(([m, l]) => m === 'shoot' && /GUNMAN/.test(l)), 'highlights shooting enemy');
+    assert.match(enemySpan.textContent, /GUNMAN/);
+    assert.ok(rig.target.x > 2 && rig.target.z > 2, 'overview camera glides smoothly toward enemy action');
+    assert.equal(rig.yaw, yaw0);
+    assert.equal(rig.pitch(), pitch0);
+    assert.equal(rig.distance, dist0);
+    assert.ok(floorFocus.includes('p0'));
+});
+
+test('visible enemy shot highlights shooter with callout ring and shotLine, then clears after queue drains; enemy moves track smoothly on overview', async () => {
+    const enemy = { id: 'e0', side: 'enemy', name: 'Raider', x: 2, y: 4, z: 1, weapons: ['musket'], weapon: 'musket' };
+    const actorCalls = [], pulses = [], rings = [], lines = [], tracers = [], glides = [];
+    const eView = {
+        id: 'e0', unit: enemy, pos: new THREE.Vector3(2.5, 2, 4.5), visualZ: 1,
+        group: { scale: { y: 1 } },
+        animator: { play() {} },
+        face() {}, drawBar() {},
+        setCell(x, y, z) { this.pos.set(x + 0.5, z + 1, y + 0.5); },
+        setVisible() {},
+        worldPosition() { return this.pos.clone(); },
+        setActiveActor: (mode, label) => actorCalls.push([mode, label]),
+        pulseAction: kind => pulses.push(kind)
+    };
+    const g = {
+        fog: true,
+        discoveryVisible: new Set(['e0']),
+        battle: { unit: id => (id === 'e0' ? enemy : null), unitsOf: () => [] },
+        views: new Map([['e0', eView]]),
+        voxelView: { flush() {}, interiorVisibility: { hiddenAt: () => false } },
+        cameraDirector: { phase: null, active: false },
+        options: { followCamera: true },
+        scene: { glideTo: (pos, spd) => glides.push({ pos, spd }), shake: 0 },
+        fx: {
+            calloutRing: (...a) => rings.push(a),
+            shotLine: (...a) => lines.push(a),
+            tracer: (...a) => tracers.push(a),
+            flash() {}, impact() {}, float() {}
+        },
+        audio: new Proxy({}, { get: () => () => {} }),
+        hud: { log() {}, banner() {}, refresh() {}, setEnemyActivity(t) { g.hudText = t; } },
+        isVisible: () => true,
+        focusFloor() {},
+        settleViews() {}
+    };
+    const player = new EventPlayer(g);
+    player.speed = 500;
+    player.enqueue([
+        { t: 'move', unitId: 'e0', path: [{ x: 2, y: 4, z: 1 }, { x: 4, y: 4, z: 1 }, { x: 6, y: 4, z: 1 }] },
+        { t: 'shot', unitId: 'e0', weaponId: 'musket', muzzle: { x: 6.5, y: 4.5, h: 2.3 }, aim: { x: 12.5, y: 4.5, h: 2.0 }, rounds: 1, projectiles: [{ to: { x: 12.5, y: 4.5, h: 2.0 }, kind: 'none' }] }
+    ]);
+    await player.whenIdle();
+    assert.ok(glides.length >= 1, 'visible enemy movement tracks via overview glide');
+    assert.equal(rings.length, 1, 'emits overview calloutRing on enemy shot');
+    assert.equal(lines.length, 1, 'emits overview shotLine telegraph');
+    assert.equal(tracers.length, 1);
+    assert.ok(pulses.includes('fire'), 'triggers sprite fire recoil pulse');
+    assert.ok(actorCalls.some(([m]) => m === 'shoot'), 'highlighted enemy shooter');
+    assert.equal(actorCalls.at(-1)[0], null, 'pump() clears active enemy highlight when queue finishes');
+    assert.equal(g.activeEnemyLabel, null);
+    assert.equal(g.hudText, null);
+});

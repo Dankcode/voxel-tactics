@@ -74,3 +74,15 @@ test('the rendered barrel supplies the tracer and flash origin without moving th
     assert.deepEqual(tracer.a,new THREE.Vector3(origin.x,origin.h,origin.y));assert.deepEqual(tracer.b,new THREE.Vector3(impact.x,impact.h,impact.y));
     assert.deepEqual(flash,origin);
 });
+
+test('overview calloutRing and shotLine animate and dispose cleanly without leaking scene objects', () => {
+    const fx = fxOf();
+    const ring = fx.calloutRing(new THREE.Vector3(3.5, 2, 4.5), 0xff5a4a, 0.3);
+    const line = fx.shotLine({ x: 3.5, y: 4.5, h: 2.3 }, { x: 9.5, y: 4.5, h: 2.1 }, 0xff6a4a, 0.2);
+    assert.ok(fx.group.children.includes(ring) && fx.group.children.includes(line));
+    fx.update(0.1);
+    assert.ok(ring.material.opacity > 0 && line.material.opacity > 0);
+    fx.update(0.25);
+    assert.equal(fx.items.length, 0);
+    assert.deepEqual(fx.group.children, [fx.fireGroup], 'calloutRing and shotLine clean up cleanly');
+});

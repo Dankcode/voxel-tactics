@@ -293,6 +293,7 @@ export class Hud {
         phase.textContent = b.outcome ? 'MISSION OVER' : b.activeSide === 'player' ? (b.asyncCoop ? 'INDEPENDENT TURNS' : 'SQUAD PHASE') : 'ENEMY ACTIVITY';
         phase.className = `phase ${b.activeSide}`;
         this.el('.enemyturn').classList.toggle('hidden', !(b.activeSide !== 'player' && !b.outcome && !g.debug.manualEnemy));
+        this.setEnemyActivity?.(g.activeEnemyLabel || null);
         const spd = g.player?.speed || g.options?.turnSpeed || 1;
         for (const sb of this.root.querySelectorAll('[data-act="cycleSpeed"]')) {
             sb.textContent = `${spd}×`;
@@ -314,6 +315,10 @@ export class Hud {
         this.el('.actionbar').classList.toggle('hidden', !(b.activeSide === 'player' || g.debug.manualEnemy) || !!b.outcome);
         this.renderTargets();
         this.renderTarget();
+    }
+    setEnemyActivity(text = null) {
+        const span = this.el('.enemyturn span');
+        if (span) span.textContent = text || 'ENEMY ACTIVITY';
     }
     renderAiPosture(b) {
         const el = this.el('.turnbox .ai-posture'); if (!el) return;

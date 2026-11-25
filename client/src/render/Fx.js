@@ -86,6 +86,28 @@ export class Fx {
             this.items.push({ obj: spark, life: 0.5, max: 0.5, kind: 'spark', v });
         }
     }
+    calloutRing(at, color = 0xff5a4a, life = 0.42) {
+        const ring = new THREE.Mesh(
+            new THREE.RingGeometry(0.42, 0.56, 28),
+            new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthTest: false, depthWrite: false, side: THREE.DoubleSide, toneMapped: false })
+        );
+        ring.rotation.x = -Math.PI / 2;
+        ring.renderOrder = 25;
+        ring.position.copy(at?.isVector3 ? at : w2t(at)).add(new THREE.Vector3(0, 0.08, 0));
+        this.group.add(ring);
+        this.items.push({ obj: ring, life, max: life, kind: 'fade', grow: 1.9, baseOpacity: 0.9 });
+        return ring;
+    }
+    shotLine(from, to, color = 0xff6a4a, life = 0.28) {
+        const line = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints([w2t(from), w2t(to)]),
+            new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.55, depthWrite: false, toneMapped: false })
+        );
+        line.renderOrder = 22;
+        this.group.add(line);
+        this.items.push({ obj: line, life, max: life, kind: 'fade', grow: 0, baseOpacity: 0.55 });
+        return line;
+    }
     flash(at, color = 0xffe08a, size = 0.35, life = 0.12) {
         const m = new THREE.Mesh(new THREE.SphereGeometry(size, 8, 6), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false }));
         m.position.copy(w2t(at)); this.group.add(m);
@@ -201,7 +223,11 @@ export class Fx {
             it.life -= dt;
             const k = Math.max(0, it.life / it.max);
             if (it.grow) it.obj.scale.setScalar(Math.max(0.2, it.grow * (1 - k)));
-            if (it.obj.material) { it.obj.material.transparent = true; it.obj.material.opacity = (it.kind === 'dust' ? 0.38 : 1) * Math.min(1, k * 1.4); }
+            if (it.obj.material) {
+                it.obj.material.transparent = true;
+                const baseOp = it.baseOpacity ?? (it.kind === 'dust' ? 0.38 : 1);
+                it.obj.material.opacity = baseOp * Math.min(1, k * 1.4);
+            }
             if (it.life <= 0) { this.group.remove(it.obj); if (![this.sparkGeo, this.debrisGeo, this.dustGeo].includes(it.obj.geometry)) it.obj.geometry?.dispose(); it.obj.material?.dispose(); return false; }
             return true;
         });

@@ -167,3 +167,23 @@ test('frameAim keeps staticPose shooter hidden and Game.frame hides obstructing 
  assert.equal(views.get('p0').sprite.visible,true,'restored after exiting aim camera');
  assert.equal(views.get('p1').sprite.visible,true,'ally restored after exiting aim camera');
 });
+
+test('CameraRig.glideTo smoothly eases target on the overview without changing yaw, pitch or distance', async () => {
+ const { CameraRig } = await import('../CameraRig.js');
+ const rig = new CameraRig(16 / 9);
+ const yaw0 = rig.yaw, pitch0 = rig.pitch(), dist0 = rig.distance;
+ rig.target.set(0, 2, 0);
+ rig.glideTo(new THREE.Vector3(12, 2, 8), 6);
+ rig.update(0.016);
+ const midDist = rig.target.distanceTo(new THREE.Vector3(12, 2, 8));
+ assert.ok(midDist > 0.5 && midDist < Math.hypot(12, 8), 'glides gradually on first frame');
+ assert.equal(rig.yaw, yaw0);
+ assert.equal(rig.pitch(), pitch0);
+ assert.equal(rig.distance, dist0);
+ for (let i = 0; i < 120; i++) rig.update(0.016);
+ assert.ok(rig.target.distanceTo(new THREE.Vector3(12, 2, 8)) < 0.05);
+ assert.equal(rig.glide, null, 'clears glide upon arrival');
+ assert.equal(rig.yaw, yaw0);
+ assert.equal(rig.pitch(), pitch0);
+ assert.equal(rig.distance, dist0);
+});

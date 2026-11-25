@@ -119,6 +119,7 @@ export class UnitView {
         this.dropLine.visible = this.dropRing.visible = false;
         this.group.add(this.dropLine, this.dropRing);
         this.dropHeight = 0;
+        this.activeActor = null; this.activeActionLabel = null; this.stridePhase = 0; this.actionPulse = null;
         this.pos = new THREE.Vector3();
         this.facingVec = [...(FACING_VEC[unit.facing] || [0, 1])];
         this.snap();
@@ -128,9 +129,10 @@ export class UnitView {
     /** Visual position from the battle state (used after animations settle). */
     snap() { this.setCell(this.unit.x, this.unit.y, this.unit.z); this.facingVec = [...(FACING_VEC[this.unit.facing] || [0, 1])]; }
     setCell(x, y, z) {
+        const distance = Math.hypot(x + .5 - this.pos.x, y + .5 - this.pos.z);
+        if (distance > 1e-4) this.stridePhase = (this.stridePhase || 0) + distance * Math.PI * 1.35;
         // Advance the two enemy stride drawings by distance, even on a single-tile move.
         if (this.striding() && this.animator) {
-            const distance = Math.hypot(x + .5 - this.pos.x, y + .5 - this.pos.z);
             const clip = this.animator.m.clips.run;
             this.animator.update(distance * clip.frames / clip.fps);
         }
@@ -157,6 +159,16 @@ export class UnitView {
         const mode=this.tagMode||'selected',player=u.side==='player'&&!u.dead;
         const tag=player&&(mode==='always'||(mode==='selected'&&this.selected));
         const card=player&&this.detailUntil&&performance.now()<this.detailUntil;
+        const enemyTag=u.side==='enemy'&&!u.dead&&!!this.activeActor;
+        if(enemyTag){
+            const label=(this.activeActionLabel||u.name||'HOSTILE').toUpperCase().slice(0,18);
+            const accent=(this.activeActor==='shoot'||this.activeActor==='attack')?'#ff6a5c':'#ffb347';
+            c.fillStyle='rgba(22,10,12,0.86)';c.fillRect(bx-6,by-32,bw+12,26);
+            c.strokeStyle=accent;c.lineWidth=2;c.strokeRect(bx-5,by-31,bw+10,24);
+            c.shadowColor='#000';c.shadowBlur=3;c.textAlign='center';c.font='700 13px sans-serif';c.fillStyle=accent;
+            c.fillText(label,W/2,by-14);
+            c.shadowBlur=0;
+        }
         if(tag||card){
             c.shadowColor='#000';c.shadowBlur=3;
             c.fillStyle='rgba(8,10,14,0.66)';c.fillRect(bx-3,by-30,bw+6,26);
@@ -196,14 +208,29 @@ export class UnitView {
             if (!this.striding()) this.animator.update(dt * playbackSpeed);
             // Enemy atlases hold one drawing for short actions. Give that drawing a physical reaction.
             if (!this.model && this.unit.side === 'enemy') {
-                const { clip, t } = this.animator;
-                const progress = Math.min(1, t * this.animator.m.clips[clip].fps);
-                const pulse = Math.sin(Math.PI * progress);
-                if (clip === 'fire' || clip === 'hit' || clip === 'throw') {
-                    const side = Math.sin(Math.atan2(this.facingVec[0], this.facingVec[1]) - yaw);
-                    this.sprite.rotateZ(side * pulse * (clip === 'hit' ? .16 : .08));
-                    this.sprite.position.y = pulse * (clip === 'throw' ? .14 : -.07);
-                } else this.sprite.position.y = 0;
+                const side = Math.sin(Math.atan2(this.facingVec[0], this.facingVec[1]) - yaw);
+                if (this.actionPulse) {
+                    this.actionPulse.t += dt * playbackSpeed;
+                    const progress = Math.min(1, this.actionPulse.t / this.actionPulse.dur);
+                    const pulse = Math.sin(Math.PI * progress);
+                    const kind = this.actionPulse.kind;
+                    this.sprite.rotateZ(side * pulse * (kind === 'hit' ? 0.16 : 0.09));
+                    this.sprite.position.y = pulse * (kind === 'throw' ? 0.14 : kind === 'fire' ? -0.05 : -0.07);
+                    if (progress >= 1) this.actionPulse = null;
+                } else {
+                    const { clip, t } = this.animator;
+                    const progress = Math.min(1, t * (this.animator.m.clips[clip]?.fps || 1));
+                    const pulse = Math.sin(Math.PI * progress);
+                    if (clip === 'fire' || clip === 'hit' || clip === 'throw') {
+                        this.sprite.rotateZ(side * pulse * (clip === 'hit' ? .16 : .08));
+                        this.sprite.position.y = pulse * (clip === 'throw' ? .14 : -.07);
+                    } else if (clip === 'run') {
+                        this.sprite.position.y = Math.abs(Math.sin(this.stridePhase || 0)) * 0.085;
+                        this.sprite.rotateZ(-side * 0.045);
+                    } else {
+                        this.sprite.position.y *= Math.exp(-16 * dt);
+                    }
+                }
             }
             for (const map of [this.normal, this.lighting]) { if (map) { map.repeat.copy(this.texture.repeat); map.offset.copy(this.texture.offset); } }
         }
@@ -211,7 +238,10 @@ export class UnitView {
         // PLAN-15: the selection beacon bobs above the head; the selected ring breathes.
         this.pulseT=(this.pulseT||0)+dt;
         if(this.beacon.visible){this.beacon.position.set(0,this.spriteHeight+1.0+Math.sin(this.pulseT*4)*0.07,0);}
-        if(this.selected){const k=1+Math.sin(this.pulseT*5)*0.06;this.selRing.scale.set(k,k,k);}
+        if(this.selected||this.activeActor){
+            const k=1+Math.sin(this.pulseT*(this.activeActor?8:5))*(this.activeActor?0.1:0.06);
+            this.selRing.scale.set(k,k,k);
+        }
     }
     /** groundY: height of the lowest walkable surface under the unit. */
     updateDrop(groundY) {
@@ -223,6 +253,26 @@ export class UnitView {
         this.dropLine.geometry.setFromPoints([new THREE.Vector3(0, 0.02, 0), new THREE.Vector3(0, -h + 0.03, 0)]);
         this.dropLine.computeLineDistances();
         this.dropRing.position.y = -h + 0.03;
+    }
+    /** Highlight the currently acting/shooting enemy on the tactical overview, or clear it. */
+    setActiveActor(mode = null, label = null) {
+        this.activeActor = mode || null;
+        this.activeActionLabel = mode ? (label || null) : null;
+        if (this.unit.side === 'enemy') {
+            const active = !!this.activeActor && !this.unit.dead;
+            const col = this.activeActor === 'shoot' || this.activeActor === 'attack' ? 0xff5a4a : 0xffb347;
+            this.selRing.material.color.setHex(active ? col : 0xffffff);
+            this.selRing.material.opacity = active ? 0.95 : 0.6;
+            this.selRing.visible = active || !!this.selected || !!this.hovered;
+            if (!active) this.selRing.scale.set(1, 1, 1);
+            this.beacon.material.color.setHex(active ? col : 0x5ff2d6);
+            this.beacon.visible = active || (!!this.selected && !this.unit.dead);
+        }
+        this.drawBar();
+    }
+    /** Trigger a smooth physical recoil / throw / hit sprite impulse. */
+    pulseAction(kind) {
+        this.actionPulse = { kind, t: 0, dur: kind === 'fire' ? 0.24 : kind === 'hit' ? 0.22 : 0.26 };
     }
     setSelected(on) { this.selected = !!on; this.selRing.visible = on || !!this.hovered; this.beacon.visible = !!on && !this.unit.dead; this.drawBar(); }
     /** PLAN-15: hovering a squad portrait lights the soldier's ring in the world. */
