@@ -9,8 +9,9 @@ import { CALIBERS } from '../content/calibers.js';
 import { createRng } from '../util/Rng.js';
 import {
     ballisticDropAt, ballisticProfile, sampleSalvoRay, traceProjectile,
-    partCentre, evaluateBallisticShot
+    partCentre, evaluateBallisticShot, estimateShot
 } from './Ballistics.js';
+import { weaponBuild } from './FireControl.js';
 import { bestEnemyShot } from './EnemyAi.js';
 import { enemyThreats } from './EnemyAi.js';
 
@@ -113,4 +114,59 @@ test('AI prefers single controlled fire when recoilHeat is high or range is long
 
     const bestHot = bestEnemyShot(bLong, eLong, wAuto, enemyThreats(bLong, eLong), { recoilDiscipline: 1.8 });
     assert.equal(bestHot?.fireMode, 'single', `disciplined AI under high heat at long range switches down from auto (picked ${bestHot?.fireMode})`);
+});
+
+test('trajectory-based hit chance handles bullet drop compensation, cover occlusion, cover piercing, per-part aim, and un-capped 1st-round accuracy', () => {
+    // 1. Aiming above a distant enemy with slow 9mm lets dropping trajectories hit them cleanly.
+    const dropArena = arena({
+        w: 44,
+        squad: ['grenadier'],
+        players: [{ x: 6, y: 16, z: 1 }],
+        enemies: [{ type: 'cultist', pos: { x: 27, y: 16, z: 1 }, group: 1, alerted: true }]
+    });
+    const pDrop = dropArena.unit('p0'), foeDrop = dropArena.unit('e0');
+    const hc = weaponBuild(pDrop, WEAPONS.handcannon);
+    const highAim = { x: foeDrop.x + 0.5, y: foeDrop.y + 0.5, h: foeDrop.z + 1 + 1.98 };
+    const dropEst = estimateShot(dropArena, pDrop, { point: highAim }, { weapon: hc, spread: hc.spread, fireMode: 'single', samples: 72 });
+    assert.equal(dropEst.targetId, foeDrop.id, 'drop-compensated trajectory detects distant target even when straight line passes above head');
+    assert.ok(dropEst.hit > 0.25, `dropping 9mm rounds still register trajectory hits (${dropEst.hit})`);
+    assert.ok(dropEst.parts.head + dropEst.parts.torso > 0.2, 'per-part breakdown reflects where dropping trajectories land');
+    assert.equal(dropEst.bullet.caliberId, '9mm');
+    assert.equal(dropEst.bullet.perRound, 5); // 9mm (8) tapered near maxRange (21m / 22m)
+
+    // 2. Concrete wall yields zero hit chance across every body part; wooden crate lets 5.56 pierce.
+    const wallArena = arena({
+        squad: ['grenadier'],
+        players: [{ x: 10, y: 16, z: 1 }],
+        enemies: [{ type: 'cultist', pos: { x: 16, y: 16, z: 1 }, group: 1, alerted: true }],
+        build: st => { for (let y = 14; y <= 18; y++) for (let z = 2; z <= 5; z++) st.set(13, y, z, MAT.concrete); }
+    });
+    const wallFoe = wallArena.unit('e0');
+    const wallEst = estimateShot(wallArena, wallArena.unit('p0'), { point: partCentre(wallFoe, 'torso') }, { weapon: WEAPONS.repeater, spread: 1.4, fireMode: 'burst', samples: 72 });
+    assert.equal(wallEst.hit, 0);
+    assert.ok(wallEst.cover > 0.9);
+    for (const part of ['head', 'torso', 'armL', 'armR', 'legs']) assert.equal(wallEst.parts[part], 0);
+
+    const crateArena = arena({
+        squad: ['grenadier'],
+        players: [{ x: 10, y: 16, z: 1 }],
+        enemies: [{ type: 'cultist', pos: { x: 16, y: 16, z: 1 }, group: 1, alerted: true }],
+        build: st => { for (let y = 14; y <= 18; y++) for (let z = 2; z <= 5; z++) st.set(13, y, z, MAT.crate); }
+    });
+    const crateFoe = crateArena.unit('e0');
+    const crateEst = estimateShot(crateArena, crateArena.unit('p0'), { point: partCentre(crateFoe, 'torso') }, { weapon: WEAPONS.repeater, spread: 1.0, fireMode: 'single', samples: 72 });
+    assert.ok(crateEst.hit > 0.5, `5.56 pierces thin crate cover (${crateEst.hit})`);
+    assert.ok(crateEst.throughCover > 0.5, `reports piercing share (${crateEst.throughCover})`);
+
+    // 3. Moving free aim from torso to head shifts live trajectory per-part probabilities + point-blank 1st round is not capped at 50%.
+    const clean = arena({
+        squad: ['marksman'],
+        players: [{ x: 14, y: 20, z: 1 }],
+        enemies: [{ type: 'cultist', pos: { x: 14, y: 16, z: 1 }, group: 1, alerted: true }]
+    });
+    const sniper = clean.unit('p0'), closeFoe = clean.unit('e0');
+    const torsoEst = estimateShot(clean, sniper, { point: partCentre(closeFoe, 'torso') }, { weapon: WEAPONS.longrifle, spread: 0.42, fireMode: 'single', samples: 72 });
+    const headEst = estimateShot(clean, sniper, { point: partCentre(closeFoe, 'head') }, { weapon: WEAPONS.longrifle, spread: 0.42, fireMode: 'single', samples: 72 });
+    assert.ok(torsoEst.parts.torso > torsoEst.parts.head && headEst.parts.head > torsoEst.parts.head);
+    assert.ok(torsoEst.firstRoundHit > 0.85, `firstRoundHit is not capped at 50% (got ${torsoEst.firstRoundHit})`);
 });

@@ -12,11 +12,11 @@
 //
 // Ids are stable (weapons, tests, the sim report); names are what the player sees.
 export const CALIBERS = Object.freeze({
-    '9mm': { id: '9mm', name: '9×19 mm', damage: 10, pierce: 0, voxel: 2, energy: 3, velocity: 380 },
+    '9mm': { id: '9mm', name: '9×19 mm', damage: 8, pierce: 0, voxel: 2, energy: 3, velocity: 380 },
     '5.56': { id: '5.56', name: '5.56×45 mm NATO', damage: 10, pierce: 2, voxel: 2, energy: 6, velocity: 820 },
-    '300blk': { id: '300blk', name: '.300 BLK subsonic', damage: 10, pierce: 2, voxel: 2, energy: 5, velocity: 540 },
-    '7.62x39': { id: '7.62x39', name: '7.62×39 mm', damage: 10, pierce: 2, voxel: 3, energy: 8, velocity: 715 },
-    '7.62': { id: '7.62', name: '7.62×51 mm NATO', damage: 10, pierce: 3, voxel: 3, energy: 10, velocity: 800 },
+    '300blk': { id: '300blk', name: '.300 BLK subsonic', damage: 9, pierce: 2, voxel: 2, energy: 5, velocity: 540 },
+    '7.62x39': { id: '7.62x39', name: '7.62×39 mm', damage: 12, pierce: 2, voxel: 3, energy: 8, velocity: 715 },
+    '7.62': { id: '7.62', name: '7.62×51 mm NATO', damage: 16, pierce: 3, voxel: 3, energy: 10, velocity: 800 },
     '338': { id: '338', name: '.338 Lapua Magnum', damage: 30, pierce: 5, voxel: 6, energy: 22, velocity: 900 },
     '12g': { id: '12g', name: '12-gauge 00 buckshot', damage: 3.75, pierce: 0, voxel: 1, energy: 1, velocity: 360 }
 });

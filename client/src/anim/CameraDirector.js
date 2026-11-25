@@ -21,6 +21,32 @@ export class CameraDirector {
         // Cull allies whose billboard occupies at least a quarter of the screen height.
         return depth>-.8 && depth<14 && 1.8/(2*halfHeight)>.25 && Math.abs(p.x)<halfHeight*this.cam.aspect+1 && Math.abs(p.y)<halfHeight+1.5;
     }
+    /** True when a friendly character's billboard sits near the shoulder camera or overlaps the aiming reticle. */
+    obstructsAim(position, aimWorld = null, { height = 2.4, radius = 0.9 } = {}) {
+        if (!this.active) return false;
+        const feet = position.clone().applyMatrix4(this.cam.matrixWorldInverse);
+        const depth = -feet.z;
+        if (depth <= -0.8) return false;
+        if (depth < 0.5) return Math.hypot(feet.x, feet.y + height * 0.5) < radius + 1.2;
+        const halfHeight = depth * Math.tan(THREE.MathUtils.degToRad(this.cam.fov / 2));
+        const halfWidth = halfHeight * (this.cam.aspect || 1);
+        const uLeft = (feet.x - radius) / halfWidth, uRight = (feet.x + radius) / halfWidth;
+        const uBot = (feet.y - 0.15) / halfHeight, uTop = (feet.y + height) / halfHeight;
+        if (uRight < -1.05 || uLeft > 1.05 || uTop < -1.05 || uBot > 1.05) return false;
+        if (this.foregroundUnit(position) || depth < 4.8) return true;
+        let aimDepth = Infinity, aimNdc = { x: 0, y: 0 };
+        if (aimWorld) {
+            const aimCam = aimWorld.clone().applyMatrix4(this.cam.matrixWorldInverse);
+            aimDepth = -aimCam.z;
+            aimNdc = aimWorld.clone().project(this.cam);
+        }
+        if (depth < aimDepth + 0.6) {
+            const margin = 0.18;
+            const inBox = (x, y) => x >= uLeft - margin && x <= uRight + margin && y >= uBot - margin && y <= uTop + margin;
+            return inBox(aimNdc.x, aimNdc.y) || inBox(0, 0);
+        }
+        return false;
+    }
     /** Screen-space clearance behind the shooter's shoulder. This never changes collision or cover. */
     foregroundCells(at,look,pivot) {
         if(!this.store)return new Set();

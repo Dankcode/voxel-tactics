@@ -47,7 +47,7 @@ import { reasonText } from './ui/Reasons.js';
 import { castRay } from '../../shared/voxel/Raycast.js';
 import { MAT, AIR, materialById } from '../../shared/voxel/Materials.js';
 import { nodeKey, pathTo } from '../../shared/world/PathSearch.js';
-import { estimateShotTelemetry, resolveAimPoint, rayUnit, partCentre, chooseMuzzle, occupiedBy, aimedUnit, traceProjectile } from '../../shared/battle/Ballistics.js';
+import { estimateShotTelemetry, resolveAimPoint, rayUnit, partCentre, chooseMuzzle, occupiedBy, aimedUnit, traceProjectile, traceCenterTrajectory } from '../../shared/battle/Ballistics.js';
 import { coverAgainst, COVER } from '../../shared/voxel/Cover.js';
 import { decide, formationIntents, aiOrder } from '../../shared/battle/Ai.js';
 import { podRole } from '../../shared/battle/EnemyAi.js';
@@ -240,12 +240,26 @@ export class Game {
         this.sightings.update(this,this.time,dt);
         if(this.battle)updateReticle(this);
         const cine = this.cameraDirector.active;
+        const aimWorld = this.mode.kind === 'shoot' && this.freeAim ? new THREE.Vector3(this.freeAim.x, this.freeAim.h, this.freeAim.y) : null;
+        const sel = this.selectedUnit();
         for (const v of this.views.values()) {
             v.swayEnabled=this.options.aimSway;
             if(v.tagMode!==this.options.unitTags){v.tagMode=this.options.unitTags;v.drawBar();}
             v.update(dt, cine ? Math.atan2(this.cameraDirector.cam.position.x - v.pos.x, this.cameraDirector.cam.position.z - v.pos.z) : yaw, this.scene.camera, this.player.speed);
             v.bar.visible = (!cine || (this.mode.kind === 'shoot' && v.unit.side !== 'player')) && !v.unit.dead && v.group.visible && (v.unit.side==='player'||this.options.showEnemyBars);
-            v.sprite.visible = !(cine && (this.cameraDirector.hidden?.has(v.id) || (v.unit.side===this.selectedUnit()?.side && v.id !== this.selected && this.cameraDirector.foregroundUnit(v.pos))));
+            const hideInAim = cine && (
+                this.cameraDirector.hidden?.has(v.id)
+                || (this.mode.kind === 'shoot' && v.id === this.selected)
+                || (sel && v.unit.side === sel.side && (
+                    this.cameraDirector.obstructsAim?.(v.pos, aimWorld, { height: v.spriteHeight || 2.4 })
+                    || this.cameraDirector.foregroundUnit?.(v.pos)
+                ))
+            );
+            v.sprite.visible = !hideInAim;
+            if (v.beacon) v.beacon.visible = !cine && !!v.selected && !v.unit.dead;
+            if (v.selRing) v.selRing.visible = !cine && (!!v.selected || !!v.hovered);
+            if (v.ring) v.ring.visible = !hideInAim;
+            if (v.blob) v.blob.visible = !hideInAim;
             const ground = this.battle?.store.surfaces(Math.floor(v.pos.x), Math.floor(v.pos.z))[0];
             v.updateDrop(cine ? Infinity : ground ? ground.z + 1 : 0);
         }
@@ -581,10 +595,29 @@ export class Game {
         if (this.freeAim) {
             const ref = this.peek || u;
             const built = weaponBuild(u, w);
-            const horiz = Math.hypot(this.freeAim.x - (ref.x + 0.5), this.freeAim.y - (ref.y + 0.5));
-            if (horiz > (built.maxRange || 40) + 0.6) { this.hud.toast(`Target out of range (${horiz.toFixed(1)} / ${built.maxRange} m)`, 'warn'); return; }
+            let aimPoint = { ...this.freeAim };
+            const horiz = Math.hypot(aimPoint.x - (ref.x + 0.5), aimPoint.y - (ref.y + 0.5));
+            if (horiz > (built.maxRange || 40) + 0.6) {
+                const tel = this.aimTelemetry?.();
+                if (tel?.focusUnit && (tel.hit ?? 0) > 0) {
+                    const origin = this.aimOrigin(u);
+                    const dv = [aimPoint.x - origin.x, aimPoint.y - origin.y, aimPoint.h - origin.h];
+                    const r = Math.max(1, (built.maxRange || 40) - 0.25);
+                    const dx0 = origin.x - (ref.x + 0.5), dy0 = origin.y - (ref.y + 0.5);
+                    const a = dv[0] * dv[0] + dv[1] * dv[1];
+                    if (a > 1e-8) {
+                        const b = 2 * (dx0 * dv[0] + dy0 * dv[1]);
+                        const c = dx0 * dx0 + dy0 * dy0 - r * r;
+                        const k = (-b + Math.sqrt(Math.max(0, b * b - 4 * a * c))) / (2 * a);
+                        if (k > 0) aimPoint = { x: origin.x + dv[0] * k, y: origin.y + dv[1] * k, h: origin.h + dv[2] * k };
+                    }
+                } else {
+                    this.hud.toast(`Target out of range (${horiz.toFixed(1)} / ${built.maxRange} m)`, 'warn');
+                    return;
+                }
+            }
             const fm = this.mode.fireMode || fireMode(u, w);
-            return this.intent({ type: 'shoot', weaponId: this.mode.weaponId, fireMode: fm, aim: { point: { ...this.freeAim } }, ...(this.peek ? { from: { ...this.peek } } : {}) });
+            return this.intent({ type: 'shoot', weaponId: this.mode.weaponId, fireMode: fm, aim: { point: aimPoint }, ...(this.peek ? { from: { ...this.peek } } : {}) });
         }
     }
 
@@ -1231,17 +1264,23 @@ export class Game {
         const s = this.shooterOf(u);
         const p = this.freeAim;
         const fm = this.mode.fireMode || fireMode(u, w);
-        const picked = this.aimPick?.unitId ? this.battle.unit(this.aimPick.unitId) : null;
-        const t = picked || this.aimTargetNear?.(p) || (this.framedTargetId ? this.battle.unit(this.framedTargetId) : null);
-        const key = `${u.id}:${s.x},${s.y},${s.z}:${p.x.toFixed(2)},${p.y.toFixed(2)},${p.h.toFixed(2)}:${w.id}:${fm}:${!!this.mode.suppress}:${t?.id || ''}:${this.aimPick?.part || ''}:${this.battle.seq}`;
-        if (this.aimTelemetryCache?.key === key) return this.aimTelemetryCache.value;
-        const { spread, mods } = this.battle.spreadFor(s, w, p, { target: t && alive(t) ? t : null, fireMode: fm, suppress: !!this.mode.suppress });
-        const built = weaponBuild(s, w);
-        const est = estimateShotTelemetry(this.battle, s, { point: p }, { weapon: built, spread, fireMode: fm, samples: 64, allowStepOut: !this.peek });
         const origin = this.aimOrigin(u);
+        const picked = this.aimPick?.unitId ? this.battle.unit(this.aimPick.unitId) : null;
+        const near = this.aimTargetNear?.(p) || null;
+        const spreadTarget = (picked && picked.side !== u.side ? picked : null) || (near && alive(near) ? near : null);
+        const key = `${u.id}:${s.x},${s.y},${s.z}:${origin.x.toFixed(2)},${origin.y.toFixed(2)},${origin.h.toFixed(2)}:${p.x.toFixed(2)},${p.y.toFixed(2)},${p.h.toFixed(2)}:${w.id}:${fm}:${!!this.mode.suppress}:${u.recoilHeat || 0}:${spreadTarget?.id || ''}:${this.aimPick?.part || ''}:${this.battle.seq}`;
+        if (this.aimTelemetryCache?.key === key) return this.aimTelemetryCache.value;
+        const { spread, mods } = this.battle.spreadFor(s, w, p, { target: spreadTarget, fireMode: fm, suppress: !!this.mode.suppress });
+        const built = weaponBuild(s, w);
+        const est = estimateShotTelemetry(this.battle, s, { point: p }, { weapon: built, spread, fireMode: fm, samples: 72, muzzle: origin, allowStepOut: !this.peek, suppress: !!this.mode.suppress });
+        const trajUnit = est.targetId ? this.battle.unit(est.targetId) : null;
+        const validTraj = trajUnit && alive(trajUnit) && trajUnit.side !== u.side && this.isVisible(trajUnit) ? trajUnit : null;
+        const validNear = near && alive(near) && near.side !== u.side && this.isVisible(near) ? near : null;
+        const focusUnit = validTraj || validNear;
         const dist = Math.hypot(p.x - origin.x, p.y - origin.y, p.h - origin.h);
-        const blocked = this.aimTrace?.kind === 'voxel' && this.aimTrace.t < dist - 0.35;
-        const value = { ...est, mods, fireMode: fm, weapon: built, blocked, outOfRange: dist > (built.maxRange || 40) + 0.05, focusUnit: t && alive(t) ? t : null };
+        const blocked = this.aimTrace?.kind === 'voxel' && this.aimTrace.t < dist - 0.35 && (est.hit ?? 0) < 0.05;
+        const outOfRange = !(validTraj && (est.hit ?? 0) > 0) && dist > (built.maxRange || 40) + 0.05;
+        const value = { ...est, mods, fireMode: fm, weapon: built, blocked, outOfRange, focusUnit };
         this.aimTelemetryCache = { key, value };
         return value;
     }
@@ -1259,14 +1298,17 @@ export class Game {
     /** The shot's origin for aiming: the current stance muzzle (lean or step-out), else the shoulder on the unit's tile. */
     aimOrigin(u){const m=this.aimStance?.unitId===u.id?this.aimStance.muzzle:null,s=this.shooterOf(u);return m?{x:m.x,y:m.y,h:m.h}:{x:s.x+.5,y:s.y+.5,h:s.z+2.35};}
     updateAimPick(u,origin,p){
-        const delta = [p.x-origin.x, p.y-origin.y, p.h-origin.h];
-        const length = Math.hypot(...delta);
-        const weapon = weaponBuild(u, WEAPONS[this.mode.weaponId]);
-        this.aimTrace = this.battle?.store && length > 0
-            ? traceProjectile(this.battle, origin, delta.map(v => v / length), weapon.maxRange, { ignore:u.id, energy:weapon.energy || 0 })
+        const s=this.shooterOf?.(u)||u;
+        const rawW=WEAPONS[this.mode.weaponId]||WEAPONS[u.weapon];
+        const weapon=rawW?weaponBuild(s,rawW):null;
+        const delta=[p.x-origin.x,p.y-origin.y,p.h-origin.h];
+        const length=Math.hypot(...delta);
+        this.aimTrace=this.battle?.store&&weapon&&length>0
+            ? traceCenterTrajectory(this.battle,s,origin,p,weapon,{heat:u.recoilHeat||0,highGround:(p.h-origin.h)<=-2})
             : null;
-        const hit = this.aimTrace;
-        this.aimPick = hit?.unit && this.isVisible(hit.unit) ? {unitId:hit.unit.id, part:hit.part} : null;
+        const hit=this.aimTrace;
+        this.aimPick=hit?.unit&&this.isVisible(hit.unit)?{unitId:hit.unit.id,part:hit.part}:null;
+        if(this.mode.kind==='shoot')this.overlays?.showTrajectory?.(origin,this.aimTrace,{shooterSide:u.side,visible:unit=>this.isVisible(unit)});
     }
     /** PLAN-15: the shooter as it stands for this shot — on its peek tile while peeking. */
     shooterOf(u){return this.peek&&this.mode.kind==='shoot'?atCell(u,this.peek):u;}
@@ -1284,6 +1326,7 @@ export class Game {
         this.aimStance={unitId:u.id,key:aimStanceKey(m),side,muzzle:m,at:{...p},blocked:shotBlocked(this.battle.store,m,p)};
         this.cutins.beginAim(u,{shoulder:side,weaponId:this.mode.weaponId});
         this.cameraDirector.prepareAim(o,new THREE.Vector3(p.x,p.h,p.y),{side,preserveDirection});
+        if(this.cameraDirector){this.cameraDirector.hidden||=new Set();this.cameraDirector.hidden.add(u.id);}
     }
     /** Pointer-lock deltas never stop at the browser edge or feed back through the moving camera. */
     moveAim(dx,dy){

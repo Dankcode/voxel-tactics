@@ -171,6 +171,31 @@ export class Overlays {
         shot.material.depthTest = false; shot.renderOrder = 19;
         this.aim.add(shot);
     }
+    /** Live center bullet trajectory preview (with gravity drop) from muzzle to first impact. */
+    showTrajectory(muzzle, trace, { shooterSide = 'player', visible = () => true } = {}) {
+        this.clearAim();
+        if (!muzzle || !trace?.point) return;
+        const pts = (trace.arc?.length >= 2 ? trace.arc : [muzzle, trace.point])
+            .map(q => new THREE.Vector3(q.x, q.h, q.y));
+        const hitHostile = trace.kind === 'unit' && trace.unit && trace.unit.side !== shooterSide && visible(trace.unit);
+        const hitFriend = trace.kind === 'unit' && trace.unit && trace.unit.side === shooterSide;
+        const color = hitHostile ? 0xffd15c : hitFriend ? 0x4fd3ff : trace.kind === 'voxel' ? 0xff6a5c : 0xdce8f0;
+        const line = new THREE.Line(
+            new THREE.BufferGeometry().setFromPoints(pts),
+            new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.6, depthTest: true, toneMapped: false })
+        );
+        line.renderOrder = 19;
+        line.userData.ownedMaterial = true;
+        const marker = new THREE.Mesh(
+            new THREE.SphereGeometry(0.08, 10, 8),
+            new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, depthTest: true, toneMapped: false })
+        );
+        marker.position.set(trace.point.x, trace.point.h, trace.point.y);
+        marker.renderOrder = 20;
+        marker.userData.ownedMaterial = true;
+        this.aim.add(line, marker);
+        Overlays.flag(this.aim);
+    }
     showArc(points, radius, land) {
         this.clearAim();
         if (points?.length) {

@@ -74,10 +74,18 @@ test('every human character has 30 HP and every gun takes its damage from its ca
         const c = CALIBERS[w.caliber];
         assert.ok(c, `${w.id} caliber ${w.caliber}`);
         assert.equal(w.damage, c.damage, w.id); assert.equal(w.pierce, c.pierce, w.id); assert.equal(w.voxel, c.voxel, w.id);
+        assert.equal(w.energy, c.energy, w.id); assert.equal(w.velocity, c.velocity, w.id);
     }
     // Heavier rounds hit harder and pierce more.
-    assert.equal(CALIBERS['338'].damage,30);
-    for(const id of ['7.62','5.56','9mm'])assert.equal(CALIBERS[id].damage,10,'AR-family damage is shared; gun builds determine accuracy');
+    assert.equal(CALIBERS['338'].damage, 30);
+    assert.ok(
+        CALIBERS['9mm'].damage < CALIBERS['300blk'].damage
+        && CALIBERS['300blk'].damage < CALIBERS['5.56'].damage
+        && CALIBERS['5.56'].damage < CALIBERS['7.62x39'].damage
+        && CALIBERS['7.62x39'].damage < CALIBERS['7.62'].damage
+        && CALIBERS['7.62'].damage < CALIBERS['338'].damage,
+        'heavier calibers deal progressively higher bullet damage'
+    );
     assert.ok(CALIBERS['338'].pierce > CALIBERS['5.56'].pierce);
     // A close high-caliber round is lethal through light armour.
     const b = arena(), e = b.units.find(u => u.side === 'enemy');

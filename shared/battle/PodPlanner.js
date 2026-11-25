@@ -56,7 +56,7 @@ export function podPlan(battle, group) {
     // Roles.
     const left = [...members];
     if (members.length >= 2) {
-        const support = left.find(m => hasThrowable(m) && focus && Math.hypot(focus.x - m.x, focus.y - m.y) <= 12);
+        const support = left.find(m => hasThrowable(m) && focus && Math.hypot(focus.x - m.x, focus.y - m.y) <= 14);
         if (support) { plan.roles[support.id] = 'support'; left.splice(left.indexOf(support), 1); }
     }
     if (focus && left.length >= 2) {

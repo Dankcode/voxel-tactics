@@ -368,34 +368,54 @@ export class Hud {
         const modes=fireModes(w),fm=g.mode.fireMode||fireMode(u,w);
         const tel=g.aimTelemetry?.(), rec=tel?.recoil;
         const peek=g.peekStatus?.();
-        const focus=tel?.focusUnit||(g.framedTargetId&&g.battle?.unit?.(g.framedTargetId))||null;
+        const focus=tel?(tel.focusUnit??null):((g.framedTargetId&&g.battle?.unit?.(g.framedTargetId))||null);
         const hitPct=tel?Math.round((tel.hit??0)*100):0;
-        const innerPct=tel?Math.round((tel.innerHit??0)*100):0;
+        const firstPct=Math.round((tel?.firstRoundHit??tel?.hit??0)*100);
+        const anyPct=Math.round((tel?.anyHit??tel?.hit??0)*100);
         const partPct=tel?Math.round((tel.partHit??0)*100):0;
         const hitCls=hitPct>=65?'high':hitPct>=35?'mid':'low';
         const activePart=g.aimPick?.unitId===focus?.id?g.aimPick?.part:(tel?.targetPart||'torso');
         const bodyList=focus?(focus.drone?['torso']:PARTS):[];
         const partRows=focus?bodyList.map(part=>{
             const ps=focus.parts?.[part];if(!ps)return '';
-            const pc=g.partChance?.(focus,part);
+            const trajPct=tel?.parts?Math.round((tel.parts[part]||0)*100):null;
+            const pc=trajPct==null?g.partChance?.(focus,part):null;
+            const pctText=trajPct!=null?`${trajPct}%`:(pc?`${pc.part}%`:'');
             const arm=partArmor(focus,part);
             const active=activePart===part;
             return `<button class="part-btn ${active?'on':''} ${ps.disabled?'dis':''}" data-act="aimPart" data-arg="${part}">
                 <b>${esc(BODY[part]?.label||part)}</b>
                 <small>${ps.disabled?'DISABLED':`${ps.hp}/${ps.max} HP${arm?` · ARM ${arm}`:''}`}</small>
-                <span>${pc?`${pc.part}%`:''}</span></button>`;
+                <span>${pctText}</span></button>`;
         }).join(''):'';
         const modTags=(tel?.mods||[]).filter(([,v])=>v!==1).map(([k,v])=>`<span>${esc(k)} ×${v}</span>`).join('');
         const badges=[];
         if(g.mode.suppress)badges.push('<span class="badge-warn">SUPPRESSIVE FIRE</span>');
         if(tel?.outOfRange)badges.push(`<span class="badge-warn">OUT OF RANGE (${tel.distance.toFixed(1)}/${tel.weapon.maxRange}m)</span>`);
         if(tel?.blocked)badges.push('<span class="badge-warn">✕ COVER BLOCKED</span>');
+        if((tel?.friendly??0)>0.05)badges.push(`<span class="badge-warn">ALLY IN LINE (${Math.round(tel.friendly*100)}%)</span>`);
+        if((tel?.throughCover??0)>0.1&&(tel?.hit??0)>0)badges.push('<span class="badge-crit">PIERCING COVER</span>');
         if(focus&&tel?.flanked)badges.push('<span class="badge-crit">FLANKED · EXPOSED +15%</span>');
         if(focus&&activePart==='head'&&!focus.drone&&tel?.headshotMult>1)badges.push(`<span class="badge-crit">HEADSHOT ×${tel.headshotMult}</span>`);
         if((u.recoilHeat||0)>0.2)badges.push(`<span class="badge-warn">RECOIL HEAT +${(u.recoilHeat||0).toFixed(1)}</span>`);
         if(focus&&tel?.lethalChance>0.5)badges.push('<span class="badge-lethal">LETHAL</span>');
         else if(focus&&tel?.disableChance>0.35&&activePart!=='torso')badges.push(`<span class="badge-crit">DISABLE ${(BODY[activePart]?.label||activePart).toUpperCase()}</span>`);
         const vel=rec?.velocity||w.velocity||0;
+        const caliberName=tel?.bullet?.caliberName||(w.caliber?CALIBERS[w.caliber]?.name:null);
+        const hitSub=(tel?.rounds??1)>1
+            ?`TRAJ · 1ST ${firstPct}% · ANY ${anyPct}%`
+            :(tel?.weapon?.pellets??1)>1
+                ?`PELLETS · ANY ${anyPct}%`
+                :'TRAJECTORY';
+        const bul=tel?.bullet;
+        const dmgHtml=bul
+            ?(bul.rounds>1
+                ?`<b>${bul.netPerRound}×${bul.rounds}</b><small>BULLET DMG · ~${tel.expectedDamage} AVG</small>`
+                :bul.pellets>1
+                    ?`<b>${bul.netPerRound}</b><small>${bul.pellets} PELLETS · ~${tel.expectedDamage} AVG</small>`
+                    :`<b>${bul.netPerRound}</b><small>BULLET DMG · ~${tel.expectedDamage} AVG</small>`)
+            :`<b>~${tel?.expectedDamage??0}</b><small>EST DMG${partPct?` · ${partPct}% PART`:''}</small>`;
+        const freeDmg=bul?` · ${bul.perRound}${bul.rounds>1?`×${bul.rounds}`:''} DMG`:'';
         const ballisticsRow=rec?`<div class="aim-ballistics">
                 <div><b>${rec.baseSpread}°${rec.finalSpread>rec.baseSpread?`→${rec.finalSpread}°`:''}</b><small>SPREAD</small></div>
                 <div><b>+${rec.totalClimbDeg}°</b><small>CLIMB</small></div>
@@ -404,14 +424,14 @@ export class Hud {
         el.innerHTML=`<div class="aim-top"><button class="aim-back" data-act="cancel" aria-label="Back to tactics">Back <kbd>Esc</kbd></button>
                 ${peek?`<span class="peek-badge ${peek.peeking?'on':''}">${peek.peeking?'LEANING':'HOME'}${peek.overwatch?` · ${peek.overwatch} OW`:''}</span>`:''}
                 ${peek?.peeking?'<button class="aim-peek-home" data-act="peekHome">Step back</button>':''}</div>
-            <div class="shooter-status"><div class="shooter-meta"><span class="shooter-weapon">${esc(w.name)}</span><small>${cost} AP${vel?` · ${vel} m/s`:''}${fm&&modes.length>1?` · ${fm.toUpperCase()}`:''}</small></div>
+            <div class="shooter-status"><div class="shooter-meta"><span class="shooter-weapon">${esc(w.name)}</span><small>${caliberName?`${esc(caliberName)} · `:''}${cost} AP${fm&&modes.length>1?` · ${fm.toUpperCase()}`:''}</small></div>
                 <span class="shooter-ammo" aria-label="${ammo} loaded, ${res} reserve"><b>${ammo}</b><small>/${res}</small></span></div>
             ${modes.length>1&&!g.mode.suppress?`<div class="aim-modes">${modes.map(m=>`<button data-act="aimMode" data-arg="${m}" class="${m===fm?'on':''}">${m.toUpperCase()}</button>`).join('')}</div>`:''}
             ${ballisticsRow}
             ${badges.length?`<div class="aim-badges">${badges.join('')}</div>`:''}
             ${focus&&tel?`<div class="thead aim-forecast"><div class="tinfo"><div class="tname">${esc(focus.name)}</div><small>${focus.hp}/${focus.maxHp} HP · ${tel.distance.toFixed(1)} m</small></div>
-                <div class="aim-nums"><div class="bigpct ${hitCls}">${hitPct}%<small>ON BODY · 1ST ${innerPct}%</small></div><div class="est-dmg"><b>~${tel.expectedDamage}</b><small>EST DMG${partPct?` · ${partPct}% PART`:''}</small></div></div></div>
-                <div class="parts aim-parts">${partRows}</div>`:tel?`<div class="aim-free-read"><b>FREE AIM · ${tel.distance.toFixed(1)} m</b><span>${tel.blocked?'Covers / wall in trajectory':'Clear ballistic trajectory'}</span></div>`:''}
+                <div class="aim-nums"><div class="bigpct ${hitCls}">${hitPct}%<small>${hitSub}</small></div><div class="est-dmg">${dmgHtml}</div></div></div>
+                <div class="parts aim-parts">${partRows}</div>`:tel?`<div class="aim-free-read"><b>FREE AIM · ${tel.distance.toFixed(1)} m${freeDmg}</b><span>${tel.blocked?'Cover / wall in trajectory':'Clear ballistic trajectory'}</span></div>`:''}
             ${modTags?`<div class="mods aim-mods">${modTags}</div>`:''}
             <div class="tbtns"><span class="aim-hint">Tab: Target · R-drag/Q,E: Orbit · Wheel: Zoom</span><button data-act="fire" class="fire firebtn" ${ammo<1||u.ap<cost||tel?.outOfRange?'disabled':''}>Fire <kbd>Click / Space</kbd></button></div>`;
     }

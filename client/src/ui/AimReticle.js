@@ -21,12 +21,12 @@ export function updateReticle(g){
     const spread=g.battle.spreadFor(shooter,rawWeapon,p,{target:g.aimTargetNear?.(p),fireMode:fm,suppress:!!g.mode.suppress}).spread;
     const m=g.aimStance?.muzzle,muzzleVec=m?new THREE.Vector3(m.x,m.h,m.y):new THREE.Vector3(shooter.x+.5,shooter.z+2.35,shooter.y+.5);
     const dist=muzzleVec.distanceTo(point);
-    const blocked=g.aimTrace?.kind==='voxel'&&g.aimTrace.t<dist-0.35;
-    const outOfRange=!!w?.maxRange&&dist>w.maxRange+0.05;
-    el.classList.toggle('blocked',!!blocked);
-    el.classList.toggle('out-of-range',outOfRange);
     // Project full salvo spread (initial bloom + consecutive recoil bloom) and vertical recoil climb.
     const tel=g.aimTelemetry?.();
+    const blocked=tel?!!tel.blocked:(g.aimTrace?.kind==='voxel'&&g.aimTrace.t<dist-0.35);
+    const outOfRange=tel?!!tel.outOfRange:(!!w?.maxRange&&dist>w.maxRange+0.05);
+    el.classList.toggle('blocked',!!blocked);
+    el.classList.toggle('out-of-range',outOfRange);
     const displaySpread=tel?.recoil?.finalSpread??spread;
     const climbDeg=tel?.recoil?.totalClimbDeg??0;
     const depth = -point.clone().applyMatrix4(camera.matrixWorldInverse).z;
@@ -39,14 +39,15 @@ export function updateReticle(g){
     el.style.setProperty('--inner-ratio',String(INNER_RING_RATIO));
     el.style.setProperty('--recoil-climb',`${climbPx.toFixed(1)}px`);
     el.classList.toggle('has-climb',climbPx>2);
-    const pick=g.aimPick&&g.battle.unit(g.aimPick.unitId);
-    el.classList.toggle('on-target',!!pick&&!!g.isVisible?.(pick)&&!blocked&&!outOfRange);
-    const friendly = pick && pick.side === u.side;
+    const pick=g.aimPick&&g.battle.unit?.(g.aimPick.unitId);
+    const friendly=(pick&&pick.side===u.side)||(tel?.friendly??0)>0.1;
+    el.classList.toggle('on-target',(!!pick&&pick.side!==u.side&&!!g.isVisible?.(pick)&&!blocked&&!outOfRange)||(!!tel?.focusUnit&&(tel.hit??0)>0&&!outOfRange));
     el.classList.toggle('friendly', !!friendly);
     const heat = u.recoilHeat || 0;
     const heatDeg = heat > 0.05 ? +(heat * (w?.recoil?.bloom ?? 0.35)).toFixed(1) : 0;
     const heatTag = heatDeg > 0 ? ` · HEAT +${heatDeg}°` : '';
     const prefix=outOfRange?'OUT OF RANGE · ':friendly?'ALLY · ':blocked?'✕ COVER · ':'';
-    el.querySelector('span.read').textContent=`${prefix}${dist.toFixed(1)} m${heatTag}`;
+    const readDist=tel?.focusUnit&&(tel.hit??0)>0?tel.distance:dist;
+    el.querySelector('span.read').textContent=`${prefix}${readDist.toFixed(1)} m${heatTag}`;
     g.cutins?.placeAim?.(point);
 }

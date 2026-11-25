@@ -5,7 +5,7 @@ import { VoxelStore } from '../voxel/VoxelStore.js';
 import { MAT } from '../voxel/Materials.js';
 import { createRng } from '../util/Rng.js';
 import { WEAPONS } from '../content/weapons.js';
-import { fireMode, projectileDamage } from './FireControl.js';
+import { fireMode, projectileDamage, bulletDamageSummary, weaponBuild } from './FireControl.js';
 import { reserveAmmo, carryWeight, storageOf, inventoryMove, grantTestArsenal, equipCargo, validateLoadout } from '../inventory/Equipment.js';
 import { validateInventory, walkInventory } from '../inventory/Inventory.js';
 import { visionProfile } from './WatchSector.js';
@@ -22,8 +22,15 @@ test('partial final salvo fires remaining rounds; invalid modes and NaN aims nev
  const r=b.apply({type:'shoot',unitId:u.id,fireMode:'auto',aim:{point:{x:12,y:3,h:2}}});assert.equal(r.events.find(e=>e.t==='shot').rounds,2);
 });
 test('caliber damage and falloff: shotgun pellets sum to one shell, armor absorbs only unpenetrated damage',()=>{
- for(const [id,close,far]of [['repeater',10,7],['longrifle',30,24],['blunderbuss',30,13],['firelance',18,8]]){const w=WEAPONS[id],n=w.pellets||1;assert.equal(Array.from({length:n},(_,i)=>projectileDamage(w,w.range,i)).reduce((a,b)=>a+b),close);assert.equal(Array.from({length:n},(_,i)=>projectileDamage(w,w.maxRange,i)).reduce((a,b)=>a+b),far);}
+ for(const [id,close,far]of [['handcannon',8,4],['crossbow',9,5],['repeater',10,7],['musket',12,7],['shortbow',16,12],['longrifle',30,24],['blunderbuss',30,13],['firelance',18,8]]){const w=WEAPONS[id],n=w.pellets||1;assert.equal(Array.from({length:n},(_,i)=>projectileDamage(w,w.range,i)).reduce((a,b)=>a+b),close);assert.equal(Array.from({length:n},(_,i)=>projectileDamage(w,w.maxRange,i)).reduce((a,b)=>a+b),far);}
  const b=arena(),e=b.unit('e0');e.parts.torso.armor=6;assert.equal(b.dealDamage(e,'torso',10,{pierce:2}),6);
+ const marks=bulletDamageSummary(WEAPONS.shortbow,WEAPONS.shortbow.range,{rounds:1,armor:2});
+ assert.equal(marks.caliberId,'7.62');assert.equal(marks.perRound,16);assert.equal(marks.pierce,3);assert.equal(marks.netPerRound,16);
+ const akBarrel=weaponBuild({attachments:{musket:{barrel:true}}},WEAPONS.musket);
+ assert.equal(weaponBuild({attachments:{musket:{barrel:true}}},akBarrel),akBarrel,'weaponBuild is idempotent');
+ assert.ok(akBarrel.range>WEAPONS.musket.range&&projectileDamage(akBarrel,akBarrel.maxRange)>projectileDamage(WEAPONS.musket,WEAPONS.musket.maxRange),'heavy barrel improves range retention');
+ const tuned=bulletDamageSummary({...WEAPONS.repeater,damageMult:1.2},WEAPONS.repeater.range,{rounds:3});
+ assert.equal(tuned.perRound,12);assert.equal(tuned.salvoMax,36);
 });
 test('reload transfers real reserve rounds; a bolt-action cycles a single round without reload',()=>{
  const b=arena(),u=b.unit('p0');u.ammo.repeater=0;const before=reserveAmmo(u,WEAPONS.repeater);assert.ok(b.apply({type:'reload',unitId:u.id}).ok);assert.equal(u.ammo.repeater,30);assert.equal(reserveAmmo(u,WEAPONS.repeater),before-30);

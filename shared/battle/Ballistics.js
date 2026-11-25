@@ -12,7 +12,7 @@ import { materialById } from '../voxel/Materials.js';
 import { coverAgainst, COVER } from '../voxel/Cover.js';
 import { createRng, hashString } from '../util/Rng.js';
 import { FACING_VEC, alive, hasStatus, partArmor, SHOULDER } from './Units.js';
-import { projectileDamage, roundsFor, weaponBuild, fireMode as resolveFireMode } from './FireControl.js';
+import { projectileDamage, bulletDamageSummary, roundsFor, weaponBuild, fireMode as resolveFireMode } from './FireControl.js';
 import { B } from '../content/balance.js';
 
 export const HITBOX = Object.freeze({
@@ -363,9 +363,35 @@ export function projectileHitDamage(unit, part, rawAmount, { pierce = 0, headMul
 }
 
 /**
+ * Trace the center projectile trajectory from `muzzle` toward `aimPoint` using current recoil heat and gravity drop.
+ */
+export function traceCenterTrajectory(battle, shooter, muzzle, aimPoint, weapon, { heat = shooter?.recoilHeat || 0, highGround = false } = {}) {
+    const built = shooter ? weaponBuild(shooter, weapon) : weapon;
+    const dv = [aimPoint.x - muzzle.x, aimPoint.y - muzzle.y, aimPoint.h - muzzle.h];
+    const dist = Math.hypot(...dv);
+    if (dist < 1e-6) return null;
+    let dir = dv.map(c => c / dist);
+    if (heat > 0 && built.recoil?.climb) {
+        const climbDeg = heat * built.recoil.climb * (B.recoilClimbMult || 1) * recoilStability(shooter, { highGround });
+        const f = recoilFrame(dir);
+        const tc = Math.tan(climbDeg * DEG);
+        const rx = dir[0] + f.up[0] * tc, ry = dir[1] + f.up[1] * tc, rz = dir[2] + f.up[2] * tc;
+        const rl = Math.hypot(rx, ry, rz) || 1;
+        dir = [rx / rl, ry / rl, rz / rl];
+    }
+    const res = traceProjectile(battle, muzzle, dir, built.maxRange ?? 40, {
+        ignore: shooter?.id ?? null,
+        energy: built.energy || 0,
+        velocity: built.velocity || 0,
+        zeroRange: built.range || 0
+    });
+    return { ...res, muzzle };
+}
+
+/**
  * Deterministic physical recoil & trajectory telemetry estimate (replaces XCOM hit-chance formula).
  */
-export function estimateShot(battle, shooter, aim, { weapon, spread, rounds = null, fireMode: requestedMode = null, samples = 96, muzzle = null, allowStepOut = true } = {}) {
+export function estimateShot(battle, shooter, aim, { weapon, spread, rounds = null, fireMode: requestedMode = null, samples = 96, muzzle = null, allowStepOut = true, suppress = false } = {}) {
     const built = weaponBuild(shooter, weapon);
     const target = aimPointOf(battle, aim);
     const o = muzzle || chooseMuzzle(battle.store, shooter, target, { occupied: occupiedBy(battle, shooter), allowStepOut });
@@ -373,61 +399,154 @@ export function estimateShot(battle, shooter, aim, { weapon, spread, rounds = nu
     const dist = Math.hypot(...dv) || 1;
     const dir = dv.map(c => c / dist);
     const fm = resolveFireMode(shooter, built, requestedMode);
-    const rng = createRng(hashString(`${shooter.id}:${shooter.x},${shooter.y},${shooter.z}:${target.x.toFixed(2)},${target.y.toFixed(2)},${target.h.toFixed(2)}:${spread.toFixed(3)}:${built.id}:${fm}:${shooter.recoilHeat || 0}`));
-    const frame = recoilFrame(dir);
-    const parts = { head: 0, torso: 0, armL: 0, armR: 0, legs: 0 };
-    const partDamage = { head: 0, torso: 0, armL: 0, armR: 0, legs: 0 };
-    let hit = 0, innerHit = 0, cover = 0, friendly = 0, other = 0, miss = 0, through = 0, hitScaleSum = 0;
-    let damageSum = 0, lethalHits = 0;
     const maxDist = built.maxRange ?? 40;
     const pellets = built.pellets || 1;
     const roundsCount = Math.max(1, rounds ?? (shooter.ammo ? Math.max(1, roundsFor(shooter, built, fm)) : 1));
-    const totalProjectiles = roundsCount * (pellets > 1 ? pellets : (built.projectiles || 1));
-    const focusUnit = aim.unitId ? battle.unit?.(aim.unitId) : (aimedUnit(battle, shooter, target) || partUnderRay(battle, shooter, o, target)?.unit || null);
+    const perRoundProj = pellets > 1 ? pellets : (built.projectiles || 1);
+    const totalProjectiles = roundsCount * perRoundProj;
+    const heat = shooter.recoilHeat || 0;
+    const aimHighGround = aim.unitId
+        ? shooter.z - (battle.unit?.(aim.unitId)?.z ?? shooter.z) >= 2
+        : (target.h - o.h) <= -2;
+    const centerTrace = traceCenterTrajectory(battle, shooter, o, target, built, { heat, highGround: aimHighGround });
+    const initHighGround = aim.unitId
+        ? shooter.z - (battle.unit?.(aim.unitId)?.z ?? shooter.z) >= 2
+        : (centerTrace?.kind === 'unit' && centerTrace.unit.side !== shooter.side)
+            ? shooter.z - centerTrace.unit.z >= 2
+            : aimHighGround;
+    const stability = recoilStability(shooter, { highGround: initHighGround });
+    const rng = createRng(hashString(`${shooter.id}:${shooter.x},${shooter.y},${shooter.z}:${target.x.toFixed(2)},${target.y.toFixed(2)},${target.h.toFixed(2)}:${spread.toFixed(3)}:${built.id}:${fm}:${heat}`));
+    const frame = recoilFrame(dir);
+    const salvos = samples >= 32 ? Math.max(12, Math.ceil(samples / totalProjectiles)) : Math.max(4, Math.ceil(samples / totalProjectiles));
+    const totalRays = salvos * totalProjectiles;
+    const byUnit = new Map();
+    const ensureRec = u => {
+        let rec = byUnit.get(u.id);
+        if (!rec) {
+            rec = {
+                unit: u, hits: 0, innerHits: 0, round0Hits: 0, through: 0, hitScaleSum: 0,
+                damageSum: 0, salvoHits: 0, lethalSalvos: 0,
+                parts: { head: 0, torso: 0, armL: 0, armR: 0, legs: 0 },
+                partDamage: { head: 0, torso: 0, armL: 0, armR: 0, legs: 0 },
+                disableSalvos: { head: 0, torso: 0, armL: 0, armR: 0, legs: 0 }
+            };
+            byUnit.set(u.id, rec);
+        }
+        return rec;
+    };
+    let cover = 0, friendly = 0, other = 0, miss = 0;
+    const dmgK = suppress ? 0.5 : 1;
+    for (let s = 0; s < salvos; s++) {
+        const salvoDmg = new Map();
+        const salvoPartDmg = new Map();
+        const salvoHitUnits = new Set();
+        for (let rIdx = 0; rIdx < roundsCount; rIdx++) {
+            const sr = sampleSalvoRay(dir, spread, built, rIdx, rng, { heat, stability, frame });
+            for (let pIdx = 0; pIdx < perRoundProj; pIdx++) {
+                const sampled = perRoundProj === 1 ? sr : sampleConeRay(sr.recoilDir, sr.roundSpread, rng);
+                const res = traceProjectile(battle, o, sampled.dir, maxDist, { ignore: shooter.id, energy: built.energy || 0, velocity: built.velocity || 0, zeroRange: built.range || 0 });
+                if (res.kind === 'unit') {
+                    if (res.unit.side === shooter.side) {
+                        friendly++;
+                    } else {
+                        const rec = ensureRec(res.unit);
+                        rec.hits++;
+                        if (sampled.inner) rec.innerHits++;
+                        if (rIdx === 0) rec.round0Hits++;
+                        rec.parts[res.part]++;
+                        if (res.pierced.length) rec.through++;
+                        rec.hitScaleSum += res.scale ?? 1;
+                        const headK = res.part === 'head' && !res.unit.drone ? B.headshotMult : 1;
+                        const hitFlanked = coverAgainst(battle.store, res.unit.x, res.unit.y, res.unit.z, shooter.x, shooter.y, shooter.z) === COVER.NONE;
+                        const flankK = hitFlanked ? (B.flankExposureMult || 1) : 1;
+                        const baseDmg = projectileDamage(built, res.t, pIdx) * dmgK * (res.scale ?? 1);
+                        const dealt = projectileHitDamage(res.unit, res.part, baseDmg, { pierce: built.pierce, headMult: headK, flankMult: flankK });
+                        rec.damageSum += dealt;
+                        rec.partDamage[res.part] += dealt;
+                        salvoHitUnits.add(res.unit.id);
+                        salvoDmg.set(res.unit.id, (salvoDmg.get(res.unit.id) || 0) + dealt);
+                        let pd = salvoPartDmg.get(res.unit.id);
+                        if (!pd) { pd = { head: 0, torso: 0, armL: 0, armR: 0, legs: 0 }; salvoPartDmg.set(res.unit.id, pd); }
+                        pd[res.part] += dealt;
+                    }
+                } else if (res.kind === 'voxel' && res.t < dist - 0.3) {
+                    cover++;
+                } else {
+                    miss++;
+                }
+            }
+        }
+        for (const uid of salvoHitUnits) {
+            const rec = byUnit.get(uid);
+            rec.salvoHits++;
+            if ((salvoDmg.get(uid) || 0) >= rec.unit.hp) rec.lethalSalvos++;
+            const pd = salvoPartDmg.get(uid);
+            if (pd) {
+                for (const part of ['head', 'armL', 'armR', 'legs']) {
+                    const hp = rec.unit.parts?.[part]?.hp ?? 0;
+                    if (hp > 0 && pd[part] >= hp) rec.disableSalvos[part]++;
+                }
+            }
+        }
+    }
+    let focusUnit = aim.unitId ? (battle.unit?.(aim.unitId) || null) : null;
+    if (!focusUnit) {
+        if (byUnit.size) {
+            const ranked = [...byUnit.values()].sort((a, b) =>
+                (b.hits - a.hits)
+                || ((b.unit.id === centerTrace?.unit?.id ? 1 : 0) - (a.unit.id === centerTrace?.unit?.id ? 1 : 0))
+                || (Math.hypot(a.unit.x + 0.5 - o.x, a.unit.y + 0.5 - o.y) - Math.hypot(b.unit.x + 0.5 - o.x, b.unit.y + 0.5 - o.y))
+            );
+            focusUnit = ranked[0].unit;
+        } else if (centerTrace?.kind === 'unit' && centerTrace.unit.side !== shooter.side) {
+            focusUnit = centerTrace.unit;
+        }
+    }
+    for (const rec of byUnit.values()) {
+        if (!focusUnit || rec.unit.id !== focusUnit.id) other += rec.hits;
+    }
+    const focusRec = focusUnit ? (byUnit.get(focusUnit.id) || null) : null;
+    const f = n => n / totalRays;
+    const hit = focusRec ? f(focusRec.hits) : 0;
+    const innerHit = focusRec ? f(focusRec.innerHits) : 0;
+    const firstRoundHit = focusRec ? focusRec.round0Hits / (salvos * perRoundProj) : 0;
+    const anyHit = focusRec ? focusRec.salvoHits / salvos : 0;
+    const directHit = focusRec ? f(focusRec.hits - focusRec.through) : 0;
+    const effectiveHit = focusRec ? f(focusRec.hitScaleSum) : 0;
+    const throughCover = focusRec && focusRec.hits ? focusRec.through / focusRec.hits : 0;
+    const parts = Object.fromEntries(['head', 'torso', 'armL', 'armR', 'legs'].map(k => [k, focusRec ? f(focusRec.parts[k]) : 0]));
+    const topPart = focusRec ? Object.entries(focusRec.parts).sort((a, b) => b[1] - a[1])[0] : null;
+    const focusPart = aim.part
+        || (focusUnit && centerTrace?.kind === 'unit' && centerTrace.unit.id === focusUnit.id ? centerTrace.part : null)
+        || (topPart && topPart[1] > 0 ? topPart[0] : null)
+        || 'torso';
     const focusFlanked = focusUnit && focusUnit.side !== shooter.side
         ? coverAgainst(battle.store, focusUnit.x, focusUnit.y, focusUnit.z, shooter.x, shooter.y, shooter.z) === COVER.NONE
         : false;
-    const stability = recoilStability(shooter, { highGround: !!(focusUnit && shooter.z - focusUnit.z >= 2) });
-    const heat = shooter.recoilHeat || 0;
-    for (let i = 0; i < samples; i++) {
-        const ray = sampleSalvoRay(dir, spread, built, i % roundsCount, rng, { heat, stability, frame });
-        const res = traceProjectile(battle, o, ray.dir, maxDist, { ignore: shooter.id, energy: built.energy || 0, velocity: built.velocity || 0, zeroRange: built.range || 0 });
-        if (res.kind === 'unit') {
-            const matches = aim.unitId ? res.unit.id === aim.unitId : (!focusUnit || res.unit.id === focusUnit.id);
-            if (matches && res.unit.side !== shooter.side) {
-                hit++; if (ray.inner) innerHit++;
-                parts[res.part]++;
-                if (res.pierced.length) through++;
-                hitScaleSum += res.scale ?? 1;
-                const headK = res.part === 'head' && !res.unit.drone ? B.headshotMult : 1;
-                const hitFlanked = coverAgainst(battle.store, res.unit.x, res.unit.y, res.unit.z, shooter.x, shooter.y, shooter.z) === COVER.NONE;
-                const flankK = hitFlanked ? (B.flankExposureMult || 1) : 1;
-                const baseDmg = projectileDamage(built, res.t, i % pellets) * (res.scale ?? 1);
-                const dealt = projectileHitDamage(res.unit, res.part, baseDmg, { pierce: built.pierce, headMult: headK, flankMult: flankK });
-                damageSum += dealt;
-                partDamage[res.part] += dealt;
-                if (dealt * totalProjectiles >= res.unit.hp) lethalHits++;
-            } else if (res.unit.side === shooter.side) friendly++;
-            else other++;
-        } else if (res.kind === 'voxel' && res.t < dist - 0.3) cover++;
-        else miss++;
-    }
-    const f = n => n / samples;
-    const expectedDamage = Math.round(f(damageSum) * totalProjectiles);
-    const focusPart = aim.part || (focusUnit ? partUnderRay(battle, shooter, o, target)?.part : null) || 'torso';
-    const expectedPartDamage = Math.round(f(partDamage[focusPart] || 0) * totalProjectiles);
-    const focusPartHp = focusUnit?.parts?.[focusPart]?.hp ?? 0;
-    const recoil = ballisticProfile(shooter, built, target, { spread, rounds: roundsCount, heat, muzzle: o, highGround: !!(focusUnit && shooter.z - focusUnit.z >= 2) });
+    const expectedDamage = focusRec ? Math.round(focusRec.damageSum / salvos) : 0;
+    const expectedPartDamage = focusRec ? Math.round((focusRec.partDamage[focusPart] || 0) / salvos) : 0;
+    const lethalChance = focusUnit && focusRec ? focusRec.lethalSalvos / salvos : 0;
+    const disableChance = focusUnit && focusRec && focusPart !== 'torso' ? (focusRec.disableSalvos[focusPart] || 0) / salvos : 0;
+    const hitPt = focusUnit ? partCentre(focusUnit, focusPart) : target;
+    const hitDist = Math.hypot(hitPt.x - o.x, hitPt.y - o.y, hitPt.h - o.h);
+    const bullet = bulletDamageSummary(built, hitDist, {
+        rounds: roundsCount,
+        suppress,
+        armor: focusUnit ? partArmor(focusUnit, focusPart) : 0,
+        headMult: focusUnit && focusPart === 'head' && !focusUnit.drone ? B.headshotMult : 1,
+        flankMult: focusFlanked ? (B.flankExposureMult || 1) : 1
+    });
+    const recoil = ballisticProfile(shooter, built, focusUnit ? hitPt : target, { spread, rounds: roundsCount, heat, muzzle: o, highGround: !!(focusUnit && shooter.z - focusUnit.z >= 2) });
     return {
-        hit: f(hit), innerHit: f(innerHit), directHit: f(hit - through), effectiveHit: f(hitScaleSum), cover: f(cover), throughCover: hit ? through / hit : 0, friendly: f(friendly), other: f(other), miss: f(miss),
-        parts: Object.fromEntries(Object.entries(parts).map(([k, v]) => [k, f(v)])),
-        partHit: aim.part ? f(parts[aim.part]) : focusPart ? f(parts[focusPart]) : f(hit),
-        expectedHits: f(hit) * totalProjectiles, expectedDamage, expectedPartDamage,
-        lethalChance: focusUnit ? f(lethalHits) : 0,
-        disableChance: focusUnit && focusPart !== 'torso' && focusPartHp > 0 && expectedPartDamage >= focusPartHp ? f(parts[focusPart]) : 0,
+        hit, innerHit, firstRoundHit, anyHit, directHit, effectiveHit, cover: f(cover), throughCover, friendly: f(friendly), other: f(other), miss: f(miss),
+        parts,
+        partHit: aim.part ? parts[aim.part] : focusUnit ? parts[focusPart] : hit,
+        expectedHits: hit * totalProjectiles, expectedDamage, expectedPartDamage,
+        lethalChance, disableChance,
         flanked: focusFlanked, headshotMult: focusPart === 'head' ? B.headshotMult : 1,
         targetId: focusUnit?.id || null, targetPart: focusUnit ? focusPart : null,
-        rounds: roundsCount, totalProjectiles, distance: dist, spread, recoil, dropMeters: recoil.dropMeters, muzzle: o, lean: o.lean || null
+        rounds: roundsCount, totalProjectiles, distance: focusUnit ? hitDist : dist, spread, recoil, dropMeters: recoil.dropMeters,
+        bullet, centerTrace, muzzle: o, lean: o.lean || null
     };
 }
 export const estimateShotTelemetry = estimateShot;

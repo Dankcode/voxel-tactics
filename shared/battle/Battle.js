@@ -30,7 +30,7 @@ import { WEAPONS, THROWABLES } from '../content/weapons.js';
 import { ABILITIES } from '../content/units.js';
 import { B } from '../content/balance.js';
 import { createUnit, alive, hasStatus, addStatus, removeStatus, accuracyMult, mobilityPerAp, partArmor, facingToward, FACING_VEC, EYE, CHEST } from './Units.js';
-import { estimateShot, chooseMuzzle, occupiedBy, sampleCone, sampleSalvoRay, recoilFrame, recoilStability, traceProjectile, aimPointOf, partCentre, stepOutTiles, aimedUnit } from './Ballistics.js';
+import { estimateShot, chooseMuzzle, occupiedBy, sampleCone, sampleSalvoRay, recoilFrame, recoilStability, traceProjectile, traceCenterTrajectory, aimPointOf, partCentre, stepOutTiles, aimedUnit } from './Ballistics.js';
 import { Formations } from './Formations.js';
 import { validateDebug, applyDebug } from './DebugOps.js';
 import { createObjective, inZone, extractionOpen } from './Objectives.js';
@@ -216,7 +216,8 @@ export class Battle {
             if (fmK !== 1) { s *= fmK; mods.push([fm, fmK]); }
         }
         if (suppress) { s *= 1.7; mods.push(['suppress', 1.7]); }
-        const dist = Math.hypot(aimPoint.x - (shooter.x + 0.5), aimPoint.y - (shooter.y + 0.5));
+        const aimDist = Math.hypot(aimPoint.x - (shooter.x + 0.5), aimPoint.y - (shooter.y + 0.5));
+        const dist = target ? Math.min(aimDist, Math.hypot(target.x - shooter.x, target.y - shooter.y)) : aimDist;
         if (dist > weapon.range) { const k = 1 + (dist - weapon.range) / weapon.range * B.rangeFalloff; s *= k; mods.push(['range', +k.toFixed(2)]); }
         if (reaction) { const k = this.formations.reactionSpreadMult(shooter) ?? B.reactionSpreadMult; s *= k; mods.push(['reaction', k]); }
         if (breach) { const k = 1 / (B.breachAccuracyMult * this.formations.breachAccuracyMult(shooter)); s *= k; mods.push(['breach', +k.toFixed(2)]); }
@@ -859,9 +860,11 @@ export class Battle {
         const target = aim.unitId ? this.unit(aim.unitId) : null;
         const aimPoint = aimPointOf(this, aim);
         u.facing = facingToward(aimPoint.x - u.x - 0.5, aimPoint.y - u.y - 0.5);
-        const { spread } = this.spreadFor(u, w, aimPoint, { reaction, breach, fireMode: fm, suppress, target: target || (aim.point ? aimedUnit(this, u, aim.point) : null) });
         w=weaponBuild(u,w);
         const muzzle = chooseMuzzle(this.store, u, aimPoint, { occupied: occupiedBy(this, u), allowStepOut });
+        const center = aim.point ? traceCenterTrajectory(this, u, muzzle, aimPoint, w, { heat: u.recoilHeat || 0 }) : null;
+        const spreadTarget = target || (center?.kind === 'unit' && center.unit.side !== u.side ? center.unit : (aim.point ? aimedUnit(this, u, aim.point) : null));
+        const { spread } = this.spreadFor(u, w, aimPoint, { reaction, breach, fireMode: fm, suppress, target: spreadTarget });
         const dv = [aimPoint.x - muzzle.x, aimPoint.y - muzzle.y, aimPoint.h - muzzle.h];
         const dist = Math.hypot(...dv) || 1;
         const dir = dv.map(c => c / dist);
@@ -875,7 +878,7 @@ export class Battle {
         const style = target ? { cover: coverAgainst(this.store, target.x, target.y, target.z, u.x, u.y, u.z), dist: +Math.hypot(target.x - u.x, target.y - u.y).toFixed(1) } : {};
         const shotEv = this.emit({ t: 'shot', unitId: u.id, weaponId: w.id, fireMode: fm, spread: +spread.toFixed(2), muzzle, aim: aimPoint, projectiles, reaction, breach, rounds, ...style });
         const frame = recoilFrame(dir);
-        const stability = recoilStability(u, { highGround: !!(target && u.z - target.z >= 2) });
+        const stability = recoilStability(u, { highGround: !!(spreadTarget && u.z - spreadTarget.z >= 2) });
         const heat0 = u.recoilHeat || 0;
         let maxClimb = 0;
         const changes = this.store.record(() => {

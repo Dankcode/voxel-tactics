@@ -10,14 +10,14 @@
 // has 30 HP.
 import { withCaliber } from './calibers.js';
 const CONFIG={
- repeater:{ammoType:'ar',ammo:30,projectiles:1,perShot:1,spread:1.45,fireModes:['single','burst','auto'],defaultMode:'burst',weight:3.4,recoil:{climb:0.38,drift:0.24,bloom:0.30,heat:0.42}},
- blunderbuss:{ammoType:'shotgun',ammo:8,pellets:8,projectiles:8,perShot:1,shellDamage:30,spread:3.7,weight:3.8,recoil:{climb:1.35,drift:0.45,bloom:0.50,heat:0.65}},
- longrifle:{ammoType:'high',ammo:1,perShot:1,spread:0.42,boltAction:true,scoped:true,minRangeMult:0.8,weight:5.2,recoil:{climb:1.15,drift:0.16,bloom:0.35,heat:0.65}},
- handcannon:{ammoType:'ar',spread:1.5,weight:.9,recoil:{climb:0.55,drift:0.35,bloom:0.36,heat:0.48}},
- crossbow:{ammoType:'ar',ammo:30,spread:1.18,fireModes:['single','burst'],defaultMode:'burst',weight:2.8,recoil:{climb:0.26,drift:0.18,bloom:0.22,heat:0.34}},
- shortbow:{ammoType:'ar',ammo:20,spread:1.15,scoped:true,weight:3.6,recoil:{climb:0.90,drift:0.35,bloom:0.45,heat:0.65}},
- musket:{ammoType:'ar',ammo:30,spread:2.75,fireModes:['single','burst'],defaultMode:'single',weight:3.7,recoil:{climb:1.15,drift:0.78,bloom:0.78,heat:0.85}},
- firelance:{ammoType:'shotgun',ammo:10,pellets:5,shellDamage:18,spread:3.5,weight:7,velocity:160,recoil:{climb:0.4,drift:0.7,bloom:0.6,heat:0.4}}
+ repeater:{ammoType:'ar',ammo:30,projectiles:1,perShot:1,spread:1.45,fireModes:['single','burst','auto'],defaultMode:'burst',damageMult:1.0,minRangeMult:0.65,weight:3.4,recoil:{climb:0.38,drift:0.24,bloom:0.30,heat:0.42}},
+ blunderbuss:{ammoType:'shotgun',ammo:8,pellets:8,projectiles:8,perShot:1,spread:3.7,damageMult:1.0,minRangeMult:0.45,weight:3.8,recoil:{climb:1.35,drift:0.45,bloom:0.50,heat:0.65}},
+ longrifle:{ammoType:'high',ammo:1,perShot:1,spread:0.42,boltAction:true,scoped:true,damageMult:1.0,minRangeMult:0.80,weight:5.2,recoil:{climb:1.15,drift:0.16,bloom:0.35,heat:0.65}},
+ handcannon:{ammoType:'ar',spread:1.5,damageMult:1.0,minRangeMult:0.55,weight:.9,recoil:{climb:0.55,drift:0.35,bloom:0.36,heat:0.48}},
+ crossbow:{ammoType:'ar',ammo:30,spread:1.18,fireModes:['single','burst'],defaultMode:'burst',damageMult:1.0,minRangeMult:0.60,weight:2.8,recoil:{climb:0.26,drift:0.18,bloom:0.22,heat:0.34}},
+ shortbow:{ammoType:'ar',ammo:20,spread:0.95,scoped:true,damageMult:1.0,minRangeMult:0.78,weight:3.6,recoil:{climb:0.90,drift:0.35,bloom:0.45,heat:0.65}},
+ musket:{ammoType:'ar',ammo:30,spread:2.55,fireModes:['single','burst'],defaultMode:'single',damageMult:1.0,minRangeMult:0.60,weight:3.7,recoil:{climb:1.15,drift:0.78,bloom:0.78,heat:0.85}},
+ firelance:{ammoType:'shotgun',ammo:10,pellets:5,shellDamage:18,spread:3.5,damageMult:1.0,minRangeMult:0.45,weight:7,velocity:160,recoil:{climb:0.4,drift:0.7,bloom:0.6,heat:0.4}}
 };
 
 export const WEAPONS = Object.freeze(Object.fromEntries(Object.entries({
@@ -30,11 +30,11 @@ export const WEAPONS = Object.freeze(Object.fromEntries(Object.entries({
     handcannon: { name: 'Sidearm', kind: 'ballistic', caliber: '9mm', ap: 1, projectiles: 1, shred: 0,
         spread: 1.5, range: 12, maxRange: 22, ammo: 12, perShot: 1, reloadAp: 1, noise: 12, element: null, cutIn: 'shot' },
     crossbow: { name: 'Suppressed Carbine', kind: 'ballistic', caliber: '300blk', ap: 2, projectiles: 1, shred: 0,
-        spread: 1.18, range: 21, maxRange: 32, ammo: 6, perShot: 1, reloadAp: 1, noise: 2, element: null, cutIn: 'shot' },
+        spread: 1.18, range: 18, maxRange: 30, ammo: 6, perShot: 1, reloadAp: 1, noise: 2, element: null, cutIn: 'shot' },
     shortbow: { name: 'Marksman Rifle', kind: 'ballistic', caliber: '7.62', ap: 3, projectiles: 1, shred: 0,
-        spread: 1.15, range: 20, maxRange: 34, ammo: 8, perShot: 1, reloadAp: 1, noise: 12, element: null, cutIn: 'shot' },
+        spread: 0.95, range: 24, maxRange: 38, ammo: 8, perShot: 1, reloadAp: 1, noise: 12, element: null, cutIn: 'shot' },
     musket: { name: 'AK Rifle', kind: 'ballistic', caliber: '7.62x39', ap: 2, projectiles: 1, shred: 1,
-        spread: 2.75, range: 14, maxRange: 26, ammo: 6, perShot: 1, reloadAp: 1, noise: 14, element: null, cutIn: 'shot' },
+        spread: 2.55, range: 16, maxRange: 28, ammo: 6, perShot: 1, reloadAp: 1, noise: 14, element: null, cutIn: 'shot' },
     // Not a cartridge: fuel jets that set what they hit alight.
     firelance: { name: 'Flamethrower', kind: 'ballistic', ap: 2, projectiles: 5, damage: 3.6, pierce: 0, shred: 1,
         spread: 3.5, range: 7, maxRange: 11, ammo: 3, perShot: 1, reloadAp: 1, voxel: 1, noise: 10, element: 'pyro', cutIn: 'heavy' },

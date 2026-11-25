@@ -85,3 +85,28 @@ test('render-scale shrinks gun geometry and every contact anchor without changin
   assert.ok(Math.hypot(pose.targets.stock[0]-(stock.x+1)/2,pose.targets.stock[1]-(1-stock.y)/2)<1e-10,'scaled stock and lowered geometry still agree');
  }
 });
+
+test('aim HUD displays trajectory per-part odds, caliber label, and weapon-balanced bullet damage without calling partChance',()=>{
+ const el={classList:classList()},root={classList:classList()},unit={ap:4,ammo:{shortbow:8},items:{},inventory:[]};
+ const focus={id:'e0',name:'Raider',hp:30,maxHp:30,statuses:[],parts:{head:{hp:12,max:12,armor:0},torso:{hp:30,max:30,armor:1},armL:{hp:12,max:12,armor:0},armR:{hp:12,max:12,armor:0},legs:{hp:17,max:17,armor:0}}};
+ const g={
+  mode:{kind:'shoot',weaponId:'shortbow',fireMode:'single'},
+  selectedUnit:()=>unit,
+  battle:{shotAp:()=>3,unit:id=>id==='e0'?focus:null},
+  partChance:()=>{throw Error('live aim HUD must use trajectory parts instead of re-aimed partChance');},
+  aimTelemetry:()=>({
+   hit:0.84,firstRoundHit:0.84,anyHit:0.84,partHit:0.61,expectedDamage:13,distance:14,flanked:false,dropMeters:0,
+   parts:{head:0.21,torso:0.61,armL:0.01,armR:0.01,legs:0},
+   bullet:{caliberId:'7.62',caliberName:'7.62×51 mm NATO',perRound:16,netPerRound:16,rounds:1,pellets:1},
+   recoil:{baseSpread:0.95,finalSpread:0.95,totalClimbDeg:0,maxDriftDeg:0,velocity:800,dropMeters:0},
+   targetPart:'torso',focusUnit:focus,mods:[],rounds:1,weapon:{maxRange:38}
+  })
+ };
+ const hud={game:g,root,el:()=>el};
+ Hud.prototype.renderTarget.call(hud);
+ assert.match(el.innerHTML,/84%/);
+ assert.match(el.innerHTML,/61%/);
+ assert.match(el.innerHTML,/21%/);
+ assert.match(el.innerHTML,/7\.62×51 mm NATO/);
+ assert.match(el.innerHTML,/<b>16<\/b><small>BULLET DMG/);
+});
