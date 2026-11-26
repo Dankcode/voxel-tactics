@@ -426,7 +426,7 @@ export function compileTerrainFeatures(m, terrain, layout) {
     const placeRamp = (x, y, z, matId, yaw, kindLabel) => {
         if (!s.inBounds(x, y, z + 3) || !isFootprintFree(x, y)) return;
         s.set(x, y, 0, MAT.bedrock);
-        for (let k = 1; k < z; k++) s.set(x, y, k, MAT.stone);
+        for (let k = 1; k < z; k++) s.set(x, y, k, MAT.concrete);
         s.set(x, y, z, matId);
         m.ctx.hints[`${x},${y},${z}`] = { ...(m.ctx.hints[`${x},${y},${z}`] || {}), stairYaw: yaw };
         clearAbove(x, y, z + 1, z + 4);
@@ -463,7 +463,7 @@ export function compileTerrainFeatures(m, terrain, layout) {
             for (let x = x0; x <= x1; x++) {
                 for (const ey of [y0 - 1, y0 + width]) {
                     if (s.inBounds(x, ey, G) && isFootprintFree(x, ey)) {
-                        for (let z = 1; z < G; z++) s.set(x, ey, z, MAT.stone);
+                        for (let z = 1; z < G; z++) s.set(x, ey, z, MAT.concrete);
                         s.set(x, ey, G, MAT.cobble);
                         clearAbove(x, ey, G + 1, G + 3);
                     }
@@ -473,9 +473,9 @@ export function compileTerrainFeatures(m, terrain, layout) {
                     const y = y0 + dy;
                     if (!s.inBounds(x, y, G) || !isFootprintFree(x, y)) continue;
                     s.set(x, y, 0, MAT.bedrock);
-                    for (let z = 1; z < G - 1; z++) s.set(x, y, z, MAT.stone);
+                    for (let z = 1; z < G - 1; z++) s.set(x, y, z, MAT.concrete);
                     if (onBridge) {
-                        for (let z = 1; z < G; z++) s.set(x, y, z, MAT.stone);
+                        for (let z = 1; z < G; z++) s.set(x, y, z, MAT.concrete);
                         s.set(x, y, G, MAT.stone_floor);
                         clearAbove(x, y, G + 1, G + 3);
                         dzMap[x + y * W] = 0;

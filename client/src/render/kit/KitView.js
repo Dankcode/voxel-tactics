@@ -24,8 +24,8 @@ import { wallMask, openingAxis, bandMask, BANDS } from '../../../../shared/voxel
 import { buildRoofGeometry } from './RoofBuilder.js';
 
 export const MODERN_WALLS = new Set(['stucco', 'brick', 'concrete_wall', 'siding']);
-const WALLS = new Set(['stone', 'plaster', 'timber', ...MODERN_WALLS]);
-const WALL_LIKE = new Set([...WALLS, 'city_wall', 'glass', 'door', 'door_locked', 'door_open', 'lantern']);
+const WALLS = new Set(['stone', 'plaster', 'timber', 'city_wall', ...MODERN_WALLS]);
+const WALL_LIKE = new Set([...WALLS, 'glass', 'door', 'door_locked', 'door_open', 'lantern']);
 const FURNITURE = new Set(['sofa', 'cabinet', 'bed', 'desk', 'appliance', 'shelving', 'pallet']);
 const PROPS = new Set(['planter', 'privacy_fence', 'chainlink', 'railing', 'jersey', 'bench', 'bin', 'pump']);
 const OBJECTS = new Set(['car_body', 'car_cabin', 'container', 'dumpster']);

@@ -11,7 +11,7 @@ import { STOREY } from './KitMetric.js';
 import { buildingEra, roundedBuilding, markBuildingEdges } from '../mission/BuildingEra.js';
 import { furnishBuilding } from './FurnishSolver.js';
 const key=(x,y)=>`${x},${y}`;
-const WALLS=new Set(['stucco','brick','concrete_wall','siding','stone','city_wall','timber','metal','drystone']);
+const WALLS=new Set(['stucco','brick','concrete_wall','siding','stone','city_wall','timber']);
 const SIDE_OUT={n:[0,-1],s:[0,1],e:[1,0],w:[-1,0]};
 
 /** Which side of the footprint a perimeter cell (local) lies on. Corners report the first matching side. */

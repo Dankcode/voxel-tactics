@@ -87,8 +87,8 @@ export const DISTRICT_WALLS = Object.freeze({
     commercial: ['concrete_wall', 'brick'], residential: ['brick', 'stucco', 'siding'], industrial: ['siding', 'concrete_wall', 'brick'],
     yard: ['siding', 'concrete_wall'], plaza: ['concrete_wall', 'brick'], park: ['brick', 'stucco'],
     dock: ['siding', 'concrete_wall', 'brick'], alpine: ['timber', 'stone', 'brick'], historic: ['stone', 'brick', 'city_wall'],
-    transit: ['concrete_wall', 'brick', 'siding'], desert: ['drystone', 'concrete_wall', 'timber'],
-    canal: ['stone', 'brick', 'city_wall'], highland: ['stone', 'timber', 'drystone'], basin: ['concrete_wall', 'siding', 'stone'],
+    transit: ['concrete_wall', 'brick', 'siding'], desert: ['stucco', 'concrete_wall', 'stone'],
+    canal: ['stone', 'brick', 'city_wall'], highland: ['stone', 'timber', 'brick'], basin: ['concrete_wall', 'siding', 'stone'],
     hillside: ['brick', 'siding', 'concrete_wall']
 });
 export const DISTRICT_PALETTE = Object.freeze({

@@ -87,14 +87,19 @@ test('new double-tile curve modules load alongside an existing baked library',as
  for(const kind of ['wall','floor','glass'])for(let turn=0;turn<4;turn++)for(let dx=0;dx<2;dx++)for(let dy=0;dy<2;dy++)assert.ok(kit.piece(`double_curve_${kind}_${turn}_${dx}_${dy}`));
 });
 
-test('aiming keeps the complete map rendered while choosing clear positions around walls',()=>{
+test('aiming keeps target cover solid while cutting interior blockers behind the shoulder',()=>{
  const c=new CameraDirector({aspect:16/9}),s=new VoxelStore(24,24,10),xrayCalls=[];c.store=s;c.xray=value=>xrayCalls.push(value);
  s.fill(7,4,2,9,4,4,'concrete_wall');s.fill(7,12,2,9,12,4,'concrete_wall');
  const shooter=new THREE.Vector3(8.5,2,6.5),target=new THREE.Vector3(8.5,3,18.5);
  c.prepareAim(shooter,target);
- assert.equal(c.phase,'prepare');assert.equal(c.xrayCells,null);assert.deepEqual(xrayCalls,[null]);
+ assert.equal(c.phase,'prepare');
+ assert.ok(c.xrayCells?.has('8,4,3'),'foreground blocker behind shooter is cut away');
+ assert.ok(!c.xrayCells?.has('8,12,3'),'distant target cover stays intact');
  c.track(target,1/60);
- assert.equal(c.xrayCells,null);assert.deepEqual(xrayCalls,[null]);
+ assert.ok(c.xrayCells?.has('8,4,3'),'TPS tracking keeps foreground blocker cut');
+ assert.ok(!c.xrayCells?.has('8,12,3'),'TPS tracking leaves target cover solid');
+ c.end();
+ assert.equal(c.xrayCells,null);assert.equal(xrayCalls.at(-1),null);
 });
 
 test('obstructsAim catches close, reticle-overlapping and pitched-down allies while keeping flanks clear',()=>{

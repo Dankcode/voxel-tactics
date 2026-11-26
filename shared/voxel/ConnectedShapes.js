@@ -3,7 +3,7 @@
 import { materialById } from './Materials.js';
 import { curveCell, doubleCurveFootprint } from './DoubleTileCurves.js';
 export const WALL_THICKNESS = 0.4;
-export const WALL_KEYS = new Set(['stone', 'plaster', 'timber', 'stucco', 'brick', 'concrete_wall', 'siding']);
+export const WALL_KEYS = new Set(['stone', 'plaster', 'timber', 'stucco', 'brick', 'concrete_wall', 'siding', 'city_wall']);
 const OPENINGS = new Set(['glass', 'door', 'door_open', 'door_locked', 'lantern']);
 export const CONNECTION_DIRS = [[1, 0], [0, 1], [-1, 0], [0, -1]]; // E S W N
 const keyAt = (s, x, y, z) => materialById(s.get(x, y, z)).key;

@@ -13,7 +13,7 @@ export function projectedSpreadRadius(camera, height, spread, distance, width=he
 export function updateReticle(g){
     const el=g.hud.el('.aim-reticle'),u=g.selectedUnit();
     if(!u||g.mode.kind!=='shoot'||!g.freeAim||g.hud.equipment.open||g.player?.busy||g.cutins?.current){el.classList.add('hidden');return;}
-    const p=g.freeAim,camera=g.scene.camera,point=new THREE.Vector3(p.x,p.h,p.y),ndc=point.clone().project(camera),rect=g.scene.renderer.domElement.getBoundingClientRect();
+    const p=g.freeAim,camera=g.scene.camera,impact=g.aimTrace?.point||p,point=new THREE.Vector3(impact.x,impact.h,impact.y),ndc=point.clone().project(camera),rect=g.scene.renderer.domElement.getBoundingClientRect();
     if(ndc.z>1||ndc.z< -1){el.classList.add('hidden');return;}
     el.classList.remove('hidden');
     const shooter=g.shooterOf?.(u)||u,rawWeapon=WEAPONS[g.mode.weaponId],w=rawWeapon?weaponBuild(shooter,rawWeapon):null;
@@ -23,7 +23,7 @@ export function updateReticle(g){
     const dist=muzzleVec.distanceTo(point);
     // Project full salvo spread (initial bloom + consecutive recoil bloom) and vertical recoil climb.
     const tel=g.aimTelemetry?.();
-    const blocked=tel?!!tel.blocked:(g.aimTrace?.kind==='voxel'&&g.aimTrace.t<dist-0.35);
+    const blocked=tel?!!tel.blocked:(g.aimTrace?.kind==='voxel');
     const outOfRange=tel?!!tel.outOfRange:(!!w?.maxRange&&dist>w.maxRange+0.05);
     el.classList.toggle('blocked',!!blocked);
     el.classList.toggle('out-of-range',outOfRange);

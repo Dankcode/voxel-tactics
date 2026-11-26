@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { Game } from '../../Game.js';
+import { Game, aimStanceKey } from '../../Game.js';
 import { AimController } from '../../ui/AimController.js';
 import { Battle } from '../../../../shared/battle/Battle.js';
 import { VoxelStore } from '../../../../shared/voxel/VoxelStore.js';
 import { MAT } from '../../../../shared/voxel/Materials.js';
+import { partCentre } from '../../../../shared/battle/Ballistics.js';
 
 function aimingGame(){
     const g=Object.create(Game.prototype),unit={id:'p0',x:0,y:0,z:0};
@@ -19,29 +20,25 @@ function aimingGame(){
     g.aim.snap({x:10,y:.5,h:2.35});g.freeAim={...g.aim.current};return g;
 }
 
-test('direct-cursor hover steers aim on canvas, ignores HUD elements, and right-drag orbits camera',()=>{
-    const g=aimingGame();const pointed=[],orbited=[];
-    g.aimFromPointer=(x,y)=>pointed.push([x,y]);
-    g.cameraDirector.orbitAim=(dx,dy)=>orbited.push([dx,dy]);
-    g.onHover({clientX:640,clientY:360});
-    assert.deepEqual(pointed,[[640,360]]);
-    g.onHover({clientX:1200,clientY:680,target:{closest:sel=>sel==='#hud > *'?{}:null}});
-    assert.equal(pointed.length,1,'moving over HUD widgets does not steer aim');
-    g.orbitDrag={sx:640,sy:360,x:640,y:360,moved:false};
-    g.onHover({clientX:660,clientY:350});
-    assert.deepEqual(orbited,[[20,-10]]);
-    assert.equal(g.orbitDrag.moved,true);
+test('locked aim uses movement deltas even when the physical cursor coordinates stay fixed',()=>{
+    const g=aimingGame(),e={clientX:640,clientY:360,movementX:100,movementY:20};
+    g.onHover(e);const first={...g.aim.target};g.onHover(e);
+    assert.ok(g.aim.target.y>first.y);assert.ok(g.aim.target.h<first.h);
+    g.aimPointer.locked=false;const before={...g.aim.target};
+    g.onHover({...e,clientX:1200});assert.deepEqual(g.aim.target,before,'moving over HUD cannot drag the aim');
 });
 
-test('first click in shoot mode fires immediately at current aim point while drag release never fires',()=>{
-    const g=aimingGame();let shot;
-    g.intent=p=>{shot=p;};
-    g.dragging={moved:true};
+test('the first click captures, a locked click fires the current reticle point, and fallback drag never fires',()=>{
+    const g=aimingGame();let captures=0,shot;
+    g.aimPointer.request=()=>captures++;g.intent=p=>shot=p;
+    g.aimPointer.locked=false;g.onClick({clientX:100,clientY:100});
+    assert.equal(captures,1);assert.equal(shot,undefined);
+    g.aimPointer.locked=true;g.aim.setTarget({x:20,y:5,h:1});
     g.onClick({clientX:100,clientY:100});
-    assert.equal(shot,undefined,'drag release never fires');
-    g.dragging=null;g.aim.setTarget({x:20,y:5,h:1});
-    g.onClick({clientX:100,clientY:100});
-    assert.deepEqual(shot.aim.point,g.freeAim,'direct click fires the active reticle point without capture');
+    assert.deepEqual(shot.aim.point,g.freeAim,'fires the lagged reticle, not the desired destination or stale screen coordinates');
+    g.aimPointer.locked=false;g.aimPointer.unavailable=true;shot=undefined;
+    g.aimDrag={x:100,y:100};g.onHover({clientX:160,clientY:130});g.onClick({clientX:160,clientY:130});
+    assert.equal(shot,undefined);assert.equal(captures,1);
 });
 
 test('aim entry auto-frames visible hostiles and falls back to soldier facing when none are visible',()=>{
@@ -140,9 +137,7 @@ test('left and right peeks keep the reticle on the same target and use the autho
         assert.deepEqual(g.freeAim,p,'returning home keeps the same target');
         assert.ok(camera.cam.quaternion.angleTo(quaternion)<1e-9,'returning home also preserves the viewing direction');
         g.moveAim(30,0);g.stepAim(1/60);
-        assert.ok(camera.cam.quaternion.angleTo(quaternion)<1e-9,'reticle aim steady-cam avoids unwanted spin loops');
-        camera.orbitAim(30,0);
-        assert.ok(camera.cam.quaternion.angleTo(quaternion)>1e-4,'explicit orbit rotates the shoulder camera');
+        assert.ok(camera.cam.quaternion.angleTo(quaternion)>1e-4,'the next mouse movement resumes normal camera turning');
     }
 });
 
@@ -220,4 +215,65 @@ test('aimMuzzle respects manual peek vs auto step-out, aimAtPart updates origin 
     assert.equal(g.aimPick?.unitId, enemy.id);
     assert.ok(camera.cam.quaternion.angleTo(q0) < 1e-6, 'step-out preserves viewing direction');
     assert.ok(camera.cam.position.distanceTo(pos0) > 0.1, 'camera translates to step-out stance');
+});
+
+test('TPS moveAim + stepAim track smoothly round a corner while interior x-ray clears shoulder blockers', async () => {
+    const { CameraDirector } = await import('../../anim/CameraDirector.js');
+    const store = new VoxelStore(32, 32, 10);
+    store.fill(0, 0, 0, 31, 31, 0, 'grass');
+    store.fill(8, 19, 1, 10, 19, 3, 'concrete_wall');
+    store.fill(10, 22, 1, 13, 22, 3, 'brick');
+    store.fill(6, 15, 1, 8, 15, 1, 'concrete_wall');
+    const battle = new Battle({ mission: { id: 'tps-xray', store, rooms: [], buildings: [], spawns: { player: [{ x: 10, y: 20, z: 0 }], enemy: [{ type: 'cultist', pos: { x: 7, y: 14, z: 0 }, group: 0 }] } }, squad: [{ type: 'grenadier' }], seed: 2 });
+    const g = aimingGame(), u = battle.unit('p0'), enemy = battle.unit('e0');
+    const camera = new CameraDirector({ aspect: 1280 / 720 }); camera.store = store;
+    Object.assign(g, {
+        battle, selectedUnit: () => u, isVisible: () => true, peek: null, views: new Map(),
+        cutins: { beginAim() {} }, cameraDirector: camera, overlays: { showTrajectory() {} },
+        hud: { equipment: { open: false }, renderTarget() {}, renderTargets() {} },
+        scene: { renderer: { domElement: { clientHeight: 720 } } },
+        focusFloor() {}
+    });
+
+    g.enterTargeting();
+    assert.ok(camera.shooter.x === 11.5 && camera.shooter.z === 20.5, 'enterTargeting frames from step-out tile');
+    assert.equal(g.aimPick?.unitId, enemy.id);
+    assert.ok(camera.xrayCells?.has('12,22,2') || camera.xrayCells?.has('11,22,2'), 'shoulder blocker wall is cut away via interior x-ray');
+    assert.ok(!camera.xrayCells?.has('7,15,1'), 'target half-cover remains intact');
+
+    const camBefore = camera.cam.position.clone(), qBefore = camera.cam.quaternion.clone();
+    g.moveAim(35, -12);
+    g.stepAim(1 / 60);
+    assert.ok(camera.cam.quaternion.angleTo(qBefore) > 1e-4, 'TPS moveAim + stepAim turns the shoulder camera smoothly');
+    assert.ok(camera.cam.position.distanceTo(camBefore) > 1e-4, 'shoulder orbits cleanly around shooter pivot');
+    assert.ok(camera.xrayCells?.has('12,22,2') || camera.xrayCells?.has('11,22,2'), 'hysteresis retains shoulder x-ray clearance across aim motion');
+    camera.end();
+    assert.equal(camera.xrayCells, null, 'exiting aim clears x-ray cells');
+});
+
+test('all district building wall materials render as connected kit walls and sloped road foundations use concrete', async () => {
+    const { kitHandler } = await import('../kit/KitView.js');
+    const { WALL_KEYS } = await import('../../../../shared/voxel/ConnectedShapes.js');
+    const { DISTRICT_WALLS } = await import('../../../../shared/mapgen/LotCatalogue.js');
+    const { generateOperation } = await import('../../../../shared/mapgen/Generator.js');
+    const empty = new VoxelStore(4, 4, 4);
+    for (const [kind, walls] of Object.entries(DISTRICT_WALLS)) {
+        for (const w of walls) {
+            assert.ok(WALL_KEYS.has(w), `${kind} wall "${w}" is registered in ConnectedShapes.WALL_KEYS`);
+            assert.equal(kitHandler(empty, 1, 1, 1, MAT[w]), 'wall', `${kind} wall "${w}" uses connected kit wall geometry instead of blocks`);
+        }
+    }
+    assert.equal(kitHandler(empty, 1, 1, 1, MAT.city_wall), 'wall');
+    for (const plot of ['old_quarter', 'canal_district', 'arid_compound', 'hillside_ridge']) {
+        const { mission: m } = generateOperation({ plot, seed: 1 });
+        for (const b of m.buildings) {
+            assert.equal(kitHandler(m.store, 0, 0, 0, MAT[b.wall]), 'wall', `${plot} building wall "${b.wall}" uses kit walls`);
+        }
+        for (let y = 0; y < m.store.depth; y++) for (let x = 0; x < m.store.width; x++) for (let z = 1; z < m.store.height - 1; z++) {
+            const top = m.store.get(x, y, z);
+            if (top === MAT.road_slope || top === MAT.cobble_slope || top === MAT.sidewalk_stair) {
+                if (z > 1) assert.notEqual(m.store.get(x, y, z - 1), MAT.stone, `${plot} sloped ramp (${x},${y},${z}) subfill must not use thin stone walls`);
+            }
+        }
+    }
 });

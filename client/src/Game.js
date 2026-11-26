@@ -379,9 +379,9 @@ export class Game {
         if (m.kind === 'shoot' && !wasShooting) {
             this.preAimFloor = { cutLevel: this.cutLevel, levelLocked: this.levelLocked, levelSource: this.levelSource };
         }
-        this.mode = m;this.aimDrag=null;this.orbitDrag=null;this.rawAim=null;this.aimPick=null;this.framedTargetId=null;this.aimTelemetryCache=null;this.peekVisible=null;
+        this.mode = m;this.aimDrag=null;this.rawAim=null;this.aimPick=null;this.framedTargetId=null;this.aimTelemetryCache=null;this.peekVisible=null;
         if (['throw','gadget','breach'].includes(m.kind)) this.views.get(this.selected)?.flashStatus?.(); this.freeAim=null;this.freeAimManual=false;this.moveConfirmation=null;this.aim.clear();this.aimStance=null;
-        this.aimPointer?.setEnabled?.(false);
+        this.aimPointer?.setEnabled?.(m.kind === 'shoot');
         this.scene?.renderer?.domElement?.classList?.toggle('aiming',m.kind==='shoot');
         if(m.kind!=='shoot')this.hud.el('.aim-reticle')?.classList.add('hidden');   // PLAN-15: never a reticle beside another tool
         this.overlays.clearAim();
@@ -513,7 +513,7 @@ export class Game {
     }
     enterTargeting() {
         const u = this.selectedUnit(); if (!u) return;
-        const targets = this.visibleTargets(u);
+        const targets = this.visibleTargets ? this.visibleTargets(u) : [];
         const rawW = WEAPONS[this.mode.weaponId] || WEAPONS[u.weapon];
         const w = weaponBuild(u, rawW);
         const fallback = this.defaultAimPoint(u);
@@ -537,7 +537,8 @@ export class Game {
         this.updateAimPick(u, origin, this.freeAim);
         if (targets.length && !this.aimPick) this.aimPick = { unitId: targets[0].id, part: initPart };
         this.views?.get?.(u.id)?.face(this.freeAim.x - origin.x, this.freeAim.y - origin.y);
-        this.cameraDirector?.track?.(new THREE.Vector3(this.freeAim.x, this.freeAim.h, this.freeAim.y), 0, { smooth: false });
+        this.cameraDirector?.track?.(new THREE.Vector3(this.freeAim.x, this.freeAim.h, this.freeAim.y), 0);
+        if (globalThis.navigator?.userActivation?.isActive && this.aimPointer && !this.aimPointer.unavailable) this.aimPointer.request?.();
     }
     aimAtTarget(targetId, part = null) {
         const u = this.selectedUnit(), t = this.battle?.unit(targetId);
@@ -553,13 +554,13 @@ export class Game {
         this.freeAim = { ...p };
         this.rawAim = { ...p };
         this.aim.snap(p);
-        this.cameraDirector.fixedDir = null;
+        if (this.cameraDirector) this.cameraDirector.fixedDir = null;
         this.frameAim(u, p, this.aimMuzzle(u, p));
         const origin = this.aimOrigin(u);
         this.updateAimPick(u, origin, p);
         if (!this.aimPick) this.aimPick = { unitId: t.id, part: chosen.part };
         this.views?.get?.(u.id)?.face(p.x - origin.x, p.y - origin.y);
-        this.cameraDirector?.track?.(new THREE.Vector3(p.x, p.h, p.y), 1 / 60, { smooth: true });
+        this.cameraDirector?.track?.(new THREE.Vector3(p.x, p.h, p.y), 0);
         this.hud.renderTargets();
         this.hud.renderTarget();
     }
@@ -578,6 +579,7 @@ export class Game {
         this.updateAimPick(u, origin, p);
         if (!this.aimPick) this.aimPick = { unitId: t.id, part };
         this.views.get(u.id)?.face(p.x - origin.x, p.y - origin.y);
+        this.cameraDirector?.track?.(new THREE.Vector3(p.x, p.h, p.y), 0);
         this.hud.renderTargets();
         this.hud.renderTarget();
     }
@@ -877,34 +879,31 @@ export class Game {
     bindInput(canvas) {
         this.aimPointer=new AimPointer(canvas,{
             changed:()=>this.hud.renderTarget(),
-            failed:()=>this.hud.renderTarget()
+            failed:()=>{this.hud.renderTarget();this.hud.toast('Drag or use arrow keys to aim.','warn');}
         });
+        canvas.addEventListener('pointerdown',e=>{
+            if(e.button===0&&this.mode.kind==='shoot'&&this.aimPointer.unavailable&&!this.aimPointer.locked){
+                this.aimDrag={x:e.clientX,y:e.clientY,id:e.pointerId};canvas.setPointerCapture(e.pointerId);
+            }
+        });
+        const endAimDrag=()=>{this.aimDrag=null;};
+        canvas.addEventListener('pointerup',endAimDrag);canvas.addEventListener('pointercancel',endAimDrag);
+        canvas.addEventListener('lostpointercapture',endAimDrag);
         canvas.addEventListener('contextmenu', e => e.preventDefault());
         this.hud?.root?.addEventListener?.('contextmenu', e => {
             if (!['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target?.tagName)) e.preventDefault();
         });
         canvas.addEventListener('mousemove', e => this.onHover(e));
-        // Camera: right-drag grabs ground in tactical mode or orbits shoulder in shoot mode; middle-drag orbits; wheel zooms.
+        // Camera: right-drag grabs the ground and pans, middle-drag orbits (yaw + clamped tilt), wheel zooms (eased).
         canvas.addEventListener('mousedown', e => {
-            if (this.mode.kind === 'shoot') {
-                if (e.button === 2) {
-                    this.orbitDrag = { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false };
-                }
-                return;
-            }
+            if (this.mode.kind === 'shoot') return;
             if (e.button !== 2 && e.button !== 1) return;
             if (e.button === 1) e.preventDefault();                                  // no browser autoscroll
             const grab = e.button === 2 ? this.scene.rig.groundPoint(this.scene.rayAt(e.clientX, e.clientY)) : null;
             this.dragging = { button: e.button, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, grab };
         });
         window.addEventListener('mouseup', e => {
-            if (e.button === 2) {
-                if (this.mode.kind === 'shoot') {
-                    if (!this.orbitDrag?.moved) this.cancel();
-                    this.orbitDrag = null;
-                } else if (this.dragging && !this.dragging.moved) this.cancel();
-                this.dragging = null;
-            }
+            if (e.button === 2) { if (this.mode.kind === 'shoot') this.cancel(); else if (this.dragging && !this.dragging.moved) this.cancel(); this.dragging = null; }
             if (e.button === 1) this.dragging = null;
         });
         canvas.addEventListener('click', e => this.onClick(e));
@@ -922,13 +921,13 @@ export class Game {
         // Screen-edge scrolling: remember where the pointer is (not over HUD controls) and whether it left the window.
         window.addEventListener('mousemove', e => { this.edgePtr = { x: e.clientX, y: e.clientY, ui: !!e.target?.closest?.('button, input, select, textarea, .options, .panel, .target') }; });
         document.addEventListener('mouseleave', () => { this.edgePtr = null; });
-        window.addEventListener('blur', () => { this.edgePtr = null;this.aimDrag=null;this.orbitDrag=null;this.keys.clear();this.aimPointer.release(); });
+        window.addEventListener('blur', () => { this.edgePtr = null;this.aimDrag=null;this.keys.clear();this.aimPointer.release(); });
     }
     cancel() {
-        this.aimDrag=null;this.orbitDrag=null;
+        this.aimDrag=null;
         if(this.cancelAutoEnd())return;
-        if(this.aimPointer.locked)this.aimPointer.release();
-        if(this.mode.kind==='shoot'){this.peek=null;this.peekVisible=null;this.setMode({kind:'move'});return;}
+        if(this.mode.kind==='shoot'&&this.peek){this.setPeek(null);return;}   // PLAN-15: first Esc steps back from a peek
+        if(this.aimPointer.locked){this.aimPointer.release();return;}
         if(this.hud.equipment.open){this.hud.equipment.toggle();return;}
         if (this.debug.tool) { this.debug.setTool(null); return; }
         if (this.mode.kind !== 'move') this.setMode({ kind: 'move' });
@@ -937,13 +936,13 @@ export class Game {
     /** WASD / arrows and screen edges feed the rig's smooth pan (relative to the camera yaw). */
     handleKeysHeld(dt) {
         const k = this.keys;
-        // Z/X change floors (onKey); WASD and the arrows pan. While aiming WASD peeks (onKey), arrows orbit the shoulder camera.
+        // Z/X change floors (onKey); WASD and the arrows pan. While aiming WASD peeks (onKey), arrows nudge the aim.
         let x = (k.has('d') || k.has('arrowright') ? 1 : 0) - (k.has('a') || k.has('arrowleft') ? 1 : 0);
         let y = (k.has('w') || k.has('arrowup') ? 1 : 0) - (k.has('s') || k.has('arrowdown') ? 1 : 0);
         if(this.mode.kind==='shoot'){
             this.scene.rig.setPanIntent(0,0);
             const ax=(k.has('arrowright')?1:0)-(k.has('arrowleft')?1:0),ay=(k.has('arrowup')?1:0)-(k.has('arrowdown')?1:0);
-            if((ax||ay)&&this.canAct()&&!this.hud.equipment.open)this.cameraDirector.orbitAim(ax*280*dt,-ay*220*dt);
+            if((ax||ay)&&this.canAct()&&!this.hud.equipment.open)this.moveAim(ax*400*dt,-ay*400*dt);
             return;
         }
         const p = this.edgePtr, M = 12;
@@ -978,7 +977,7 @@ export class Game {
                 return;
             }
             if (['z', 'x', 'pageup', 'pagedown', 'v'].includes(key)) { e.preventDefault(); return; }
-            if (key === 'q' || key === 'e') { e.preventDefault(); this.cameraDirector.orbitAim(key === 'q' ? -90 : 90, 0); return; }
+            if (key === 'q' || key === 'e') { e.preventDefault(); if (this.canAct()) this.moveAim(key === 'q' ? -90 : 90, 0); return; }
             if (key === 'tab') { e.preventDefault(); this.cycleTarget(e.shiftKey ? -1 : 1); return; }
         }
         if ((key === 'z' || key === 'x') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); if (!e.repeat) this.changeLevel(key === 'z' ? 1 : -1); return; }
@@ -1076,13 +1075,9 @@ export class Game {
     }
     onHover(e) {
         if(this.mode.kind==='shoot'){
-            if(this.orbitDrag){
-                const d=this.orbitDrag,dx=e.clientX-d.x,dy=e.clientY-d.y;
-                if(!d.moved&&Math.hypot(e.clientX-d.sx,e.clientY-d.sy)>=6)d.moved=true;
-                d.x=e.clientX;d.y=e.clientY;
-                if(d.moved)this.cameraDirector.orbitAim(dx,dy);
-            } else if(this.canAct()&&!this.hud.equipment.open&&!e.target?.closest?.('#hud > *')){
-                this.aimFromPointer(e.clientX,e.clientY);
+            if(this.canAct()&&!this.hud.equipment.open){
+                if(this.aimPointer.locked)this.moveAim(e.movementX,e.movementY);
+                else if(this.aimDrag){const p=this.aimDrag;this.moveAim(e.clientX-p.x,e.clientY-p.y);p.x=e.clientX;p.y=e.clientY;}
             }
             this.hud.cursorTip(null);return;
         }
@@ -1199,68 +1194,9 @@ export class Game {
             default: this.overlays.clearPath(); this.hud.cursorTip(null);
         }
     }
-    /** Direct-cursor 3D free-aim at real world depth (unprojected camera ray against enemies + voxels). */
-    aimFromPointer(clientX, clientY) {
-        const u = this.selectedUnit();
-        if (!u || this.mode.kind !== 'shoot' || !this.battle?.store) return;
-        const dom = this.scene?.renderer?.domElement;
-        const rect = dom?.getBoundingClientRect?.();
-        if (!rect?.width || !rect?.height) return;
-        const camera = this.cameraDirector.active ? this.cameraDirector.cam : this.scene.camera;
-        const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
-        const ndcY = -((clientY - rect.top) / rect.height) * 2 + 1;
-        const rayOrigin = camera.position.clone();
-        const rayFar = new THREE.Vector3(ndcX, ndcY, 0.5).unproject(camera);
-        const rayDir = rayFar.sub(rayOrigin).normalize();
-        const oVoxel = { x: rayOrigin.x, y: rayOrigin.z, h: rayOrigin.y };
-        const dVoxel = [rayDir.x, rayDir.z, rayDir.y];
-        const w = weaponBuild(u, WEAPONS[this.mode.weaponId] || WEAPONS[u.weapon]);
-        const maxRay = (w?.maxRange || 40) + 16;
-        // Skip voxels right in front of the shoulder camera/shooter so nearby cover doesn't trap the ray.
-        const ref = this.aimStance?.muzzle?.step || this.shooterOf(u);
-        const skip = Math.min(2.2, Math.max(0.4, rayOrigin.distanceTo(new THREE.Vector3(ref.x + 0.5, (ref.z ?? u.z) + 2.1, ref.y + 0.5)) * 0.5));
-        const startVoxel = { x: oVoxel.x + dVoxel[0] * skip, y: oVoxel.y + dVoxel[1] * skip, h: oVoxel.h + dVoxel[2] * skip };
-        const worldEnd = { x: oVoxel.x + dVoxel[0] * maxRay, y: oVoxel.y + dVoxel[1] * maxRay, h: Math.max(0.15, oVoxel.h + dVoxel[2] * maxRay) };
-        const voxHit = castRay(this.battle.store, startVoxel, worldEnd, {
-            skipStart: false,
-            blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile === 'block',
-            shapedVehicles: true
-        });
-        const maxT = voxHit.hit ? skip + voxHit.t : maxRay;
-        let bestHit = null;
-        for (const t of this.battle.units) {
-            if (!alive(t) || t.side === u.side || !this.isVisible(t)) continue;
-            const h = rayUnit(oVoxel, dVoxel, t, maxT, this.battle.store);
-            if (h && h.t >= skip * 0.5 && (!bestHit || h.t < bestHit.t)) bestHit = { unit: t, part: h.part, t: h.t };
-        }
-        let nextPoint;
-        if (bestHit) {
-            nextPoint = { x: oVoxel.x + dVoxel[0] * bestHit.t, y: oVoxel.y + dVoxel[1] * bestHit.t, h: oVoxel.h + dVoxel[2] * bestHit.t };
-            this.framedTargetId = bestHit.unit.id;
-        } else if (voxHit.hit) {
-            nextPoint = { x: oVoxel.x + dVoxel[0] * maxT, y: oVoxel.y + dVoxel[1] * maxT, h: Math.max(0.2, oVoxel.h + dVoxel[2] * maxT) };
-        } else {
-            const dist = Math.min(w?.range || 16, 16);
-            nextPoint = { x: oVoxel.x + dVoxel[0] * dist, y: oVoxel.y + dVoxel[1] * dist, h: Math.max(0.5, oVoxel.h + dVoxel[2] * dist) };
-        }
-        this.cameraDirector.fixedDir = null;
-        this.rawAim = nextPoint;
-        this.aim.snap(nextPoint);
-        this.freeAim = nextPoint;
-        this.freeAimManual = true;
-        const m = this.aimMuzzle(u, nextPoint);
-        if (!this.aimStance || this.aimStance.unitId !== u.id || aimStanceKey(m) !== this.aimStance.key) {
-            this.frameAim(u, nextPoint, m, { preserveDirection: true });
-        } else {
-            Object.assign(this.aimStance, { at: { ...nextPoint }, muzzle: m, blocked: shotBlocked(this.battle.store, m, nextPoint) });
-        }
-        const origin = this.aimOrigin(u);
-        this.updateAimPick(u, origin, nextPoint);
-        this.views.get(u.id)?.face(nextPoint.x - origin.x, nextPoint.y - origin.y);
-        this.hud.renderTarget();
-    }
     /**
-     * Update the direct aim point and stance state. Shoulder camera stays steady under cursor movement to avoid spin loops.
+     * Update the lagged aim point, muzzle stance (leaning or stepping out round cover), and shoulder camera.
+     * The character stays on its occupied cell while the third-person camera follows the free-aim reticle.
      */
     stepAim(dt){
         const u=this.selectedUnit();
@@ -1269,14 +1205,17 @@ export class Game {
         const p=this.aim.step(dt,{tau:aimTau(u,w),sway:this.options.aimSway?swayDegrees(u):0,origin,inertia:false});
         if(!p)return;
         this.freeAim=p;
+        // Blocked angles: the shot steps out to a side tile (shared chooseMuzzle); the shoulder camera and the reticle
+        // follow it, so the view is from where the soldier will actually fire and not into the wall.
         const st=this.aimStance;
         if(!st||st.unitId!==u.id||(p.x!==st.at.x || p.y!==st.at.y || p.h!==st.at.h)){
             const m=this.aimMuzzle(u,p);
-            if(!st||st.unitId!==u.id||aimStanceKey(m)!==st.key)this.frameAim(u,p,m,{preserveDirection:true});
-            else Object.assign(st,{at:{...p},muzzle:m,blocked:shotBlocked(this.battle.store,m,p)});
+            if(!st||st.unitId!==u.id||aimStanceKey(m)!==st.key)this.frameAim(u,p,m);
+            else Object.assign(st,{at:{...p},muzzle:m,blocked:this.battle?.store?shotBlocked(this.battle.store,m,p):false});
         }
         origin=this.aimOrigin(u);this.updateAimPick(u,origin,p);
-        this.views.get(u.id)?.face(p.x-origin.x,p.y-origin.y);
+        this.views?.get?.(u.id)?.face(p.x-origin.x,p.y-origin.y);
+        if(this.cameraDirector?.phase==='prepare')this.cameraDirector.track(new THREE.Vector3(p.x,p.h,p.y),dt);
     }
     /** Cached Phoenix Point telemetry for the current aim point and fire mode. */
     aimTelemetry() {
@@ -1299,7 +1238,7 @@ export class Game {
         const validNear = near && alive(near) && near.side !== u.side && this.isVisible(near) ? near : null;
         const focusUnit = validTraj || validNear;
         const dist = Math.hypot(p.x - origin.x, p.y - origin.y, p.h - origin.h);
-        const blocked = this.aimTrace?.kind === 'voxel' && this.aimTrace.t < dist - 0.35 && (est.hit ?? 0) < 0.05;
+        const blocked = this.aimTrace?.kind === 'voxel' && (est.hit ?? 0) < 0.05;
         const outOfRange = !(validTraj && (est.hit ?? 0) > 0) && dist > (built.maxRange || 40) + 0.05;
         const value = { ...est, mods, fireMode: fm, weapon: built, blocked, outOfRange, focusUnit };
         this.aimTelemetryCache = { key, value };
@@ -1350,7 +1289,7 @@ export class Game {
         this.aimStance={unitId:u.id,key:aimStanceKey(m),side,muzzle:m,at:{...p},blocked:this.battle?.store?shotBlocked(this.battle.store,m,p):false};
         this.cutins?.beginAim?.(u,{shoulder:side,weaponId:this.mode.weaponId});
         this.cameraDirector?.prepareAim?.(o,new THREE.Vector3(p.x,p.h,p.y),{side,preserveDirection});
-        if(wasFollowing&&prevKey!==this.aimStance.key)this.cameraDirector?.track?.(new THREE.Vector3(p.x,p.h,p.y),0,{smooth:true});
+        if(wasFollowing&&prevKey!==this.aimStance.key)this.cameraDirector?.track?.(new THREE.Vector3(p.x,p.h,p.y),0);
         if(!this.peek){
             const v=this.views?.get?.(u.id);
             if(v?.pos&&typeof v.setWorld==='function'){
@@ -1407,19 +1346,20 @@ export class Game {
     /** PLAN-15: cover / overwatch read-out for the current peek tile (cached per tile and battle step). */
     peekStatus(){
         const u=this.selectedUnit();if(!u||this.mode.kind!=='shoot')return null;
-        const c=this.peek||{x:u.x,y:u.y,z:u.z},stance=this.aimStance?.unitId===u.id?this.aimStance.key:'none',key=`${u.id}:${c.x},${c.y},${c.z}:${stance}:${this.battle.seq}`;
+        const m=this.aimStance?.unitId===u.id?this.aimStance.muzzle:null;
+        const c=this.peek||{x:u.x,y:u.y,z:u.z},stance=this.aimStance?.unitId===u.id?`${this.aimStance.key}:${m?.lean||'base'}`:'none',key=`${u.id}:${c.x},${c.y},${c.z}:${stance}:${this.battle.seq}`;
         if(this.peekInfo?.key!==key){
-            const m=this.aimStance?.unitId===u.id?this.aimStance.muzzle:null;
             const autoStep=!this.peek&&!!m?.step,autoLean=!this.peek&&!m?.step&&!!m?.lean;
             this.peekInfo={key,peeking:!!this.peek,autoStep,autoLean,range:B.peekRange??1,...peekExposure(this.battle,u,c)};
         }
         return this.peekInfo;
     }
-    captureAim(){}
+    captureAim(){if(this.mode.kind==='shoot'&&!this.hud.equipment.open)this.aimPointer.request();}
     onClick(e) {
         if (!this.battle || this.dragging?.moved || this.hud.equipment.open) return;
         if(this.mode.kind==='shoot'&&!this.debug.tool){
             if(!this.canAct()||!this.controllable(this.selectedUnit()))return;
+            if(!this.aimPointer.locked){if(!this.aimPointer.unavailable)this.captureAim();return;}
             this.confirmFire();return;
         }
         const p = this.pick(e.clientX, e.clientY);
@@ -1468,7 +1408,7 @@ export class Game {
 }
 
 /** The aiming camera re-frames only when the tile the shot leaves from changes (a step out or back), not on leans. */
-export function aimStanceKey(m){return m.step?`${m.step.x},${m.step.y}`:`tile:${Math.floor(m.x??0)},${Math.floor(m.y??0)}`;}
+export function aimStanceKey(m){return m?.step?`step:${m.step.x},${m.step.y},${m.step.z??0}`:'home';}
 /** True when the straight line from the muzzle to the aim point meets a bullet-stopping voxel before it. */
 export function shotBlocked(store,m,p){const r=castRay(store,m,p);return !!r.hit&&r.t<r.length-0.3;}
 

@@ -93,39 +93,17 @@ export class CameraDirector {
     }
     prepareAim(shooter,target,{side='right',preserveDirection=false}={}){
         // A strafe translates the shot and keeps its viewing direction even when a wall changes the shoulder offset.
-        if(this.active&&this.phase==='prepare'&&this.following){
-            this.side=side;
-            this.fixedDir=preserveDirection?this.cam.getWorldDirection(new THREE.Vector3()):null;
-            this.shooter=shooter.clone();
-            this.head={x:shooter.x,y:shooter.z,h:shooter.y+1.7};
-            if(!preserveDirection)this.aimFocus=target.clone();
-            return;
-        }
-        this.side=side;this.fixedDir=null;this.following=false;this.desiredAt=null;this.desiredLook=null;
-        if(!this.begin(shooter,target.clone().add(new THREE.Vector3(0,-1.1,0)),'prepare',{side}))return;
-        this.look.copy(target);this.aimFocus=target.clone();this.desiredLook=target.clone();this.desiredAt=this.cam.position.clone();this.shooter=shooter.clone();
-        this.aimDir=this.flatDir(shooter,target);this.apply(0);
+        if(this.active&&this.phase==='prepare'&&this.following){this.side=side;this.fixedDir=preserveDirection?this.cam.getWorldDirection(new THREE.Vector3()):null;this.shooter=shooter.clone();this.head={x:shooter.x,y:shooter.z,h:shooter.y+1.7};return;}
+        this.side=side;this.fixedDir=null;this.following=false;if(!this.begin(shooter,target.clone().add(new THREE.Vector3(0,-1.1,0)),'prepare',{side}))return;this.look.copy(target);this.shooter=shooter.clone();this.aimDir=this.flatDir(shooter,target);this.apply(0);
     }
     zoomAim(factor) { this.aimFov=THREE.MathUtils.clamp((this.aimFov??38)*factor,14,48); }
-    orbitAim(dx, dy, { sens = 0.0055 } = {}) {
-        if (this.phase !== 'prepare' || !this.shooter) return;
-        const pivot = this.shooter.clone().add(new THREE.Vector3(0, 1.55, 0));
-        const base = (this.aimFocus || this.look).clone().sub(pivot);
-        const dist = Math.max(4, base.length());
-        const flatLen = Math.hypot(base.x, base.z) || 1e-4;
-        const yaw = Math.atan2(base.z, base.x) + dx * sens;
-        const pitch = THREE.MathUtils.clamp(Math.atan2(base.y, flatLen) - dy * sens, -0.9, 0.9);
-        const c = Math.cos(pitch);
-        this.aimFocus = pivot.clone().add(new THREE.Vector3(Math.cos(yaw) * c * dist, Math.sin(pitch) * dist, Math.sin(yaw) * c * dist));
-        this.fixedDir = null;
-        this.track(this.aimFocus, 0);
-    }
     flatDir(a,b){const d=b.clone().sub(a);d.y=0;return d.lengthSq()<1e-6?new THREE.Vector3(0,0,1):d.normalize();}
     /**
-     * Smooth over-the-shoulder aiming: transitions immediately on direct `track()` / `orbitAim()` / `setPeek()` calls,
-     * or smoothly over ~0.12s via `desiredAt`/`desiredLook` in `update(dt)` when `{ smooth: true }` (target framing).
+     * PLAN-14: third-person-shooter aiming. The camera stays locked behind the shooter's shoulder, pulls in cleanly
+     * around corners, and applies interior foreground x-ray with hysteresis around the shoulder while leaving distant
+     * target cover intact.
      */
-    track(point,dt,{smooth=false}={}){
+    track(point,dt){
         if(this.phase!=='prepare'||!this.shooter)return;
         this.clock=(this.clock||0)+(dt||0);
         const pivot=this.shooter.clone().add(new THREE.Vector3(0,1.55,0));
@@ -138,18 +116,26 @@ export class CameraDirector {
         const desired=pivot.clone().addScaledVector(dir,-SHOULDER.back).addScaledVector(right,side).add(new THREE.Vector3(0,SHOULDER.up,0));
         // PLAN-15: continuous pull-in (stop short of the first wall), then one raised try; never a camera inside a wall.
         let at=this.clear(desired)?desired:this.pullIn(pivot,desired);
-        // Too close to read the shot: move to a clear position without hiding intervening geometry.
+        // Too close to read the shot: keep readable shoulder distance and cut away interior blockers behind the shoulder.
         const cramped=!at||at.distanceTo(pivot)<SHOULDER.back*0.45;
         if(cramped)at=this.openSpot(pivot,desired);
-        const look=this.fixedDir?at.clone().addScaledVector(this.fixedDir,Math.max(dist,6)):pivot.clone().addScaledVector(dir,Math.max(dist,6));
-        this.desiredAt=at.clone();
-        this.desiredLook=look.clone();
-        this.aimFocus=look.clone();
-        if(!smooth||this.fixedDir){
-            this.cam.position.copy(at);
-            this.look.copy(look);
-            this.cam.aspect=this.scene.aspect||1;this.cam.updateProjectionMatrix();this.cam.lookAt(this.look);this.cam.updateMatrixWorld();
+        const look=this.fixedDir?at.clone().addScaledVector(dir,Math.max(dist,6)):pivot.clone().addScaledVector(dir,Math.max(dist,6));
+        this.xrayT=Math.max(0,(this.xrayT||0)-(dt||0));
+        const moved=!this.xrayAt||this.xrayAt.distanceTo(at)>0.3||this.xrayLook.distanceTo(look)>0.8;
+        if(this.store&&!this.xrayT&&moved){
+            this.xrayT=0.12;this.xrayAt=at.clone();this.xrayLook=look.clone();
+            const fresh=this.foregroundCells(at,look,pivot);
+            if(cramped||!this.sees(at,look))for(const cell of this.occluders(at,[pivot],Math.floor(this.shooter.y)-1))fresh.add(cell);
+            // Hysteresis: a cut cell stays cut for 0.4 s after it stops blocking, so fast swings do not flash walls back.
+            this.xrayKeep||=new Map();for(const c of fresh)this.xrayKeep.set(c,this.clock+0.4);
+            for(const [c,until] of this.xrayKeep)if(until<this.clock)this.xrayKeep.delete(c);
+            const cells=this.xrayKeep.size?new Set(this.xrayKeep.keys()):null,old=this.xrayCells;
+            const changed=(!old)!==(!cells)||(old&&cells&&(old.size!==cells.size||[...cells].some(c=>!old.has(c))));
+            if(changed){this.xrayCells=cells;this.xray?.(cells);}
         }
+        this.cam.position.copy(at);
+        this.look.copy(look);
+        this.cam.aspect=this.scene.aspect||1;this.cam.updateProjectionMatrix();this.cam.lookAt(this.look);this.cam.updateMatrixWorld();
         this.aimDir=flat;this.following=true;
     }
     commitAim(unitId=null) {
@@ -196,9 +182,23 @@ export class CameraDirector {
             for(let b=back;b>=0.2;b-=0.2) for(const sign of signs) for(const k of scales) {const v=at(b,sign*k);if(this.clear(v)&&(!view||this.sees(v,look)))return v;}
             return null;
         };
-        this.xrayCells=null;
+        this.xrayCells=null;this.xrayT=0;this.xrayAt=null;this.xrayLook=null;this.xrayKeep=null;
         let safe=pick([main],[1,0.6,0.3,0],true)||pick([-main],[1,0.6,0.3],true)||pick([main,-main],[1],false);
-        this.xray?.(null);
+        // PLAN-10: cramped interiors. Keep shoulder camera at a readable distance and cut away walls/furniture
+        // blocking the view from the camera to the shooter while leaving target cover intact.
+        let xray=null;
+        const shooterFocus=shooter.clone().add(new THREE.Vector3(0,1.4,0));
+        const blind=!!safe&&!this.sees(safe,shooterFocus);
+        if(phase==='prepare'&&this.store&&(!safe||blind||safe.distanceTo(shooter)<back*0.6)) {
+            const s=this.store,keep=blind&&safe.distanceTo(shooter)>=back*0.6;
+            for(const v of keep?[safe]:[back*0.8,back*0.6,back*0.45].map(b=>at(b,main))) {
+                if(v.x<0.5||v.z<0.5||v.x>s.width-0.5||v.z>s.depth-0.5)continue;
+                const cells=this.occluders(v,[shooterFocus],Math.floor(shooter.y)-1);
+                xray={v,cells};break;
+            }
+            if(xray){safe=xray.v;this.xrayCells=xray.cells;this.aimFov=Math.max(this.aimFov??38,48);}
+        }
+        this.xray?.(this.xrayCells);
         if (!safe) {const v=shooter.clone().add(new THREE.Vector3(0,1.7,0)); if(this.clear(v))safe=v;}
         if (!safe) {this.end();return false;}
         this.from.copy(safe);this.to.copy(safe).lerp(shooter.clone().add(new THREE.Vector3(0,up,0)),0.12);
@@ -208,32 +208,11 @@ export class CameraDirector {
         // Keep whoever is hidden (the aiming shooter): re-framing while the reticle moves must not reveal them.
         this.active=true;this.scene.actionCamera=this.cam;this.hidden||=new Set();this.apply(0);return true;
     }
-    update(dt) {
-        if (this.active && this.phase === 'prepare') {
-            this.elapsed += dt;
-            this.cam.fov += ((this.aimFov ?? 38) - this.cam.fov) * (1 - Math.exp(-dt / .15));
-            if (this.following) {
-                if (this.desiredAt && this.desiredLook) {
-                    const alpha = dt > 0 ? (1 - Math.exp(-dt / 0.12)) : 1;
-                    this.cam.position.lerp(this.desiredAt, alpha);
-                    if (!this.clear(this.cam.position)) this.cam.position.copy(this.desiredAt);
-                    this.look.lerp(this.desiredLook, alpha);
-                    this.cam.aspect = this.scene.aspect || 1;
-                    this.cam.updateProjectionMatrix();
-                    this.cam.lookAt(this.look);
-                    this.cam.updateMatrixWorld();
-                } else {
-                    this.cam.updateProjectionMatrix();
-                }
-                return;
-            }
-            this.apply(Math.min(1, this.elapsed / 0.65));
-        }
-    }
+    update(dt) {if(this.active&&this.phase==='prepare'){this.elapsed+=dt;this.cam.fov+=((this.aimFov??38)-this.cam.fov)*(1-Math.exp(-dt/.15));if(this.following){this.cam.updateProjectionMatrix();return;}this.apply(Math.min(1,this.elapsed/0.65));}}
     apply(k) {
         this.cam.position.lerpVectors(this.from,this.to,THREE.MathUtils.clamp(k,0,1));
         if(!this.clear(this.cam.position))this.cam.position.copy(this.from);
         this.cam.aspect=this.scene.aspect || 1;this.cam.updateProjectionMatrix();this.cam.lookAt(this.look);this.cam.updateMatrixWorld();
     }
-    end() {const was=this.active;this.following=false;this.desiredAt=null;this.desiredLook=null;this.aimFocus=null;this.fixedDir=null;this.xrayAt=null;this.xrayKeep=null;this.aimFov=38;this.shooter=null;this.aimContinuity=false;this.aimUnitId=null;this.active=false;this.phase=null;if(this.xrayCells){this.xrayCells=null;this.xray?.(null);}if(was)this.onEnd?.();this.scene.actionCamera=null;this.hidden=new Set();}
+    end() {const was=this.active;this.following=false;this.fixedDir=null;this.xrayT=0;this.xrayAt=null;this.xrayLook=null;this.xrayKeep=null;this.aimFov=38;this.shooter=null;this.aimContinuity=false;this.aimUnitId=null;this.active=false;this.phase=null;if(this.xrayCells){this.xrayCells=null;this.xray?.(null);}if(was)this.onEnd?.();this.scene.actionCamera=null;this.hidden=new Set();}
 }
