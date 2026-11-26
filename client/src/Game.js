@@ -519,7 +519,7 @@ export class Game {
         const fallback = this.defaultAimPoint(u);
         let p = fallback, initPart = 'torso';
         if (targets.length) {
-            ({ part: initPart, point: p } = this.bestTargetPart(u, targets[0]));
+            ({ part: initPart, point: p } = this.bestTargetPart ? this.bestTargetPart(u, targets[0]) : Game.prototype.bestTargetPart.call(this, u, targets[0]));
             this.framedTargetId = targets[0].id;
             this.freeAimManual = false;
         } else {
@@ -547,7 +547,7 @@ export class Game {
             if (!weaponId) return;
             this.setMode({ kind: 'shoot', weaponId });
         }
-        const chosen = part ? { part, point: partCentre(t, part) } : this.bestTargetPart(u, t);
+        const chosen = part ? { part, point: partCentre(t, part) } : (this.bestTargetPart ? this.bestTargetPart(u, t) : Game.prototype.bestTargetPart.call(this, u, t));
         const p = chosen.point;
         this.framedTargetId = t.id;
         this.freeAim = { ...p };
