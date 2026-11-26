@@ -9,7 +9,7 @@
 import { WALKERS } from './Walker.js';
 import { WEAPONS, THROWABLES } from '../content/weapons.js';
 import { projectileDamage, roundsFor } from './FireControl.js';
-import { alive } from './Units.js';
+import { alive, hasStatus } from './Units.js';
 import { evaluateBallisticShot } from './Ballistics.js';
 import { enemyThreats } from './EnemyAi.js';
 
@@ -48,6 +48,7 @@ export function podPlan(battle, group) {
             }
         }
         value *= 1 + (1 - t.u.hp / Math.max(1, t.u.maxHp)) * 0.8;
+        if (hasStatus(t.u, 'marked')) value *= 1.35;
         if (t.ghost) value *= 0.5;
         if (!best || value > best.value + 1e-9 || (Math.abs(value - best.value) <= 1e-9 && t.u.id < best.t.u.id)) best = { t, value };
     }
@@ -56,14 +57,16 @@ export function podPlan(battle, group) {
     // Roles.
     const left = [...members];
     if (members.length >= 2) {
-        const support = left.find(m => hasThrowable(m) && focus && Math.hypot(focus.x - m.x, focus.y - m.y) <= 14);
+        const support = left.find(m => ['officer', 'medic', 'demolisher'].includes(m.type))
+            || left.find(m => hasThrowable(m) && focus && Math.hypot(focus.x - m.x, focus.y - m.y) <= 14);
         if (support) { plan.roles[support.id] = 'support'; left.splice(left.indexOf(support), 1); }
     }
     if (focus && left.length >= 2) {
         const cx = members.reduce((s, m) => s + m.x, 0) / members.length, cy = members.reduce((s, m) => s + m.y, 0) / members.length;
         const lx = focus.x - cx, ly = focus.y - cy, ll = Math.hypot(lx, ly) || 1;
         const side = m => Math.abs((m.x - cx) * ly - (m.y - cy) * lx) / ll;
-        const flanker = [...left].sort((a, b) => side(b) - side(a) || byId(a, b))[0];
+        const flanker = left.find(m => ['breacher', 'brute'].includes(m.type))
+            || [...left].sort((a, b) => side(b) - side(a) || byId(a, b))[0];
         plan.roles[flanker.id] = 'flanker'; left.splice(left.indexOf(flanker), 1);
     }
     for (const m of left) plan.roles[m.id] = 'anchor';

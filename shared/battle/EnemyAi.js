@@ -462,6 +462,37 @@ export function gadget(battle, u, known, T = DEFAULT_TUNING, role = 'anchor') {
         const burning = friends.find(o => hasStatus(o, 'burning') && dist2(o, u) <= THROWABLES.water_flask.range);
         if (burning) plays.push({ score: 3.5, intent: { type: 'throw', unitId: u.id, itemId: 'water_flask', to: { x: burning.x, y: burning.y, z: burning.z } } });
     }
+    // Specialized XCOM 2 unit abilities: mark targets, shield podmates, mend wounded, rally stressed, suppress, or focus aim.
+    if (u.abilities?.includes('water_mend') && u.ap >= ABILITIES.water_mend.ap && u.will >= ABILITIES.water_mend.wp) {
+        const injured = friends.filter(o => alive(o) && o.id !== u.id && (o.hp <= o.maxHp - 6 || hasStatus(o, 'burning')) && dist2(o, u) <= ABILITIES.water_mend.range && battle.sees(u, o))
+            .sort((a, b) => a.hp - b.hp)[0];
+        if (injured) plays.push({ score: 4.5, intent: { type: 'ability', unitId: u.id, abilityId: 'water_mend', targetId: injured.id } });
+    }
+    if (u.abilities?.includes('mark_target') && u.ap >= ABILITIES.mark_target.ap && u.will >= ABILITIES.mark_target.wp) {
+        const focusId = planFocus(battle, u);
+        const target = known.filter(k => !hasStatus(k.u, 'marked') && dist2(k, u) <= ABILITIES.mark_target.range && battle.sees(u, k.u))
+            .sort((a, b) => (b.u.id === focusId ? 1 : 0) - (a.u.id === focusId ? 1 : 0) || dist2(a, u) - dist2(b, u))[0]?.u;
+        if (target) plays.push({ score: 3.6, intent: { type: 'ability', unitId: u.id, abilityId: 'mark_target', targetId: target.id } });
+    }
+    if (u.abilities?.includes('field_shield') && u.ap >= ABILITIES.field_shield.ap && u.will >= ABILITIES.field_shield.wp) {
+        const unbraced = friends.filter(o => alive(o) && !hasStatus(o, 'braced') && dist2(o, u) <= ABILITIES.field_shield.radius).length;
+        if (unbraced >= 2) plays.push({ score: 3.3, intent: { type: 'ability', unitId: u.id, abilityId: 'field_shield' } });
+    }
+    if (u.abilities?.includes('rally') && u.ap >= ABILITIES.rally.ap && u.will >= ABILITIES.rally.wp) {
+        const stressed = friends.filter(o => alive(o) && (o.stress || 0) >= 40 && dist2(o, u) <= ABILITIES.rally.radius).length;
+        if (stressed >= 1) plays.push({ score: 3.1, intent: { type: 'ability', unitId: u.id, abilityId: 'rally' } });
+    }
+    if (u.abilities?.includes('suppress') && !u.suppressing && u.ap >= ABILITIES.suppress.ap && u.will >= ABILITIES.suppress.wp) {
+        const supW = u.weapons.includes('lmg') ? WEAPONS.lmg : u.weapons.includes('repeater') ? WEAPONS.repeater : null;
+        if (supW && (u.ammo[supW.id] ?? 0) >= 1) {
+            const dugTarget = known.filter(k => !hasStatus(k.u, 'suppressed') && dist2(k, u) <= supW.maxRange
+                && coverAgainst(battle.store, k.x, k.y, k.z, u.x, u.y, u.z) !== COVER.NONE)[0]?.u;
+            if (dugTarget) plays.push({ score: 2.8, intent: { type: 'ability', unitId: u.id, abilityId: 'suppress', targetId: dugTarget.id } });
+        }
+    }
+    if (u.abilities?.includes('deadeye') && !u.buffs?.deadeye && u.ap >= 3 && u.will >= ABILITIES.deadeye.wp) {
+        if (known.some(k => dist2(k, u) >= 12)) plays.push({ score: 3.0, intent: { type: 'ability', unitId: u.id, abilityId: 'deadeye' } });
+    }
     plays.sort((a, b) => b.score - a.score);
     for (const p of plays) if (!battle.validate(p.intent)) return p.intent;
     return null;
@@ -585,8 +616,15 @@ export function launchIntent(battle, u) {
  * sweeps a ring around its tech that turns every round.
  */
 export function decideDrone(battle, u) {
-    if (u.ap + u.moveOnlyAp < 1 || u.movedThisTurn || hasStatus(u, 'frozen')) return null;
+    if (hasStatus(u, 'frozen')) return null;
+    const gun = (u.weapons || []).map(id => WEAPONS[id]).find(w => w?.kind === 'ballistic' && (u.ammo[w.id] ?? 0) > 0);
     const seen = battle.enemiesOf(u).filter(p => battle.sees(u, p));
+    if (gun && seen.length && u.ap >= battle.shotAp(u, gun)) {
+        if (u.weapon !== gun.id) return { type: 'switchWeapon', unitId: u.id, weaponId: gun.id };
+        const shot = bestEnemyShot(battle, u, gun, seen.map(p => ({ u: p, x: p.x, y: p.y, z: p.z, ghost: false, age: 0 })), tuningOf(battle));
+        if (shot && (shot.effectiveHitRate >= 0.25 || shot.kill)) return why(shot.intent, 'drone: fire gun pod');
+    }
+    if (u.ap + u.moveOnlyAp < 1 || u.movedThisTurn) return null;
     const budget = (u.ap + u.moveOnlyAp) * battle.mobility(u);
     const nodes = () => [...battle.reach(u, budget).nodes.values()].filter(n => !(battle.occupant(n.x, n.y, n.z) && !same(n, u)));
     if (seen.length) {

@@ -18,17 +18,18 @@ const SIDE_OUT={n:[0,-1],s:[0,1],e:[1,0],w:[-1,0]};
 export function perimeterSide(b,x,y){return y===0?'n':y===b.d-1?'s':x===0?'w':x===b.w-1?'e':null;}
 
 export function compileBuilding(m,b,{roomById=id=>m.ctx.rooms.find(r=>r.id===id)}={}) {
-    const {store,ctx}=m,{x0,y0,w,d,storeys}=b,top=m.G+STOREY*storeys;
+    const {store,ctx}=m,{x0,y0,w,d,storeys}=b,G=b.baseZ??m.G,top=G+STOREY*storeys;
     if(storeys<1||storeys>4||b.floors.length!==storeys)throw Error('compile.storeys: requires all 1–4 floor layouts');
     const wallKey=WALLS.has(b.wall)?b.wall:'stucco',WALL=MAT[wallKey];
-    const out={id:b.id,name:b.id,program:b.program,role:b.program,x0,y0,w,d,baseZ:m.G,top,storeys,front:b.front,wall:wallKey,district:b.district||null,era:buildingEra(b),rooms:[],doors:[],windows:[],stairs:[],escapes:[],approach:[],exits:[],access:[]};
+    const out={id:b.id,name:b.id,program:b.program,role:b.program,x0,y0,w,d,baseZ:G,top,storeys,front:b.front,wall:wallKey,district:b.district||null,era:buildingEra(b),rooms:[],doors:[],windows:[],stairs:[],escapes:[],approach:[],exits:[],access:[]};
     out.rounded=roundedBuilding(b);markBuildingEdges(store,out,out.rounded?'modern':'old');
     const world=([x,y])=>[x+x0,y+y0];
     const roofSlab=b.roof==='pitched'?MAT.roof:MAT.concrete;
     for(let y=y0;y<y0+d;y++)for(let x=x0;x<x0+w;x++) {
-        for(let z=m.G;z<=top+2;z++)store.set(x,y,z,AIR);
+        if(G>1)for(let z=1;z<G;z++)store.set(x,y,z,MAT.concrete);
+        for(let z=G;z<=top+2;z++)store.set(x,y,z,AIR);
         for(let s=0;s<=storeys;s++) {
-            const fz=m.G+s*STOREY;store.set(x,y,fz,s===storeys?roofSlab:MAT.oak_floor);
+            const fz=G+s*STOREY;store.set(x,y,fz,s===storeys?roofSlab:MAT.oak_floor);
             if(s<storeys&&(x===x0||y===y0||x===x0+w-1||y===y0+d-1))for(let h=1;h<=2;h++)store.set(x,y,fz+h,WALL);
         }
     }
@@ -46,7 +47,7 @@ export function compileBuilding(m,b,{roomById=id=>m.ctx.rooms.find(r=>r.id===id)
     }[wallKey]||['sash'];
     const buildingWindow=windowPalette[hashString(`${m.id}:${b.id}:windows`)%windowPalette.length];
     for(const f of b.floors) {
-        const fz=m.G+STOREY*f.floor;
+        const fz=G+STOREY*f.floor;
         // v3 partitions are plaster (breakable drywall); the shell keeps the district's wall material.
         const PART=f.layout==='v3'?MAT.plaster:WALL;
         for(const [x,y] of f.walls.map(world))for(let h=1;h<=2;h++)store.set(x,y,fz+h,PART);
@@ -74,7 +75,7 @@ export function compileBuilding(m,b,{roomById=id=>m.ctx.rooms.find(r=>r.id===id)
         }
     }
     const doorAt=(x,y,floor,side)=> {
-        const z=m.G+STOREY*floor;for(let h=1;h<=2;h++)store.set(x,y,z+h,MAT.door);
+        const z=G+STOREY*floor;for(let h=1;h<=2;h++)store.set(x,y,z+h,MAT.door);
         const rec={x,y,z,storey:floor,side,exterior:true};out.doors.push(rec);return rec;
     };
     // Exterior exits: v3 layouts name them by lot socket; v2 layouts keep the mid-wall west/east pair.
@@ -89,7 +90,7 @@ export function compileBuilding(m,b,{roomById=id=>m.ctx.rooms.find(r=>r.id===id)
     const core=b.floors[0].core?.x!=null&&b.floors[0].core?.y!=null&&b.floors[0].core.layout==='v3'?b.floors[0].core:{x:1,y:(b.floors[0].core?.mid??Math.floor(d/2))-1};
     const coreSet=new Set();for(let y=core.y;y<core.y+3;y++)for(let x=core.x;x<core.x+5;x++)coreSet.add(key(x0+x,y0+y));
     for(let s=0;s<storeys-1;s++) {
-        const fz=m.G+STOREY*s,even=s%2===0;
+        const fz=G+STOREY*s,even=s%2===0;
         const run=createStairRun({origin:{x:x0+core.x+(even?1:3),y:y0+core.y+(even?0:2)},direction:even?'east':'west',rise:STOREY,baseZ:fz,footprintSet:coreSet});
         if(!run)throw Error(`compile.stairs: ${b.id} floor ${s} cannot fit core`);
         for(const c of [run.before,run.cells[0],run.cells[1]])store.set(c.x,c.y,fz+STOREY,AIR);
@@ -110,7 +111,7 @@ export function compileBuilding(m,b,{roomById=id=>m.ctx.rooms.find(r=>r.id===id)
     // on the roof, open at the top step. Used for tall blocks without a fire escape and for low blocks with no room
     // for a roof ladder.
     const roofStair=()=>{
-        const fz=m.G+STOREY*(storeys-1),even=(storeys-1)%2===0;
+        const fz=G+STOREY*(storeys-1),even=(storeys-1)%2===0;
         const run=createStairRun({origin:{x:x0+core.x+(even?1:3),y:y0+core.y+(even?0:2)},direction:even?'east':'west',rise:STOREY,baseZ:fz,footprintSet:coreSet});
             if(!run)throw Error(`compile.stairs: ${b.id} roof flight cannot fit core`);
             const hole=[run.before,run.cells[0],run.cells[1]];
@@ -131,11 +132,11 @@ export function compileBuilding(m,b,{roomById=id=>m.ctx.rooms.find(r=>r.id===id)
     else if(storeys>=3) {
         let rec;
         if(b.access?.module==='fire_escape'&&b.access.offset!=null) {
-            const params={side:b.access.side,origin:facadeOrigin(out,b.access.side,b.access.offset),datum:m.G,storeys,doors:b.access.doors||{}};
+            const params={side:b.access.side,origin:facadeOrigin(out,b.access.side,b.access.offset),datum:G,storeys,doors:b.access.doors||{}};
             rec=compileFireEscape(store,params);
             const f={...SIDE_FRAME[params.side],origin:params.origin},at=(u,r)=>[params.origin[0]+f.a[0]*u+f.o[0]*r,params.origin[1]+f.a[1]*u+f.o[1]*r];
 reserveFireEscape(m,f);
-            const [fx,fy]=at(0,1);rec.foot={x:fx,y:fy,z:m.G};
+            const [fx,fy]=at(0,1);rec.foot={x:fx,y:fy,z:G};
         } else rec=placeFireEscape(m,out,{prefer,exitFloors:b.access?.exitFloors,blocked,roomById});
         for(const l of rec.landings) {
             if(l.door!=null){const f={...SIDE_FRAME[rec.params.side],origin:rec.params.origin},x=rec.params.origin[0]+f.a[0]*l.door,y=rec.params.origin[1]+f.a[1]*l.door;out.doors.push({x,y,z:l.z,storey:l.storey,side:rec.params.side,exterior:true,escape:true});}
@@ -145,10 +146,10 @@ reserveFireEscape(m,f);
     } else if(b.roof!=='pitched') {
         let rec;
         if(b.access?.module==='roof_ladder'&&b.access.offset!=null) {
-            const params={side:b.access.side,origin:facadeOrigin(out,b.access.side,b.access.offset),datum:m.G,storeys};
+            const params={side:b.access.side,origin:facadeOrigin(out,b.access.side,b.access.offset),datum:G,storeys};
             const cells=roofLadderTemplate(params).cells;for(const c of cells)store.set(c.x,c.y,c.z,c.mat);
             const {x,y}=cells[0];
-            rec={module:'roof_ladder',params,x,y,foot:m.G,top,landing:{x:params.origin[0],y:params.origin[1],z:top}};m.reserve(x-2,y-2,x+2,y+2);
+            rec={module:'roof_ladder',params,x,y,foot:G,top,landing:{x:params.origin[0],y:params.origin[1],z:top}};m.reserve(x-2,y-2,x+2,y+2);
         } else {
             // PLAN-14: merged parcels can leave a low block no blank facade for a ladder: a two-storey block then takes
             // the roof flight; a single storey keeps an unreachable low roof (exempt from roofsReachable).
@@ -171,7 +172,7 @@ reserveFireEscape(m,f);
         for(const run of out.stairs)if(run.storey===f.floor||run.storey===f.floor-1)for(const c of [run.before,...run.cells,run.after]){keepFree.add(key(c.x,c.y));obstacles.add(key(c.x,c.y));}
         // PLAN-10: keep a vault landing inside every ground-floor window.
         if(f.floor===0)for(const w of out.windows.filter(w=>w.storey===0&&(w.kind==='window'||w.kind==='band')))for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]])if(floorSet.has(key(w.x+dx,w.y+dy)))keepFree.add(key(w.x+dx,w.y+dy));
-        furnish(store,{floorSet,rooms,fz:m.G+STOREY*f.floor,keepFree,obstacles,rng:createRng(hashString(`${m.id}:${m.seed}:${b.id}:${f.floor}`)),hints:ctx.hints,decor:ctx.decor,wfc:true});
+        furnish(store,{floorSet,rooms,fz:G+STOREY*f.floor,keepFree,obstacles,rng:createRng(hashString(`${m.id}:${m.seed}:${b.id}:${f.floor}`)),hints:ctx.hints,decor:ctx.decor,wfc:true});
     }
     out.floorCells=out.rooms.filter(r=>r.storey===0&&r.gameplay).flatMap(r=>r.cells);
     curveBuildingCorners(store,out,{wall:wallKey,floor:'oak_floor',hints:ctx.hints});

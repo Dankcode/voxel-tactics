@@ -75,7 +75,7 @@ test('P3–P8 operations: sockets hold, routes stay clear, pockets sit on the li
         const op = generateOperation({ plot, seed: 2 }), { layout, mission: m } = op;
         assert.ok(m.metrics.pass, `${plot}: all gates pass (${Object.entries(m.metrics.gates).filter(([, v]) => !v).map(([k]) => k)})`);
         // Bay-level sockets: no two pieces touch unless they are one run or one multi-bay object.
-        const byBay = new Map(layout.pieces.flatMap(p => { const parts = BAY_PIECES[p.piece].parts || 1; return Array.from({ length: parts }, (_, k) => [`${(p.x >> 1) + (p.axis === 'x' ? k : 0)},${(p.y >> 1) + (p.axis === 'y' ? k : 0)}`, p.base === 'car' || p.base === 'container' ? `${p.base}_${p.axis}_${'abc'[k]}` : p.piece]); }));
+        const byBay = new Map(layout.pieces.flatMap(p => { const parts = BAY_PIECES[p.piece].parts || 1; return Array.from({ length: parts }, (_, k) => [`${(p.x >> 1) + (p.axis === 'x' ? k : 0)},${(p.y >> 1) + (p.axis === 'y' ? k : 0)}`, parts > 1 ? `${p.base}_${p.axis}_${'abcd'[k]}` : p.piece]); }));
         for (const [id, t] of byBay) {
             const [bx, by] = id.split(',').map(Number);
             for (const side of ['e', 's']) { const [dx, dy] = SIDE_VEC[side], n = byBay.get(`${bx + dx},${by + dy}`); if (n) assert.ok(bayCompatible(t, n, side), `${plot}: ${t} ${side} ${n}`); }

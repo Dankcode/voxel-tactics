@@ -47,6 +47,7 @@ export const BIOME_PRIORS = Object.freeze({
     metro_hub: Object.freeze({ closeIn: 1.2, ambush: 1.15, keepAway: 1.05, recoilDiscipline: 1.1, hunt: 1.15 }),
     arid_compound: Object.freeze({ highGroundBias: 1.2, closeIn: 1.2, recoilDiscipline: 1.15, flankGuard: 1.15, coverBreakPriority: 1.1 }),
     canal_district: Object.freeze({ flankGuard: 1.2, overwatchCaution: 1.15, recoilDiscipline: 1.15, ambush: 1.1 }),
+    hillside_avenue: Object.freeze({ highGroundBias: 1.32, flankGuard: 1.18, recoilDiscipline: 1.15, overwatchCaution: 1.12, closeIn: 1.08 }),
     hillside_ridge: Object.freeze({ highGroundBias: 1.35, keepAway: 1.1, flankGuard: 1.15, recoilDiscipline: 1.15 }),
     sunken_basin: Object.freeze({ highGroundBias: 1.25, ambush: 1.2, closeIn: 1.1, coverBreakPriority: 1.15 })
 });

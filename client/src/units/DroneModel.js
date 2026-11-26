@@ -16,6 +16,12 @@ export class DroneModel {
         const hull = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.12, 0.42), shell); this.body.add(hull);
         const dome = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), shell); dome.position.y = 0.06; this.body.add(dome);
         const lens = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 8), eye); lens.position.set(0, -0.05, -0.2); this.body.add(lens);
+        if (unit.type === 'gun_drone' || unit.weapons?.length) {
+            const barrelMat = new THREE.MeshStandardMaterial({ color: 0x1c1f22, roughness: 0.45, metalness: 0.6, clippingPlanes: clipping });
+            const pod = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.08, 0.2), barrelMat); pod.position.set(0, -0.1, -0.06); this.body.add(pod);
+            const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.26, 8).rotateX(Math.PI / 2), barrelMat); barrel.position.set(0, -0.1, -0.22); this.body.add(barrel);
+            const strip = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.03, 0.08), eye); strip.position.set(0, -0.075, -0.11); this.body.add(strip);
+        }
         for (const [x, z] of [[0.28, 0.28], [-0.28, 0.28], [0.28, -0.28], [-0.28, -0.28]]) {
             const arm = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.035, 0.4), trim); arm.position.set(x / 2, 0, z / 2); arm.rotation.y = Math.atan2(x, z); this.body.add(arm);
             const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.06, 8), shell); hub.position.set(x, 0.04, z); this.body.add(hub);

@@ -13,7 +13,7 @@
 //   * UVs: parts whose slot uses world-space mapping ignore these UVs (walls stay seamless across pieces); crates,
 //     barrels, hay, sandbags and cloth use the UVs authored here.
 import * as THREE from 'three';
-import { rng, box, clean, merge, softBox, blob } from './Geo.js';
+import { rng, box, clean, merge, softBox, blob, cyl, profileX } from './Geo.js';
 import { ARCHITECTURE_PIECES } from './ArchitecturePieces.js';
 import { CONNECTED_PIECES } from './ConnectedPieces.js';
 import { MODERN_PIECES } from './ModernPieces.js';
@@ -74,6 +74,18 @@ export const PIECES = {
     // --- stairs (rising toward +X)
     stair_block: { meta: { group: 'stairs', text: 'Solid stringer under a stair tread' }, build: () => [{ slot: 'self', geometry: box(1, 1, 1) }] },
     stair_step: { meta: { group: 'stairs', text: 'Six compact treads in one tile, rising toward +X' }, build: () => [{ slot: 'self', geometry: merge(Array.from({length:6},(_,i)=>box(1/6,(i+1)/6,.96,-.5+(i+.5)/6))) }] },
+    road_ramp: { meta: { group: 'stairs', text: 'Smooth sloped road wedge rising toward +X' }, build: () => [{ slot: 'self', geometry: merge([profileX([[-0.5, 0], [0.5, 0], [0.5, 0.87], [-0.5, 0.04]], 1)]) }] },
+    sf_stair_step: { meta: { group: 'stairs', text: 'San Francisco stepped street sidewalk with flanking cheek curbs rising toward +X' }, build: () => [
+        { slot: 'self', geometry: merge(Array.from({ length: 6 }, (_, i) => box(1 / 6, (i + 1) / 6, 0.96, -0.5 + (i + 0.5) / 6))) },
+        { slot: 'plinth', geometry: merge([
+            ...Array.from({ length: 6 }, (_, i) => box(1 / 6, Math.min(1.04, (i + 1) / 6 + 0.05), 0.06, -0.5 + (i + 0.5) / 6, 0, -0.46)),
+            ...Array.from({ length: 6 }, (_, i) => box(1 / 6, Math.min(1.04, (i + 1) / 6 + 0.05), 0.06, -0.5 + (i + 0.5) / 6, 0, 0.46))
+        ]) }
+    ] },
+    bollard: { meta: { group: 'cover', text: 'Twin street bollards framing entrances and plazas' }, build: () => [
+        { slot: 'plinth', geometry: merge([cyl(0.08, 0.09, 0.72, 10, -0.26), cyl(0.08, 0.09, 0.72, 10, 0.26)]) },
+        { slot: 'chrome', geometry: merge([cyl(0.082, 0.082, 0.06, 10, -0.26, 0.72), cyl(0.082, 0.082, 0.06, 10, 0.26, 0.72)]) }
+    ] },
     stair_rail: { meta: { group: 'stairs', text: 'Handrail on the open side (+Z)' }, build: () => {
         const rail = new THREE.BoxGeometry(1.42, 0.06, 0.06).rotateZ(Math.PI / 4).translate(0, 1.15, 0.44);
         return [{ slot: 'trim', geometry: merge([rail, box(0.06, 1.1, 0.06, -0.42, 0.3, 0.44), box(0.06, 0.8, 0.06, 0.42, 1, 0.44)]) }];

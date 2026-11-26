@@ -8,7 +8,15 @@ export const ENEMY_STYLE = Object.freeze({
     archer: { color: '#2f7fd8', letter: 'L' },
     pyromancer: { color: '#f08a24', letter: 'A' },
     brute: { color: '#7b3fbf', letter: 'E' },
-    warden_foe: { color: '#2f3a36', letter: 'R' }
+    warden_foe: { color: '#2f3a36', letter: 'R' },
+    officer: { color: '#e67e22', letter: 'O' },
+    heavy_gunner: { color: '#e1523d', letter: 'H' },
+    breacher: { color: '#c0392b', letter: 'B' },
+    sniper: { color: '#9b59b6', letter: 'S' },
+    medic: { color: '#27ae60', letter: 'M' },
+    demolisher: { color: '#d35400', letter: 'D' },
+    gun_drone: { color: '#e74c3c', letter: 'Q' },
+    search_drone: { color: '#e6b800', letter: 'U' }
 });
 export const styleOf = type => ENEMY_STYLE[type] || { color: '#a33', letter: (ENEMIES[type]?.name || type)[0].toUpperCase() };
 

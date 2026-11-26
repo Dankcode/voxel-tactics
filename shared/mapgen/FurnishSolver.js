@@ -100,7 +100,7 @@ function footprint(slot, itemId, len, free) {
 export function furnishBuilding(m, b, out, { beats = [], seed = m.seed } = {}) {
     const s = m.store, hints = m.ctx.hints, decor = m.ctx.decor, report = [];
     for (const f of b.floors) {
-        const fz = m.G + STOREY * f.floor, rooms = out.rooms.filter(r => r.storey === f.floor);
+        const fz = (out.baseZ ?? m.G) + STOREY * f.floor, rooms = out.rooms.filter(r => r.storey === f.floor);
         const floorSet = new Set(rooms.filter(r => r.gameplay).flatMap(r => r.cells.map(c => k2(...c))));
         const keep = new Set(), blocked = new Set();
         const doors = out.doors.filter(d => d.storey === f.floor && !d.locked);

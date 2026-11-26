@@ -102,6 +102,9 @@ export class KitLibrary {
         catch (err) { console.warn('[kit] baked tile set missing, building pieces in the browser:', err.message); this.pieces = buildAllPieces(); this.source = 'procedural'; }
         try { if(typeof __HAS_KIT_ART__==='undefined'||__HAS_KIT_ART__){const art = await read('/assets/kit/tileset-art.glb'); for (const [k, v] of art) this.pieces.set(k, v); this.source += ' + tileset-art.glb';} } catch { /* optional */ }
         this.pieces.set('stair_step',PIECES.stair_step.build());
+        this.pieces.set('road_ramp',PIECES.road_ramp.build());
+        this.pieces.set('sf_stair_step',PIECES.sf_stair_step.build());
+        this.pieces.set('bollard',PIECES.bollard.build());
         for (const parts of this.pieces.values()) for (const p of parts) { p.geometry.computeBoundingSphere(); }
         return this;
     }

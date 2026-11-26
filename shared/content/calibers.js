@@ -18,7 +18,10 @@ export const CALIBERS = Object.freeze({
     '7.62x39': { id: '7.62x39', name: '7.62×39 mm', damage: 12, pierce: 2, voxel: 3, energy: 8, velocity: 715 },
     '7.62': { id: '7.62', name: '7.62×51 mm NATO', damage: 16, pierce: 3, voxel: 3, energy: 10, velocity: 800 },
     '338': { id: '338', name: '.338 Lapua Magnum', damage: 30, pierce: 5, voxel: 6, energy: 22, velocity: 900 },
-    '12g': { id: '12g', name: '12-gauge 00 buckshot', damage: 3.75, pierce: 0, voxel: 1, energy: 1, velocity: 360 }
+    '12g': { id: '12g', name: '12-gauge 00 buckshot', damage: 3.75, pierce: 0, voxel: 1, energy: 1, velocity: 360 },
+    '45acp': { id: '45acp', name: '.45 ACP', damage: 9, pierce: 0, voxel: 2, energy: 3, velocity: 280 },
+    '40mm': { id: '40mm', name: '40 mm HE Grenade', damage: 12, pierce: 2, voxel: 10, energy: 8, velocity: 110 },
+    '50bmg': { id: '50bmg', name: '.50 BMG Anti-Materiel', damage: 36, pierce: 6, voxel: 18, energy: 32, velocity: 890 }
 });
 
 /** Fill a ballistic weapon's damage, pierce, velocity and voxel from its caliber (explicit fields on the weapon win). */

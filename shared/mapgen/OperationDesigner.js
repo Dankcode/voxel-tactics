@@ -27,7 +27,10 @@ const PROGRAMMES = {
     laundromat: { ground: ['laundry', 'office', 'storeroom', 'utility*'], upper: ['office', 'storeroom'], top: ['office', 'storeroom'] },
     lockup: { ground: ['garage_bay', 'storeroom', 'utility*'], upper: ['storeroom'], top: ['storeroom'] },
     clinic: { ground: ['lobby', 'ward', 'office', 'restroom*'], upper: ['ward', 'office', 'ward', 'restroom*'], top: ['ward', 'office', 'meeting', 'restroom*'] },
-    library: { ground: ['lobby', 'reading', 'office', 'restroom*'], upper: ['reading', 'study', 'office', 'restroom*'], top: ['reading', 'study', 'meeting', 'restroom*'] }
+    library: { ground: ['lobby', 'reading', 'office', 'restroom*'], upper: ['reading', 'study', 'office', 'restroom*'], top: ['reading', 'study', 'meeting', 'restroom*'] },
+    fire_station: { ground: ['garage_bay', 'lobby', 'office', 'restroom*'], upper: ['barracks', 'galley', 'office', 'restroom*'], top: ['barracks', 'galley', 'office', 'restroom*'] },
+    police_precinct: { ground: ['lobby', 'office', 'armory', 'restroom*'], upper: ['office', 'meeting', 'barracks', 'restroom*'], top: ['office', 'meeting', 'barracks', 'restroom*'] },
+    pharmacy: { ground: ['convenience', 'ward', 'storeroom', 'restroom*'], upper: ['office', 'storeroom', 'unit', 'restroom*'], top: ['office', 'storeroom', 'unit'] }
 };
 const CODE_A = ['Iron', 'Silent', 'Grey', 'Night', 'Glass', 'Cold', 'Black', 'Copper', 'Ashen', 'Low', 'Broken', 'Last'];
 const CODE_B = ['Ledger', 'Harbor', 'Lantern', 'Viaduct', 'Canopy', 'Signal', 'Gutter', 'Spire', 'Ward', 'Switchyard', 'Crossing', 'Furnace'];
@@ -40,7 +43,38 @@ export function roomsFor(b) {
     return Math.max(1, Math.min(4, Math.round((rest - corridor) / 6)));
 }
 
-export function designProgrammes({ buildings, target, plot, seed, objectiveKind = null, verticalFlow = 'auto', timeOfDay = 'dusk', name = null, spread: spreadPods = false }) {
+const FORCE_PODS = Object.freeze({
+    1: [
+        ['officer', 'cultist'],
+        ['cultist', 'archer'],
+        ['breacher', 'cultist'],
+        ['tech', 'search_drone', 'cultist']
+    ],
+    2: [
+        ['officer', 'cultist', 'warden_foe'],
+        ['heavy_gunner', 'cultist'],
+        ['breacher', 'medic', 'cultist'],
+        ['sniper', 'archer'],
+        ['tech', 'search_drone', 'gun_drone']
+    ],
+    3: [
+        ['officer', 'heavy_gunner', 'medic'],
+        ['demolisher', 'breacher', 'cultist'],
+        ['sniper', 'officer', 'archer'],
+        ['pyromancer', 'warden_foe', 'medic'],
+        ['tech', 'gun_drone', 'gun_drone']
+    ],
+    4: [
+        ['officer', 'heavy_gunner', 'medic', 'demolisher'],
+        ['sniper', 'breacher', 'officer'],
+        ['heavy_gunner', 'demolisher', 'medic'],
+        ['tech', 'gun_drone', 'gun_drone'],
+        ['wall_strider', 'breacher']
+    ]
+});
+const clampForce = fl => Math.max(1, Math.min(4, Number.isInteger(Number(fl)) ? Number(fl) : 2));
+
+export function designProgrammes({ buildings, target, plot, seed, objectiveKind = null, verticalFlow = 'auto', timeOfDay = 'dusk', forceLevel = null, name = null, spread: spreadPods = false }) {
     const programs = [];
     for (const b of buildings) {
         const table = PROGRAMMES[b.program] || PROGRAMMES.office, count = roomsFor(b);
@@ -72,6 +106,7 @@ export function designProgrammes({ buildings, target, plot, seed, objectiveKind 
         harbor: 'harbor waterfront', winter_outpost: 'snowbound ridge outpost', old_quarter: 'cobblestone historic quarter',
         metro_hub: 'transit interchange and subway', arid_compound: 'desert mesa compound',
         canal_district: 'sunken canal locks and stone embankments',
+        hillside_avenue: 'steep hillside avenue',
         hillside_ridge: 'terraced highland ridge',
         sunken_basin: 'recessed drainage valley'
     }[plot.family] || 'city block';
@@ -101,14 +136,22 @@ export function designProgrammes({ buildings, target, plot, seed, objectiveKind 
     // The objective is held on every floor; the top floor's command room is the last fight.
     // PLAN-15 (B.podSpacing > 0): the objective building holds two pods at most (the door and the last fight); the
     // rest of the force spreads along the line of play (addPocketPods), XCOM 2-style, so pods activate one at a time.
+    const fl = clampForce(forceLevel);
     const spread = spreadPods && (B.podSpacing ?? 0) > 0;
-    design.encounters.push({ group: group++, building: target.id, floor: 0, room: 'hall', types: ['cultist', 'warden_foe'] });
-    if (top >= 2 && !spread) design.encounters.push({ group: group++, building: target.id, floor: Math.min(2, top - 1), room: 'hall', types: ['warden_foe'] });
-    design.encounters.push({ group: group++, building: target.id, floor: top, room: topRooms[0].id, types: ['archer', 'cultist'] });
-    // Other buildings: a picket in the one nearest the objective (an overwatch on the tallest). With spreading on, the
+    const groundTypes = fl <= 1 ? ['warden_foe', 'cultist'] : fl === 2 ? ['breacher', 'warden_foe'] : fl === 3 ? ['breacher', 'officer', 'cultist'] : ['breacher', 'heavy_gunner', 'warden_foe'];
+    const midTypes = fl >= 3 ? ['warden_foe', 'medic'] : ['warden_foe'];
+    const topTypes = fl <= 1 ? ['officer', 'cultist'] : fl === 2 ? ['officer', 'archer', 'cultist'] : fl === 3 ? ['officer', 'medic', 'demolisher'] : ['officer', 'heavy_gunner', 'medic'];
+    design.forceLevel = fl;
+    design.encounters.push({ group: group++, building: target.id, floor: 0, room: 'hall', types: groundTypes });
+    if (top >= 2 && !spread) design.encounters.push({ group: group++, building: target.id, floor: Math.min(2, top - 1), room: 'hall', types: midTypes });
+    design.encounters.push({ group: group++, building: target.id, floor: top, room: topRooms[0].id, types: topTypes });
+    // Other buildings: an elevated overwatch sniper/lookout in the one nearest the objective. With spreading on, the
     // picket is placed by addPocketPods in a building along the route instead.
     const others = spread ? [] : buildings.filter(b => b !== target).sort((a, c) => Math.hypot(a.x0 - target.x0, a.y0 - target.y0) - Math.hypot(c.x0 - target.x0, c.y0 - target.y0)).slice(0, 1);
-    for (const b of others) design.encounters.push({ group: group++, building: b.id, floor: b.storeys - 1, room: roomOn(b, b.storeys - 1), types: [b.storeys >= 2 ? 'archer' : 'cultist'] });
+    for (const b of others) {
+        const picketTypes = b.storeys >= 2 ? (fl >= 3 ? ['sniper', 'archer'] : fl === 2 ? ['sniper'] : ['archer']) : ['cultist'];
+        design.encounters.push({ group: group++, building: b.id, floor: b.storeys - 1, room: roomOn(b, b.storeys - 1), types: picketTypes });
+    }
     Object.defineProperty(design, "roomOn", { value: roomOn, enumerable: false });
     return design;
 }
@@ -116,12 +159,17 @@ export function designProgrammes({ buildings, target, plot, seed, objectiveKind 
 /**
  * Outdoor pods at the engagement pockets. PLAN-15 (B.podSpacing > 0): XCOM 2 encounter zones — pods at about 30 %,
  * 55 % and 78 % of the line of play, at least `spacing` tiles from each other and from the objective building's pods,
- * plus a picket in a side building near the middle of the route. Without spacing, the old placement (the last one or
- * two pockets past 45 %).
+ * plus an overwatch picket in a side building near the middle of the route.
  */
-export function addPocketPods(design, pockets, seed, { buildings = [], target = null, insertion = null, route = null, spacing = B.podSpacing ?? 0 } = {}) {
+export function addPocketPods(design, pockets, seed, { buildings = [], target = null, insertion = null, route = null, spacing = B.podSpacing ?? 0, forceLevel = null } = {}) {
+    const fl = clampForce(forceLevel ?? design.forceLevel);
+    const pool = FORCE_PODS[fl] || FORCE_PODS[2];
     let group = Math.max(-1, ...design.encounters.map(e => e.group)) + 1;
-    const typesFor = (p, i) => i === 0 ? ['tech', 'search_drone', 'cultist'] : unit(`${seed}:pocket-pod:${p.id}`) < 0.5 ? ['cultist', 'archer'] : ['warden_foe', 'cultist'];
+    const typesFor = (p, i) => {
+        if (i === 0) return fl <= 1 ? ['tech', 'search_drone', 'cultist'] : fl === 2 ? ['tech', 'search_drone', 'gun_drone'] : ['tech', 'gun_drone', 'gun_drone'];
+        const choices = (p.along ?? 0.5) >= 0.45 ? pool : pool.filter(t => !t.includes('wall_strider'));
+        return choices[Math.floor(unit(`${seed}:pocket-pod:${p.id}:${fl}`) * choices.length) % choices.length];
+    };
     if (!spacing || !target) {
         // One outdoor pod on the last pocket before the objective (the squad's fight to get in); a second only on long routes.
         const late = pockets.filter(p => p.along >= 0.45).slice(pockets.length >= 4 ? -2 : -1);
@@ -161,7 +209,10 @@ export function addPocketPods(design, pockets, seed, { buildings = [], target = 
             .sort((a, c) => Math.hypot(centre(a).x - mid.x, centre(a).y - mid.y) - Math.hypot(centre(c).x - mid.x, centre(c).y - mid.y))[0];
         if (side) {
             const floor = side.storeys - 1, room = design.roomOn ? design.roomOn(side, floor) : 'hall';
-            design.encounters.push({ group: group++, building: side.id, floor, room, types: [side.storeys >= 2 ? 'archer' : 'cultist', 'cultist'] });
+            const picket = side.storeys >= 2
+                ? (fl >= 3 ? ['sniper', 'archer'] : fl === 2 ? ['sniper', 'cultist'] : ['archer', 'cultist'])
+                : (fl >= 3 ? ['breacher', 'medic'] : ['breacher', 'cultist']);
+            design.encounters.push({ group: group++, building: side.id, floor, room, types: picket });
         }
     }
     return design;

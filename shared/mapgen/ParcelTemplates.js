@@ -30,8 +30,10 @@ export const PARCEL_LAYOUTS = Object.freeze({
         [0, 1, 'chainlink', 'left'], [0, 2, 'chainlink', 'left'], [0, 3, 'chainlink', 'left'],
         [3, 1, 'chainlink', 'right'], [3, 2, 'chainlink', 'right'], [3, 3, 'chainlink', 'right'],
         [1, 2, 'jersey', 'front'], [2, 2, 'jersey', 'front']],
-    // A barrier lane along one side and a fenced back boundary with a gate. No dumpsters or bins: lone boxes.
-    depot_yard: [[0, 1, 'jersey', 'left'], [0, 2, 'jersey', 'left'], [0, 3, 'jersey', 'left'], [1, 3, 'chainlink', 'back'], [3, 3, 'chainlink', 'back']],
+    // A barrier lane along one side and a fenced back boundary with a gate. Keep street entrance clear for vehicles.
+    depot_yard: [[0, 1, 'bollard', 'left'], [0, 2, 'low_wall', 'left'], [0, 3, 'low_wall', 'left'], [1, 3, 'chainlink', 'back'], [3, 3, 'chainlink', 'back']],
+    // Open parking lot with a clear central 2-bay driveway entrance at (1..2, 0) and bollard/low_wall corners.
+    parking_lot: [[0, 0, 'bollard', 'front'], [3, 0, 'bollard', 'front'], [0, 3, 'low_wall', 'back'], [3, 3, 'low_wall', 'back']],
     // An alley is a clear run between buildings.
     alley: [],
     // A small square: planters at the corners of the street edge, two trees with benches facing them, tall planters
@@ -39,6 +41,11 @@ export const PARCEL_LAYOUTS = Object.freeze({
     plaza: [[0, 0, 'planter', 'front'], [3, 0, 'planter', 'front'], [1, 1, 'tree', null], [2, 1, 'tree', null],
         [1, 2, 'bench', 'front'], [2, 2, 'bench', 'front'], [0, 3, 'tall_planter', 'back'], [3, 3, 'tall_planter', 'back']],
     subway_plaza: [[0, 0, 'planter', 'front'], [3, 0, 'planter', 'front'], [0, 3, 'bench', 'back'], [3, 3, 'bench', 'back']],
+    overlook_plaza: [[0, 0, 'planter', 'front'], [3, 0, 'planter', 'front'], [1, 1, 'bench', 'front'], [2, 1, 'bench', 'front'], [0, 3, 'tall_planter', 'back'], [3, 3, 'tall_planter', 'back']],
+    courtyard_park: [[0, 1, 'tree', null], [3, 1, 'tree', null], [1, 1, 'fountain', null], [1, 2, 'bench', 'front'], [2, 2, 'bench', 'front'], [0, 3, 'hedge', 'back'], [3, 3, 'hedge', 'back']],
+    amphitheater_steps: [[0, 0, 'planter', 'front'], [3, 0, 'planter', 'front'], [1, 2, 'bench', 'front'], [2, 2, 'bench', 'front'], [0, 3, 'tall_planter', 'back'], [3, 3, 'tall_planter', 'back']],
+    loading_yard: [[0, 0, 'bollard', 'front'], [3, 0, 'bollard', 'front'], [0, 2, 'chainlink', 'left'], [3, 2, 'chainlink', 'right'], [0, 3, 'low_wall', 'back'], [3, 3, 'low_wall', 'back']],
+    motor_pool: [[0, 0, 'bollard', 'front'], [3, 0, 'bollard', 'front'], [0, 3, 'chainlink', 'back'], [3, 3, 'chainlink', 'back']],
     // Hedged on three sides and open to the street, trees and a bench inside.
     pocket_park: [[0, 0, 'hedge', 'left'], [0, 1, 'hedge', 'left'], [0, 2, 'hedge', 'left'], [0, 3, 'hedge', 'left'],
         [3, 0, 'hedge', 'right'], [3, 1, 'hedge', 'right'], [3, 2, 'hedge', 'right'], [3, 3, 'hedge', 'right'],
@@ -65,8 +72,13 @@ export const PARCEL_VARIANTS = Object.freeze({
     ],
     depot_yard: [
         PARCEL_LAYOUTS.depot_yard,
-        [[0, 1, 'jersey', 'left'], [0, 2, 'jersey', 'left'], [1, 3, 'chainlink', 'back'], [3, 3, 'chainlink', 'back'], { vehicle: 'truck', u: 1, v: 1, dir: 'front' }],
-        [[0, 1, 'chainlink', 'left'], [3, 1, 'chainlink', 'right'], [1, 3, 'jersey', 'back'], [2, 3, 'jersey', 'back'], { vehicle: 'abandoned_car', u: 1, v: 1, dir: 'front' }]
+        [[0, 1, 'bollard', 'left'], [0, 2, 'low_wall', 'left'], [1, 3, 'chainlink', 'back'], [3, 3, 'chainlink', 'back'], { vehicle: 'truck', u: 1, v: 2, dir: 'front' }],
+        [[0, 1, 'chainlink', 'left'], [3, 1, 'chainlink', 'right'], [0, 3, 'low_wall', 'back'], [3, 3, 'low_wall', 'back'], { vehicle: 'abandoned_car', u: 1, v: 2, dir: 'front' }]
+    ],
+    parking_lot: [
+        PARCEL_LAYOUTS.parking_lot,
+        [[0, 0, 'planter', 'front'], [3, 0, 'planter', 'front'], [0, 2, 'tree', null], [3, 3, 'low_wall', 'back']],
+        [[0, 0, 'bollard', 'front'], [3, 0, 'bollard', 'front'], [0, 3, 'planter', 'back'], [3, 3, 'planter', 'back']]
     ],
     plaza: [
         PARCEL_LAYOUTS.plaza,
@@ -96,15 +108,15 @@ export const PARCEL_VARIANTS = Object.freeze({
         [[0, 0, 'planter', 'front'], [3, 0, 'tree', null], [1, 2, 'bench', 'front'], [2, 2, 'bench', 'front'], [0, 3, 'tall_planter', 'back'], [3, 3, 'tall_planter', 'back']]
     ],
     transit_bay: [
-        [[0, 0, 'jersey', 'front'], [3, 0, 'jersey', 'front'], [1, 3, 'bench', 'back'], [2, 3, 'bench', 'back'], { vehicle: 'bus', u: 0, v: 1, dir: 'front' }],
+        [[0, 0, 'bollard', 'front'], [3, 0, 'bollard', 'front'], [1, 3, 'bench', 'back'], [2, 3, 'bench', 'back'], { vehicle: 'bus', u: 0, v: 2, dir: 'front' }],
         [[0, 3, 'planter', 'back'], [3, 3, 'planter', 'back'], { vehicle: 'abandoned_car', u: 1, v: 2, dir: 'front' }]
     ],
     container_depot: [
-        [[0, 1, 'jersey', 'left'], [3, 3, 'chainlink', 'back'], { vehicle: 'truck', u: 0, v: 2, dir: 'front' }],
+        [[0, 1, 'bollard', 'left'], [3, 3, 'chainlink', 'back'], { vehicle: 'truck', u: 0, v: 2, dir: 'front' }],
         [[0, 0, 'chainlink', 'front'], [3, 0, 'chainlink', 'front'], { vehicle: 'container', u: 0, v: 2, dir: 'front' }]
     ],
     fuel_forecourt: [
-        [[0, 0, 'jersey', 'front'], [3, 0, 'jersey', 'front'], [1, 1, 'fuel_pump', 'front'], [2, 1, 'fuel_pump', 'front'], [0, 3, 'planter', 'back'], [3, 3, 'planter', 'back']],
+        [[0, 0, 'bollard', 'front'], [3, 0, 'bollard', 'front'], [1, 1, 'fuel_pump', 'front'], [2, 1, 'fuel_pump', 'front'], [0, 3, 'planter', 'back'], [3, 3, 'planter', 'back']],
         [[1, 1, 'fuel_pump', 'front'], [2, 1, 'fuel_pump', 'front'], { vehicle: 'abandoned_car', u: 1, v: 2, dir: 'front' }]
     ],
     checkpoint_yard: [
@@ -112,12 +124,32 @@ export const PARCEL_VARIANTS = Object.freeze({
         [[1, 0, 'checkpoint', 'front'], [2, 0, 'checkpoint', 'front'], { vehicle: 'truck', u: 0, v: 2, dir: 'front' }]
     ],
     canal_dock: [
-        [[0, 0, 'jersey', 'front'], [3, 0, 'jersey', 'front'], [1, 2, 'bench', 'front'], [2, 2, 'bench', 'front']],
+        [[0, 0, 'bollard', 'front'], [3, 0, 'bollard', 'front'], [1, 2, 'bench', 'front'], [2, 2, 'bench', 'front']],
         [[0, 0, 'planter', 'front'], [3, 0, 'planter', 'front'], { vehicle: 'truck', u: 0, v: 2, dir: 'front' }]
     ],
     frozen_pond: [
         [[0, 0, 'boulder', null], [3, 0, 'tree', null], [0, 3, 'tree', null], [3, 3, 'drystone', 'back']],
         [[0, 1, 'boulder', null], [3, 1, 'boulder', null], [1, 3, 'drystone', 'back'], [2, 3, 'tree', null]]
+    ],
+    courtyard_park: [
+        PARCEL_LAYOUTS.courtyard_park,
+        [[0, 0, 'planter', 'front'], [3, 0, 'planter', 'front'], [1, 2, 'tree', null], [2, 2, 'bench', 'front'], [0, 3, 'hedge', 'back'], [3, 3, 'hedge', 'back']]
+    ],
+    amphitheater_steps: [
+        PARCEL_LAYOUTS.amphitheater_steps,
+        [[0, 0, 'planter', 'front'], [3, 0, 'planter', 'front'], [0, 2, 'bench', 'left'], [3, 2, 'bench', 'right'], [1, 3, 'tall_planter', 'back'], [2, 3, 'tall_planter', 'back']]
+    ],
+    loading_yard: [
+        PARCEL_LAYOUTS.loading_yard,
+        [[0, 0, 'bollard', 'front'], [3, 0, 'bollard', 'front'], [1, 3, 'chainlink', 'back'], { vehicle: 'truck', u: 0, v: 2, dir: 'front' }]
+    ],
+    motor_pool: [
+        PARCEL_LAYOUTS.motor_pool,
+        [[0, 0, 'bollard', 'front'], [3, 0, 'bollard', 'front'], [0, 3, 'low_wall', 'back'], { vehicle: 'truck', u: 1, v: 2, dir: 'front' }]
+    ],
+    overlook_plaza: [
+        PARCEL_LAYOUTS.overlook_plaza,
+        [[0, 0, 'planter', 'front'], [3, 0, 'planter', 'front'], [1, 1, 'tree', null], [0, 3, 'low_wall', 'back'], [3, 3, 'low_wall', 'back']]
     ]
 });
 
@@ -167,7 +199,7 @@ export function planParcelPins(plot, bayGrid, lotKindAt, lotPoolOf, opts = {}) {
     const seed = opts?.seed ?? plot?.seed ?? 1;
     const pins = new Map();
     const bayOk = (bay, p) => {
-        if (!p || bay.blocked || bay.cls === 'sidewalk' || bay.cls === 'carriageway' || bay.cls.startsWith('lane_') || bay.cls.startsWith('parking_')) return false;
+        if (!p || bay.blocked || bay.cls === 'sidewalk' || bay.cls === 'driveway' || bay.cls === 'carriageway' || bay.cls.startsWith('lane_') || bay.cls.startsWith('parking_')) return false;
         const surf = bay.cls.startsWith('parking_') ? 'asphalt' : bay.cls.startsWith('lane_') ? 'lane' : bay.cls;
         if (p.surfaces && !p.surfaces.includes(surf)) return false;
         if (p.cells.some(([x, y]) => bay.protected.some(([px, py]) => px === x && py === y))) return false;

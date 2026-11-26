@@ -49,7 +49,8 @@ export function kitHandler(store, x, y, z, id = store.get(x, y, z)) {
     switch (k) {
         case 'glass': return 'window';
         case 'door': case 'door_locked': case 'door_open': return 'door';
-        case 'steel_stair': case 'stairs_wood': case 'stairs_stone': return 'stairs';
+        case 'steel_stair': case 'stairs_wood': case 'stairs_stone': case 'sidewalk_stair': return 'stairs';
+        case 'road_slope': case 'cobble_slope': return 'road_slope';
         case 'roof': return 'roof';
         case 'crate': return 'crate';
         case 'barrel_powder': case 'barrel_water': return 'barrel';
@@ -293,6 +294,7 @@ export class KitView {
                 break;
             }
             case 'circulation': {
+                if (hint?.piece && add(hint.piece, x, y, z, hint.yaw || 0, k)) break;
                 add(k,x,y,z,0,k);
                 if(k==='grate')for(const [dx,dy] of DIRS) {
                     const neighbor=store.get(x+dx,y+dy,z);
@@ -319,9 +321,15 @@ export class KitView {
             case 'stairs': {
                 // PLAN-11: decide the tread from the real column, not the cut view. A flight cut by the storey cutaway
                 // used to grow a full tread set on every cut column top (extra "staircases" beside the real one).
-                const top = !['stairs_wood', 'stairs_stone', 'steel_stair'].includes(keyOf(store.get(x, y, z + 1)));
+                const top = !['stairs_wood', 'stairs_stone', 'steel_stair', 'sidewalk_stair', 'road_slope', 'cobble_slope'].includes(keyOf(store.get(x, y, z + 1)));
                 if (!top) { add('stair_block', x, y, z, 0, k); break; }
-                add('stair_step', x, y, z, stairYaw(store, x, y, z), k);
+                add(k === 'sidewalk_stair' ? 'sf_stair_step' : 'stair_step', x, y, z, stairYaw(store, x, y, z, hint), k === 'sidewalk_stair' ? 'paving' : k);
+                break;
+            }
+            case 'road_slope': {
+                const top = !['stairs_wood', 'stairs_stone', 'steel_stair', 'sidewalk_stair', 'road_slope', 'cobble_slope'].includes(keyOf(store.get(x, y, z + 1)));
+                if (!top) { add('stair_block', x, y, z, 0, k === 'cobble_slope' ? 'cobble' : 'asphalt'); break; }
+                add('road_ramp', x, y, z, stairYaw(store, x, y, z, hint), k === 'cobble_slope' ? 'cobble' : 'asphalt');
                 break;
             }
             case 'furniture': {
@@ -426,16 +434,26 @@ function neighbourWall(store, x, y, z) {
     for (const dz of [0, -1, 1]) for (const [dx, dy] of DIRS) { const k = keyOf(store.get(x + dx, y + dy, z + dz)); if (WALLS.has(k)) return k; }
     return null;
 }
-/** The direction the stair run rises: the neighbour whose top is one voxel higher. */
-function stairYaw(store, x, y, z) {
-    const isStair = id => ['stairs_wood', 'stairs_stone', 'steel_stair'].includes(keyOf(id));
+/** The direction the stair run rises: explicit hint wins, else neighbouring higher/lower walkable step. */
+function stairYaw(store, x, y, z, hint = null) {
+    if (hint && Number.isFinite(hint.stairYaw)) return hint.stairYaw;
+    const isStair = id => ['stairs_wood', 'stairs_stone', 'steel_stair', 'sidewalk_stair', 'road_slope', 'cobble_slope'].includes(keyOf(id));
     for (const [dx, dy, yaw] of DIRS) {
         if (isStair(store.get(x + dx, y + dy, z + 1)) && !isStair(store.get(x + dx, y + dy, z + 2))) return yaw;
     }
-    for (const [dx, dy, yaw] of DIRS) {   // the landing at the top of the run
-        if (store.isSolid(x + dx, y + dy, z + 1) && !store.isSolid(x + dx, y + dy, z + 2) && !isStair(store.get(x + dx, y + dy, z + 1))) return yaw;
+    for (const [dx, dy, yaw] of DIRS) {   // the walkable landing at the top of the run (ignore non-walkable walls/railings)
+        const nb = store.material(x + dx, y + dy, z + 1);
+        if (nb.solid && nb.walkable && !store.isSolid(x + dx, y + dy, z + 2) && !isStair(nb.id)) return yaw;
     }
     for (const [dx, dy, yaw] of DIRS) if (isStair(store.get(x + dx, y + dy, z - 1)) && !isStair(store.get(x + dx, y + dy, z))) return yaw + Math.PI;
+    for (const [dx, dy, yaw] of DIRS) {
+        // Single-step descent toward (dx, dy) where (dx, dy) is open at z and walkable at z - 1, while (-dx, -dy) is walkable at z.
+        const lo = store.material(x + dx, y + dy, z - 1);
+        const hi = store.material(x - dx, y - dy, z);
+        if (!store.isSolid(x + dx, y + dy, z) && lo.solid && lo.walkable && hi.solid && hi.walkable && !store.isSolid(x - dx, y - dy, z + 1)) {
+            return yaw + Math.PI;
+        }
+    }
     return 0;
 }
 /** Shelves stand with their back to a wall. */

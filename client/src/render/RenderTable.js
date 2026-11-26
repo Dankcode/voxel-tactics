@@ -96,7 +96,10 @@ export const RENDER = {
     hay: { tex: 'hay', uv: 'face', rough: 1, normal: 1 },
     emergency_light:{tex:null,emissive:0xff2819,emissiveIntensity:1.4,rough:.5},
     grate:{tex:null,tint:0x667680,metal:.65,rough:.55},steel_stair:{tex:null,tint:0x667680,metal:.65,rough:.55},steel_post:{tex:null,tint:0x53636f,metal:.7,rough:.5},railing:{tex:null,tint:0x8999a2,metal:.65,rough:.5},
-    lantern: { tex: 'lantern', uv: 'face', rough: 0.5, normal: 0.6, emissive: 0xffb347, emissiveIntensity: 1.4 }
+    lantern: { tex: 'lantern', uv: 'face', rough: 0.5, normal: 0.6, emissive: 0xffb347, emissiveIntensity: 1.4 },
+    road_slope: { tex: 'asphalt', scale: 4, rough: 0.95, normal: 0.5, drop: 0.13 },
+    sidewalk_stair: { tex: 'paving', scale: 2, rough: 0.85, normal: 0.6 },
+    cobble_slope: { tex: 'cobble', scale: 2.5, rough: 0.9, normal: 1 }
 };
 export const FALLBACK = { tex: 'stone', scale: 2, rough: 0.9, normal: 1 };
 export const renderFor = key => RENDER[key] || FALLBACK;
@@ -104,7 +107,9 @@ export const renderFor = key => RENDER[key] || FALLBACK;
 export function groundDrop(store, x, y, z) {
     const id = store.get(x, y, z);
     if (!id || store.isSolid(x, y, z + 1)) return 0;
-    if(MATERIALS[id]?.part===4)return 1/3; // Six-tread mesh: cell centre stands on its fourth tread.
-    return RENDER[MATERIALS[id]?.key]?.drop || 0;
+    const key = MATERIALS[id]?.key;
+    if (key === 'road_slope' || key === 'cobble_slope') return 0.45;
+    if (MATERIALS[id]?.part === 4) return 1 / 3; // Six-tread mesh: cell centre stands on its fourth tread.
+    return RENDER[key]?.drop || 0;
 }
 export const KIND_GROUP = { opaque: 0, glass: 1, water: 2 };

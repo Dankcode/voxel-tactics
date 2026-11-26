@@ -28,7 +28,7 @@ export function evaluateGeneratedGates(mission,{site,layout,design}) {
         initialSupport:stability.removed===0,
         spawnConnectivity:mission.spawns.player.every(p=>search.costs.has(nodeKey(p))&&stairs.costs.has(nodeKey(p))),
         escapeLandings:mission.buildings.every(b=>b.escapes.every(e=>escapes.costs.has(nodeKey(e.landing)))),
-        roofsReachable:mission.buildings.filter(b=>!b.wing&&!b.lowRoof).every(b=>search.costs.has(nodeKey({x:b.x0+1,y:b.y0+1,z:b.top}))),   // PLAN-14: low wings excepted
+        roofsReachable:mission.buildings.filter(b=>!b.wing&&!b.lowRoof).every(b=>{for(let y=b.y0+1;y<b.y0+b.d-1;y++)for(let x=b.x0+1;x<b.x0+b.w-1;x++)if(search.costs.has(nodeKey({x,y,z:b.top})))return true;return false;}),   // PLAN-14: low wings excepted
         ...checkAccess(mission),
         buildingCount:mission.buildings.length===site.buildings.length,
         footprintOverlap:mission.buildings.every(b=>footprintIoU(layout.reference.find(r=>r.id===b.id),b)>=0.85),
@@ -89,10 +89,10 @@ export function checkInteriorGates(mission,search) {
  * engagement pockets sit along the line of play, and every flank route is still walkable on the compiled matrix.
  */
 export function checkV3Gates(mission,layout,{checkClutter=true}={}) {
-    const {store}=mission,G=mission.meta.streetDatum,W=store.width,D=store.depth;
+    const {store}=mission,G=mission.meta.streetDatum,W=store.width,D=store.depth,dz=layout?.terrain?.dz;
     let open=0,border=0;
-    for(let x=0;x<W;x++)for(const y of [0,D-1]){if(!store.isSolid(x,y,G))continue;border++;if(!store.isSolid(x,y,G+1)&&!mission.buildings.some(b=>x>=b.x0&&x<b.x0+b.w&&y>=b.y0&&y<b.y0+b.d))open++;}
-    for(let y=1;y<D-1;y++)for(const x of [0,W-1]){if(!store.isSolid(x,y,G))continue;border++;if(!store.isSolid(x,y,G+1)&&!mission.buildings.some(b=>x>=b.x0&&x<b.x0+b.w&&y>=b.y0&&y<b.y0+b.d))open++;}
+    for(let x=0;x<W;x++)for(const y of [0,D-1]){const gz=G+(dz?dz[x+y*W]:0);if(!store.isSolid(x,y,gz))continue;border++;if(!store.isSolid(x,y,gz+1)&&!mission.buildings.some(b=>x>=b.x0&&x<b.x0+b.w&&y>=b.y0&&y<b.y0+b.d))open++;}
+    for(let y=1;y<D-1;y++)for(const x of [0,W-1]){const gz=G+(dz?dz[x+y*W]:0);if(!store.isSolid(x,y,gz))continue;border++;if(!store.isSolid(x,y,gz+1)&&!mission.buildings.some(b=>x>=b.x0&&x<b.x0+b.w&&y>=b.y0&&y<b.y0+b.d))open++;}
     const search=reachable(store,mission.spawns.player[0],Infinity,AGENT_PROFILES.player);
     const flanks=(layout.lineOfPlay?.flanks||[]).filter(f=>f.path.length);
     const walkable=f=>f.path.filter(([x,y])=>search.costs.has(nodeKey({x,y,z:G}))||store.surfaces(x,y).some(s=>search.costs.has(nodeKey(s)))).length/f.path.length;

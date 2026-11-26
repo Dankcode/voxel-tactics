@@ -1,6 +1,6 @@
 {
  "version": "tileset-v1",
- "generated": "2026-11-05",
+ "generated": "2026-11-25",
  "cell": {
   "size": 1,
   "height": 1,
@@ -393,6 +393,66 @@
    ],
    "group": "stairs",
    "text": "Six compact treads in one tile, rising toward +X"
+  },
+  "road_ramp": {
+   "slots": [
+    "self"
+   ],
+   "tris": 12,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.5
+    ],
+    [
+     0.5,
+     0.87,
+     0.5
+    ]
+   ],
+   "group": "stairs",
+   "text": "Smooth sloped road wedge rising toward +X"
+  },
+  "sf_stair_step": {
+   "slots": [
+    "self",
+    "plinth"
+   ],
+   "tris": 216,
+   "bounds": [
+    [
+     -0.5,
+     0,
+     -0.49
+    ],
+    [
+     0.5,
+     1.04,
+     0.49
+    ]
+   ],
+   "group": "stairs",
+   "text": "San Francisco stepped street sidewalk with flanking cheek curbs rising toward +X"
+  },
+  "bollard": {
+   "slots": [
+    "iron"
+   ],
+   "tris": 80,
+   "bounds": [
+    [
+     -0.19,
+     0,
+     -0.2
+    ],
+    [
+     0.19,
+     0.56,
+     0.2
+    ]
+   ],
+   "group": "decor"
   },
   "stair_rail": {
    "slots": [
@@ -4088,25 +4148,6 @@
      0.25,
      0.014,
      0.16
-    ]
-   ],
-   "group": "decor"
-  },
-  "bollard": {
-   "slots": [
-    "iron"
-   ],
-   "tris": 80,
-   "bounds": [
-    [
-     -0.19,
-     0,
-     -0.2
-    ],
-    [
-     0.19,
-     0.56,
-     0.2
     ]
    ],
    "group": "decor"

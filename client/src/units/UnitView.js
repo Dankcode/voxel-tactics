@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { dropAt } from '../render/Ground.js';
 import { SpriteAnimator } from '../anim/SpriteAnimator.js';
 import { FACING_VEC } from '../../../shared/battle/Units.js';
+import { ENEMIES } from '../../../shared/content/units.js';
 import { characterArtId } from './CharacterArt.js';
 
 const loader = new THREE.TextureLoader();
@@ -70,6 +71,8 @@ export class UnitView {
             this.normal = art.normal.clone();
             this.lighting = art.lighting.clone();
             this.material = unitSpriteMaterial(this.texture, this.normal);
+            const visTint = unit.side === 'enemy' && ENEMIES[unit.type]?.visual?.tint;
+            if (visTint) this.material.color.setHex(visTint);
             this.depthSlope = installBillboardDepth(this.material);
             const depthCompile = this.material.onBeforeCompile;
             this.material.onBeforeCompile = shader => {
@@ -94,7 +97,7 @@ export class UnitView {
         this.blob = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false, opacity: 0.55, clippingPlanes: scene.clipping }));
         this.blob.rotation.x = -Math.PI / 2; this.blob.position.y = 0.02;
         this.group.add(this.blob);
-        const ringColor = unit.side === 'player' ? 0x4fd3ff : 0xff5a4a;
+        const ringColor = unit.side === 'player' ? 0x4fd3ff : (ENEMIES[unit.type]?.visual?.ringColor ?? 0xff5a4a);
         this.ring = new THREE.Mesh(new THREE.RingGeometry(0.36, 0.42, 32), new THREE.MeshBasicMaterial({ color: ringColor, transparent: true, opacity: 0.85, side: THREE.DoubleSide, depthWrite: false, clippingPlanes: scene.clipping, toneMapped: false }));
         this.ring.rotation.x = -Math.PI / 2; this.ring.position.y = 0.03;
         this.group.add(this.ring);

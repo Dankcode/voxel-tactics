@@ -161,6 +161,7 @@ export function solveLots(plot, districts, fields, seed) {
                 }
             }
             if (ok && t.open && t.gw === 1 && t.gd === 1 && k.districts && !k.districts.includes(districts.at(lot.lx, lot.ly))) ok = false;
+            if (ok && k.roadFront && t.gw === 1 && t.gd === 1 && !SIDES.some(s => isRoad(lot.lx + SIDE_VEC[s][0], lot.ly + SIDE_VEC[s][1]))) ok = false;
             if (ok) domain.push(t.id);
         }
         if (!domain.length) domain.push('vacant_lot');
@@ -220,7 +221,14 @@ export function placeBuildings(plot, parcels, fields, seed) {
         const slack = (p.front === 'n' || p.front === 's' ? p.w : p.d) - dims[0];
         const wantWing = !p.objective && unit(`${seed}:${p.id}:wing`) < 0.75;
         // A merged parcel pushes the main block to one end so its wing has room beside it.
-        const shift = wantWing && slack >= 5 ? (unit(`${seed}:${p.id}:shift`) < 0.5 ? -slack : slack) : slack > 1 ? Math.round((unit(`${seed}:${p.id}:shift`) - 0.5) * 2) : 0;
+        let shift = wantWing && slack >= 5 ? (unit(`${seed}:${p.id}:shift`) < 0.5 ? -slack : slack) : slack > 1 ? Math.round((unit(`${seed}:${p.id}:shift`) - 0.5) * 2) : 0;
+        // Keep objective buildings at least 1 cell clear of world-edge perimeter facades so they stay freestanding and collapsible.
+        if (p.objective && slack >= 2) {
+            const ns = p.front === 'n' || p.front === 's';
+            const lo = ns ? p.x0 : p.y0, hi = ns ? p.x0 + p.w : p.y0 + p.d, lim = ns ? plot.W : plot.D;
+            if (lo === 0) shift = Math.max(shift, 2 - (slack >> 1));
+            else if (hi === lim) shift = Math.min(shift, (slack - 2) - (slack >> 1));
+        }
         const rect = buildingRect(p.kind, p, p.front, shift, dims);
         const H = fields.height.mean(rect.x0, rect.y0, rect.x0 + rect.w - 1, rect.y0 + rect.d - 1);
         const [lo, hi] = t.storeys, real = p.objective ? null : sampleStoreys(profile, t.program, t.storeys, `${seed}:${p.id}:storeys`);
@@ -228,10 +236,10 @@ export function placeBuildings(plot, parcels, fields, seed) {
         const walls = DISTRICT_WALLS[p.district] || DISTRICT_WALLS.commercial;
         const palette = DISTRICT_PALETTE[p.district] || DISTRICT_PALETTE.commercial;
         const wall = walls[Math.floor(n * walls.length) % walls.length];
-        const pitchedOk = ['house', 'duplex', 'townhouses', 'diner', 'bar', 'corner_store', 'shop', 'library', 'bungalow'].includes(t.program);
-        const metalOk = ['warehouse', 'garage', 'lockup', 'trailer'].includes(t.program);
+        const pitchedOk = ['house', 'duplex', 'townhouses', 'diner', 'bar', 'corner_store', 'shop', 'library', 'bungalow', 'pharmacy'].includes(t.program);
+        const metalOk = ['warehouse', 'garage', 'lockup', 'trailer', 'fire_station'].includes(t.program);
         const roof = !p.objective && storeys <= 2
-            ? (['residential', 'park', 'alpine', 'historic'].includes(p.district) && pitchedOk && unit(`${seed}:${p.id}:roof`) < 0.72
+            ? (['residential', 'park', 'alpine', 'historic', 'hillside'].includes(p.district) && pitchedOk && unit(`${seed}:${p.id}:roof`) < 0.72
                 ? 'pitched'
                 : ['industrial', 'dock', 'yard', 'desert'].includes(p.district) && metalOk
                     ? 'metal'
@@ -351,7 +359,7 @@ export function classifyBays(W, D, ground, blocked, protectedCells) {
 
 /** Piece pool for a bay: road part, or its lot kind's pool, filtered by the surface each piece may stand on. */
 function bayDomain(bay, poolName, sidewalkAxis) {
-    if (bay.blocked) return ['open'];
+    if (bay.blocked || bay.cls === 'driveway') return ['open'];
     const pool = PIECE_POOLS[poolName] || PIECE_POOLS.yard_paved;
     const surf = bay.cls.startsWith('parking_')?'asphalt':bay.cls === 'lane_x' || bay.cls === 'lane_y' ? 'lane' : bay.cls;
     const out = [];
@@ -399,7 +407,7 @@ export function solveBays({ plot, bayGrid, lotPool, roadAxis, fields, seed, pins
             free.set(id, domain.filter(t => !BAY_PIECES[t].parts));
             if (pins.has(id)) {
                 const pin = BAY_PIECES[pins.get(id)], surface = bay.cls.startsWith('parking_') || bay.cls === 'carriageway' ? 'asphalt' : bay.cls.startsWith('lane_') ? 'lane' : bay.cls;
-                const bayOk = (b, piece) => piece && !onRoad(b) && !b.blocked && piece.cells.every(([x, y]) => !b.protected.some(([px, py]) => px === x && py === y))
+                const bayOk = (b, piece) => piece && !onRoad(b) && !b.blocked && b.cls !== 'driveway' && piece.cells.every(([x, y]) => !b.protected.some(([px, py]) => px === x && py === y))
                     && (!piece.surfaces || piece.surfaces.includes(surface) || (surface === 'lane' && piece.surfaces.includes('asphalt')));
                 let valid = bayOk(bay, pin);
                 if (valid && pin.parts) {
@@ -499,9 +507,9 @@ const POCKET_COVER = Object.freeze({
     forest_floor: ['boulder', 'low_wall', 'hedge'], yard: ['low_wall', 'planter', 'bench'],
     sidewalk: ['planter', 'tall_planter', 'low_wall', 'bench'], paving: ['planter', 'tall_planter', 'low_wall', 'bench'],
     cobble: ['planter', 'tall_planter', 'low_wall', 'bench'], stone_floor: ['planter', 'low_wall', 'bench'],
-    concrete: ['low_wall', 'planter', 'jersey'], gravel: ['low_wall', 'planter', 'jersey'],
-    deck: ['jersey', 'planter', 'bench'], snow: ['boulder', 'low_wall', 'jersey', 'planter'],
-    sand: ['drystone', 'boulder', 'jersey'], road: ['jersey', 'low_wall', 'planter'], asphalt: ['jersey', 'planter']
+    concrete: ['low_wall', 'planter', 'bollard'], gravel: ['low_wall', 'planter', 'bollard'],
+    deck: ['low_wall', 'planter', 'bench'], snow: ['boulder', 'low_wall', 'planter'],
+    sand: ['drystone', 'boulder', 'low_wall'], road: ['bollard', 'low_wall', 'planter'], asphalt: ['bollard', 'planter']
 });
 const bayCls = b => b.cls.startsWith('parking_') || b.cls === 'carriageway' ? 'asphalt' : b.cls.startsWith('lane_') ? 'lane' : b.cls;
 const onRoad = b => b.cls === 'carriageway' || b.cls.startsWith('lane_') || b.cls.startsWith('parking_');

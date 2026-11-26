@@ -6,9 +6,9 @@ import { puppetPose, deformPuppetMesh, swapWeights, swapDeformer } from './Sprit
 import { gunCelRamp, gunCelMaterial, gunInkMaterial } from './SpriteGunMaterial.js';
 
 export function spriteGunParts(weaponId) {
-    if (weaponId === 'blunderbuss') return { family: 'shotgun' };
-    if (weaponId === 'longrifle') return { family: 'sniper' };
-    if (['repeater','crossbow','shortbow','musket'].includes(weaponId)) return { family: 'rifle' };
+    if (weaponId === 'blunderbuss' || weaponId === 'auto_shotgun') return { family: 'shotgun' };
+    if (weaponId === 'longrifle' || weaponId === 'anti_materiel') return { family: 'sniper' };
+    if (['repeater','crossbow','shortbow','musket','smg','lmg','grenade_launcher'].includes(weaponId)) return { family: 'rifle' };
     return null;
 }
 export const gunPoint = p => new THREE.Vector3(p[0], p[2], -p[1]);

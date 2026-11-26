@@ -1,3 +1,5 @@
+import { ENEMIES } from '../content/units.js';
+
 const KINDS={house:['living','kitchen','study','bathroom'],shop:['sales','stock','office','restroom'],office:['open_office','meeting','office','restroom'],warehouse:['warehouse','loading','office','utility'],garage:['workshop','storage','office','utility'],diner:['dining','kitchen','office','restroom']};
 const ROOM_KINDS=new Set([...Object.values(KINDS).flat(),'bedroom','lobby','unit','galley','barracks','storeroom','armory']);
 const upperKinds=(b,floor)=>floor===0?KINDS[b.program]||KINDS.office:
@@ -26,7 +28,7 @@ export function designLevel(site,layout,proposal=null) {
         }
         const placeExists=p=>proposal.programs.some(q=>q.building===p.building&&q.floor===p.floor&&(p.room==='hall'||q.rooms.some(r=>(r.id===p.room||r.kind===p.room)&&r.gameplay!==false)));
         if(![proposal.mission.target,...proposal.beats,...(proposal.encounters||[])].every(placeExists))throw Error('design.place: every objective, beat and pod must name a gameplay room');
-        if(proposal.encounters?.some(e=>!e.types?.length||e.types.some(t=>!['cultist','archer','warden_foe','pyromancer','brute'].includes(t))))throw Error('design.encounter: unsupported enemy type');
+        if(proposal.encounters?.some(e=>!e.types?.length||e.types.some(t=>!Object.hasOwn(ENEMIES,t))))throw Error('design.encounter: unsupported enemy type');
         return proposal;
     }
     const target=layout.buildings.find(b=>b.id===site.objectiveBuilding)||layout.buildings.slice().sort((a,b)=>b.storeys-a.storeys)[0];

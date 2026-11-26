@@ -229,6 +229,7 @@ export class Battle {
             if (!this.mission.meta?.imageGenerated && room >= 0 && rec && !rec.lit && this.roomOf(shooter) !== room) { s *= B.dimRoomSpreadMult; mods.push(['dim room', B.dimRoomSpreadMult]); }
             const k = this.formations.defenseSpreadMult(target, shooter);
             if (k !== 1) { s *= k; mods.push(['formation', +k.toFixed(2)]); }
+            if (hasStatus(target, 'marked')) { s *= STATUS_DEFS.marked.spreadMult; mods.push(['marked', STATUS_DEFS.marked.spreadMult]); }
             if (this.field.isSmoke(target.x, target.y, target.z + 1) || this.field.isSmoke(target.x, target.y, target.z + 2)) { s *= B.smokeSpreadMult; mods.push(['smoke', B.smokeSpreadMult]); }
         }
         return { spread: s, mods };
@@ -429,11 +430,17 @@ export class Battle {
                     if (!this.sees(u,t)) return 'no_target';
                 }
                 if (a.id === 'suppress') {
-                    if (!u.weapons.includes('repeater')) return 'bad_intent';
-                    const target = this.unit(intent.targetId), w = WEAPONS.repeater;
+                    const supW = u.weapons.includes('lmg') ? WEAPONS.lmg : u.weapons.includes('repeater') ? WEAPONS.repeater : null;
+                    if (!supW) return 'bad_intent';
+                    const target = this.unit(intent.targetId);
                     if (!target || !alive(target) || !this.visibleTo(u.side).has(target.id)) return 'no_target';
-                    if ((u.ammo[w.id] ?? 0) < 1) return 'no_ammo';
-                    if (Math.hypot(target.x - u.x, target.y - u.y) > w.maxRange) return 'out_of_range';
+                    if ((u.ammo[supW.id] ?? 0) < 1) return 'no_ammo';
+                    if (Math.hypot(target.x - u.x, target.y - u.y) > supW.maxRange) return 'out_of_range';
+                }
+                if (a.id === 'mark_target') {
+                    const target = this.unit(intent.targetId);
+                    if (!target || !alive(target) || target.side === u.side || !this.sees(u, target)) return 'no_target';
+                    if (this.distance(u, target) > a.range) return 'out_of_range';
                 }
                 return null;
             }
@@ -934,6 +941,9 @@ export class Battle {
                     if (r.explosion) this.explode({ ...r.explosion, by: u.id });
                     if (w.element) this.elementImpact(w.element, res.point, 0.8);
                 }
+                if (w.blast && (res.kind === 'unit' || res.kind === 'voxel')) {
+                    this.explode({ x: res.point.x, y: res.point.y, h: res.point.h, ...w.blast, by: u.id, excludeUnits: res.kind === 'unit' ? [res.unit.id] : [] });
+                }
                 projectiles.push(p);
             }
         });
@@ -972,6 +982,7 @@ export class Battle {
         const ws = this.weaponStats(w.id); ws.shots++; ws.hits++; ws.damage += dealt; ws.ap += w.ap; ws.projectiles++;
         strike.damage = dealt;
         if (w.knockback && alive(t)) this.knockback(t, t.x - u.x, t.y - u.y, w.knockback);
+        if (w.stun && alive(t)) this.giveStatus(t, 'stunned', 1);
         this.noise(u.x, u.y, u.z, w.noise ?? 4, u);
         if (u.side === 'player') this.breakConcealment(u, 'melee');
     }
@@ -983,7 +994,8 @@ export class Battle {
         const p = t.parts[part] || t.parts.torso;
         const armor = Math.max(0, partArmor(t, part) - pierce);
         // PLAN-15: armour reduces a projectile but never cancels it (B.armorMinDamage of the round always gets through).
-        const raw = Math.round(amount);
+        const markBonus = hasStatus(t, 'marked') && amount > 0 ? STATUS_DEFS.marked.damageBonus : 0;
+        const raw = Math.round(amount + markBonus);
         let dmg = Math.max(0, raw - armor, raw > 0 ? Math.ceil(raw * (B.armorMinDamage || 0)) : 0);
         if (element === 'pyro' && hasStatus(t, 'wet')) dmg = Math.max(0, dmg - 1);
         if (shred) p.armor = Math.max(0, p.armor - shred);
@@ -1276,10 +1288,22 @@ export class Battle {
                 break;
             case 'suppress': {
                 const target = this.unit(intent.targetId);
-                if (target && alive(target) && u.weapons.includes('repeater')) {
-                    this.emit({ t: 'cutin', unitId: u.id, kind: 'burst', weaponId: 'repeater', targetIds: [target.id] });
-                    this.fireWeapon(u, WEAPONS.repeater, { unitId: target.id, part: 'torso' }, { suppress: true });
+                const supW = u.weapons.includes('lmg') ? WEAPONS.lmg : u.weapons.includes('repeater') ? WEAPONS.repeater : null;
+                if (target && alive(target) && supW) {
+                    this.emit({ t: 'cutin', unitId: u.id, kind: 'burst', weaponId: supW.id, targetIds: [target.id] });
+                    this.fireWeapon(u, supW, { unitId: target.id, part: 'torso' }, { suppress: true });
                     if (alive(target)) { u.suppressing = target.id; this.giveStatus(target, 'suppressed', 2); }
+                }
+                break;
+            }
+            case 'mark_target': {
+                const target = this.unit(intent.targetId);
+                if (target && alive(target)) this.giveStatus(target, 'marked', STATUS_DEFS.marked.rounds);
+                break;
+            }
+            case 'field_shield': {
+                for (const ally of this.unitsOf(u.side)) {
+                    if (alive(ally) && this.distance(ally, u) <= a.radius) this.giveStatus(ally, 'braced', 1);
                 }
                 break;
             }

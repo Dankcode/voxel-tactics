@@ -62,7 +62,7 @@ function pinCoverNear(op, cell, { full = false, destructible = false } = {}) {
     const ctx = op.context, obj = op.layout.objective.cell;
     const dx = obj.x - cell.x, dy = obj.y - cell.y, toward = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : (dy > 0 ? 's' : 'n');
     // PLAN-10: no crates or pallets. PLAN-13: no vending boxes, bins or sandbags either — cover a street really has.
-    const bases = destructible ? ['planter', 'bench', 'hedge', 'fence', 'low_wall'] : full ? ['tall_planter', 'fence'] : ['planter', 'low_wall', 'hedge', 'jersey', 'bench'];
+    const bases = destructible ? ['planter', 'bench', 'hedge', 'fence', 'low_wall'] : full ? ['tall_planter', 'fence'] : ['planter', 'low_wall', 'hedge', 'bollard', 'bench'];
     const bx0 = Math.floor(cell.x / BAY), by0 = Math.floor(cell.y / BAY);
     for (let r = 0; r <= 3; r++) for (let oy = -r; oy <= r; oy++) for (let ox = -r; ox <= r; ox++) {
         if (Math.max(Math.abs(ox), Math.abs(oy)) !== r) continue;
@@ -123,7 +123,7 @@ function shieldDrop(op, m) {
         const facing = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : (dy > 0 ? 's' : 'n');
         const bay = op.context.bayGrid.at(Math.floor(cell.x / BAY), Math.floor(cell.y / BAY));
         if (!bay || bay.blocked || bay.cls === 'carriageway' || bay.cls.startsWith('lane_') || bay.cls.startsWith('parking_')) continue;   // PLAN-10: nothing in the road
-        for (const base of ['tall_planter', 'fence', 'jersey', 'low_wall']) {
+        for (const base of ['tall_planter', 'fence', 'low_wall', 'planter']) {
             const id = `${base}_${facing}`, p = BAY_PIECES[id];
             const surf = bay.cls === 'lane_x' || bay.cls === 'lane_y' ? 'lane' : bay.cls;
             if (!p || p.cells.some(([x, y]) => bay.protected.some(([px, py]) => px === x && py === y)) || !(p.surfaces.includes(surf) || (surf === 'lane' && p.surfaces.includes('asphalt')))) continue;

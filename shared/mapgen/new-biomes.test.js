@@ -6,13 +6,13 @@ import { solveInteriorPlan } from './InteriorPlanSolver.js';
 import { buildMission, sanitizeDesc } from '../session/Scenarios.js';
 import { MAT } from '../voxel/Materials.js';
 
-const NEW_BIOMES = ['harbor', 'winter_outpost', 'old_quarter', 'metro_hub', 'arid_compound', 'canal_district', 'hillside_ridge', 'sunken_basin'];
+const NEW_BIOMES = ['harbor', 'winter_outpost', 'old_quarter', 'metro_hub', 'arid_compound', 'canal_district', 'hillside_avenue', 'hillside_ridge', 'sunken_basin'];
 
-test('PLOT_IDS registers all 11 operation biomes', () => {
+test('PLOT_IDS registers all 12 operation biomes', () => {
     for (const id of ['downtown', 'industrial', 'suburb', ...NEW_BIOMES]) {
         assert.ok(PLOT_IDS.includes(id), `missing biome ${id} in PLOT_IDS`);
     }
-    assert.equal(PLOT_IDS.length, 11);
+    assert.equal(PLOT_IDS.length, 12);
 });
 
 test('all 8 expanded biomes pass operation generation gates without outdoor clutter', () => {
@@ -28,7 +28,7 @@ test('all 8 expanded biomes pass operation generation gates without outdoor clut
 });
 
 test('dynamic elevation biomes produce real height variation, canals/hills/basins and pass multi-seed gates', () => {
-    for (const plot of ['canal_district', 'hillside_ridge', 'sunken_basin']) {
+    for (const plot of ['canal_district', 'hillside_avenue', 'hillside_ridge', 'sunken_basin']) {
         for (const seed of [1, 7, 19]) {
             const { mission: m, layout } = generateOperation({ plot, seed });
             assert.equal(m.metrics.pass, true, `${plot}:${seed} failed: ${JSON.stringify(m.metrics.gates)}`);
@@ -36,8 +36,8 @@ test('dynamic elevation biomes produce real height variation, canals/hills/basin
             assert.ok(dz.length > 0, `${plot}:${seed} missing terrain dz map`);
             if (plot === 'canal_district') {
                 assert.ok(dz.some(v => v < 0), `${plot}:${seed} has recessed canal/towpath`);
-            } else if (plot === 'hillside_ridge') {
-                assert.ok(dz.some(v => v >= 2), `${plot}:${seed} has elevated ridge tiers`);
+            } else if (plot === 'hillside_ridge' || plot === 'hillside_avenue') {
+                assert.ok(dz.some(v => v >= 2), `${plot}:${seed} has elevated terrace tiers`);
             } else if (plot === 'sunken_basin') {
                 assert.ok(dz.some(v => v <= -2), `${plot}:${seed} has sunken basin floor`);
             }

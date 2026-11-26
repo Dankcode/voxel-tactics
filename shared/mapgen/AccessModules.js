@@ -105,7 +105,7 @@ export function validateAccessModule(store, rec) {
  * Never resizes: if no facade fits, it throws and the caller regenerates the building.
  */
 export function placeFireEscape(m, b, { prefer = ['e', 's', 'w', 'n'], exitFloors = null, blocked = () => false, roomById } = {}) {
-    const s = m.store, S = b.storeys, G = m.G;
+    const s = m.store, S = b.storeys, G = b.baseZ ?? m.G;
     const exits = exitFloors ?? Array.from({ length: S - 1 }, (_, i) => i + 1);
     const sides = [...new Set([...prefer, 'e', 's', 'w', 'n'])];
     const groundDoors = new Set(b.doors.filter(d => d.exterior && d.storey === 0).map(d => `${d.x},${d.y}`));
@@ -165,7 +165,7 @@ export function roofLadderTemplate({ side, origin, datum, storeys }) {
 }
 export function placeRoofLadder(m, b, { prefer = ['w', 'n', 'e', 's'], blocked = () => false } = {}) {
     if (b.storeys > ROOF_LADDER.maxStoreys) throw Error(`access.height: ${b.id} has ${b.storeys} storeys; roof ladders serve 1–2 storey flat roofs only`);
-    const s = m.store, G = m.G, top = G + STOREY * b.storeys;
+    const s = m.store, G = b.baseZ ?? m.G, top = G + STOREY * b.storeys;
     const doorCells = new Set(b.doors.filter(d => d.exterior).map(d => `${d.x},${d.y}`));
     for (const side of [...new Set([...prefer, 'w', 'n', 'e', 's'])]) {
         const len = facadeLength(b, side);

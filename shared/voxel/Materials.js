@@ -153,6 +153,10 @@ def('steel_post', { label:'Steel post',color:0x53636f,hp:12,family:'metal',walka
 def('railing', { label:'Steel railing',color:0x8999a2,hp:4,opaque:false,projectile:'pass',concealment:2,family:'metal',walkable:false,structural:false });
 
 def('emergency_light',{label:'Emergency light',color:0xff493e,hp:1,light:3,family:'metal',structural:false,walkable:false});
+// Sloped roadways and San Francisco stepped street sidewalks (part: 4 keeps stair traversal cost; appended so existing IDs stay unchanged).
+def('road_slope', { label: 'Sloped road', color: 0x485258, hp: 8, part: 4, family: 'stone' });
+def('sidewalk_stair', { label: 'Street stairway', color: 0xb9bcb8, hp: 9, part: 4, family: 'stone' });
+def('cobble_slope', { label: 'Sloped cobblestone', color: 0x9b958a, hp: 8, part: 4, family: 'stone' });
 
 export const MATERIALS = Object.freeze(M);
 export const MAT = Object.freeze(Object.fromEntries(M.map(m => [m.key, m.id])));

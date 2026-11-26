@@ -38,8 +38,11 @@ export function createUnit(typeId, side, pos, id, overrides = {}) {
         ...overrides.extra
     };
     initializeEquipment(unit,def);
-    // PLAN-14: a drone carries nothing and has no armour anywhere — any hit that connects destroys it.
-    if (def.drone) { unit.drone = true; unit.equipment = {}; unit.rigInventory = []; unit.pocketInventory = []; unit.inventory = []; for (const p of PARTS) unit.parts[p].armor = 0; }
+    // PLAN-14: search drones carry nothing and have no armour; armed gun drones keep their light chassis armour.
+    if (def.drone) {
+        unit.drone = true; unit.equipment = {}; unit.rigInventory = []; unit.pocketInventory = []; unit.inventory = [];
+        if (def.armor === 'drone') for (const p of PARTS) unit.parts[p].armor = 0;
+    }
     return unit;
 }
 

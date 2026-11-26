@@ -13,8 +13,8 @@ import { generateOperation, OPERATION_FLOWS } from '../mapgen/Generator.js';
 import { PLOT_IDS } from '../mapgen/PlotCatalogue.js';
 import { sanitizeDesc, buildMission } from '../session/Scenarios.js';
 
-test('theater catalog has 6 flagship operations covering multi-elevation & urban biomes', () => {
-    assert.equal(THEATER_OPERATIONS.length, 6);
+test('theater catalog unlocks all operations in the test environment and supports progressive lock mode', () => {
+    assert.equal(THEATER_OPERATIONS.length, 8);
     const plots = new Set(THEATER_OPERATIONS.map(o => o.plot));
     assert.ok(plots.has('canal_district'));
     assert.ok(plots.has('hillside_ridge'));
@@ -22,18 +22,32 @@ test('theater catalog has 6 flagship operations covering multi-elevation & urban
     assert.ok(plots.has('downtown'));
     assert.ok(plots.has('industrial'));
     assert.ok(plots.has('winter_outpost'));
-    assert.equal(PLOT_IDS.length, 11);
+    assert.ok(plots.has('hillside_avenue'));
+    assert.ok(PLOT_IDS.length >= 12);
     for (const op of THEATER_OPERATIONS) {
         assert.ok(OPERATION_FLOWS.includes(op.verticalFlow), op.id);
+        assert.ok(op.forceLevel >= 1 && op.forceLevel <= 4, op.id);
     }
+
+    const st = createTheaterState();
+    const unlockedCat = theaterCatalog(st);
+    assert.ok(unlockedCat.every(op => op.unlocked && op.status === 'available'), 'all ops unlocked in test env');
+
+    const lockedCat = theaterCatalog(st, { unlockAll: false });
+    assert.equal(lockedCat[0].status, 'available');
+    assert.equal(lockedCat[1].status, 'locked');
 });
 
-test('progressive theater unlock, rewards, and roster experience updates cleanly', () => {
+test('progressive theater rewards, seed overrides, and roster experience updates cleanly', () => {
     let st = createTheaterState();
     assert.equal(st.day, 1);
-    let cat = theaterCatalog(st);
+    let cat = theaterCatalog(st, { unlockAll: false });
     assert.equal(cat[0].status, 'available');
     assert.equal(cat[1].status, 'locked');
+
+    const customDesc = buildLaunchDescriptor(cat[0], { seed: 777 });
+    assert.equal(customDesc.seed, 777);
+    assert.equal(customDesc.operation.forceLevel, cat[0].forceLevel);
 
     const res1 = applyOperationOutcome(st, cat[0].id, {
         outcome: { winner: 'player', reason: 'recovered' },
@@ -46,7 +60,7 @@ test('progressive theater unlock, rewards, and roster experience updates cleanly
     assert.equal(st.day, 2);
     assert.ok(st.completedIds.includes(cat[0].id));
 
-    cat = theaterCatalog(st);
+    cat = theaterCatalog(st, { unlockAll: false });
     assert.equal(cat[0].status, 'completed');
     assert.equal(cat[1].status, 'available');
     assert.equal(cat[2].status, 'locked');

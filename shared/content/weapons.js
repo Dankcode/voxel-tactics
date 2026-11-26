@@ -17,7 +17,12 @@ const CONFIG={
  crossbow:{ammoType:'ar',ammo:30,spread:1.18,fireModes:['single','burst'],defaultMode:'burst',damageMult:1.0,minRangeMult:0.60,weight:2.8,recoil:{climb:0.26,drift:0.18,bloom:0.22,heat:0.34}},
  shortbow:{ammoType:'ar',ammo:20,spread:0.95,scoped:true,damageMult:1.0,minRangeMult:0.78,weight:3.6,recoil:{climb:0.90,drift:0.35,bloom:0.45,heat:0.65}},
  musket:{ammoType:'ar',ammo:30,spread:2.55,fireModes:['single','burst'],defaultMode:'single',damageMult:1.0,minRangeMult:0.60,weight:3.7,recoil:{climb:1.15,drift:0.78,bloom:0.78,heat:0.85}},
- firelance:{ammoType:'shotgun',ammo:10,pellets:5,shellDamage:18,spread:3.5,damageMult:1.0,minRangeMult:0.45,weight:7,velocity:160,recoil:{climb:0.4,drift:0.7,bloom:0.6,heat:0.4}}
+ firelance:{ammoType:'shotgun',ammo:10,pellets:5,shellDamage:18,spread:3.5,damageMult:1.0,minRangeMult:0.45,weight:7,velocity:160,recoil:{climb:0.4,drift:0.7,bloom:0.6,heat:0.4}},
+ smg:{ammoType:'ar',ammo:32,projectiles:1,perShot:1,spread:2.1,fireModes:['single','burst','auto'],defaultMode:'burst',damageMult:1.0,minRangeMult:0.55,weight:2.6,recoil:{climb:0.34,drift:0.28,bloom:0.32,heat:0.36}},
+ lmg:{ammoType:'ar',ammo:60,projectiles:1,perShot:1,spread:1.9,fireModes:['burst','auto'],defaultMode:'auto',damageMult:1.0,minRangeMult:0.68,weight:6.8,recoil:{climb:0.44,drift:0.30,bloom:0.34,heat:0.46}},
+ auto_shotgun:{ammoType:'shotgun',ammo:12,pellets:8,projectiles:8,perShot:1,spread:4.0,fireModes:['single','burst'],defaultMode:'single',damageMult:1.0,minRangeMult:0.45,weight:4.4,recoil:{climb:1.10,drift:0.42,bloom:0.48,heat:0.55}},
+ anti_materiel:{ammoType:'high',ammo:1,perShot:1,spread:0.36,boltAction:true,scoped:true,damageMult:1.0,minRangeMult:0.85,weight:7.6,recoil:{climb:1.35,drift:0.20,bloom:0.40,heat:0.70}},
+ grenade_launcher:{ammoType:'high',ammo:4,projectiles:1,perShot:1,spread:1.6,damageMult:1.0,minRangeMult:0.90,weight:5.4,recoil:{climb:0.95,drift:0.25,bloom:0.30,heat:0.50}}
 };
 
 export const WEAPONS = Object.freeze(Object.fromEntries(Object.entries({
@@ -41,7 +46,19 @@ export const WEAPONS = Object.freeze(Object.fromEntries(Object.entries({
     sword: { name: 'Combat Knife', kind: 'melee', ap: 1, damage: 10, pierce: 2, shred: 0, reach: 1.5, voxel: 1, noise: 4, cutIn: 'melee' },
     // Walker monster: rakes anything next to its legs; the blow throws soldiers back.
     strider_claws: { name: 'Strider Claws', kind: 'melee', ap: 1, damage: 16, pierce: 4, shred: 1, reach: 2, voxel: 20, knockback: 2, noise: 12, cutIn: 'melee' },
-    maul: { name: 'Sledgehammer', kind: 'melee', ap: 2, damage: 16, pierce: 3, shred: 1, reach: 1.5, voxel: 4, knockback: 2, noise: 8, cutIn: 'melee' }
+    maul: { name: 'Sledgehammer', kind: 'melee', ap: 2, damage: 16, pierce: 3, shred: 1, reach: 1.5, voxel: 4, knockback: 2, noise: 8, cutIn: 'melee' },
+    smg: { name: 'Submachine Gun', kind: 'ballistic', caliber: '45acp', ap: 2, projectiles: 1, shred: 0,
+        spread: 2.1, range: 14, maxRange: 24, ammo: 32, perShot: 1, reloadAp: 1, noise: 12, element: null, cutIn: 'burst' },
+    lmg: { name: 'Light Machine Gun', kind: 'ballistic', caliber: '5.56', ap: 2, projectiles: 1, shred: 1,
+        spread: 1.9, range: 22, maxRange: 36, ammo: 60, perShot: 1, reloadAp: 2, noise: 16, element: null, cutIn: 'burst' },
+    auto_shotgun: { name: 'Auto Shotgun', kind: 'ballistic', caliber: '12g', ap: 2, projectiles: 8, shred: 2,
+        spread: 4.0, range: 8, maxRange: 15, ammo: 12, perShot: 1, reloadAp: 1, noise: 15, element: null, cutIn: 'shot' },
+    anti_materiel: { name: 'Anti-Materiel Rifle', kind: 'ballistic', caliber: '50bmg', ap: 3, projectiles: 1, shred: 3,
+        spread: 0.36, range: 34, maxRange: 52, ammo: 1, perShot: 1, reloadAp: 1, noise: 22, element: null, cutIn: 'heavy' },
+    grenade_launcher: { name: 'Grenade Launcher', kind: 'ballistic', caliber: '40mm', ap: 2, projectiles: 1, shred: 1,
+        spread: 1.6, range: 18, maxRange: 28, ammo: 4, perShot: 1, reloadAp: 2, noise: 18, element: null, cutIn: 'heavy',
+        blast: { radius: 2.3, power: 10, damage: 12, shred: 1, element: 'geo' } },
+    shock_baton: { name: 'Shock Baton', kind: 'melee', ap: 1, damage: 11, pierce: 2, shred: 0, reach: 1.5, voxel: 1, stun: true, noise: 4, cutIn: 'melee', weight: 1.2 }
 }).map(([id, w]) => [id, Object.freeze({ ...withCaliber({ id, ...w }), ...CONFIG[id] })])));
 
 export const THROWABLES = Object.freeze({

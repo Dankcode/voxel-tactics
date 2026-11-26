@@ -27,14 +27,16 @@ export function explosionSound(event, focus) {
 export function weaponSound(weaponId) {
     return {
         repeater:'rifleShot',musket:'rifleShot',shortbow:'rifleShot',longrifle:'sniperShot',
-        blunderbuss:'shotgunShot',handcannon:'sidearmShot',crossbow:'suppressedShot',firelance:'flameShot'
+        blunderbuss:'shotgunShot',handcannon:'sidearmShot',crossbow:'suppressedShot',firelance:'flameShot',
+        smg:'rifleShot',lmg:'rifleShot',auto_shotgun:'shotgunShot',anti_materiel:'sniperShot',grenade_launcher:'sniperShot'
     }[weaponId] || null;
 }
 
 export function weaponHandlingSound(weaponId) {
     return {
         blunderbuss:'shotgunPump',handcannon:'handgunClick',longrifle:'sniperReload',
-        repeater:'rifleReload',musket:'rifleReload',shortbow:'rifleReload',crossbow:'rifleReload',firelance:'rifleReload'
+        repeater:'rifleReload',musket:'rifleReload',shortbow:'rifleReload',crossbow:'rifleReload',firelance:'rifleReload',
+        smg:'rifleReload',lmg:'rifleReload',auto_shotgun:'shotgunPump',anti_materiel:'sniperReload',grenade_launcher:'sniperReload'
     }[weaponId] || null;
 }
 

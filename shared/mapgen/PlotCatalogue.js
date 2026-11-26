@@ -31,7 +31,9 @@ export const PLOT_FAMILIES = Object.freeze({
         districts: { industrial: 4, yard: 2, commercial: 0.5 },
         text: 'An access road and a service road around depots, container stacks and loading yards.',
         roads(rng, LW, LD) {
-            const col = rng.pick([1, LW - 2]), row = LD - 2, cells = [];
+            const variant = rng.int(0, 2);
+            const row = variant === 2 ? 1 : rng.pick([LD - 2, LD - 3]);
+            const col = variant === 1 ? Math.floor(LW / 2) : rng.pick([1, LW - 2]), cells = [];
             for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
             for (let ly = 0; ly < LD; ly++) if (ly !== row) cells.push([col, ly]);
             return { cells, exits: [['w', row], ['e', row], ['n', col], ['s', col]], main: row };
@@ -45,6 +47,7 @@ export const PLOT_FAMILIES = Object.freeze({
             const row = rng.pick([LD - 2, LD - 3]), col = rng.int(2, LW - 3), cells = [];
             for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
             for (let ly = 1; ly < row; ly++) cells.push([col, ly]);          // the close: a dead end with a turning circle
+            cells.push([col < LW - 2 ? col + 1 : col - 1, 1]);
             return { cells, exits: [['w', row], ['e', row]], main: row };
         }
     },
@@ -53,7 +56,7 @@ export const PLOT_FAMILIES = Object.freeze({
         districts: { dock: 3.5, industrial: 1.8, commercial: 1.2 },
         text: 'A working dockside quay with cargo depots, canal basins and waterfront warehouses.',
         roads(rng, LW, LD) {
-            const row = LD - 2, col = rng.pick([2, LW - 3]), cells = [];
+            const row = rng.pick([LD - 2, 1]), col = rng.pick([1, 2, LW - 3, LW - 2]), cells = [];
             for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
             for (let ly = 0; ly < LD; ly++) if (ly !== row) cells.push([col, ly]);
             return { cells, exits: [['w', row], ['e', row], ['n', col], ['s', col]], main: row };
@@ -64,10 +67,10 @@ export const PLOT_FAMILIES = Object.freeze({
         districts: { alpine: 3.6, park: 1.4, yard: 1.0 },
         text: 'A snowbound timber research station, frozen basin and plowed mountain pass.',
         roads(rng, LW, LD) {
-            const row = rng.pick([LD - 2, LD - 3]), col = rng.int(2, LW - 3), cells = [];
+            const row = rng.pick([LD - 2, LD - 3, 1]), col = rng.int(2, LW - 3), cells = [];
             for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
-            for (let ly = 0; ly <= row; ly++) if (ly !== row) cells.push([col, ly]);
-            return { cells, exits: [['w', row], ['e', row], ['n', col]], main: row };
+            for (let ly = (row <= 1 ? row + 1 : 0); ly < (row <= 1 ? LD : row); ly++) cells.push([col, ly]);
+            return { cells, exits: [['w', row], ['e', row], [row <= 1 ? 's' : 'n', col]], main: row };
         }
     },
     old_quarter: {
@@ -75,7 +78,7 @@ export const PLOT_FAMILIES = Object.freeze({
         districts: { historic: 3.8, plaza: 1.6, commercial: 1.0 },
         text: 'Cobblestone market lanes, pitched-roof stone townhouses and a historic civic hall.',
         roads(rng, LW, LD) {
-            const row = LD - 2, col = rng.pick([2, 3]), cells = [];
+            const row = rng.pick([LD - 2, 1]), col = rng.pick([2, 3]), cells = [];
             for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
             for (let ly = 0; ly < LD; ly++) if (ly !== row) cells.push([col, ly]);
             return { cells, exits: [['w', row], ['e', row], ['n', col], ['s', col]], main: row };
@@ -86,7 +89,7 @@ export const PLOT_FAMILIES = Object.freeze({
         districts: { transit: 3.5, commercial: 1.8, plaza: 1.4 },
         text: 'A busy transit avenue linked by a subterranean subway flank and skybridge towers.',
         roads(rng, LW, LD) {
-            const row = rng.pick([LD - 2, LD - 3]), col = rng.int(2, LW - 3), cells = [];
+            const row = rng.pick([LD - 2, LD - 3, 1]), col = rng.int(2, LW - 3), cells = [];
             for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
             for (let ly = 0; ly < LD; ly++) if (ly !== row) cells.push([col, ly]);
             return { cells, exits: [['w', row], ['e', row], ['n', col], ['s', col]], main: row };
@@ -97,10 +100,10 @@ export const PLOT_FAMILIES = Object.freeze({
         districts: { desert: 3.8, yard: 1.6, industrial: 0.8 },
         text: 'Sun-baked drystone walls, dusty patrol roads, checkpoint yards and desert bunkers.',
         roads(rng, LW, LD) {
-            const row = LD - 2, col = rng.pick([1, LW - 2]), cells = [];
+            const row = rng.pick([LD - 2, 1]), col = rng.pick([1, LW - 2]), cells = [];
             for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
-            for (let ly = 0; ly < row; ly++) cells.push([col, ly]);
-            return { cells, exits: [['w', row], ['e', row], ['n', col]], main: row };
+            for (let ly = (row <= 1 ? row + 1 : 0); ly < (row <= 1 ? LD : row); ly++) cells.push([col, ly]);
+            return { cells, exits: [['w', row], ['e', row], [row <= 1 ? 's' : 'n', col]], main: row };
         }
     },
     canal_district: {
@@ -108,9 +111,27 @@ export const PLOT_FAMILIES = Object.freeze({
         districts: { canal: 3.6, civic: 1.0, industrial: 0.6 },
         text: 'Sunken waterway locks with stone embankment quays, canal bridges and stair landings.',
         roads(rng, LW, LD) {
-            const row = LD - 2, col = Math.floor(LW / 2), cells = [];
+            const row = LD - 2, col = rng.pick([Math.floor(LW / 2), 2]), cells = [];
             for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
-            for (let ly = 0; ly < LD; ly++) cells.push([col, ly]);
+            for (let ly = 0; ly < LD; ly++) if (ly !== row) cells.push([col, ly]);
+            return { cells, exits: [['w', row], ['e', row], ['n', col], ['s', col]], main: row };
+        }
+    },
+    hillside_avenue: {
+        name: 'San Francisco Hills', theme: 'Hillside', size: [48, 40], times: ['day', 'dawn', 'dusk', 'overcast'],
+        districts: { hillside: 3.8, commercial: 1.5, residential: 1.4, plaza: 0.8 },
+        text: 'Steep terraced city streets with sloped roadways, parallel sidewalk stairways and hilltop overlooks.',
+        roads(rng, LW, LD) {
+            const variant = rng.int(0, 2);
+            const row = variant === 2 ? 1 : rng.pick([LD - 2, LD - 3]);
+            const col = variant === 0 ? 2 : rng.pick([2, 3]);
+            const cells = [];
+            for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
+            for (let ly = 0; ly < LD; ly++) if (ly !== row) cells.push([col, ly]);
+            if (variant === 1 && LW >= 6) {
+                for (let ly = 0; ly < row; ly++) cells.push([LW - 2, ly]);
+                return { cells, exits: [['w', row], ['e', row], ['n', col], ['s', col], ['n', LW - 2]], main: row };
+            }
             return { cells, exits: [['w', row], ['e', row], ['n', col], ['s', col]], main: row };
         }
     },
@@ -119,10 +140,10 @@ export const PLOT_FAMILIES = Object.freeze({
         districts: { highland: 3.6, residential: 1.0, yard: 0.6 },
         text: 'Stepped terraced bluffs rising to an elevated crest ridge with flanking stair ascents and highland relays.',
         roads(rng, LW, LD) {
-            const row = LD - 2, col = rng.pick([1, LW - 2]), cells = [];
+            const row = rng.pick([LD - 2, 1]), col = rng.pick([1, 2, LW - 2]), cells = [];
             for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
-            for (let ly = 0; ly < row; ly++) cells.push([col, ly]);
-            return { cells, exits: [['w', row], ['e', row], ['n', col]], main: row };
+            for (let ly = (row <= 1 ? row + 1 : 0); ly < (row <= 1 ? LD : row); ly++) cells.push([col, ly]);
+            return { cells, exits: [['w', row], ['e', row], [row <= 1 ? 's' : 'n', col]], main: row };
         }
     },
     sunken_basin: {
@@ -130,10 +151,10 @@ export const PLOT_FAMILIES = Object.freeze({
         districts: { basin: 3.6, industrial: 1.0, commercial: 0.6 },
         text: 'Recessed drainage basin below retaining parapets, descending stairways and floodwall catwalks.',
         roads(rng, LW, LD) {
-            const row = 1, col = rng.pick([1, LW - 2]), cells = [];
+            const row = rng.pick([1, LD - 2]), col = rng.pick([1, 2, LW - 2]), cells = [];
             for (let lx = 0; lx < LW; lx++) cells.push([lx, row]);
-            for (let ly = 1; ly < LD; ly++) cells.push([col, ly]);
-            return { cells, exits: [['w', row], ['e', row], ['s', col]], main: row };
+            for (let ly = (row <= 1 ? 1 : 0); ly < (row <= 1 ? LD : row + 1); ly++) if (ly !== row) cells.push([col, ly]);
+            return { cells, exits: [['w', row], ['e', row], [row <= 1 ? 's' : 'n', col]], main: row };
         }
     }
 });
@@ -145,7 +166,7 @@ export function familyForSite(site) {
     return {
         Downtown: 'downtown', Industrial: 'industrial', Suburbs: 'suburb', Roadside: 'suburb',
         Waterfront: 'harbor', Alpine: 'winter_outpost', Historic: 'old_quarter', Transit: 'metro_hub',
-        Desert: 'arid_compound', Canal: 'canal_district', Highland: 'hillside_ridge', Basin: 'sunken_basin'
+        Desert: 'arid_compound', Canal: 'canal_district', Hillside: 'hillside_avenue', Highland: 'hillside_ridge', Basin: 'sunken_basin'
     }[site?.theme] || 'downtown';
 }
 
@@ -210,7 +231,7 @@ export function createPlot(family, seed = 1, { size = null } = {}) {
     if (!objective) throw Error(`plot.objective: ${family} seed ${seed} has no 2×2 block fronting a road`);
     const front = objective.fronts.includes(OPPOSITE[insertion.side]) ? OPPOSITE[insertion.side] : objective.fronts.includes('s') ? 's' : objective.fronts[0];
     return {
-        version: 1, family, theme: F.theme, seed, W, D, LW, LD, datum: 4, height: 18, lots, blocks,
+        version: 1, family, theme: F.theme, seed, W, D, LW, LD, datum: 4, height: F.height ?? 18, lots, blocks,
         roadExits: exits.map(([side, at]) => ({ side, at })), insertion,
         objective: { lx: objective.lx, ly: objective.ly, size: [2, 2], front },
         underground: F.underground, times: F.times, districts: F.districts

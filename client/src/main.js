@@ -36,6 +36,7 @@ const PLOT_TAGS = {
     arid_compound: 'Desert · Terraces',
     canal_district: 'Waterway · Bridges & Quays',
     hillside_ridge: 'Highland · Stepped Bluffs',
+    hillside_avenue: 'San Francisco · Sloped Streets & Steps',
     sunken_basin: 'Basin · Sunken Lower Field'
 };
 const CURATED_IDS = [
@@ -52,10 +53,10 @@ const exitHandler = o => {
     showMenu({ tab: o?.tab || (wasCampaign ? 'campaign' : 'play'), ...o });
 };
 
-function launchTheaterOp(op, { skipReview = true, debug = false } = {}) {
+function launchTheaterOp(op, { skipReview = true, debug = false, seed = null } = {}) {
     if (!op) return;
     setActiveTheaterOp(op.id);
-    const launchDesc = buildLaunchDescriptor(op, { squad: 'standard', extra: { debug } });
+    const launchDesc = buildLaunchDescriptor(op, { squad: 'standard', seed, extra: { debug } });
     return startBattle(() => LocalSession.create(launchDesc), {
         generating: true,
         debug,
@@ -66,7 +67,7 @@ function launchTheaterOp(op, { skipReview = true, debug = false } = {}) {
                 PLOT_FAMILIES[op.plot]?.name || op.plot,
                 op.objective?.toUpperCase(),
                 FLOW_LABELS[op.verticalFlow] || op.verticalFlow,
-                `Seed ${op.seed}`
+                `Seed ${launchDesc.seed}`
             ],
             briefing: op.briefing
         }
@@ -106,7 +107,8 @@ async function showMenu(opts = {}) {
         plot: PLOT_IDS.includes(opts.desc?.operation?.plot) ? opts.desc.operation.plot : PLOT_IDS.includes(params.get('plot')) ? params.get('plot') : linked && linked !== OPERATION_ID ? plotForMap(linked) : 'downtown',
         objective: OPERATION_OBJECTIVES.includes(params.get('objective')) ? params.get('objective') : (opts.desc?.operation?.objective || ''),
         verticalFlow: OPERATION_FLOWS.includes(params.get('flow')) ? params.get('flow') : (opts.desc?.operation?.verticalFlow || 'auto'),
-        timeOfDay: OPERATION_TIMES.includes(params.get('time')) ? params.get('time') : (opts.desc?.operation?.timeOfDay || '')
+        timeOfDay: OPERATION_TIMES.includes(params.get('time')) ? params.get('time') : (opts.desc?.operation?.timeOfDay || ''),
+        forceLevel: Number(params.get('force')) || opts.desc?.operation?.forceLevel || 0
     };
     const validTabs = ['campaign', 'play', 'curated', 'squad', 'test', ...(SOLO_ONLY ? [] : ['coop'])];
     const reqTab = opts.tab || params.get('tab');
@@ -156,6 +158,7 @@ async function showMenu(opts = {}) {
               <span class="stat-pill">Intel <b>${theaterState.intel}</b></span>
               <span class="stat-pill">Supplies <b>${theaterState.supplies}</b></span>
               <span class="stat-pill">Roster <b>${theaterState.roster.filter(r => r.status === 'ready').length}/${theaterState.roster.length}</b> Ready</span>
+              <span class="stat-pill">Test Env · <b>All Ops Unlocked</b></span>
             </div>
             <button id="m-theater-reset" title="Reset campaign progress">↺ Reset Campaign</button>
           </div>
@@ -166,7 +169,7 @@ async function showMenu(opts = {}) {
               <div class="op-track" id="m-op-track">
                 ${catalog.map(c => `
                   <button class="op-card ${c.id === activeOp.id ? 'on' : ''}" data-op-id="${esc(c.id)}" ${c.unlocked ? '' : 'disabled'}>
-                    <span class="op-code">${esc(c.code)} · ${esc(PLOT_FAMILIES[c.plot]?.name || c.plot)}</span>
+                    <span class="op-code">${esc(c.code)} · ${esc(PLOT_FAMILIES[c.plot]?.name || c.plot)} · ${esc(c.threat || 'Standard')}</span>
                     <span class="op-name">${esc(c.name)}</span>
                     <span class="op-meta">${esc(c.objective.toUpperCase())} · ${esc(FLOW_LABELS[c.verticalFlow] || c.verticalFlow)}</span>
                     <span class="op-state ${esc(c.status)}">${c.status === 'completed' ? 'Secured' : c.status === 'available' ? 'Ready' : 'Locked'}</span>
@@ -187,6 +190,10 @@ async function showMenu(opts = {}) {
 
             <div class="theater-detail" id="m-theater-detail">
               <div id="m-th-head"></div>
+              <div class="row" style="margin-bottom:8px;align-items:flex-end">
+                <label>Map Seed <input id="m-th-seed" type="number" value="${activeOp.seed}" min="0" max="4294967295"></label>
+                <button id="m-th-dice" title="Roll new seed for this operation" aria-label="Roll seed">🎲</button>
+              </div>
               <canvas id="m-th-canvas" class="preview-canvas" width="320" height="266" aria-label="Selected operation map preview"></canvas>
               <div class="op-info" id="m-th-meta"></div>
               <div class="theater-deploy-row">
@@ -199,16 +206,18 @@ async function showMenu(opts = {}) {
 
         <div data-tab-panel="play" role="tabpanel" hidden>
           <section class="operation on" id="m-op" data-map="${OPERATION_ID}">
-            <div class="op-head"><b>Choose an Operational Environment &amp; Elevation Flow</b><span>11 procedural biomes with canals, bridges, stepped hillside ridges, sunken basins, district/room WFC, and ballistics combat.</span></div>
+            <div class="op-head"><b>Choose an Operational Environment &amp; Elevation Flow</b><span>${PLOT_IDS.length} procedural biomes with canals, sloped avenues, hillside stairways, sunken basins, district/room WFC, and ballistics combat.</span></div>
             <div class="plots">${PLOT_IDS.map(id => `<button class="plot ${id === op.plot ? 'on' : ''}" data-plot="${id}"><em class="ptag">${esc(PLOT_TAGS[id] || PLOT_FAMILIES[id].theme)}</em><b>${esc(PLOT_FAMILIES[id].name)}</b><span>${esc(PLOT_FAMILIES[id].text)}</span></button>`).join('')}</div>
             <div class="row">
               <label>Seed <input id="m-seed" type="number" value="${seedInit}" min="0" max="4294967295"></label>
               <button id="m-dice" title="Random seed" aria-label="Random seed">🎲</button>
               <label>Objective <select id="m-objective"><option value="">Auto</option>${OPERATION_OBJECTIVES.map(o => `<option value="${o}" ${o === op.objective ? 'selected' : ''}>${o[0].toUpperCase() + o.slice(1)}</option>`).join('')}</select></label>
               <label>Vertical Flow <select id="m-flow">${OPERATION_FLOWS.map(f => `<option value="${f}" ${f === op.verticalFlow ? 'selected' : ''}>${esc(FLOW_LABELS[f] || f)}</option>`).join('')}</select></label>
+              <label>Threat / Force <select id="m-threat"><option value="0" ${!op.forceLevel ? 'selected' : ''}>Auto</option><option value="1" ${op.forceLevel === 1 ? 'selected' : ''}>1 · Standard</option><option value="2" ${op.forceLevel === 2 ? 'selected' : ''}>2 · High</option><option value="3" ${op.forceLevel === 3 ? 'selected' : ''}>3 · Severe</option><option value="4" ${op.forceLevel === 4 ? 'selected' : ''}>4 · Critical</option></select></label>
               <label>Time <select id="m-time"><option value="">Auto</option>${OPERATION_TIMES.map(t => `<option value="${t}" ${t === op.timeOfDay ? 'selected' : ''}>${t}</option>`).join('')}</select></label>
               <button id="m-preview">Preview Map</button>
             </div>
+            <div class="row" style="gap:6px;margin-top:6px"><span class="small">Quick seeds:</span>${[1, 7, 19, 42, 104, 209, 317, 777].map(s => `<button type="button" class="seed-preset" data-seed-preset="${s}">${s}</button>`).join('')}</div>
             <div class="preview" id="m-preview-box"><canvas id="m-canvas" class="preview-canvas" width="320" height="266" aria-label="Operation map preview"></canvas><div class="op-info" id="m-op-info"></div></div>
           </section>
           <details class="toggles-details" ${advancedOpen ? 'open' : ''}>
@@ -262,6 +271,11 @@ async function showMenu(opts = {}) {
     $('#m-squad').onchange = () => prep.reset($('#m-squad').value);
     $('#m-intel').onchange = e => { $('#m-support-row').hidden = !e.target.checked; };
 
+    const theaterSeed = () => {
+        const val = Number($('#m-th-seed')?.value);
+        return Number.isInteger(val) && val >= 0 ? val : activeOp?.seed ?? 1;
+    };
+
     let theaterReq = 0;
     const renderTheaterDetail = () => {
         const thHead = $('#m-th-head'), thMeta = $('#m-th-meta'), thCanvas = $('#m-th-canvas');
@@ -273,6 +287,7 @@ async function showMenu(opts = {}) {
           <div class="theater-chips">
             <span class="theater-chip">${esc(bio?.name || activeOp.plot)}</span>
             <span class="theater-chip">Objective: ${esc(activeOp.objective)}</span>
+            <span class="theater-chip">Force ${esc(activeOp.forceLevel ?? 1)} · ${esc(activeOp.threat || 'Standard')}</span>
             <span class="theater-chip">${esc(FLOW_LABELS[activeOp.verticalFlow] || activeOp.verticalFlow)}</span>
             <span class="theater-chip">Reward: +${rw.materials} Mat · +${rw.intel} Intel · +${rw.supplies} Supply</span>
           </div>
@@ -285,13 +300,13 @@ async function showMenu(opts = {}) {
             if (myReq !== theaterReq) return;
             try {
                 const t0 = performance.now();
-                const d = buildLaunchDescriptor(activeOp, { squad: $('#m-squad').value });
+                const d = buildLaunchDescriptor(activeOp, { squad: $('#m-squad').value, seed: theaterSeed() });
                 const data = operationFor(d);
                 if (myReq !== theaterReq) return;
                 drawOperationPreview(thCanvas, data);
                 const { layout, design } = data;
                 const tFeats = (layout.terrain?.features || []).map(f => f.kind);
-                thMeta.innerHTML = `<b>${esc(design.mission.title)}</b> · ${esc(design.mission.timeOfDay)}<br>
+                thMeta.innerHTML = `<b>${esc(design.mission.title)}</b> · ${esc(design.mission.timeOfDay)} · Seed ${d.seed}<br>
                     <span>${layout.buildings.length} buildings · terrain: ${tFeats.length ? esc([...new Set(tFeats)].join(', ')) : 'flat grid'} · flow: ${esc(layout.terrain?.flow || 'auto')} · ${Math.round(performance.now() - t0)} ms</span>`;
             } catch (err) {
                 thMeta.innerHTML = `<span>Preview unavailable: ${esc(err.message)}</span>`;
@@ -304,12 +319,18 @@ async function showMenu(opts = {}) {
         if (!picked) return;
         activeOp = picked;
         setActiveTheaterOp(picked.id);
+        if ($('#m-th-seed')) $('#m-th-seed').value = picked.seed;
         menu.querySelectorAll('[data-op-id]').forEach(b => b.classList.toggle('on', b === btn));
         renderTheaterDetail();
     });
+    if ($('#m-th-seed')) $('#m-th-seed').onchange = renderTheaterDetail;
+    if ($('#m-th-dice')) $('#m-th-dice').onclick = () => {
+        if ($('#m-th-seed')) $('#m-th-seed').value = 1 + Math.floor(Math.random() * 99999);
+        renderTheaterDetail();
+    };
 
-    $('#m-deploy-op').onclick = () => launchTheaterOp(activeOp, { skipReview: true, debug: $('#m-debug')?.checked });
-    $('#m-brief-op').onclick = () => launchTheaterOp(activeOp, { skipReview: false, debug: $('#m-debug')?.checked });
+    $('#m-deploy-op').onclick = () => launchTheaterOp(activeOp, { skipReview: true, debug: $('#m-debug')?.checked, seed: theaterSeed() });
+    $('#m-brief-op').onclick = () => launchTheaterOp(activeOp, { skipReview: false, debug: $('#m-debug')?.checked, seed: theaterSeed() });
     $('#m-theater-reset').onclick = () => { resetTheater(); showMenu({ tab: 'campaign' }); };
 
     let scenario = pick;
@@ -320,7 +341,8 @@ async function showMenu(opts = {}) {
         plot: op.plot,
         objective: op.objective || null,
         verticalFlow: op.verticalFlow || 'auto',
-        timeOfDay: op.timeOfDay || null
+        timeOfDay: op.timeOfDay || null,
+        ...(op.forceLevel ? { forceLevel: Number(op.forceLevel) } : {})
     });
     const desc = () => ({
         scenario,
@@ -361,8 +383,10 @@ async function showMenu(opts = {}) {
     });
     $('#m-objective').onchange = e => { op.objective = e.target.value; select(); preview(); };
     $('#m-flow').onchange = e => { op.verticalFlow = e.target.value; select(); preview(); };
+    $('#m-threat').onchange = e => { op.forceLevel = Number(e.target.value) || 0; select(); preview(); };
     $('#m-time').onchange = e => { op.timeOfDay = e.target.value; select(); preview(); };
     $('#m-dice').onclick = () => { $('#m-seed').value = 1 + Math.floor(Math.random() * 99999); select(); preview(); };
+    menu.querySelectorAll('[data-seed-preset]').forEach(b => b.onclick = () => { $('#m-seed').value = b.dataset.seedPreset; select(); preview(); });
     $('#m-preview').onclick = preview;
 
     const setTab = next => {
@@ -381,7 +405,7 @@ async function showMenu(opts = {}) {
         startBattle(make, { generating, debug, autopilot, skipReview, status, loadingInfo });
 
     $('#m-quick').onclick = () => {
-        if (tab === 'campaign' && activeOp) return launchTheaterOp(activeOp, { skipReview: true, debug: $('#m-debug').checked });
+        if (tab === 'campaign' && activeOp) return launchTheaterOp(activeOp, { skipReview: true, debug: $('#m-debug').checked, seed: theaterSeed() });
         return launch(() => LocalSession.create({
             scenario: OPERATION_ID,
             seed: Number($('#m-seed').value) || 1,
@@ -399,7 +423,7 @@ async function showMenu(opts = {}) {
         });
     };
     $('#m-local').onclick = () => {
-        if (tab === 'campaign' && activeOp) return launchTheaterOp(activeOp, { skipReview: true, debug: $('#m-debug').checked });
+        if (tab === 'campaign' && activeOp) return launchTheaterOp(activeOp, { skipReview: true, debug: $('#m-debug').checked, seed: theaterSeed() });
         return launch(() => LocalSession.create(desc()), {
             skipReview: true,
             loadingInfo: {
@@ -409,7 +433,7 @@ async function showMenu(opts = {}) {
         });
     };
     $('#m-brief').onclick = () => {
-        if (tab === 'campaign' && activeOp) return launchTheaterOp(activeOp, { skipReview: false, debug: $('#m-debug').checked });
+        if (tab === 'campaign' && activeOp) return launchTheaterOp(activeOp, { skipReview: false, debug: $('#m-debug').checked, seed: theaterSeed() });
         return launch(() => LocalSession.create(desc()), { skipReview: false });
     };
 
@@ -478,7 +502,8 @@ const playOperation = () => fixture ? undefined : {
     plot: playId === OPERATION_ID ? params.get('plot') : plotForMap(playId),
     objective: params.get('objective'),
     verticalFlow: OPERATION_FLOWS.includes(params.get('flow')) ? params.get('flow') : undefined,
-    timeOfDay: params.get('time')
+    timeOfDay: params.get('time'),
+    ...(params.get('force') ? { forceLevel: Number(params.get('force')) } : {})
 };
 if (params.get('staged') && !SOLO_ONLY) {
     const launch = JSON.parse(sessionStorage.getItem('fireteam.launch') || 'null');

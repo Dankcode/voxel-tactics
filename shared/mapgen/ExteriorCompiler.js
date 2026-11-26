@@ -12,7 +12,7 @@ import { reachable, nodeKey, pathTo } from '../world/PathSearch.js';
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
 import { hashString } from '../util/Rng.js';
 import { critiqueMission } from './Critic.js';
-import { compileTerrainFeatures, surfaceZAt } from './TerrainFeatures.js';
+import { compileTerrainBase, compileTerrainFeatures, surfaceZAt } from './TerrainFeatures.js';
 
 const unit = s => (hashString(s) >>> 0) / 4294967296;
 
@@ -26,14 +26,16 @@ const TREE_BIOME = {
     metro_hub: ['ornamental', 'birch', 'maple'],
     industrial: ['oak', 'birch', 'maple'],
     canal_district: ['cypress', 'birch', 'ornamental', 'oak'],
+    hillside_avenue: ['cypress', 'ornamental', 'maple', 'oak'],
     hillside_ridge: ['conifer', 'birch', 'oak', 'cypress'],
     sunken_basin: ['oak', 'ornamental', 'maple']
 };
 
-/** One bay piece into voxels (+ whole-object hints and decor) at the street datum. */
-export function compilePiece(m, p, district = 'commercial', family = 'downtown') {
+/** One bay piece into voxels (+ whole-object hints and decor) at the local surface elevation. */
+export function compilePiece(m, p, district = 'commercial', family = 'downtown', zAt = () => m.G, onSlope = () => false) {
     if (m.connectorFootprint?.has(`${Math.floor(p.x)},${Math.floor(p.y)}`)) return;
-    const G = m.G, s = m.store;
+    if (onSlope(p.x, p.y) || p.cells?.some(([x, y]) => onSlope(x, y))) return;
+    const G = zAt(p.x, p.y), s = m.store;
     if (p.base === 'car') { m.car(p.x, p.y, p.axis, unit(`${m.id}:${p.x},${p.y}:car`) < 0.5 ? 1 : -1, null, G); return; }
     if (['truck', 'bus', 'abandoned_car'].includes(p.base)) { m.vehicle(p.base, p.x, p.y, p.axis || 'x', unit(`${m.id}:${p.x},${p.y}:veh`) < 0.5 ? 1 : -1, null, G); return; }
     if (p.base === 'container') { m.container(p.x, p.y, p.axis || 'x', null, G, unit(`${m.id}:${p.x},${p.y}:stack`) < 0.25); return; }
@@ -41,24 +43,33 @@ export function compilePiece(m, p, district = 'commercial', family = 'downtown')
     if (p.base === 'tree') {
         const list = TREE_BIOME[family] || (district === 'residential' || district === 'park' ? TREE_BIOME.suburb : TREE_BIOME.downtown);
         const kind = list[Math.floor(unit(`${m.id}:${p.x},${p.y}:tree`) * list.length) % list.length];
-        m.tree(p.cells[0][0], p.cells[0][1], kind, G);
+        m.tree(p.cells[0][0], p.cells[0][1], kind, zAt(p.cells[0][0], p.cells[0][1]));
         return;
     }
     if (p.base === 'lamp') return; // Old packages may retain lamps; the curb planner replaces them.
-    for (const [x, y, stack] of p.cells) stack.forEach((key, k) => s.set(x, y, G + 1 + k, MAT[key]));
+    for (const [x, y, stack] of p.cells) {
+        const cG = zAt(x, y);
+        stack.forEach((key, k) => {
+            s.set(x, y, cG + 1 + k, MAT[key]);
+            if (p.base === 'bollard' && k === 0 && key === 'steel_post') {
+                m.ctx.hints[`${x},${y},${cG + 1}`] = { piece: 'bollard', yaw: p.run === 'y' ? Math.PI / 2 : 0 };
+            }
+        });
+    }
     if (p.base === 'bus_stop') m.decorAt('bus_stop', p.x + 1, p.y + 0.5, { z: G + 1, yaw: 0, free: true });
-    if (p.base === 'planter' && unit(`${m.id}:${p.x},${p.y}:flowers`) < 0.4) m.decorAt('flowers', p.cells[0][0], p.cells[0][1], { z: G + 2, free: true });
+    if (p.base === 'planter' && unit(`${m.id}:${p.x},${p.y}:flowers`) < 0.4) m.decorAt('flowers', p.cells[0][0], p.cells[0][1], { z: zAt(p.cells[0][0], p.cells[0][1]) + 2, free: true });
     if (p.base === 'market_stall') m.decorAt('storefront_awning', p.x + 0.5, p.y + 0.5, { z: G + 1, yaw: 0, free: true });
     if (p.base === 'fountain') m.decorAt('flowers', p.x + 0.5, p.y + 0.5, { z: G + 2, free: true });
 }
 
 /** World edges: barricades across off-map roads, neighbouring facades, walls, fences and chain-link. */
-export function compileEdges(m, edges) {
-    const G = m.G, s = m.store;
+export function compileEdges(m, edges, zAt = () => m.G) {
+    const s = m.store;
     for (const e of edges) {
         const key = { barricade: 'jersey', facade: 'concrete_wall', wall: 'brick', chainlink: 'chainlink', fence: 'privacy_fence' }[e.kind];
         const h = e.kind === 'barricade' ? 1 : e.height || 2;
         e.cells.forEach(([x, y], i) => {
+            const G = zAt(x, y);
             if (s.isSolid(x, y, G + 1)) return;
             // Yard fences stand on concrete blocks every fourth cell: real cover along an industrial edge.
             const blockAt = e.kind === 'chainlink' && i % 4 === 2;
@@ -76,36 +87,44 @@ export function compileV3Map({ site, layout, design, manifest }, { seed = 1, gat
     const { width, depth, height } = layout;
     const m = createMap({ id: site.id, width, depth, height, seed, datum: layout.datum ?? 4, ground: 'concrete' });
     const G = m.G, mats = decodeGround(layout.ground.mat);
+    const zAt = (x, y) => G + (layout.terrain?.baseDz?.[Math.max(0, Math.min(width - 1, Math.floor(x))) + Math.max(0, Math.min(depth - 1, Math.floor(y))) * width] || 0);
+    const onSlope = (x, y) => {
+        const ix = Math.floor(x), iy = Math.floor(y);
+        if (ix < 0 || iy < 0 || ix >= width || iy >= depth) return false;
+        return !!layout.terrain?.slopeMask?.[ix + iy * width];
+    };
     for (let y = 0; y < depth; y++) for (let x = 0; x < width; x++) {
         const material=mats[x+y*width];m.store.set(x,y,G,MAT[material]);
         if(material==='air')for(let z=0;z<G;z++)m.store.set(x,y,z,0);
     }
+    if (layout.terrain) compileTerrainBase(m, layout.terrain, layout, mats);
     m.escapeBlocked = () => false;
     m.lightRoutes=layout.roads||[];
     m.beats = design.beats;
     for (const b of layout.buildings) compileBuilding(m, b);
     // Connect wing buildings to their parent block through a shared double-wall doorway.
     for (const b of layout.buildings) if (b.wingLink) {
+        const bG = b.baseZ ?? G;
         const [mx, my] = b.wingLink.mainCell, [wx, wy] = b.wingLink.wingCell;
         for (const [cx, cy] of [[mx, my], [wx, wy]]) {
-            if (!m.store.inBounds(cx, cy, G + 1)) continue;
-            for (let h = 1; h <= 2; h++) { m.store.set(cx, cy, G + h, MAT.door); delete m.ctx.hints[`${cx},${cy},${G + h}`]; }
+            if (!m.store.inBounds(cx, cy, bG + 1)) continue;
+            for (let h = 1; h <= 2; h++) { m.store.set(cx, cy, bG + h, MAT.door); delete m.ctx.hints[`${cx},${cy},${bG + h}`]; }
         }
         const dx = Math.sign(wx - mx), dy = Math.sign(wy - my);
-        for (const [fx, fy] of [[mx - dx, my - dy], [wx + dx, wy + dy]]) if (m.store.inBounds(fx, fy, G + 1)) {
-            const vid = m.store.get(fx, fy, G + 1);
-            if (vid && vid !== MAT.stairs_stone && vid !== MAT.stairs_wood && !m.store.material(fx, fy, G + 1).structural) {
-                m.store.set(fx, fy, G + 1, 0); delete m.ctx.hints[`${fx},${fy},${G + 1}`];
+        for (const [fx, fy] of [[mx - dx, my - dy], [wx + dx, wy + dy]]) if (m.store.inBounds(fx, fy, bG + 1)) {
+            const vid = m.store.get(fx, fy, bG + 1);
+            if (vid && vid !== MAT.stairs_stone && vid !== MAT.stairs_wood && !m.store.material(fx, fy, bG + 1).structural) {
+                m.store.set(fx, fy, bG + 1, 0); delete m.ctx.hints[`${fx},${fy},${bG + 1}`];
             }
         }
-        m.buildings.find(x => x.id === b.id)?.doors?.push({ x: wx, y: wy, z: G, storey: 0, exterior: false, wingLink: true });
+        m.buildings.find(x => x.id === b.id)?.doors?.push({ x: wx, y: wy, z: bG, storey: 0, exterior: false, wingLink: true });
     }
     m.connectorPaths=new Set([...(layout.lineOfPlay?.main||[]),...(layout.lineOfPlay?.flanks||[]).flatMap(f=>f.path)].map(([x,y])=>`${x},${y}`));
     const underground = compileUnderground(m, layout.layers);
     const family = layout.plot?.family || 'downtown';
     const district = (x, y) => layout.plot?.lots?.find(l => l.lx === x >> 3 && l.ly === y >> 3)?.district || 'commercial';
-    for (const p of layout.pieces) compilePiece(m, p, district(p.x, p.y), family);
-    compileEdges(m, layout.edges || []);
+    for (const p of layout.pieces) compilePiece(m, p, district(p.x, p.y), family, zAt, onSlope);
+    compileEdges(m, layout.edges || [], zAt);
     const terrainMeta = compileTerrainFeatures(m, layout.terrain, layout);
     m.terrainMeta = terrainMeta;
     dressBiomeFeatures(m, layout, mats, family);
@@ -113,10 +132,16 @@ export function compileV3Map({ site, layout, design, manifest }, { seed = 1, gat
     const ins = layout.insertion, [sx, sy] = [ins.x, ins.y];
     // Visual-only dressing from the authored packages: checkpoint signs either side of the insertion, cable spools
     // inside industrial edges.
-    for (const [x, y] of [[sx - 3, sy], [sx + 3, sy]]) if (m.store.inBounds(x, y, G + 1) && mats[x+y*width] !== 'asphalt' && !m.keep.has(`${x},${y}`) && !m.store.isSolid(x, y, G + 1) && !terrainMeta?.dz?.[x + y * width]) m.decorAt('checkpoint_sign', x, y, { z: G + 1 });
+    for (const [x, y] of [[sx - 3, sy], [sx + 3, sy]]) {
+        const cz = zAt(x, y);
+        if (m.store.inBounds(x, y, cz + 1) && mats[x+y*width] !== 'asphalt' && !onSlope(x, y) && !m.keep.has(`${x},${y}`) && !m.store.isSolid(x, y, cz + 1)) m.decorAt('checkpoint_sign', x, y, { z: cz + 1 });
+    }
     if (layout.plot?.family === 'industrial') {
         const spots = (layout.edges || []).filter(e => e.kind === 'chainlink').flatMap(e => e.cells.filter((_, i) => i % 9 === 4).map(([x, y]) => [x + Math.sign(width / 2 - x) * (x === 0 || x === width - 1), y + Math.sign(depth / 2 - y) * (y === 0 || y === depth - 1)]));
-        for (const [x, y] of spots.slice(0, 4)) if (mats[x+y*width] !== 'asphalt' && !m.keep.has(`${x},${y}`) && !m.store.isSolid(x, y, G + 1)) m.decorAt('cable_spool', x, y, { z: G + 1 });
+        for (const [x, y] of spots.slice(0, 4)) {
+            const cz = zAt(x, y);
+            if (mats[x+y*width] !== 'asphalt' && !m.keep.has(`${x},${y}`) && !m.store.isSolid(x, y, cz + 1)) m.decorAt('cable_spool', x, y, { z: cz + 1 });
+        }
     }
     // Spawns, pods and the objective.
     const enemies = [];
@@ -203,13 +228,17 @@ export function compileV3Map({ site, layout, design, manifest }, { seed = 1, gat
                 : { kind, text: 'Clear the Syndicate from the block.' };
     const flow = layout.flow;
     const storeysMax = Math.max(...layout.buildings.map(b => b.storeys));
+    const topCutMax = Math.max(...layout.buildings.map(b => (b.baseZ ?? G) + 3 * b.storeys));
+    const cutLevels = [G];
+    for (let z = G + 3; z <= topCutMax; z += 3) cutLevels.push(z);
+    cutLevels.push(Infinity);
     const mission = m.finish({
         name: design.mission.title,
         spawns: { player: playerSpawns, enemy: enemies },
         objective,
         meta: {
             theme: site.theme || 'Downtown', lighting: design.mission.timeOfDay || site.timeOfDay, timeOfDay: design.mission.timeOfDay || site.timeOfDay, defaultCut: G + 3, streetDatum: G,
-            cutLevels: [G, ...Array.from({ length: storeysMax }, (_, s) => G + 3 * (s + 1)), Infinity], imageGenerated: true, generatorVersion: layout.generatorVersion, underground, source: site.source,
+            cutLevels, imageGenerated: true, generatorVersion: layout.generatorVersion, underground, source: site.source,
             flow, briefing: design.mission.briefing, storyBeats: design.beats, congruence: layout.congruence, repairs: layout.repairs, packageId: manifest?.id, concepts: manifest?.concepts || [],
             objectiveBuilding: layout.objective?.building, plot: layout.plot ? { family: layout.plot.family, seed: layout.plot.seed, picture: layout.plot.picture } : null,
             terrain: terrainMeta ? { flow: terrainMeta.flow, requestedFlow: terrainMeta.requestedFlow, highPad: terrainMeta.highPad, lowerPad: terrainMeta.lowerPad, featureCount: terrainMeta.features.length } : null,
@@ -274,15 +303,16 @@ function dressBiomeFeatures(m, layout, mats, family) {
             }
         }
     }
-    for (const b of layout.buildings) if (['shop', 'diner', 'bar', 'corner_store', 'laundromat'].includes(b.program) && !b.wingOf) {
+    for (const b of layout.buildings) if (['shop', 'diner', 'bar', 'corner_store', 'laundromat', 'pharmacy'].includes(b.program) && !b.wingOf) {
         const door = b.exits?.[0]; if (!door) continue;
+        const bG = b.baseZ ?? G;
         const outv = { n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] }[door.side];
         const yaw = Math.atan2(outv[0], outv[1]);
         const along = door.side === 'n' || door.side === 's' ? [1, 0] : [0, 1];
         for (const k of [-1, 0, 1]) {
             const ax = b.x0 + door.x + along[0] * k + outv[0], ay = b.y0 + door.y + along[1] * k + outv[1];
-            if (s.inBounds(ax, ay, G + 2) && !s.isSolid(ax, ay, G + 1) && !s.isSolid(ax, ay, G + 2)) {
-                m.decorAt('storefront_awning', ax, ay, { z: G + 1, yaw, free: true });
+            if (s.inBounds(ax, ay, bG + 2) && !s.isSolid(ax, ay, bG + 1) && !s.isSolid(ax, ay, bG + 2)) {
+                m.decorAt('storefront_awning', ax, ay, { z: bG + 1, yaw, free: true });
             }
         }
     }
@@ -321,31 +351,14 @@ function dressBiomeFeatures(m, layout, mats, family) {
             ponds++;
         }
     }
-    // 4. Low terraced tactical platform (+1 high ground + 2-wide stone stairs) in `winter_outpost` and `arid_compound`.
-    if (family === 'winter_outpost' || family === 'arid_compound') {
-        let ridges = 0;
-        for (const lot of layout.plot?.lots || []) if (!lot.road && ['vacant_lot', 'depot_yard', 'pocket_park', 'checkpoint_yard'].includes(lot.kind) && ridges < 1) {
-            const plat = [];
-            for (let dy = 3; dy <= 5; dy++) for (let dx = 2; dx <= 5; dx++) plat.push([lot.x0 + dx, lot.y0 + dy]);
-            const ramp = [[lot.x0 + 3, lot.y0 + 6], [lot.x0 + 4, lot.y0 + 6]];
-            if (![...plat, ...ramp].every(([x, y]) => isClear(x, y, 1))) continue;
-            const edgeMat = family === 'winter_outpost' ? MAT.stone : MAT.drystone;
-            const topMat = family === 'winter_outpost' ? MAT.snow : MAT.sand;
-            for (const [x, y] of plat) {
-                const rim = x === lot.x0 + 2 || x === lot.x0 + 5 || y === lot.y0 + 3 || y === lot.y0 + 5;
-                s.set(x, y, G + 1, rim ? edgeMat : topMat);
-            }
-            for (const [x, y] of ramp) s.set(x, y, G + 1, MAT.stairs_stone);
-            ridges++;
-        }
-    }
-    // 5. Optional 2nd-storey skybridge connecting facing multi-storey buildings in `metro_hub` and `downtown`.
+    // 4. Optional 2nd-storey skybridge connecting facing multi-storey buildings on matching terraces in `metro_hub` and `downtown`.
     if (family === 'metro_hub' || family === 'downtown') {
         const tall = layout.buildings.filter(b => b.storeys >= 2 && !b.wingOf);
-        const z = G + 3;
         let built = false;
         for (let i = 0; i < tall.length && !built; i++) for (let j = i + 1; j < tall.length && !built; j++) {
             const a = tall[i], b = tall[j];
+            if ((a.baseZ ?? G) !== (b.baseZ ?? G)) continue;
+            const z = (a.baseZ ?? G) + 3;
             const ox0 = Math.max(a.x0, b.x0) + 2, ox1 = Math.min(a.x0 + a.w, b.x0 + b.w) - 3;
             const gapY = Math.max(b.y0 - (a.y0 + a.d), a.y0 - (b.y0 + b.d));
             if (ox1 - ox0 >= 2 && gapY >= 2 && gapY <= 6) {

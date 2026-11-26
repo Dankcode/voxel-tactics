@@ -23,7 +23,7 @@ import { fireEscapeTemplate, FIRE_ESCAPE, SIDE_FRAME, facadeOrigin, facadeLength
 import { hashString } from '../util/Rng.js';
 import { solveWaveFunctionCollapse } from '../generation/WaveFunctionCollapse.js';
 import { buildWithRepair } from './Repair.js';
-import { planTerrainFeatures, OPERATION_FLOWS } from './TerrainFeatures.js';
+import { planLotTerraces, planTerrainFeatures, OPERATION_FLOWS } from './TerrainFeatures.js';
 
 export { OPERATION_FLOWS };
 
@@ -41,6 +41,7 @@ function groundFromPlot(plot, lotKind) {
         arid_compound: c => (c.mat === 'asphalt' ? 'road' : 'sand'),
         harbor: c => (c.mat === 'asphalt' ? 'asphalt' : 'concrete'),
         canal_district: c => (c.mat === 'asphalt' ? 'cobble' : 'stone_floor'),
+        hillside_avenue: c => (c.mat === 'asphalt' ? 'asphalt' : 'concrete'),
         hillside_ridge: c => (c.mat === 'asphalt' ? 'road' : 'cobble'),
         sunken_basin: c => (c.mat === 'asphalt' ? 'asphalt' : 'concrete')
     }[family];
@@ -64,6 +65,43 @@ function groundFromPlot(plot, lotKind) {
         }
     }
     return { mat, cls };
+}
+
+const DRIVEWAY_LOTS = new Set(['parking_lot', 'transit_bay', 'fuel_forecourt', 'depot_yard', 'loading_yard', 'motor_pool']);
+/** Carve an open 4-cell driveway apron across the sidewalk connecting parking/depot lots to their street. */
+function carveDriveways(plot, ground, lotKind, protect) {
+    const { W, family } = plot;
+    const apronMat = family === 'old_quarter' || family === 'canal_district' ? 'cobble' : 'asphalt';
+    const order = ['s', 'n', 'w', 'e'];
+    for (const lot of plot.lots) {
+        if (lot.road) continue;
+        if (!DRIVEWAY_LOTS.has(lotKind(lot))) continue;
+        const side = order.find(s => {
+            const [dx, dy] = SIDE_VEC[s];
+            return plotLot(plot, lot.lx + dx, lot.ly + dy)?.road;
+        });
+        if (!side) continue;
+        const [dx, dy] = SIDE_VEC[side];
+        const r = plotLot(plot, lot.lx + dx, lot.ly + dy);
+        const lotSurf = ground.mat[lot.x0 + 4 + (lot.y0 + 4) * W] || 'asphalt';
+        for (let t = 2; t <= 5; t++) {
+            for (let k = 0; k < 2; k++) {
+                const rx = side === 's' || side === 'n' ? lot.x0 + t : side === 'e' ? r.x0 + k : r.x0 + 6 + k;
+                const ry = side === 'w' || side === 'e' ? lot.y0 + t : side === 's' ? r.y0 + k : r.y0 + 6 + k;
+                const ri = rx + ry * W;
+                ground.mat[ri] = apronMat;
+                ground.cls[ri] = 'driveway';
+                protect(rx, ry, 0);
+
+                const lx = side === 's' || side === 'n' ? lot.x0 + t : side === 'e' ? lot.x0 + 6 + k : lot.x0 + k;
+                const ly = side === 'w' || side === 'e' ? lot.y0 + t : side === 's' ? lot.y0 + 6 + k : lot.y0 + k;
+                const li = lx + ly * W;
+                ground.mat[li] = lotSurf;
+                ground.cls[li] = 'driveway';
+                protect(lx, ly, 0);
+            }
+        }
+    }
 }
 
 /** Parking-bay stripes on parking lots (visual + road marks, no gameplay effect). */
@@ -91,6 +129,19 @@ function planExits(b, seed) {
 }
 const inwardBay = (b, e) => [Math.max(0, Math.min(bayGridOf(b.w, b.d).nbx - 1, (e.x === 0 ? 1 : e.x === b.w - 1 ? b.w - 2 : e.x) - 1 >> 1)), Math.max(0, Math.min(bayGridOf(b.w, b.d).nby - 1, (e.y === 0 ? 1 : e.y === b.d - 1 ? b.d - 2 : e.y) - 1 >> 1))];
 
+/** Whether a 3×2-bay stair core fits clear of all avoided exit and escape bays. */
+function canPlaceCore(b, avoid) {
+    const { nbx, nby } = bayGridOf(b.w, b.d);
+    if (nbx < 3 || nby < 2) return false;
+    for (let cj = 0; cj <= nby - 2; cj++) for (let ci = 0; ci <= nbx - 3; ci++) {
+        let ok = true;
+        for (let j = 0; j < 2 && ok; j++) for (let i = 0; i < 3 && ok; i++)
+            if (avoid.some(([a, c]) => a === ci + i && c === cj + j)) ok = false;
+        if (ok) return true;
+    }
+    return false;
+}
+
 /**
  * Access plan in the uniform kit: 3–4 storeys get the 6 × 2 fire escape on the widest non-frontage margin (≥ 5 cells:
  * module, lip and apron), centred on a bay line, never across an exit; 1–2 storeys get a roof ladder on a blank bay
@@ -109,6 +160,8 @@ function planAccess(b, exits, W, D, seed = 1) {
             for (let offset = 1; offset + 5 <= len - 2; offset += 2) {
                 const span = [offset - 1, offset + 6];
                 if (exits.some(e => e.side === side && (side === 'n' || side === 's' ? e.x : e.y) >= span[0] && (side === 'n' || side === 's' ? e.x : e.y) <= span[1])) continue;
+                const escapeBays = accessSlots(b, { module: 'fire_escape', side, offset }).map(sl => inwardBay(b, sl));
+                if (!canPlaceCore(b, [...exits.map(e => inwardBay(b, e)), ...escapeBays])) continue;
                 options.push(offset);
             }
             if (!options.length) continue;
@@ -164,7 +217,7 @@ export function plotFromSite(site, seed) {
  * Solve a complete v3 layout. src: { plot } (a created plot) — picture plots carry their site solve.
  * opts: { seed, design (picture fixtures may pin one), objectiveKind, timeOfDay, id, name }
  */
-export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, objectiveKind = null, verticalFlow = 'auto', timeOfDay = null, id = null, name = null, siteRead = null, floorSpecs = [] } = {}) {
+export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, objectiveKind = null, verticalFlow = 'auto', timeOfDay = null, forceLevel = null, id = null, name = null, siteRead = null, floorSpecs = [] } = {}) {
     const { W, D } = plot, repairs = [];
     const inRegion=(x,y)=>pointInRegion(plot.site?.boundary,x,y);
     const toCell = ([u, v]) => plot.picture ? [Math.round(plot.site.transform.margin + u * plot.site.transform.frame.width * plot.site.transform.scale), Math.round(plot.site.transform.margin + v * plot.site.transform.frame.height * plot.site.transform.scale)] : [Math.round(u * W), Math.round(v * D)];
@@ -175,13 +228,13 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
         const density = {
             downtown: 0.75, industrial: 0.6, suburb: 0.55, harbor: 0.62, winter_outpost: 0.55,
             old_quarter: 0.72, metro_hub: 0.76, arid_compound: 0.56,
-            canal_district: 0.56, hillside_ridge: 0.48, sunken_basin: 0.52
+            canal_district: 0.56, hillside_avenue: 0.64, hillside_ridge: 0.48, sunken_basin: 0.52
         }[plot.family] ?? 0.6;
         const dn = noiseField(`${plot.family}:${seed}:density`, W, D, 'lot');
         for (const lot of plot.lots) for (let y = lot.y0; y < lot.y0 + LOT; y++) for (let x = lot.x0; x < lot.x0 + LOT; x++) {
             if (lot.road) { prior.road.set(x, y, 1); continue; }
             prior.building.set(x, y, Math.min(1, density * (0.55 + 0.9 * dn.get(x, y))));
-            prior.green.set(x, y, ['suburb', 'winter_outpost', 'hillside_ridge'].includes(plot.family) ? 0.68 : 0.25 * dn.get(y, x));
+            prior.green.set(x, y, ['suburb', 'winter_outpost', 'hillside_ridge'].includes(plot.family) ? 0.68 : plot.family === 'hillside_avenue' ? 0.38 : 0.25 * dn.get(y, x));
             prior.paved.set(x, y, ['suburb', 'winter_outpost', 'arid_compound', 'hillside_ridge'].includes(plot.family) ? 0.28 : 0.65);
             prior.height.set(x, y, Math.min(1, 0.25 + 0.6 * dn.get(y, x)));
         }
@@ -208,6 +261,16 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
             if (floors && floors !== b.storeys) { repairs.push({ kind: 'played-height', id: b.id, observed: b.storeys, played: floors }); b.storeys = floors; }
             b.objective = b.id === pinnedDesign.mission.target.building;
         }
+    }
+    // ---- terraces & building base elevations (set before exits/access/designProgrammes so storey heights respect ceiling headroom)
+    const lotDz = plot.picture ? null : planLotTerraces({ plot, buildings, flow: verticalFlow, seed });
+    if (lotDz) for (const b of buildings) {
+        const cx = Math.max(0, Math.min(plot.LW - 1, Math.floor((b.x0 + b.w / 2) / LOT)));
+        const cy = Math.max(0, Math.min(plot.LD - 1, Math.floor((b.y0 + b.d / 2) / LOT)));
+        const dz = lotDz[cx + cy * plot.LW] || 0;
+        b.baseZ = Math.max(1, plot.datum + dz);
+        const maxStoreys = Math.max(1, Math.floor((plot.height - 2 - b.baseZ) / STOREY));
+        if (b.storeys > maxStoreys) { repairs.push({ kind: 'terrace-clamp', id: b.id, from: b.storeys, to: maxStoreys }); b.storeys = maxStoreys; }
     }
     // ---- exits, access, core (geometry first; the interiors keep these bays playable)
     for (const b of buildings) {
@@ -291,7 +354,7 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
         for (const c of run?.cells || []) protect(c.x, c.y, 1);
     }
     // ---- design: programmes, objective, beats, pods
-    const design = pinnedDesign || designProgrammes({ buildings, target, plot, seed, objectiveKind, verticalFlow, timeOfDay, name, pockets: [], spread: !!plot.operation });
+    const design = pinnedDesign || designProgrammes({ buildings, target, plot, seed, objectiveKind, verticalFlow, timeOfDay, forceLevel, name, pockets: [], spread: !!plot.operation });
     // ---- interiors and facades
     for (const b of buildings) {
         const programmes = design.programs.filter(p => p.building === b.id).sort((a, c) => a.floor - c.floor);
@@ -314,14 +377,14 @@ export function solveLayoutV3(plot, { seed = 1, design: pinnedDesign = null, obj
     // ---- bays: cover and props as WFC tiles, pockets pinned along the line of play
     const blocked = (x, y) => !inRegion(x,y)||buildings.some(b => x >= b.x0 - 1 && y >= b.y0 - 1 && x <= b.x0 + b.w && y <= b.y0 + b.d);
     const ground = plot.picture ? pictureGround(plot, siteRead, W, D) : groundFromPlot(plot, lotKindAt);
-    if (!plot.picture) markParking(plot, ground, lotKindAt);
-    const terrain = plot.picture ? null : planTerrainFeatures({ plot, ground, buildings, layers, flow: verticalFlow, seed });
+    if (!plot.picture) { markParking(plot, ground, lotKindAt); carveDriveways(plot, ground, lotKindAt, protect); }
+    const terrain = plot.picture ? null : planTerrainFeatures({ plot, ground, buildings, layers, flow: verticalFlow, seed, lotDz });
     for (const [px, py] of terrain?.protectedCoords || []) protect(px, py, 0);
     let bayGrid = classifyBays(W, D, ground, blocked, protectedCells);
     const sight = sightlineField(W, D, (x, y) => !blocked(x, y));
     fields.sight = (x, y) => sight.get(x, y);
     const { pins, pockets } = planPockets(play.main.path, bayGrid, { seed: `${plot.family}:${seed}` });
-    if (!pinnedDesign) addPocketPods(design, pockets.filter(p => Math.hypot(p.x - plot.insertion.x, p.y - plot.insertion.y) >= 16), seed, { buildings, target, insertion: plot.insertion, route: play.main.path, spacing: plot.operation ? B.podSpacing : 0 });   // PLAN-15 encounter zones
+    if (!pinnedDesign) addPocketPods(design, pockets.filter(p => Math.hypot(p.x - plot.insertion.x, p.y - plot.insertion.y) >= 16), seed, { buildings, target, insertion: plot.insertion, route: play.main.path, spacing: plot.operation ? B.podSpacing : 0, forceLevel });   // PLAN-15 encounter zones
     // The street drop goes where no pod will see it: early on the tunnel, as far as possible from every pod.
     if (layers) {
         const pods = [...design.encounters.filter(e => e.at).map(e => ({ ...e.at, own: null })), ...design.encounters.filter(e => !e.at).map(e => { const b = buildings.find(x => x.id === e.building); return b ? { x: b.x0 + b.w / 2, y: b.y0 + b.d / 2, own: b } : null; }).filter(Boolean)];
@@ -454,7 +517,8 @@ function flowWaypoints(path) {
 }
 
 const GROUND_CODES = { air: 'v', concrete: 'c', asphalt: 'a', road_mark: 'm', paving: 'p', lawn: 'l', gravel: 'g', deck: 'd', soil: 's',
-    snow: 'w', sand: 'n', grass: 'r', forest_floor: 'f', water: 'u', deep_water: 'U', ice: 'i', deep_ice: 'I', cobble: 'b', stone_floor: 'o', rubble: 'x', road: 't', ash: 'h' };
+    snow: 'w', sand: 'n', grass: 'r', forest_floor: 'f', water: 'u', deep_water: 'U', ice: 'i', deep_ice: 'I', cobble: 'b', stone_floor: 'o', rubble: 'x', road: 't', ash: 'h',
+    road_slope: 'R', sidewalk_stair: 'S', cobble_slope: 'C' };
 const GROUND_KEYS = Object.fromEntries(Object.entries(GROUND_CODES).map(([k, v]) => [v, k]));
 export const encodeGround = mat => mat.map(m => GROUND_CODES[m] || 'c').join('');
 export const decodeGround = str => [...str].map(c => GROUND_KEYS[c] || 'concrete');
@@ -577,6 +641,7 @@ export const OPERATION_TIMES = Object.freeze(['day', 'dawn', 'dusk', 'overcast',
 export function operationOptions(o = {}) {
     const opt = { plot: PLOT_FAMILIES[o.plot] ? o.plot : 'downtown', objective: OPERATION_OBJECTIVES.includes(o.objective) ? o.objective : null, timeOfDay: OPERATION_TIMES.includes(o.timeOfDay) ? o.timeOfDay : null };
     if (OPERATION_FLOWS.includes(o.verticalFlow) && o.verticalFlow !== 'auto') opt.verticalFlow = o.verticalFlow;
+    if (Number.isInteger(Number(o.forceLevel)) && Number(o.forceLevel) >= 1 && Number(o.forceLevel) <= 4) opt.forceLevel = Number(o.forceLevel);
     return opt;
 }
 
@@ -585,7 +650,7 @@ export function operationOptions(o = {}) {
  * Solve, compile, repair locally; if the repair budget runs out, reseed deterministically (bounded).
  * Returns { site, layout, design, mission }.
  */
-export function generateOperation({ plot: family = 'downtown', seed = 1, objective = null, verticalFlow = 'auto', timeOfDay = null, compile = true } = {}) {
+export function generateOperation({ plot: family = 'downtown', seed = 1, objective = null, verticalFlow = 'auto', timeOfDay = null, forceLevel = null, compile = true } = {}) {
     if (!PLOT_FAMILIES[family]) throw Error(`operation.plot: unknown plot ${family}`);
     if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) throw Error('operation.seed: integer 0–4294967295 required');
     let last;
@@ -595,7 +660,7 @@ export function generateOperation({ plot: family = 'downtown', seed = 1, objecti
             const plot = createPlot(family, s);
             plot.operation = true;   // PLAN-15: player maps — real-place profiles and spread pods (fixture maps keep their old rules)
             const time = timeOfDay || plot.times[Math.floor(unit(`${family}:${seed}:time`) * plot.times.length)];
-            const { layout, design, context } = solveLayoutV3(plot, { seed: s, objectiveKind: objective, verticalFlow, timeOfDay: time, id: 'operation', name: null });
+            const { layout, design, context } = solveLayoutV3(plot, { seed: s, objectiveKind: objective, verticalFlow, timeOfDay: time, forceLevel, id: 'operation', name: null });
             if (attempt) layout.repairs.push({ kind: 'reseed-operation', from: seed, attempt, reason: last?.message?.slice(0, 160) });
             const site = siteFromLayout(layout, { family, time, seed });
             const op = { site, layout, design, context };
@@ -611,7 +676,7 @@ export function generateOperation({ plot: family = 'downtown', seed = 1, objecti
 export function siteFromLayout(layout, { family, time, seed }) {
     const W = layout.width, D = layout.depth;
     const n = (x, y) => [Math.min(0.999, Math.max(0.001, x / W)), Math.min(0.999, Math.max(0.001, y / D))];
-    const PROGRAM = { apartment: 'house', motel: 'house', bar: 'diner', duplex: 'house', walkup: 'house', trailer: 'house', corner_store: 'shop', laundromat: 'shop', lockup: 'garage', clinic: 'office', library: 'office' };   // PLAN-14 / new-parcel programmes map to the site contract's
+    const PROGRAM = { apartment: 'house', motel: 'house', bar: 'diner', duplex: 'house', walkup: 'house', trailer: 'house', corner_store: 'shop', laundromat: 'shop', lockup: 'garage', clinic: 'office', library: 'office', fire_station: 'garage', police_precinct: 'office', pharmacy: 'shop' };   // PLAN-14 / new-parcel programmes map to the site contract's
     return {
         version: 2, id: layout.id, name: `${PLOT_FAMILIES[family].name} · ${seed}`, theme: PLOT_FAMILIES[family].theme, timeOfDay: time, frame: { width: W, height: D }, plot: family,
         buildings: layout.buildings.map(b => ({ id: b.id, bounds: [...n(b.x0, b.y0), ...n(b.x0 + b.w, b.y0 + b.d)], program: PROGRAM[b.program] || b.program, front: b.front, storeys: b.storeys })),

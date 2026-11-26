@@ -35,6 +35,7 @@ export const STATUS_DEFS = Object.freeze({
     braced: { rounds: 1, armorBonus: 2, tags: ['buff'] },   // PLAN-15: was 4
     staggered: { rounds: 1, accuracyMult: 0.8, untilOwnTurn: true, tags: ['move'] },          // landed a jump: off balance until the next turn
     surprised: { rounds: 1, apPenalty: -1, noReaction: true, tags: ['breach'] },
+    marked: { rounds: 2, spreadMult: 0.78, damageBonus: 2, tags: ['debuff'] },
     panicked: { rounds: 1, apMult: 0.5, noAbilities: true, tags: ['stress'] }
 });
 

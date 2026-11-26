@@ -3,6 +3,17 @@ import { CALLSIGNS, CLASSES, SQUADS } from '../content/units.js';
 import { PLOT_FAMILIES } from '../mapgen/PlotCatalogue.js';
 import { OPERATION_FLOWS } from '../mapgen/TerrainFeatures.js';
 
+/** Test-environment flag: unlock every campaign operation immediately for open mapgen & roster testing. */
+export const TEST_UNLOCK_ALL_OPERATIONS = true;
+
+export const THREAT_FORCE_LEVEL = Object.freeze({
+    Standard: 1,
+    Medium: 1,
+    High: 2,
+    Severe: 3,
+    Critical: 4
+});
+
 export const THEATER_OPERATIONS = Object.freeze([
     {
         id: 'op-canal-locks',
@@ -15,6 +26,7 @@ export const THEATER_OPERATIONS = Object.freeze([
         seed: 104,
         timeOfDay: 'day',
         threat: 'Medium',
+        forceLevel: 1,
         briefing: 'Insert along the sunken canal towpath, breach the fortified lockhouse for Syndicate ciphers, and extract down at the lower quay.',
         reward: { materials: 6, intel: 2, supplies: 40 }
     },
@@ -29,6 +41,7 @@ export const THEATER_OPERATIONS = Object.freeze([
         seed: 209,
         timeOfDay: 'dawn',
         threat: 'High',
+        forceLevel: 2,
         briefing: 'Deploy down in the lower valley approach, storm the stepped hillside terraces under grazing fire, and hold the crest relay.',
         reward: { materials: 7, intel: 3, supplies: 50 }
     },
@@ -43,6 +56,7 @@ export const THEATER_OPERATIONS = Object.freeze([
         seed: 317,
         timeOfDay: 'overcast',
         threat: 'High',
+        forceLevel: 2,
         briefing: 'Occupy the rim bluff overlooking the recessed industrial bowl, sweep downward through crossfire lanes, and extract from the basin floor.',
         reward: { materials: 8, intel: 3, supplies: 55 }
     },
@@ -57,6 +71,7 @@ export const THEATER_OPERATIONS = Object.freeze([
         seed: 412,
         timeOfDay: 'dusk',
         threat: 'Severe',
+        forceLevel: 3,
         briefing: 'Push from lower street alleys up into upper office tiers and skybridges, recover ledger drives, and fight back to ground evac.',
         reward: { materials: 9, intel: 4, supplies: 65 }
     },
@@ -71,6 +86,7 @@ export const THEATER_OPERATIONS = Object.freeze([
         seed: 523,
         timeOfDay: 'dawn',
         threat: 'Severe',
+        forceLevel: 3,
         briefing: 'Start atop the upper foundry ridge above shipping lanes and systematically collapse Syndicate strongpoints toward the lower yard.',
         reward: { materials: 10, intel: 4, supplies: 75 }
     },
@@ -85,12 +101,43 @@ export const THEATER_OPERATIONS = Object.freeze([
         seed: 631,
         timeOfDay: 'day',
         threat: 'Critical',
+        forceLevel: 4,
         briefing: 'Hold initiative from the frozen upper bluff before sweeping down into the lower ice basin to lock down the Syndicate relay.',
         reward: { materials: 14, intel: 6, supplies: 100 }
+    },
+    {
+        id: 'op-sf-avenue',
+        code: 'OP-07',
+        name: 'Operation Nob Hill',
+        region: 'Hillside Avenues',
+        plot: 'hillside_avenue',
+        objective: 'recover',
+        verticalFlow: 'bottom_to_top',
+        seed: 718,
+        timeOfDay: 'day',
+        threat: 'High',
+        forceLevel: 2,
+        briefing: 'Ascend steep San Francisco-style sloped avenues and flanking sidewalk stairways to seize the hilltop Syndicate tower.',
+        reward: { materials: 11, intel: 4, supplies: 80 }
+    },
+    {
+        id: 'op-citadel-push',
+        code: 'OP-08',
+        name: 'Operation Iron Spire',
+        region: 'Syndicate Citadel',
+        plot: 'downtown',
+        objective: 'eliminate',
+        verticalFlow: 'low_to_high_to_low',
+        seed: 809,
+        timeOfDay: 'night-ops',
+        threat: 'Critical',
+        forceLevel: 4,
+        briefing: 'Break the Syndicate elite command garrison: officers, heavy gunners, snipers, medics, hunter drones and siege constructs.',
+        reward: { materials: 18, intel: 8, supplies: 120 }
     }
 ]);
 
-const CONTRACT_BIOMES = ['canal_district', 'hillside_ridge', 'sunken_basin', 'old_quarter', 'metro_hub', 'arid_compound', 'harbor', 'suburb'];
+const CONTRACT_BIOMES = ['canal_district', 'hillside_ridge', 'hillside_avenue', 'sunken_basin', 'old_quarter', 'metro_hub', 'arid_compound', 'harbor', 'suburb'];
 const CONTRACT_OBJECTIVES = ['recover', 'extract', 'hold', 'eliminate'];
 const CONTRACT_FLOWS = ['high_to_low', 'low_to_high_to_low', 'bottom_to_top', 'top_to_bottom'];
 const CONTRACT_TIMES = ['day', 'dawn', 'dusk', 'overcast'];
@@ -106,6 +153,7 @@ export function regionalContracts(day = 1) {
         const timeOfDay = CONTRACT_TIMES[(idx + i) % CONTRACT_TIMES.length];
         const seed = 1000 + day * 37 + i * 19;
         const bio = PLOT_FAMILIES[plot];
+        const threat = i === 2 ? 'Severe' : i === 1 ? 'High' : 'Standard';
         out.push({
             id: `contract-${day}-${i + 1}`,
             code: `RC-${day}.${i + 1}`,
@@ -116,7 +164,8 @@ export function regionalContracts(day = 1) {
             verticalFlow,
             seed,
             timeOfDay,
-            threat: i === 2 ? 'Severe' : 'Standard',
+            threat,
+            forceLevel: THREAT_FORCE_LEVEL[threat] ?? 1,
             contract: true,
             briefing: `Regional reconnaissance contract in ${bio?.name || plot} with ${verticalFlow.replace(/_/g, ' ')} extraction vectors.`,
             reward: { materials: 4 + i * 2, intel: 1 + (i % 2), supplies: 25 + i * 10 }
@@ -172,12 +221,12 @@ export function normalizeTheaterState(raw) {
 }
 
 /** List flagship operations + their live unlock/completion state. */
-export function theaterCatalog(state) {
+export function theaterCatalog(state, { unlockAll = TEST_UNLOCK_ALL_OPERATIONS } = {}) {
     const done = new Set(state.completedIds || []);
     const unlockedCount = Math.min(THEATER_OPERATIONS.length, done.size + 1);
     return THEATER_OPERATIONS.map((op, index) => {
         const completed = done.has(op.id);
-        const unlocked = index < unlockedCount || completed;
+        const unlocked = unlockAll || index < unlockedCount || completed;
         return {
             ...op,
             index,
@@ -196,18 +245,21 @@ export function findTheaterOp(opId, state = null) {
 }
 
 /** Build a sanitized scenario launch descriptor for deploying a designated operation. */
-export function buildLaunchDescriptor(op, { squad = 'standard', extra = {} } = {}) {
+export function buildLaunchDescriptor(op, { squad = 'standard', seed = null, extra = {} } = {}) {
     if (!op) throw Error('theater: unknown operation');
     const flow = OPERATION_FLOWS.includes(op.verticalFlow) ? op.verticalFlow : 'auto';
+    const forceLevel = op.forceLevel ?? THREAT_FORCE_LEVEL[op.threat] ?? 1;
+    const effectiveSeed = Number.isInteger(Number(seed)) && Number(seed) >= 0 ? Number(seed) : op.seed;
     return {
         scenario: 'operation',
-        seed: op.seed,
+        seed: effectiveSeed,
         squad,
         campaignOpId: op.id,
         operation: {
             plot: PLOT_FAMILIES[op.plot] ? op.plot : 'downtown',
             objective: op.objective || 'recover',
             timeOfDay: op.timeOfDay || 'day',
+            forceLevel,
             ...(flow !== 'auto' ? { verticalFlow: flow } : {})
         },
         ...extra

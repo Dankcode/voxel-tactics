@@ -8,26 +8,29 @@
 
 export const LOT_KINDS = Object.freeze({
     // ---------------------------------------------------------------- buildings
-    office_block: { size: [2, 2], districts: ['commercial', 'transit', 'canal'], w: 1.6, building: { program: 'office', along: 13, deep: 9, front: 1, storeys: [3, 4], variants: [[13, 9], [11, 9], [13, 7], [9, 9]] }, ground: 'concrete', pool: 'yard_paved' },
-    apartment: { size: [2, 2], districts: ['residential', 'commercial', 'transit', 'historic', 'canal', 'highland'], w: 1.3, building: { program: 'apartment', along: 11, deep: 9, front: 2, storeys: [2, 4], variants: [[11, 9], [9, 9], [11, 7]] }, ground: 'paving', pool: 'yard_paved' },
+    office_block: { size: [2, 2], districts: ['commercial', 'transit', 'canal', 'hillside'], w: 1.6, building: { program: 'office', along: 13, deep: 9, front: 1, storeys: [3, 4], variants: [[13, 9], [11, 9], [13, 7], [9, 9]] }, ground: 'concrete', pool: 'yard_paved' },
+    apartment: { size: [2, 2], districts: ['residential', 'commercial', 'transit', 'historic', 'canal', 'highland', 'hillside'], w: 1.3, building: { program: 'apartment', along: 11, deep: 9, front: 2, storeys: [2, 4], variants: [[11, 9], [9, 9], [11, 7]] }, ground: 'paving', pool: 'yard_paved' },
     warehouse: { size: [2, 2], districts: ['industrial', 'dock', 'desert', 'canal', 'basin'], w: 2, building: { program: 'warehouse', along: 15, deep: 11, front: 1, storeys: [1, 2], variants: [[15, 11], [13, 11], [15, 9], [11, 9]] }, ground: 'concrete', pool: 'yard_industrial' },
-    house: { size: [2, 2], districts: ['residential', 'alpine', 'historic', 'highland', 'canal'], w: 2.2, building: { program: 'house', along: 13, deep: 9, front: 3, storeys: [1, 2], variants: [[13, 9], [11, 9], [11, 7], [9, 9]] }, ground: 'lawn', pool: 'yard_garden' },
-    shop_row: { size: [2, 1], districts: ['commercial', 'residential', 'historic', 'transit', 'dock', 'canal', 'basin'], w: 1.8, building: { program: 'shop', along: 15, deep: 7, front: 1, storeys: [1, 2], variants: [[15, 7], [13, 7], [11, 7]] }, ground: 'paving', pool: 'yard_paved' },
-    diner: { size: [2, 1], districts: ['commercial', 'residential', 'yard', 'historic', 'alpine', 'desert', 'highland', 'basin'], w: 0.7, building: { program: 'diner', along: 13, deep: 7, front: 1, storeys: [1, 1] }, ground: 'paving', pool: 'yard_paved' },
+    house: { size: [2, 2], districts: ['residential', 'alpine', 'historic', 'highland', 'canal', 'hillside'], w: 2.2, building: { program: 'house', along: 13, deep: 9, front: 3, storeys: [1, 2], variants: [[13, 9], [11, 9], [11, 7], [9, 9]] }, ground: 'lawn', pool: 'yard_garden' },
+    shop_row: { size: [2, 1], districts: ['commercial', 'residential', 'historic', 'transit', 'dock', 'canal', 'basin', 'hillside'], w: 1.8, building: { program: 'shop', along: 15, deep: 7, front: 1, storeys: [1, 2], variants: [[15, 7], [13, 7], [11, 7]] }, ground: 'paving', pool: 'yard_paved' },
+    diner: { size: [2, 1], districts: ['commercial', 'residential', 'yard', 'historic', 'alpine', 'desert', 'highland', 'basin', 'hillside'], w: 0.7, building: { program: 'diner', along: 13, deep: 7, front: 1, storeys: [1, 1] }, ground: 'paving', pool: 'yard_paved' },
     garage_row: { size: [2, 1], districts: ['industrial', 'yard', 'dock', 'desert', 'highland', 'basin'], w: 1.4, building: { program: 'garage', along: 13, deep: 7, front: 1, storeys: [1, 1] }, ground: 'concrete', pool: 'yard_industrial' },
-    bungalow: { size: [2, 1], districts: ['residential', 'alpine', 'highland'], w: 1.2, building: { program: 'house', along: 13, deep: 7, front: 1, storeys: [1, 1], variants: [[13, 7], [11, 7], [9, 7]] }, ground: 'lawn', pool: 'yard_garden' },
-    tenement: { size: [2, 2], districts: ['residential', 'commercial', 'historic', 'transit', 'canal'], w: 1.1, building: { program: 'apartment', along: 13, deep: 11, front: 1, storeys: [3, 4], variants: [[13, 11], [11, 11], [13, 9]] }, ground: 'paving', pool: 'yard_paved' },
-    townhouses: { size: [2, 1], districts: ['residential', 'historic', 'canal', 'highland'], w: 1.0, building: { program: 'house', along: 15, deep: 7, front: 1, storeys: [2, 3] }, ground: 'lawn', pool: 'yard_garden' },
+    bungalow: { size: [2, 1], districts: ['residential', 'alpine', 'highland', 'hillside'], w: 1.2, building: { program: 'house', along: 13, deep: 7, front: 1, storeys: [1, 1], variants: [[13, 7], [11, 7], [9, 7]] }, ground: 'lawn', pool: 'yard_garden' },
+    tenement: { size: [2, 2], districts: ['residential', 'commercial', 'historic', 'transit', 'canal', 'hillside'], w: 1.1, building: { program: 'apartment', along: 13, deep: 11, front: 1, storeys: [3, 4], variants: [[13, 11], [11, 11], [13, 9]] }, ground: 'paving', pool: 'yard_paved' },
+    townhouses: { size: [2, 1], districts: ['residential', 'historic', 'canal', 'highland', 'hillside'], w: 1.0, building: { program: 'house', along: 15, deep: 7, front: 1, storeys: [2, 3] }, ground: 'lawn', pool: 'yard_garden' },
     motel: { size: [2, 1], districts: ['commercial', 'yard', 'desert', 'transit'], w: 0.5, building: { program: 'motel', along: 15, deep: 7, front: 1, storeys: [1, 2] }, ground: 'concrete', pool: 'yard_paved' },
-    bar: { size: [2, 1], districts: ['commercial', 'residential', 'dock', 'historic', 'canal'], w: 0.5, building: { program: 'bar', along: 11, deep: 7, front: 1, storeys: [1, 2], variants: [[11, 7], [9, 7]] }, ground: 'paving', pool: 'yard_paved' },
-    duplex: { size: [2, 1], districts: ['residential', 'alpine', 'highland'], w: 0.8, building: { program: 'duplex', along: 15, deep: 7, front: 1, storeys: [1, 2], variants: [[15, 7], [13, 7]] }, ground: 'lawn', pool: 'yard_garden' },
-    walkup: { size: [2, 2], districts: ['residential', 'historic', 'canal', 'highland'], w: 0.7, building: { program: 'walkup', along: 13, deep: 11, front: 2, storeys: [2, 3], variants: [[13, 11], [13, 9], [11, 11]] }, ground: 'lawn', pool: 'yard_garden' },
+    bar: { size: [2, 1], districts: ['commercial', 'residential', 'dock', 'historic', 'canal', 'hillside'], w: 0.5, building: { program: 'bar', along: 11, deep: 7, front: 1, storeys: [1, 2], variants: [[11, 7], [9, 7]] }, ground: 'paving', pool: 'yard_paved' },
+    duplex: { size: [2, 1], districts: ['residential', 'alpine', 'highland', 'hillside'], w: 0.8, building: { program: 'duplex', along: 15, deep: 7, front: 1, storeys: [1, 2], variants: [[15, 7], [13, 7]] }, ground: 'lawn', pool: 'yard_garden' },
+    walkup: { size: [2, 2], districts: ['residential', 'historic', 'canal', 'highland', 'hillside'], w: 0.7, building: { program: 'walkup', along: 13, deep: 11, front: 2, storeys: [2, 3], variants: [[13, 11], [13, 9], [11, 11]] }, ground: 'lawn', pool: 'yard_garden' },
     trailer: { size: [2, 1], districts: ['residential', 'yard', 'desert', 'alpine'], w: 0.35, building: { program: 'trailer', along: 13, deep: 5, front: 2, storeys: [1, 1], variants: [[13, 5], [11, 5]] }, ground: 'gravel', pool: 'yard_garden' },
-    corner_store: { size: [2, 1], districts: ['commercial', 'residential', 'historic', 'transit', 'canal'], w: 0.6, building: { program: 'corner_store', along: 11, deep: 7, front: 1, storeys: [1, 2], variants: [[11, 7], [9, 7]] }, ground: 'paving', pool: 'yard_paved' },
-    laundromat: { size: [2, 1], districts: ['commercial', 'residential', 'transit'], w: 0.45, building: { program: 'laundromat', along: 13, deep: 7, front: 1, storeys: [1, 1], variants: [[13, 7], [11, 7]] }, ground: 'paving', pool: 'yard_paved' },
+    corner_store: { size: [2, 1], districts: ['commercial', 'residential', 'historic', 'transit', 'canal', 'hillside'], w: 0.6, building: { program: 'corner_store', along: 11, deep: 7, front: 1, storeys: [1, 2], variants: [[11, 7], [9, 7]] }, ground: 'paving', pool: 'yard_paved' },
+    laundromat: { size: [2, 1], districts: ['commercial', 'residential', 'transit', 'hillside'], w: 0.45, building: { program: 'laundromat', along: 13, deep: 7, front: 1, storeys: [1, 1], variants: [[13, 7], [11, 7]] }, ground: 'paving', pool: 'yard_paved' },
     lockups: { size: [2, 1], districts: ['industrial', 'yard', 'residential', 'dock', 'desert', 'alpine', 'canal', 'highland', 'basin'], w: 0.5, building: { program: 'lockup', along: 13, deep: 7, front: 1, storeys: [1, 1], variants: [[13, 7], [11, 7]] }, ground: 'concrete', pool: 'yard_industrial' },
-    clinic: { size: [2, 2], districts: ['commercial', 'residential', 'alpine', 'transit', 'highland'], w: 0.45, building: { program: 'clinic', along: 15, deep: 9, front: 1, storeys: [1, 2], variants: [[15, 9], [13, 9], [15, 7]] }, ground: 'paving', pool: 'yard_paved' },
-    library: { size: [2, 2], districts: ['commercial', 'plaza', 'historic', 'canal'], w: 0.45, building: { program: 'library', along: 13, deep: 11, front: 2, storeys: [1, 2], variants: [[13, 11], [11, 11], [13, 9]] }, ground: 'paving', pool: 'yard_paved' },
+    clinic: { size: [2, 2], districts: ['commercial', 'residential', 'alpine', 'transit', 'highland', 'hillside'], w: 1.4, building: { program: 'clinic', along: 15, deep: 9, front: 1, storeys: [1, 2], variants: [[15, 9], [13, 9], [15, 7]] }, ground: 'paving', pool: 'yard_paved' },
+    library: { size: [2, 2], districts: ['commercial', 'plaza', 'historic', 'canal', 'hillside'], w: 0.85, building: { program: 'library', along: 13, deep: 11, front: 2, storeys: [1, 2], variants: [[13, 11], [11, 11], [13, 9]] }, ground: 'paving', pool: 'yard_paved' },
+    fire_station: { size: [2, 2], districts: ['commercial', 'industrial', 'transit', 'hillside'], w: 0.35, building: { program: 'fire_station', along: 13, deep: 9, front: 1, storeys: [2, 2], variants: [[13, 9], [11, 9]] }, ground: 'concrete', pool: 'yard_paved' },
+    police_precinct: { size: [2, 2], districts: ['commercial', 'transit', 'historic', 'hillside'], w: 0.35, building: { program: 'police_precinct', along: 13, deep: 9, front: 1, storeys: [2, 3], variants: [[13, 9], [11, 9]] }, ground: 'concrete', pool: 'yard_paved' },
+    pharmacy: { size: [2, 1], districts: ['commercial', 'residential', 'transit', 'hillside', 'canal'], w: 0.55, building: { program: 'pharmacy', along: 13, deep: 7, front: 1, storeys: [1, 2], variants: [[13, 7], [11, 7]] }, ground: 'paving', pool: 'yard_paved' },
     // ---------------------------------------------------------------- objective parcels (a separate pool, as in XCOM 2)
     objective_office: { size: [2, 2], objective: true, families: ['downtown'], building: { program: 'office', along: 13, deep: 9, front: 1, storeys: [4, 4] }, ground: 'concrete', pool: 'yard_paved' },
     objective_depot: { size: [2, 2], objective: true, families: ['industrial'], building: { program: 'office', along: 13, deep: 9, front: 1, storeys: [3, 3] }, ground: 'concrete', pool: 'yard_industrial' },
@@ -40,22 +43,23 @@ export const LOT_KINDS = Object.freeze({
     objective_lockhouse: { size: [2, 2], objective: true, families: ['canal_district'], building: { program: 'office', along: 13, deep: 9, front: 1, storeys: [3, 3] }, ground: 'cobble', pool: 'yard_paved' },
     objective_ridge_relay: { size: [2, 2], objective: true, families: ['hillside_ridge'], building: { program: 'clinic', along: 13, deep: 9, front: 1, storeys: [3, 3] }, ground: 'gravel', pool: 'yard_industrial' },
     objective_basin_control: { size: [2, 2], objective: true, families: ['sunken_basin'], building: { program: 'office', along: 13, deep: 9, front: 1, storeys: [3, 3] }, ground: 'concrete', pool: 'yard_industrial' },
+    objective_hilltop_tower: { size: [2, 2], objective: true, families: ['hillside_avenue'], building: { program: 'office', along: 13, deep: 9, front: 1, storeys: [3, 3] }, ground: 'paving', pool: 'yard_paved' },
     // ---------------------------------------------------------------- open lots (1 × 1 & multi-lot setpieces)
-    parking_lot: { size: [1, 1], districts: ['commercial', 'industrial', 'yard', 'residential', 'transit', 'dock', 'canal', 'basin'], w: 1.4, ground: 'asphalt', pool: 'parking', marks: true },
-    plaza: { size: [1, 1], districts: ['commercial', 'plaza', 'historic', 'transit', 'canal', 'highland'], w: 1.4, ground: 'paving', pool: 'plaza' },
-    pocket_park: { size: [1, 1], districts: ['residential', 'park', 'plaza', 'alpine', 'historic', 'canal', 'highland'], w: 1.2, ground: 'lawn', pool: 'park' },
-    vacant_lot: { size: [1, 1], districts: ['commercial', 'industrial', 'residential', 'yard', 'dock', 'alpine', 'historic', 'transit', 'desert', 'canal', 'highland', 'basin'], w: 0.6, ground: 'gravel', pool: 'vacant' },
+    parking_lot: { size: [1, 1], roadFront: true, districts: ['commercial', 'industrial', 'yard', 'residential', 'transit', 'dock', 'canal', 'basin', 'hillside'], w: 1.4, ground: 'asphalt', pool: 'parking', marks: true },
+    plaza: { size: [1, 1], districts: ['commercial', 'plaza', 'historic', 'transit', 'canal', 'highland', 'hillside'], w: 1.4, ground: 'paving', pool: 'plaza' },
+    pocket_park: { size: [1, 1], districts: ['residential', 'park', 'plaza', 'alpine', 'historic', 'canal', 'highland', 'hillside'], w: 1.2, ground: 'lawn', pool: 'park' },
+    vacant_lot: { size: [1, 1], districts: ['commercial', 'industrial', 'residential', 'yard', 'dock', 'alpine', 'historic', 'transit', 'desert', 'canal', 'highland', 'basin', 'hillside'], w: 0.6, ground: 'gravel', pool: 'vacant' },
     container_yard: { size: [1, 1], districts: ['industrial', 'yard', 'dock', 'canal', 'basin'], w: 1.6, ground: 'concrete', pool: 'containers' },
-    depot_yard: { size: [1, 1], districts: ['industrial', 'yard', 'dock', 'desert', 'basin', 'highland'], w: 1.5, ground: 'concrete', pool: 'depot' },
-    construction_site: { size: [1, 1], districts: ['commercial', 'industrial', 'transit', 'desert'], w: 0.6, ground: 'gravel', pool: 'construction' },
-    backyard: { size: [1, 1], districts: ['residential', 'park', 'alpine', 'highland'], w: 1.3, ground: 'lawn', pool: 'garden' },
-    community_garden: { size: [1, 1], districts: ['residential', 'park', 'commercial', 'historic'], w: 0.55, ground: 'lawn', pool: 'garden' },
-    civic_green: { size: [1, 1], districts: ['commercial', 'plaza', 'park', 'residential', 'historic'], w: 0.65, ground: 'lawn', pool: 'park' },
-    alley: { size: [1, 1], districts: ['commercial', 'residential', 'industrial', 'historic', 'dock', 'transit', 'desert', 'canal', 'highland', 'basin'], w: 0.8, ground: 'paving', pool: 'alley' },
+    depot_yard: { size: [1, 1], roadFront: true, districts: ['industrial', 'yard', 'dock', 'desert', 'basin', 'highland'], w: 1.5, ground: 'concrete', pool: 'depot' },
+    construction_site: { size: [1, 1], roadFront: true, districts: ['commercial', 'industrial', 'transit', 'desert', 'hillside'], w: 0.6, ground: 'gravel', pool: 'construction' },
+    backyard: { size: [1, 1], districts: ['residential', 'park', 'alpine', 'highland', 'hillside'], w: 1.3, ground: 'lawn', pool: 'garden' },
+    community_garden: { size: [1, 1], districts: ['residential', 'park', 'commercial', 'historic', 'hillside'], w: 0.55, ground: 'lawn', pool: 'garden' },
+    civic_green: { size: [1, 1], districts: ['commercial', 'plaza', 'park', 'residential', 'historic', 'hillside'], w: 0.65, ground: 'lawn', pool: 'park' },
+    alley: { size: [1, 1], districts: ['commercial', 'residential', 'industrial', 'historic', 'dock', 'transit', 'desert', 'canal', 'highland', 'basin', 'hillside'], w: 0.8, ground: 'paving', pool: 'alley' },
     subway_plaza: { size: [1, 1], districts: ['commercial', 'plaza', 'transit'], families: ['downtown', 'metro_hub'], w: 0.8, ground: 'paving', pool: 'plaza', underground: true },
-    market_square: { size: [2, 1], districts: ['historic', 'commercial', 'plaza'], families: ['old_quarter', 'downtown'], w: 1.5, ground: 'cobble', pool: 'market' },
-    civic_plaza: { size: [2, 2], districts: ['plaza', 'commercial', 'historic', 'transit'], families: ['downtown', 'old_quarter', 'metro_hub'], w: 1.1, ground: 'paving', pool: 'plaza' },
-    transit_bay: { size: [2, 1], districts: ['transit', 'commercial', 'dock'], families: ['metro_hub', 'downtown', 'harbor'], w: 1.5, ground: 'asphalt', pool: 'parking' },
+    market_square: { size: [2, 1], districts: ['historic', 'commercial', 'plaza', 'hillside'], families: ['old_quarter', 'downtown', 'hillside_avenue'], w: 1.5, ground: 'cobble', pool: 'market' },
+    civic_plaza: { size: [2, 2], districts: ['plaza', 'commercial', 'historic', 'transit', 'hillside'], families: ['downtown', 'old_quarter', 'metro_hub', 'hillside_avenue'], w: 1.1, ground: 'paving', pool: 'plaza' },
+    transit_bay: { size: [2, 1], districts: ['transit', 'commercial', 'dock', 'hillside'], families: ['metro_hub', 'downtown', 'harbor', 'hillside_avenue'], w: 1.5, ground: 'asphalt', pool: 'parking' },
     container_depot: { size: [2, 1], districts: ['dock', 'industrial', 'yard'], families: ['harbor', 'industrial'], w: 1.6, ground: 'concrete', pool: 'containers' },
     fuel_forecourt: { size: [2, 1], districts: ['yard', 'industrial', 'desert', 'commercial'], families: ['industrial', 'arid_compound', 'downtown'], w: 1.2, ground: 'concrete', pool: 'forecourt' },
     checkpoint_yard: { size: [2, 1], districts: ['desert', 'alpine', 'transit', 'yard', 'basin', 'highland'], families: ['arid_compound', 'winter_outpost', 'metro_hub', 'industrial', 'sunken_basin', 'hillside_ridge'], w: 1.4, ground: 'gravel', pool: 'checkpoint' },
@@ -63,22 +67,29 @@ export const LOT_KINDS = Object.freeze({
     frozen_pond: { size: [2, 1], districts: ['alpine', 'park'], families: ['winter_outpost'], w: 1.5, ground: 'snow', pool: 'pond' },
     canal_quay: { size: [2, 1], districts: ['canal', 'dock'], families: ['canal_district', 'harbor'], w: 1.8, ground: 'cobble', pool: 'dock_open' },
     canal_promenade: { size: [1, 1], districts: ['canal', 'plaza'], families: ['canal_district'], w: 1.5, ground: 'paving', pool: 'plaza' },
-    hill_terrace: { size: [1, 1], districts: ['highland', 'park'], families: ['hillside_ridge'], w: 1.6, ground: 'lawn', pool: 'park' },
-    lower_field: { size: [2, 1], districts: ['basin', 'highland', 'yard'], families: ['sunken_basin', 'hillside_ridge'], w: 1.6, ground: 'concrete', pool: 'vacant' }
+    hill_terrace: { size: [1, 1], districts: ['highland', 'park', 'hillside'], families: ['hillside_ridge', 'hillside_avenue'], w: 1.6, ground: 'lawn', pool: 'park' },
+    lower_field: { size: [2, 1], districts: ['basin', 'highland', 'yard'], families: ['sunken_basin', 'hillside_ridge'], w: 1.6, ground: 'concrete', pool: 'vacant' },
+    courtyard_park: { size: [2, 1], districts: ['residential', 'park', 'plaza', 'historic', 'hillside', 'canal'], w: 1.1, ground: 'lawn', pool: 'park' },
+    amphitheater_steps: { size: [2, 1], districts: ['plaza', 'park', 'hillside', 'highland', 'historic'], w: 0.9, ground: 'paving', pool: 'plaza' },
+    loading_yard: { size: [2, 1], roadFront: true, districts: ['industrial', 'yard', 'dock', 'basin'], w: 1.2, ground: 'concrete', pool: 'depot' },
+    motor_pool: { size: [2, 1], roadFront: true, districts: ['industrial', 'yard', 'desert', 'transit', 'basin'], w: 1.1, ground: 'asphalt', pool: 'parking' },
+    overlook_plaza: { size: [1, 1], districts: ['hillside', 'highland', 'plaza', 'canal'], w: 1.2, ground: 'paving', pool: 'plaza' }
 });
 
 /** PLAN-14: what the attached lower wing of a merged parcel houses, by the main block's programme. */
 export const WING_PROGRAM = Object.freeze({ office: 'shop', apartment: 'shop', house: 'garage', warehouse: 'garage', shop: 'diner', motel: 'diner', bar: 'shop',
-    duplex: 'lockup', walkup: 'laundromat', trailer: 'lockup', corner_store: 'lockup', laundromat: 'corner_store', lockup: 'lockup', clinic: 'office', library: 'office' });
+    duplex: 'lockup', walkup: 'laundromat', trailer: 'lockup', corner_store: 'lockup', laundromat: 'corner_store', lockup: 'lockup', clinic: 'office', library: 'office',
+    fire_station: 'garage', police_precinct: 'office', pharmacy: 'corner_store' });
 
 /** Which district kinds a plot family can field, and which lots may stand in them. */
-export const DISTRICT_KINDS = Object.freeze(['commercial', 'residential', 'industrial', 'yard', 'plaza', 'park', 'dock', 'alpine', 'historic', 'transit', 'desert', 'canal', 'highland', 'basin']);
+export const DISTRICT_KINDS = Object.freeze(['commercial', 'residential', 'industrial', 'yard', 'plaza', 'park', 'dock', 'alpine', 'historic', 'transit', 'desert', 'canal', 'highland', 'basin', 'hillside']);
 export const DISTRICT_WALLS = Object.freeze({
     commercial: ['concrete_wall', 'brick'], residential: ['brick', 'stucco', 'siding'], industrial: ['siding', 'concrete_wall', 'brick'],
     yard: ['siding', 'concrete_wall'], plaza: ['concrete_wall', 'brick'], park: ['brick', 'stucco'],
     dock: ['siding', 'concrete_wall', 'brick'], alpine: ['timber', 'stone', 'brick'], historic: ['stone', 'brick', 'city_wall'],
     transit: ['concrete_wall', 'brick', 'siding'], desert: ['drystone', 'concrete_wall', 'timber'],
-    canal: ['stone', 'brick', 'city_wall'], highland: ['stone', 'timber', 'drystone'], basin: ['concrete_wall', 'siding', 'stone']
+    canal: ['stone', 'brick', 'city_wall'], highland: ['stone', 'timber', 'drystone'], basin: ['concrete_wall', 'siding', 'stone'],
+    hillside: ['brick', 'siding', 'concrete_wall']
 });
 export const DISTRICT_PALETTE = Object.freeze({
     commercial: [[0.62, 0.18, 0.16], [0.16, 0.36, 0.52], [0.86, 0.62, 0.2], [0.2, 0.46, 0.38]],
@@ -92,7 +103,8 @@ export const DISTRICT_PALETTE = Object.freeze({
     desert: [[0.76, 0.42, 0.24], [0.56, 0.52, 0.32], [0.68, 0.3, 0.22]],
     canal: [[0.2, 0.44, 0.56], [0.68, 0.34, 0.24], [0.28, 0.48, 0.4]],
     highland: [[0.46, 0.52, 0.34], [0.58, 0.38, 0.26], [0.32, 0.44, 0.5]],
-    basin: [[0.34, 0.42, 0.48], [0.76, 0.54, 0.22], [0.42, 0.48, 0.42]]
+    basin: [[0.34, 0.42, 0.48], [0.76, 0.54, 0.22], [0.42, 0.48, 0.42]],
+    hillside: [[0.74, 0.52, 0.32], [0.24, 0.46, 0.54], [0.62, 0.26, 0.22], [0.34, 0.5, 0.4]]
 });
 
 // ------------------------------------------------------------------------------------------------ bay pieces
@@ -133,9 +145,38 @@ export const BAY_PIECES = Object.freeze({
     car_x_b: { id: 'car_x_b', base: 'car', part: 1, parts: 2, axis: 'x', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'lane'], w: 1 },
     car_y_a: { id: 'car_y_a', base: 'car', part: 0, parts: 2, axis: 'y', make: 'car', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'lane'], w: 1 },
     car_y_b: { id: 'car_y_b', base: 'car', part: 1, parts: 2, axis: 'y', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'lane'], w: 1 },
-    container_x_a: { id: 'container_x_a', base: 'container', part: 0, parts: 3, axis: 'x', make: 'container', cells: [[0, 0, ['container']], [1, 0, ['container']], [0, 1, ['container']], [1, 1, ['container']]], cover: 'full', surfaces: ['concrete'], w: 1 },
-    container_x_b: { id: 'container_x_b', base: 'container', part: 1, parts: 3, axis: 'x', cells: [[0, 0, ['container']], [1, 0, ['container']], [0, 1, ['container']], [1, 1, ['container']]], cover: 'full', surfaces: ['concrete'], w: 1 },
-    container_x_c: { id: 'container_x_c', base: 'container', part: 2, parts: 3, axis: 'x', cells: [[0, 0, ['container']], [0, 1, ['container']]], cover: 'full', surfaces: ['concrete'], w: 1 }
+    container_x_a: { id: 'container_x_a', base: 'container', part: 0, parts: 3, axis: 'x', make: 'container', cells: [[0, 0, ['container']], [1, 0, ['container']], [0, 1, ['container']], [1, 1, ['container']]], cover: 'full', surfaces: ['concrete', 'gravel', 'asphalt'], w: 1 },
+    container_x_b: { id: 'container_x_b', base: 'container', part: 1, parts: 3, axis: 'x', cells: [[0, 0, ['container']], [1, 0, ['container']], [0, 1, ['container']], [1, 1, ['container']]], cover: 'full', surfaces: ['concrete', 'gravel', 'asphalt'], w: 1 },
+    container_x_c: { id: 'container_x_c', base: 'container', part: 2, parts: 3, axis: 'x', cells: [[0, 0, ['container']], [0, 1, ['container']]], cover: 'full', surfaces: ['concrete', 'gravel', 'asphalt'], w: 1 },
+    container_y_a: { id: 'container_y_a', base: 'container', part: 0, parts: 3, axis: 'y', make: 'container', cells: [[0, 0, ['container']], [1, 0, ['container']], [0, 1, ['container']], [1, 1, ['container']]], cover: 'full', surfaces: ['concrete', 'gravel', 'asphalt'], w: 1 },
+    container_y_b: { id: 'container_y_b', base: 'container', part: 1, parts: 3, axis: 'y', cells: [[0, 0, ['container']], [1, 0, ['container']], [0, 1, ['container']], [1, 1, ['container']]], cover: 'full', surfaces: ['concrete', 'gravel', 'asphalt'], w: 1 },
+    container_y_c: { id: 'container_y_c', base: 'container', part: 2, parts: 3, axis: 'y', cells: [[0, 0, ['container']], [1, 0, ['container']]], cover: 'full', surfaces: ['concrete', 'gravel', 'asphalt'], w: 1 },
+    truck_x_a: { id: 'truck_x_a', base: 'truck', part: 0, parts: 3, axis: 'x', make: 'truck', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete', 'gravel', 'deck'], w: 0.7 },
+    truck_x_b: { id: 'truck_x_b', base: 'truck', part: 1, parts: 3, axis: 'x', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete', 'gravel', 'deck'], w: 0.7 },
+    truck_x_c: { id: 'truck_x_c', base: 'truck', part: 2, parts: 3, axis: 'x', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete', 'gravel', 'deck'], w: 0.7 },
+    truck_y_a: { id: 'truck_y_a', base: 'truck', part: 0, parts: 3, axis: 'y', make: 'truck', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete', 'gravel', 'deck'], w: 0.7 },
+    truck_y_b: { id: 'truck_y_b', base: 'truck', part: 1, parts: 3, axis: 'y', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete', 'gravel', 'deck'], w: 0.7 },
+    truck_y_c: { id: 'truck_y_c', base: 'truck', part: 2, parts: 3, axis: 'y', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete', 'gravel', 'deck'], w: 0.7 },
+    bus_x_a: { id: 'bus_x_a', base: 'bus', part: 0, parts: 4, axis: 'x', make: 'bus', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete'], w: 0.5 },
+    bus_x_b: { id: 'bus_x_b', base: 'bus', part: 1, parts: 4, axis: 'x', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete'], w: 0.5 },
+    bus_x_c: { id: 'bus_x_c', base: 'bus', part: 2, parts: 4, axis: 'x', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete'], w: 0.5 },
+    bus_x_d: { id: 'bus_x_d', base: 'bus', part: 3, parts: 4, axis: 'x', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete'], w: 0.5 },
+    bus_y_a: { id: 'bus_y_a', base: 'bus', part: 0, parts: 4, axis: 'y', make: 'bus', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete'], w: 0.5 },
+    bus_y_b: { id: 'bus_y_b', base: 'bus', part: 1, parts: 4, axis: 'y', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete'], w: 0.5 },
+    bus_y_c: { id: 'bus_y_c', base: 'bus', part: 2, parts: 4, axis: 'y', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete'], w: 0.5 },
+    bus_y_d: { id: 'bus_y_d', base: 'bus', part: 3, parts: 4, axis: 'y', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete'], w: 0.5 },
+    abandoned_car_x_a: { id: 'abandoned_car_x_a', base: 'abandoned_car', part: 0, parts: 2, axis: 'x', make: 'abandoned_car', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete', 'gravel', 'sand', 'cobble'], w: 0.6 },
+    abandoned_car_x_b: { id: 'abandoned_car_x_b', base: 'abandoned_car', part: 1, parts: 2, axis: 'x', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete', 'gravel', 'sand', 'cobble'], w: 0.6 },
+    abandoned_car_y_a: { id: 'abandoned_car_y_a', base: 'abandoned_car', part: 0, parts: 2, axis: 'y', make: 'abandoned_car', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete', 'gravel', 'sand', 'cobble'], w: 0.6 },
+    abandoned_car_y_b: { id: 'abandoned_car_y_b', base: 'abandoned_car', part: 1, parts: 2, axis: 'y', cells: [[0, 0, ['car_body']], [1, 0, ['car_body']], [0, 1, ['car_body']], [1, 1, ['car_body']]], cover: 'full', surfaces: ['asphalt', 'concrete', 'gravel', 'sand', 'cobble'], w: 0.6 },
+    boulder: { id: 'boulder', base: 'boulder', cells: [[0, 0, ['rock']], [1, 0, ['rock']]], cover: 'half', surfaces: ['lawn', 'gravel', 'sand', 'snow', 'yard', 'cobble'], w: 0.7, run: null },
+    fountain: { id: 'fountain', base: 'fountain', cells: [[0, 0, ['stone']], [1, 0, ['water']], [0, 1, ['water']], [1, 1, ['stone']]], cover: 'half', surfaces: ['paving', 'cobble', 'concrete', 'lawn'], w: 0.5, run: null },
+    ...line('drystone', ['drystone'], { surfaces: ['sand', 'gravel', 'lawn', 'snow', 'cobble', 'yard'], w: 0.9 }),
+    ...line('bollard', ['steel_post'], { surfaces: [...WALK, 'asphalt', 'gravel', 'sand', 'snow'], cover: 'half', w: 0.9 }),
+    ...line('checkpoint', i => [i ? 'jersey' : 'sandbag'], { surfaces: ['gravel', 'concrete', 'asphalt', 'sand', 'snow'], cover: 'half', w: 0.8 }),
+    ...line('market_stall', ['stall', 'cloth'], { surfaces: ['cobble', 'paving', 'concrete', 'sidewalk'], cover: 'full', w: 0.8 }),
+    ...line('cafe_patio', ['bench'], { surfaces: ['paving', 'cobble', 'sidewalk', 'concrete'], cover: 'half', w: 0.7 }),
+    ...line('fuel_pump', ['pump'], { surfaces: ['concrete', 'asphalt', 'gravel'], cover: 'full', w: 0.7 })
 });
 
 /** Bay piece pools per lot kind (or road part): piece base → weight. Facing variants share their base's weight. */

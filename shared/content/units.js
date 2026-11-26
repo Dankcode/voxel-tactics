@@ -41,7 +41,35 @@ export const ENEMIES = Object.freeze({
     tech: { id: 'tech', name: 'Drone Tech', faction: 'syndicate', art: 'tech', hp: UNIT_HP, accuracy: 0.64, mobility: 3, will: 5, armor: 'light',
         weapons: ['handcannon'], items: { smoke_pot: 1 }, abilities: ['launch_drone'], role: 'Launches and steers search drones (two in the air at most); keeps back and relays what they see.' },
     search_drone: { id: 'search_drone', name: 'Search Drone', faction: 'syndicate', art: 'drone', drone: true, hp: 1, accuracy: 0, mobility: 4.2, will: 9, armor: 'drone',
-        weapons: [], items: {}, abilities: [], role: 'Unarmed quadcopter. Searches toward noise and last-known positions and spots for every enemy. One hit destroys it.' }
+        weapons: [], items: {}, abilities: [], role: 'Unarmed quadcopter. Searches toward noise and last-known positions and spots for every enemy. One hit destroys it.' },
+    officer: { id: 'officer', name: 'Squad Officer', faction: 'syndicate', art: 'guard', hp: UNIT_HP, accuracy: 0.72, mobility: 3.1, will: 7, armor: 'medium',
+        weapons: ['smg', 'handcannon'], items: { smoke_pot: 1 }, abilities: ['mark_target', 'rally'],
+        visual: { tint: 0xffd2a6, ringColor: 0xff9b3d },
+        role: 'Command leader: marks targets for pod focus fire, rallies allies under fire, and maneuvers with an SMG.' },
+    heavy_gunner: { id: 'heavy_gunner', name: 'Heavy Gunner', faction: 'syndicate', art: 'brute', hp: UNIT_HP, accuracy: 0.65, mobility: 2.7, will: 6, armor: 'heavy',
+        weapons: ['lmg'], items: { powder_bomb: 1 }, abilities: ['suppress', 'demolish'],
+        visual: { tint: 0xd0d8ff, ringColor: 0xff7043 },
+        role: 'Armoured fire-support: pins defenders with LMG suppression and shreds structures.' },
+    breacher: { id: 'breacher', name: 'Assault Breacher', faction: 'syndicate', art: 'guard', hp: UNIT_HP, accuracy: 0.68, mobility: 3.4, will: 6, armor: 'medium',
+        weapons: ['auto_shotgun', 'shock_baton'], items: { smoke_pot: 1, gale_flask: 1 }, abilities: ['dash'],
+        visual: { tint: 0xffb3b3, ringColor: 0xff3d5a },
+        role: 'Aggressive flanker: sprints behind smoke and concussions to close with auto-shotgun and shock baton.' },
+    sniper: { id: 'sniper', name: 'Deadeye Sniper', faction: 'syndicate', art: 'archer', hp: UNIT_HP, accuracy: 0.80, mobility: 2.9, will: 6, armor: 'light',
+        weapons: ['anti_materiel', 'handcannon'], items: { smoke_pot: 1 }, abilities: ['deadeye'],
+        visual: { tint: 0xc2f0ff, ringColor: 0xe040fb },
+        role: 'Long-range overwatch specialist firing .50 BMG anti-materiel rounds from high roofs and upper floors.' },
+    medic: { id: 'medic', name: 'Field Medic', faction: 'syndicate', art: 'tech', hp: UNIT_HP, accuracy: 0.64, mobility: 3.1, will: 7, armor: 'light',
+        weapons: ['smg'], items: { medkit: 1, smoke_pot: 1 }, abilities: ['water_mend', 'field_shield'],
+        visual: { tint: 0xb8ffd8, ringColor: 0x4de89b },
+        role: 'Support specialist: repairs wounded podmates and projects protective kinetic shields.' },
+    demolisher: { id: 'demolisher', name: 'Demolisher', faction: 'syndicate', art: 'pyromancer', hp: UNIT_HP, accuracy: 0.66, mobility: 2.9, will: 6, armor: 'medium',
+        weapons: ['grenade_launcher', 'handcannon'], items: { powder_bomb: 1, fire_flask: 1 }, abilities: ['demolish'],
+        visual: { tint: 0xffe09e, ringColor: 0xffab00 },
+        role: 'Destructive ordnance trooper launching 40mm explosive rounds that strip cover and clear rooms.' },
+    gun_drone: { id: 'gun_drone', name: 'Armed Drone', faction: 'syndicate', art: 'drone', drone: true, hp: 15, accuracy: 0.66, mobility: 4.0, will: 9, armor: 'light',
+        weapons: ['smg'], items: {}, abilities: [],
+        visual: { gunPod: true, ringColor: 0xff5252 },
+        role: 'Lightly armoured combat quadcopter mounting a rapid-fire 45 ACP gun pod and tactical optics.' }
 });
 
 export const ABILITIES = Object.freeze({
@@ -64,7 +92,9 @@ export const ABILITIES = Object.freeze({
     brace: { id: 'brace', name: 'Shield Wall', wp: 1, ap: 1, text: '+2 armour on every part until your next turn.' },
     // PLAN-14
     recon_scan: { id: 'recon_scan', name: 'Recon Scan', squad: true, wp: 1, ap: 1, range: 40, radius: 3, cooldown: 3, text: 'Sweep for hostiles within 40 tiles. Each contact shows as a red search circle (3-tile radius) around its approximate position for two rounds, on its floor; the exact tile stays hidden. Any soldier can use it; the squad shares one cooldown of 3 rounds.' },
-    launch_drone: { id: 'launch_drone', name: 'Launch Drone', wp: 0, ap: 1, cooldown: 3, max: 2, text: 'Enemy techs: put a search drone in the air beside them (two at most, one launch every 3 rounds).' }
+    launch_drone: { id: 'launch_drone', name: 'Launch Drone', wp: 0, ap: 1, cooldown: 3, max: 2, text: 'Enemy techs: put a search drone in the air beside them (two at most, one launch every 3 rounds).' },
+    mark_target: { id: 'mark_target', name: 'Mark Target', targeting: 'enemy', wp: 1, ap: 1, range: 20, text: 'Paint a visible hostile (+22% hit chance and +2 incoming damage per hit for two rounds).' },
+    field_shield: { id: 'field_shield', name: 'Aegis Shield', targeting: 'self', wp: 2, ap: 1, radius: 5, text: 'Project kinetic plating around yourself and allies within 5 tiles (+2 armour until next turn).' }
 });
 
 export const SQUADS = Object.freeze({
@@ -77,7 +107,13 @@ export const ENEMY_PODS = Object.freeze({
     fire: ['pyromancer', 'cultist'],
     guard: ['warden_foe', 'warden_foe', 'archer'],
     brute: ['brute', 'cultist'],
-    tech: ['tech', 'search_drone', 'cultist']
+    tech: ['tech', 'search_drone', 'cultist'],
+    command: ['officer', 'cultist', 'warden_foe'],
+    heavy: ['heavy_gunner', 'medic', 'cultist'],
+    breach: ['breacher', 'breacher', 'medic'],
+    overwatch: ['sniper', 'archer', 'officer'],
+    demolition: ['demolisher', 'heavy_gunner', 'pyromancer'],
+    drone_hunter: ['tech', 'search_drone', 'gun_drone']
 });
 
 /** Factions (human only for now). Themes pick a faction and flavour the hostile names. */

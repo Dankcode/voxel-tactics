@@ -31,6 +31,8 @@ export const TEST_PRESETS = Object.freeze({
     arson: { name: 'Arson cell', enemies: { pyromancer: 3, cultist: 2 } },
     rush: { name: 'Brute rush', enemies: { brute: 4, cultist: 2 } },
     swarm: { name: 'Mixed swarm', enemies: { cultist: 4, archer: 3, pyromancer: 2, brute: 2, warden_foe: 2 } },
+    xcom_command: { name: 'XCOM Command Pod', enemies: { officer: 1, heavy_gunner: 1, medic: 1, breacher: 1 } },
+    heavy_assault: { name: 'Heavy Siege Force', enemies: { officer: 1, heavy_gunner: 1, demolisher: 1, sniper: 1, gun_drone: 2 } },
     solo: { name: 'Single target', enemies: { cultist: 1 } }
 });
 
