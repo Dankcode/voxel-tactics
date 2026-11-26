@@ -405,6 +405,8 @@ export class Game {
             } else {
                 this.focusFloor(this.selectedUnit());
             }
+            this.peekGlide = null;
+            this.views?.get?.(this.selected)?.snap?.();
         }
         this.refreshRange();
         this.hud.refresh();
@@ -498,15 +500,26 @@ export class Game {
             .sort((a, b) => ((b.inRange && b.clear) - (a.inRange && a.clear)) || (b.inRange - a.inRange) || (b.clear - a.clear) || (a.dist - b.dist))
             .map(x => x.t);
     }
+    /** Pick the first unobstructed body part on `t` from the muzzle `u` would use, defaulting to torso. */
+    bestTargetPart(u, t) {
+        if (!this.battle?.store || t.drone) return { part: 'torso', point: partCentre(t, 'torso') };
+        for (const part of ['torso', 'head', 'armL', 'armR', 'legs']) {
+            if (t.parts?.[part]?.disabled && part !== 'torso') continue;
+            const point = partCentre(t, part);
+            const muzzle = this.aimMuzzle(u, point);
+            if (!shotBlocked(this.battle.store, muzzle, point)) return { part, point };
+        }
+        return { part: 'torso', point: partCentre(t, 'torso') };
+    }
     enterTargeting() {
         const u = this.selectedUnit(); if (!u) return;
         const targets = this.visibleTargets(u);
         const rawW = WEAPONS[this.mode.weaponId] || WEAPONS[u.weapon];
         const w = weaponBuild(u, rawW);
         const fallback = this.defaultAimPoint(u);
-        let p = fallback;
+        let p = fallback, initPart = 'torso';
         if (targets.length) {
-            p = partCentre(targets[0], 'torso');
+            ({ part: initPart, point: p } = this.bestTargetPart(u, targets[0]));
             this.framedTargetId = targets[0].id;
             this.freeAimManual = false;
         } else {
@@ -522,11 +535,11 @@ export class Game {
         this.frameAim(u, this.freeAim, m);
         const origin = this.aimOrigin(u);
         this.updateAimPick(u, origin, this.freeAim);
-        if (targets.length && !this.aimPick) this.aimPick = { unitId: targets[0].id, part: 'torso' };
+        if (targets.length && !this.aimPick) this.aimPick = { unitId: targets[0].id, part: initPart };
         this.views?.get?.(u.id)?.face(this.freeAim.x - origin.x, this.freeAim.y - origin.y);
         this.cameraDirector?.track?.(new THREE.Vector3(this.freeAim.x, this.freeAim.h, this.freeAim.y), 0, { smooth: false });
     }
-    aimAtTarget(targetId, part = 'torso') {
+    aimAtTarget(targetId, part = null) {
         const u = this.selectedUnit(), t = this.battle?.unit(targetId);
         if (!u || !t || !alive(t)) return;
         if (this.mode.kind !== 'shoot') {
@@ -534,7 +547,8 @@ export class Game {
             if (!weaponId) return;
             this.setMode({ kind: 'shoot', weaponId });
         }
-        const p = partCentre(t, part);
+        const chosen = part ? { part, point: partCentre(t, part) } : this.bestTargetPart(u, t);
+        const p = chosen.point;
         this.framedTargetId = t.id;
         this.freeAim = { ...p };
         this.rawAim = { ...p };
@@ -543,7 +557,7 @@ export class Game {
         this.frameAim(u, p, this.aimMuzzle(u, p));
         const origin = this.aimOrigin(u);
         this.updateAimPick(u, origin, p);
-        if (!this.aimPick) this.aimPick = { unitId: t.id, part };
+        if (!this.aimPick) this.aimPick = { unitId: t.id, part: chosen.part };
         this.views?.get?.(u.id)?.face(p.x - origin.x, p.y - origin.y);
         this.cameraDirector?.track?.(new THREE.Vector3(p.x, p.h, p.y), 1 / 60, { smooth: true });
         this.hud.renderTargets();
@@ -559,8 +573,8 @@ export class Game {
         this.freeAim = { ...p };
         this.rawAim = { ...p };
         this.aim.snap(p);
-        const origin = this.aimOrigin(u);
         this.frameAim(u, p, this.aimMuzzle(u, p), { preserveDirection: true });
+        const origin = this.aimOrigin(u);
         this.updateAimPick(u, origin, p);
         if (!this.aimPick) this.aimPick = { unitId: t.id, part };
         this.views.get(u.id)?.face(p.x - origin.x, p.y - origin.y);
@@ -574,7 +588,7 @@ export class Game {
         const curId = this.aimPick?.unitId || this.framedTargetId;
         const i = list.findIndex(t => t.id === curId);
         const next = i < 0 ? list[0] : list[(i + d + list.length) % list.length];
-        this.aimAtTarget(next.id, 'torso');
+        this.aimAtTarget(next.id);
     }
     setAimFireMode(mode) {
         if (this.mode.kind !== 'shoot') return;
@@ -1203,7 +1217,8 @@ export class Game {
         const w = weaponBuild(u, WEAPONS[this.mode.weaponId] || WEAPONS[u.weapon]);
         const maxRay = (w?.maxRange || 40) + 16;
         // Skip voxels right in front of the shoulder camera/shooter so nearby cover doesn't trap the ray.
-        const skip = Math.min(2.2, Math.max(0.4, rayOrigin.distanceTo(new THREE.Vector3(u.x + 0.5, u.z + 2.1, u.y + 0.5)) * 0.5));
+        const ref = this.aimStance?.muzzle?.step || this.shooterOf(u);
+        const skip = Math.min(2.2, Math.max(0.4, rayOrigin.distanceTo(new THREE.Vector3(ref.x + 0.5, (ref.z ?? u.z) + 2.1, ref.y + 0.5)) * 0.5));
         const startVoxel = { x: oVoxel.x + dVoxel[0] * skip, y: oVoxel.y + dVoxel[1] * skip, h: oVoxel.h + dVoxel[2] * skip };
         const worldEnd = { x: oVoxel.x + dVoxel[0] * maxRay, y: oVoxel.y + dVoxel[1] * maxRay, h: Math.max(0.15, oVoxel.h + dVoxel[2] * maxRay) };
         const voxHit = castRay(this.battle.store, startVoxel, worldEnd, {
@@ -1321,17 +1336,28 @@ export class Game {
     /** The hostile at the aim point, matching the target-dependent spread used by Battle.fireWeapon(). */
     aimTargetNear(p){const u=this.selectedUnit();return u&&p?aimedUnit(this.battle,u,p):null;}
     /** Where a shot at `p` would leave from (lean or step-out), as the battle will resolve it. */
-    aimMuzzle(u,p){const s=this.shooterOf(u);return this.battle?.store?chooseMuzzle(this.battle.store,s,p,{occupied:occupiedBy(this.battle,u)}):{x:s.x+.5,y:s.y+.5,h:s.z+2.35};}
+    aimMuzzle(u,p){const s=this.shooterOf(u);return this.battle?.store?chooseMuzzle(this.battle.store,s,p,{occupied:occupiedBy(this.battle,u),allowStepOut:!this.peek}):{x:s.x+.5,y:s.y+.5,h:s.z+2.35};}
     /**
      * Frame the aiming shoulder camera for a shot at `p`: from the step-out tile when the angle is blocked, so the view
      * (and the reticle) look past the wall at the target, as in XCOM 2. The camera keeps the same shoulder and the
      * character stays on its occupied cell. Its world sprite flips toward the reticle.
      */
     frameAim(u,p,m=this.aimMuzzle(u,p),{preserveDirection=false}={}){
-        const s=this.shooterOf(u),side=this.peekSide||m.side||'right',o=m.step?new THREE.Vector3(m.step.x+.5,s.z+1,m.step.y+.5):new THREE.Vector3(s.x+.5,s.z+1,s.y+.5);
-        this.aimStance={unitId:u.id,key:aimStanceKey(m),side,muzzle:m,at:{...p},blocked:shotBlocked(this.battle.store,m,p)};
-        this.cutins.beginAim(u,{shoulder:side,weaponId:this.mode.weaponId});
-        this.cameraDirector.prepareAim(o,new THREE.Vector3(p.x,p.h,p.y),{side,preserveDirection});
+        const prevKey=this.aimStance?.unitId===u.id?this.aimStance.key:null;
+        const wasFollowing=!!(this.cameraDirector?.active&&this.cameraDirector.phase==='prepare'&&this.cameraDirector.following);
+        const s=this.shooterOf(u),side=this.peekSide||m.side||'right',sz=m.step?.z??s.z;
+        const o=m.step?new THREE.Vector3(m.step.x+.5,sz+1,m.step.y+.5):new THREE.Vector3(s.x+.5,s.z+1,s.y+.5);
+        this.aimStance={unitId:u.id,key:aimStanceKey(m),side,muzzle:m,at:{...p},blocked:this.battle?.store?shotBlocked(this.battle.store,m,p):false};
+        this.cutins?.beginAim?.(u,{shoulder:side,weaponId:this.mode.weaponId});
+        this.cameraDirector?.prepareAim?.(o,new THREE.Vector3(p.x,p.h,p.y),{side,preserveDirection});
+        if(wasFollowing&&prevKey!==this.aimStance.key)this.cameraDirector?.track?.(new THREE.Vector3(p.x,p.h,p.y),0,{smooth:true});
+        if(!this.peek){
+            const v=this.views?.get?.(u.id);
+            if(v?.pos&&typeof v.setWorld==='function'){
+                const to=new THREE.Vector3((m.step?m.step.x:u.x)+.5,(m.step?(m.step.z??u.z):u.z)+1,(m.step?m.step.y:u.y)+.5);
+                if(v.pos.distanceTo(to)>0.05)this.peekGlide={view:v,from:v.pos.clone(),to,t:0,dur:0.12};
+            }
+        }
         if(this.cameraDirector){this.cameraDirector.hidden||=new Set();this.cameraDirector.hidden.add(u.id);}
     }
     /** Pointer-lock deltas never stop at the browser edge or feed back through the moving camera. */
@@ -1381,8 +1407,12 @@ export class Game {
     /** PLAN-15: cover / overwatch read-out for the current peek tile (cached per tile and battle step). */
     peekStatus(){
         const u=this.selectedUnit();if(!u||this.mode.kind!=='shoot')return null;
-        const c=this.peek||{x:u.x,y:u.y,z:u.z},key=`${u.id}:${c.x},${c.y},${c.z}:${this.battle.seq}`;
-        if(this.peekInfo?.key!==key)this.peekInfo={key,peeking:!!this.peek,range:B.peekRange??1,...peekExposure(this.battle,u,c)};
+        const c=this.peek||{x:u.x,y:u.y,z:u.z},stance=this.aimStance?.unitId===u.id?this.aimStance.key:'none',key=`${u.id}:${c.x},${c.y},${c.z}:${stance}:${this.battle.seq}`;
+        if(this.peekInfo?.key!==key){
+            const m=this.aimStance?.unitId===u.id?this.aimStance.muzzle:null;
+            const autoStep=!this.peek&&!!m?.step,autoLean=!this.peek&&!m?.step&&!!m?.lean;
+            this.peekInfo={key,peeking:!!this.peek,autoStep,autoLean,range:B.peekRange??1,...peekExposure(this.battle,u,c)};
+        }
         return this.peekInfo;
     }
     captureAim(){}

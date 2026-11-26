@@ -91,47 +91,135 @@ export function rayUnit(o, d, u, maxT, store=null) {
 
 /** Neighbour offsets a soldier can step out to, in a fixed order (determinism). */
 const STEP_DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
-/** Step-out tiles beside `u` toward `aimPoint`: sideways first, then forward diagonals; never backward. */
+/** Step-out tiles beside `u` toward `aimPoint`: sideways first, then corner wraps and slopes; never backward. */
 export function stepOutTiles(store, u, aimPoint, { occupied = null } = {}) {
     if (WALKERS[u.type]) return [];
     const cx = u.x + 0.5, cy = u.y + 0.5, dx = aimPoint.x - cx, dy = aimPoint.y - cy, len = Math.hypot(dx, dy);
     if (len < 1e-6) return [];
     const fx = dx / len, fy = dy / len, rx = -fy, ry = fx;
     const open = (x, y, z) => !materialById(store.get(x, y, z)).solid;
-    const stand = (x, y) => store.inBounds?.(x, y, u.z) !== false && store.surfaces(x, y).some(c => c.z === u.z && c.headroom >= 2)
-        && open(x, y, u.z + 1) && open(x, y, u.z + 2) && !occupied?.(x, y, u.z);
+    const surfaceAt = (x, y) => {
+        if (store.inBounds?.(x, y, u.z) === false) return null;
+        const cands = store.surfaces(x, y)
+            .filter(c => Math.abs(c.z - u.z) <= 1 && c.headroom >= 2)
+            .sort((a, b) => Math.abs(a.z - u.z) - Math.abs(b.z - u.z));
+        for (const c of cands) {
+            if (open(x, y, c.z + 1) && open(x, y, c.z + 2) && !occupied?.(x, y, c.z)) return { x, y, z: c.z };
+        }
+        return null;
+    };
     const out = [];
     STEP_DIRS.forEach(([ox, oy], i) => {
         const l = Math.hypot(ox, oy), fwd = (ox * fx + oy * fy) / l, side = (ox * rx + oy * ry) / l;
-        if (fwd < -0.3 || Math.abs(side) < 0.1) return;
+        if (fwd < -0.5) return;
+        if (Math.abs(side) < 0.1 && fwd < 0.5) return;
         const x = u.x + ox, y = u.y + oy;
-        if (!stand(x, y)) return;
-        // A diagonal step squeezes past a corner only when both orthogonal tiles are open at body height.
-        if (ox && oy && !(open(u.x + ox, u.y, u.z + 1) && open(u.x + ox, u.y, u.z + 2) && open(u.x, u.y + oy, u.z + 1) && open(u.x, u.y + oy, u.z + 2))) return;
-        out.push({ x, y, z: u.z, side: side > 0 ? 'right' : 'left', rank: Math.abs(fwd) + (ox && oy ? 0.5 : 0) + i * 1e-3 });
+        const surf = surfaceAt(x, y);
+        if (!surf) return;
+        let via = null, diagPenalty = 0.5;
+        if (ox && oy) {
+            const sA = surfaceAt(u.x + ox, u.y), sB = surfaceAt(u.x, u.y + oy);
+            if (sA && sB) { via = null; diagPenalty = 0.5; }
+            else if (sA || sB) { via = sA || sB; diagPenalty = 0.75; }
+            else return;
+        }
+        const rank = Math.abs(fwd) + (ox && oy ? diagPenalty : (Math.abs(side) < 0.1 ? 0.4 : 0)) + i * 1e-3;
+        out.push({ x, y, z: surf.z, side: side >= 0 ? 'right' : 'left', ...(via ? { via } : {}), rank });
     });
     return out.sort((a, b) => a.rank - b.rank).map(({ rank, ...t }) => t);
 }
 
 /**
- * Shoulder point for a shot at `aimPoint`. The straight line from the shoulder is tried first, then a lean out of
- * cover to either side, then (XCOM-style) a step out to a free side tile when the angle is blocked, e.g. around a
- * corner or past a pillar. A step-out muzzle carries `step: {x,y,z}` and `side`; the soldier does not move.
- * `occupied(x,y,z)` keeps steps off tiles other units stand on.
+ * Shoulder point for a shot at `aimPoint`. Evaluates direct line first, then elevated leans over low half-cover,
+ * lateral leans from the shooter's tile, XCOM-style step-out (including 90° corner wraps and ±1 slopes), and a
+ * best-clearance fallback when the target itself sits partially behind distant cover.
  */
 export function chooseMuzzle(store, u, aimPoint, { occupied = null, allowStepOut = true } = {}) {
     const base = { x: u.x + 0.5, y: u.y + 0.5, h: u.z + 1 + SHOULDER };
+    const highH = u.z + 1 + 1.58;
+    const blocks = (s, x, y, z) => materialById(s.get(x, y, z)).projectile !== 'pass';
     const dx = aimPoint.x - base.x, dy = aimPoint.y - base.y, len = Math.hypot(dx, dy) || 1;
-    const rx = -dy / len, ry = dx / len;
-    const leans = [0.55, -0.55].map(s => ({ x: base.x + rx * s, y: base.y + ry * s, h: base.h, lean: s > 0 ? 'right' : 'left', side: s > 0 ? 'right' : 'left' }));
-    const clear = c => !materialById(store.get(Math.floor(c.x), Math.floor(c.y), Math.floor(c.h))).solid
-        && !castRay(store, c, aimPoint, { blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile !== 'pass', shapedVehicles: true }).hit;
-    for (const c of [base, ...leans]) if (clear(c)) return c;
-    if (!allowStepOut) return base;
-    for (const t of stepOutTiles(store, u, aimPoint, { occupied })) {
-        const c = { x: t.x + 0.5, y: t.y + 0.5, h: base.h, lean: `step-${t.side}`, side: t.side, step: { x: t.x, y: t.y, z: t.z } };
-        if (clear(c)) return c;
+    const fx = dx / len, fy = dy / len, rx = -fy, ry = fx;
+    const clampTile = (v, lo) => Math.max(lo + 0.12, Math.min(lo + 0.88, v));
+
+    const validPos = (anchor, c, allowCrossTile = true) => {
+        if (materialById(store.get(Math.floor(c.x), Math.floor(c.y), Math.floor(c.h))).solid) return false;
+        if (Math.hypot(c.x - anchor.x, c.y - anchor.y, c.h - anchor.h) > 1e-4) {
+            if (castRay(store, anchor, c, { skipStart: false, blocks, shapedVehicles: true }).hit) return false;
+        }
+        if (!c.step && (Math.floor(c.x) !== u.x || Math.floor(c.y) !== u.y)) {
+            if (!allowCrossTile || occupied?.(Math.floor(c.x), Math.floor(c.y), u.z)) return false;
+        }
+        return true;
+    };
+
+    let bestFallback = null;
+    const evalCand = (anchor, c, tier) => {
+        if (!validPos(anchor, c)) return null;
+        const r = castRay(store, c, aimPoint, { blocks, shapedVehicles: true });
+        const hitT = r.hit ? r.t : r.length;
+        const rem = Math.max(0, r.length - hitT);
+        const clear = !r.hit || rem <= 0.18;
+        const ev = { c, clear, hitT, rem, tier };
+        if (!bestFallback || rem < bestFallback.rem - 1e-4 || (Math.abs(rem - bestFallback.rem) <= 1e-4 && tier < bestFallback.tier)) {
+            bestFallback = ev;
+        }
+        return ev;
+    };
+
+    // Tier 0: direct shoulder line on shooter's own tile.
+    const baseEv = evalCand(base, base, 0);
+    if (baseEv?.clear) return base;
+    const baseRem = baseEv ? baseEv.rem : Infinity;
+
+    // Tier 1: elevated posture & brace over adjacent 1-voxel half-cover.
+    const tier1 = [
+        { x: base.x, y: base.y, h: highH, lean: 'over', side: 'right' },
+        { x: base.x + fx * 0.42, y: base.y + fy * 0.42, h: highH, lean: 'over', side: 'right' }
+    ];
+    const hx = Math.floor(base.x + fx * 0.78), hy = Math.floor(base.y + fy * 0.78);
+    if ((hx !== u.x || hy !== u.y) && materialById(store.get(hx, hy, u.z + 1)).solid && !materialById(store.get(hx, hy, u.z + 2)).solid) {
+        tier1.push({ x: base.x + fx * 0.78, y: base.y + fy * 0.78, h: highH, lean: 'over', side: 'right' });
     }
+    for (const c of tier1) if (evalCand(base, c, 1)?.clear) return c;
+
+    // Tier 2: lateral leans from shooter's tile (shoulder height, then elevated).
+    for (const h of [base.h, highH]) {
+        for (const s of [0.55, -0.55]) {
+            const side = s > 0 ? 'right' : 'left';
+            const c = { x: base.x + rx * s, y: base.y + ry * s, h, lean: side, side };
+            if (evalCand(base, c, 2)?.clear) return c;
+        }
+    }
+
+    // Tier 3: step-out tiles around corners/cover (center first, then raised/edge leans inside tile t).
+    if (allowStepOut) {
+        for (const t of stepOutTiles(store, u, aimPoint, { occupied })) {
+            const step = t.via ? { x: t.x, y: t.y, z: t.z, via: t.via } : { x: t.x, y: t.y, z: t.z };
+            const shH = t.z + 1 + SHOULDER, hiH = t.z + 1 + 1.58;
+            const center = { x: t.x + 0.5, y: t.y + 0.5, h: shH, lean: `step-${t.side}`, side: t.side, step };
+            if (evalCand(center, center, 3)?.clear) return center;
+            const hiCenter = { ...center, h: hiH };
+            if (evalCand(center, hiCenter, 3.1)?.clear) return hiCenter;
+            const sign = t.side === 'right' ? 1 : -1;
+            const mkEdge = (ox, oy, h) => ({
+                x: clampTile(t.x + 0.5 + ox, t.x),
+                y: clampTile(t.y + 0.5 + oy, t.y),
+                h, lean: `step-${t.side}`, side: t.side, step
+            });
+            const edges = [
+                mkEdge(rx * sign * 0.36, ry * sign * 0.36, shH),
+                mkEdge(-rx * sign * 0.36, -ry * sign * 0.36, shH),
+                mkEdge(fx * 0.34 + rx * sign * 0.34, fy * 0.34 + ry * sign * 0.34, shH),
+                mkEdge(fx * 0.36, fy * 0.36, shH),
+                mkEdge(rx * sign * 0.36, ry * sign * 0.36, hiH)
+            ];
+            for (const c of edges) if (evalCand(center, c, 3.2)?.clear) return c;
+        }
+    }
+
+    // Tier 4: best-clearance fallback when stepping out clears local cover to engage a partially covered target.
+    if (bestFallback && bestFallback.rem < baseRem - 0.75) return bestFallback.c;
     return base;
 }
 /** Occupancy test for chooseMuzzle from a battle (or a light preview object with `units`). */
@@ -457,7 +545,8 @@ export function estimateShot(battle, shooter, aim, { weapon, spread, rounds = nu
                         if (res.pierced.length) rec.through++;
                         rec.hitScaleSum += res.scale ?? 1;
                         const headK = res.part === 'head' && !res.unit.drone ? B.headshotMult : 1;
-                        const hitFlanked = coverAgainst(battle.store, res.unit.x, res.unit.y, res.unit.z, shooter.x, shooter.y, shooter.z) === COVER.NONE;
+                        const flankFrom = o.step || shooter;
+                        const hitFlanked = coverAgainst(battle.store, res.unit.x, res.unit.y, res.unit.z, flankFrom.x, flankFrom.y, flankFrom.z) === COVER.NONE;
                         const flankK = hitFlanked ? (B.flankExposureMult || 1) : 1;
                         const baseDmg = projectileDamage(built, res.t, pIdx) * dmgK * (res.scale ?? 1);
                         const dealt = projectileHitDamage(res.unit, res.part, baseDmg, { pierce: built.pierce, headMult: headK, flankMult: flankK });
@@ -520,8 +609,9 @@ export function estimateShot(battle, shooter, aim, { weapon, spread, rounds = nu
         || (focusUnit && centerTrace?.kind === 'unit' && centerTrace.unit.id === focusUnit.id ? centerTrace.part : null)
         || (topPart && topPart[1] > 0 ? topPart[0] : null)
         || 'torso';
+    const flankFrom = o.step || shooter;
     const focusFlanked = focusUnit && focusUnit.side !== shooter.side
-        ? coverAgainst(battle.store, focusUnit.x, focusUnit.y, focusUnit.z, shooter.x, shooter.y, shooter.z) === COVER.NONE
+        ? coverAgainst(battle.store, focusUnit.x, focusUnit.y, focusUnit.z, flankFrom.x, flankFrom.y, flankFrom.z) === COVER.NONE
         : false;
     const expectedDamage = focusRec ? Math.round(focusRec.damageSum / salvos) : 0;
     const expectedPartDamage = focusRec ? Math.round((focusRec.partDamage[focusPart] || 0) / salvos) : 0;

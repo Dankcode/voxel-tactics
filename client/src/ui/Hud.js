@@ -427,7 +427,7 @@ export class Hud {
                 <div><b>${rec.dropMeters>0.02?`-${rec.dropMeters}m`:'FLAT'}</b><small>DROP</small></div>
                 <div><b>${vel?`${vel} m/s`:'—'}</b><small>VEL</small></div></div>`:'';
         el.innerHTML=`<div class="aim-top"><button class="aim-back" data-act="cancel" aria-label="Back to tactics">Back <kbd>Esc</kbd></button>
-                ${peek?`<span class="peek-badge ${peek.peeking?'on':''}">${peek.peeking?'LEANING':'HOME'}${peek.overwatch?` · ${peek.overwatch} OW`:''}</span>`:''}
+                ${peek?`<span class="peek-badge ${peek.peeking||peek.autoStep||peek.autoLean?'on':''}">${peek.autoStep?'STEP OUT':peek.autoLean?'LEAN':peek.peeking?'PEEKING':'HOME'}${peek.overwatch?` · ${peek.overwatch} OW`:''}</span>`:''}
                 ${peek?.peeking?'<button class="aim-peek-home" data-act="peekHome">Step back</button>':''}</div>
             <div class="shooter-status"><div class="shooter-meta"><span class="shooter-weapon">${esc(w.name)}</span><small>${caliberName?`${esc(caliberName)} · `:''}${cost} AP${fm&&modes.length>1?` · ${fm.toUpperCase()}`:''}</small></div>
                 <span class="shooter-ammo" aria-label="${ammo} loaded, ${res} reserve"><b>${ammo}</b><small>/${res}</small></span></div>

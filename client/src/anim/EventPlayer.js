@@ -134,7 +134,7 @@ export class EventPlayer {
                 const sub = target ? `→ ${target.name}` : '';
                 const sv = this.view(e.unitId), tv = target ? this.view(target.id) : null;
                 // A shot from a blocked angle is framed from the side tile the soldier steps out to.
-                const step = e.muzzle?.step, shooterPos = step && sv ? new THREE.Vector3(step.x + 0.5, sv.worldPosition().y, step.y + 0.5) : sv?.worldPosition();
+                const step = e.muzzle?.step, shooterPos = step && sv ? new THREE.Vector3(step.x + 0.5, step.z != null ? step.z + 1 : sv.worldPosition().y, step.y + 0.5) : sv?.worldPosition();
                 const next = this.queue[0];
                 const aimImpact = u.side === 'player' && !target && next?.t === 'shot' && next.unitId === u.id
                     ? next.projectiles[0]?.to : null;
@@ -270,7 +270,14 @@ export class EventPlayer {
                 }
                 // Step out to the side tile, fire, step back (the soldier's tile never changes).
                 const step = e.muzzle?.step && v ? e.muzzle.step : null;
-                if (step) await this.slide(v, v.unit, step, 0.09);
+                if (step && Math.hypot(v.pos.x - (step.x + 0.5), v.pos.z - (step.y + 0.5)) > 0.15) {
+                    if (step.via) {
+                        await this.slide(v, v.unit, step.via, 0.06);
+                        await this.slide(v, step.via, step, 0.06);
+                    } else {
+                        await this.slide(v, v.unit, step, 0.09);
+                    }
+                }
                 v?.animator?.play('fire', { weaponId: e.weaponId, restart: true });
                 if (isEnemyShooter) v?.pulseAction?.('fire');
                 if (e.aim && v) v.face(e.aim.x - (v.unit.x + 0.5), e.aim.y - (v.unit.y + 0.5));
@@ -309,7 +316,15 @@ export class EventPlayer {
                 await this.d(Math.max(CLIP_HOLD.fire, last * this.speed));
                 if (e.weaponId === 'blunderbuss' && v && (v.unit.side === 'player' || g.isVisible(v.unit))) g.audio.play('shotgunPump', { volume: 0.6 });
                 g.voxelView?.flush();
-                if (step) { await this.slide(v, step, v.unit, 0.11); v.snap(); }
+                if (step) {
+                    if (step.via) {
+                        await this.slide(v, step, step.via, 0.07);
+                        await this.slide(v, step.via, v.unit, 0.07);
+                    } else {
+                        await this.slide(v, step, v.unit, 0.11);
+                    }
+                    v.snap();
+                }
                 break;
             }
             case 'melee': {

@@ -182,3 +182,42 @@ test('shooting renders the complete map without reticle-driven floor cuts',()=>{
     g.cameraDirector={phase:null};g.views=new Map();g.cutins={beginAim(){}};
     g.stepAim(0);assert.deepEqual(levels,[Infinity]);
 });
+
+test('aimMuzzle respects manual peek vs auto step-out, aimAtPart updates origin first, and bestTargetPart picks exposed limbs', async () => {
+    const { CameraDirector } = await import('../../anim/CameraDirector.js');
+    const THREE = await import('three');
+    const store = new VoxelStore(32, 32, 10);
+    store.fill(0, 0, 0, 31, 31, 0, 'grass');
+    store.fill(0, 12, 1, 31, 16, 1, 'concrete');
+    // Cover wall blocking p0=(10,20,z=0) straight ahead except via step-out to (11,20,z=0); half cover in front of elevated e0=(9,14,z=1) blocks torso while leaving head exposed.
+    store.fill(8, 19, 1, 10, 19, 3, 'concrete');
+    store.fill(8, 15, 2, 10, 15, 2, 'concrete');
+    const battle = new Battle({ mission: { id: 'peek-best', store, rooms: [], buildings: [], spawns: { player: [{ x: 10, y: 20, z: 0 }], enemy: [{ type: 'cultist', pos: { x: 9, y: 14, z: 1 }, group: 0 }] } }, squad: [{ type: 'grenadier' }], seed: 2 });
+    const g = aimingGame(), u = battle.unit('p0'), enemy = battle.unit('e0');
+    const camera = new CameraDirector({ aspect: 16 / 9 }); camera.store = store;
+    Object.assign(g, { battle, selectedUnit: () => u, isVisible: () => true, peek: null, views: new Map(), cutins: { beginAim() {} }, cameraDirector: camera, hud: { equipment: { open: false }, renderTarget() {}, renderTargets() {} }, focusFloor() {} });
+
+    // auto step-out when peek is null, suppressed when manual peek is active
+    const targetPt = { x: enemy.x + 0.5, y: enemy.y + 0.5, h: enemy.z + 2.53 };
+    assert.deepEqual(g.aimMuzzle(u, targetPt).step, { x: 11, y: 20, z: 0 });
+    g.peek = { x: 10, y: 20, z: 0 };
+    assert.equal(g.aimMuzzle(u, targetPt).step, undefined);
+    g.peek = null;
+
+    // bestTargetPart picks exposed head when torso behind half cover is blocked
+    const chosen = g.bestTargetPart(u, enemy);
+    assert.equal(chosen.part, 'head');
+
+    // frameAim smoothly translates an already-following shoulder camera without rotating when stance key changes
+    g.framedTargetId = enemy.id;
+    const openLook = { x: 12.5, y: 14.5, h: 2.35 };
+    g.frameAim(u, openLook);
+    camera.track(new THREE.Vector3(openLook.x, openLook.h, openLook.y), 1 / 60);
+    const q0 = camera.cam.quaternion.clone();
+    const pos0 = camera.cam.position.clone();
+    g.aimAtPart('head');
+    assert.equal(g.aimOrigin(u).x, 11.5);
+    assert.equal(g.aimPick?.unitId, enemy.id);
+    assert.ok(camera.cam.quaternion.angleTo(q0) < 1e-6, 'step-out preserves viewing direction');
+    assert.ok(camera.cam.position.distanceTo(pos0) > 0.1, 'camera translates to step-out stance');
+});

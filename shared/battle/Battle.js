@@ -882,7 +882,8 @@ export class Battle {
         u.stats.shots++;
         let targetHit = false;
         const threatened=new Map();
-        const style = target ? { cover: coverAgainst(this.store, target.x, target.y, target.z, u.x, u.y, u.z), dist: +Math.hypot(target.x - u.x, target.y - u.y).toFixed(1) } : {};
+        const flankFrom = muzzle.step || u;
+        const style = target ? { cover: coverAgainst(this.store, target.x, target.y, target.z, flankFrom.x, flankFrom.y, flankFrom.z), dist: +Math.hypot(target.x - u.x, target.y - u.y).toFixed(1) } : {};
         const shotEv = this.emit({ t: 'shot', unitId: u.id, weaponId: w.id, fireMode: fm, spread: +spread.toFixed(2), muzzle, aim: aimPoint, projectiles, reaction, breach, rounds, ...style });
         const frame = recoilFrame(dir);
         const stability = recoilStability(u, { highGround: !!(spreadTarget && u.z - spreadTarget.z >= 2) });
@@ -920,7 +921,7 @@ export class Battle {
                     p.unitId = res.unit.id; p.part = res.part;
                     const headK = res.part === 'head' && !res.unit.drone ? B.headshotMult : 1;
                     if (headK > 1) { p.headshot = true; ws.headshots = (ws.headshots || 0) + 1; }
-                    const flanked = res.unit.side !== u.side && coverAgainst(this.store, res.unit.x, res.unit.y, res.unit.z, u.x, u.y, u.z) === COVER.NONE;
+                    const flanked = res.unit.side !== u.side && coverAgainst(this.store, res.unit.x, res.unit.y, res.unit.z, flankFrom.x, flankFrom.y, flankFrom.z) === COVER.NONE;
                     const flankK = flanked ? (B.flankExposureMult || 1) : 1;
                     if (flanked) p.flanked = true;
                     const shredKey = `${res.unit.id}:${res.part}`;

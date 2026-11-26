@@ -194,6 +194,16 @@ export class Overlays {
         marker.renderOrder = 20;
         marker.userData.ownedMaterial = true;
         this.aim.add(line, marker);
+        if (muzzle.step) {
+            const stepRing = new THREE.Mesh(
+                new THREE.RingGeometry(0.28, 0.36, 24).rotateX(-Math.PI / 2),
+                new THREE.MeshBasicMaterial({ color: 0x5ff2d6, transparent: true, opacity: 0.78, side: THREE.DoubleSide, depthWrite: false, toneMapped: false })
+            );
+            stepRing.position.set(muzzle.step.x + 0.5, (muzzle.step.z ?? Math.floor(muzzle.h - 2)) + 1.04, muzzle.step.y + 0.5);
+            stepRing.renderOrder = 19;
+            stepRing.userData.ownedMaterial = true;
+            this.aim.add(stepRing);
+        }
         Overlays.flag(this.aim);
     }
     showArc(points, radius, land) {

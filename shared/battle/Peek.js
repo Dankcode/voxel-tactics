@@ -22,10 +22,10 @@ const same = (a, b) => a.x === b.x && a.y === b.y && a.z === b.z;
 export function peekCells(battle, u, range = B.peekRange ?? 1) {
     const home = { x: u.x, y: u.y, z: u.z };
     if (!range || range <= 0 || u.drone) return [home];
-    const search = reachable(battle.store, home, range * 1.5 + 0.05, PROFILE, {
+    const search = reachable(battle.store, home, range * 2 + 0.05, PROFILE, {
         vault: false, jump: false, ladders: false,
         blocked: to => {
-            if (to.z !== home.z) return true;
+            if (Math.abs(to.z - home.z) > 1) return true;
             if (Math.max(Math.abs(to.x - home.x), Math.abs(to.y - home.y)) > range) return true;
             const id = battle.store.get(to.x, to.y, to.z + 1);
             if (id === MAT.door || id === MAT.door_open) return true;
@@ -34,7 +34,7 @@ export function peekCells(battle, u, range = B.peekRange ?? 1) {
         }
     });
     const out = [home];
-    for (const n of search.nodes.values()) if (!same(n, home) && n.z === home.z) out.push({ x: n.x, y: n.y, z: n.z });
+    for (const n of search.nodes.values()) if (!same(n, home) && Math.abs(n.z - home.z) <= 1) out.push({ x: n.x, y: n.y, z: n.z });
     out.sort((a, b) => (same(a, home) ? -1 : same(b, home) ? 1 : 0) || Math.hypot(a.x - home.x, a.y - home.y) - Math.hypot(b.x - home.x, b.y - home.y) || a.y - b.y || a.x - b.x);
     return out;
 }

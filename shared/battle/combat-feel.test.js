@@ -210,3 +210,82 @@ test('step-out: the fired shot leaves from the side tile and the cut-in event sa
     assert.deepEqual([u.x, u.y, u.z], [12, 23, 1]);
     assert.ok(shot.projectiles.some(p => p.kind === 'unit' || p.to.y < 22), 'rounds get past the wall');
 });
+
+test('step-out: tight corner, 90-degree corner wrap, sideways past wall end, and enemy-cover fallback', () => {
+    // 1. Tight corner shot: target at (12,18) behind wall (9..12,22).
+    const b1 = corner(), u1 = b1.unit('p0'), e1 = b1.unit('e0');
+    e1.x = 12; e1.y = 18;
+    const m1 = chooseMuzzle(b1.store, u1, { x: e1.x + 0.5, y: e1.y + 0.5, h: e1.z + 2.2 }, { occupied: occupiedBy(b1, u1) });
+    assert.deepEqual(m1.step, { x: 13, y: 23, z: 1 });
+    assert.ok(estimateShot(b1, u1, { unitId: e1.id, part: 'torso' }, { weapon: WEAPONS[u1.weapon], spread: 1, samples: 32 }).hit > 0.5);
+
+    // 2. 90-degree corner wrap: target tucked around (9,20); soldier steps via (13,23) to (13,22) and leans past edge.
+    const b2 = corner(), u2 = b2.unit('p0'), e2 = b2.unit('e0');
+    e2.x = 9; e2.y = 20;
+    const m2 = chooseMuzzle(b2.store, u2, { x: e2.x + 0.5, y: e2.y + 0.5, h: e2.z + 2.2 }, { occupied: occupiedBy(b2, u2) });
+    assert.ok(m2.step, 'uses corner wrap step');
+    assert.equal(m2.step.x, 13); assert.equal(m2.step.y, 22);
+    assert.deepEqual(m2.step.via, { x: 13, y: 23, z: 1 });
+    assert.ok(estimateShot(b2, u2, { unitId: e2.id, part: 'torso' }, { weapon: WEAPONS[u2.weapon], spread: 1, samples: 32 }).hit > 0.5);
+
+    // 3. Sideways past wall end (forward angle slightly behind perpendicular): u=(5,10), wall (6,10..15), e=(9,12).
+    const b3 = arena(['grenadier'], { enemy: [{ x: 9, y: 12 }] });
+    for (let y = 10; y <= 15; y++) for (let h = 2; h <= 4; h++) b3.store.set(6, y, h, MAT.concrete);
+    const u3 = b3.unit('p0'), e3 = b3.unit('e0');
+    u3.x = 5; u3.y = 10; u3.z = 1;
+    const m3 = chooseMuzzle(b3.store, u3, { x: e3.x + 0.5, y: e3.y + 0.5, h: e3.z + 2.2 }, { occupied: occupiedBy(b3, u3) });
+    assert.ok(m3.step && m3.step.y === 9, `steps north past wall end (${JSON.stringify(m3)})`);
+    assert.ok(estimateShot(b3, u3, { unitId: e3.id, part: 'torso' }, { weapon: WEAPONS[u3.weapon], spread: 1, samples: 32 }).hit > 0.5);
+
+    // 4. Shooter behind full cover aiming at enemy behind distant half-cover still steps out of own cover.
+    const b4 = corner(), u4 = b4.unit('p0'), e4 = b4.unit('e0');
+    e4.x = 10; e4.y = 16;
+    b4.store.set(10, 17, 2, MAT.concrete);
+    const m4 = chooseMuzzle(b4.store, u4, { x: e4.x + 0.5, y: e4.y + 0.5, h: e4.z + 1.36 }, { occupied: occupiedBy(b4, u4) });
+    assert.ok(m4.step && m4.step.x === 13, `steps past own cover (${JSON.stringify(m4)})`);
+    assert.equal(b4.store.get(12, 22, 2), MAT.concrete);
+});
+
+test('step-out: half-cover parapet over-lean, pillar edge lean, ±1 slope step-out, and thin-wall safety', () => {
+    // 1. Rooftop / half-cover parapet downhill lean (`lean: 'over'`).
+    const bRoof = arena(['grenadier'], { enemy: [{ x: 10, y: 14 }] });
+    for (let x = 8; x <= 12; x++) for (let y = 19; y <= 22; y++) bRoof.store.set(x, y, 4, MAT.concrete);
+    for (let x = 9; x <= 11; x++) bRoof.store.set(x, 19, 5, MAT.concrete);
+    const uRoof = bRoof.unit('p0'), eRoof = bRoof.unit('e0');
+    uRoof.x = 10; uRoof.y = 20; uRoof.z = 4;
+    const mRoof = chooseMuzzle(bRoof.store, uRoof, { x: eRoof.x + 0.5, y: eRoof.y + 0.5, h: eRoof.z + 2.02 }, { occupied: occupiedBy(bRoof, uRoof) });
+    assert.equal(mRoof.lean, 'over');
+    assert.ok(mRoof.h > uRoof.z + 2.5, 'elevated brace clears parapet');
+    assert.ok(estimateShot(bRoof, uRoof, { unitId: eRoof.id, part: 'torso' }, { weapon: WEAPONS[uRoof.weapon], spread: 1, samples: 32 }).hit > 0.5);
+
+    // 2. Step-out tile edge lean clears a corner wall that still blocks the step-out tile centre.
+    const bPil = corner(), uPil = bPil.unit('p0'), ePil = bPil.unit('e0');
+    for (let h = 2; h <= 4; h++) { bPil.store.set(13, 22, h, MAT.concrete); bPil.store.set(13, 24, h, MAT.concrete); }
+    ePil.x = 15; ePil.y = 20;
+    const mPil = chooseMuzzle(bPil.store, uPil, { x: ePil.x + 0.5, y: ePil.y + 0.5, h: ePil.z + 2.02 }, { occupied: occupiedBy(bPil, uPil) });
+    assert.deepEqual(mPil.step, { x: 13, y: 23, z: 1 });
+    assert.ok(Math.abs(mPil.x - 13.5) > 0.1 || Math.abs(mPil.y - 23.5) > 0.1, 'leans inside step-out tile to clear corner');
+    assert.ok(estimateShot(bPil, uPil, { unitId: ePil.id, part: 'torso' }, { weapon: WEAPONS[uPil.weapon], spread: 1, samples: 32 }).hit > 0.5);
+
+    // 3. ±1 elevation slope step-out onto adjacent raised ground.
+    const bSlope = corner(), uSlope = bSlope.unit('p0'), eSlope = bSlope.unit('e0');
+    bSlope.store.set(13, 23, 2, MAT.concrete); bSlope.store.set(13, 22, 2, MAT.concrete);
+    eSlope.x = 11; eSlope.y = 17;
+    const mSlope = chooseMuzzle(bSlope.store, uSlope, { x: eSlope.x + 0.5, y: eSlope.y + 0.5, h: eSlope.z + 2.02 }, { occupied: occupiedBy(bSlope, uSlope) });
+    assert.deepEqual(mSlope.step, { x: 13, y: 23, z: 2 });
+    assert.ok(mSlope.h > uSlope.z + 3, 'muzzle height tracks sloped step-out elevation');
+
+    // 4. Thin-wall safety: enclosing walls prevent invalid leaning through adjacent solid blocks.
+    const bBox = arena(['grenadier'], { enemy: [{ x: 15, y: 12 }] }), uBox = bBox.unit('p0'), eBox = bBox.unit('e0');
+    uBox.x = 10; uBox.y = 20; uBox.z = 1;
+    for (let h = 2; h <= 4; h++) {
+        bBox.store.set(10, 19, h, MAT.concrete);
+        bBox.store.set(11, 20, h, MAT.concrete);
+        bBox.store.set(9, 20, h, MAT.concrete);
+        bBox.store.set(10, 21, h, MAT.concrete);
+    }
+    const mBox = chooseMuzzle(bBox.store, uBox, { x: eBox.x + 0.5, y: eBox.y + 0.5, h: eBox.z + 2.02 }, { occupied: occupiedBy(bBox, uBox) });
+    assert.equal(mBox.step, undefined);
+    assert.equal(Math.floor(mBox.x), uBox.x);
+    assert.equal(Math.floor(mBox.y), uBox.y);
+});
