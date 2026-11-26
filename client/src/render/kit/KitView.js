@@ -156,7 +156,7 @@ export class KitView {
             }
             return hiddenObjects.get(anchor);
         };
-        const ctx = { store, get, wallLike, add, cut, intact, objectHidden };
+        const ctx = { store, get, wallLike, add, cut, hidden: opts.hidden, intact, objectHidden };
         for (let z = z0; z < Math.min(z0 + CHUNK, store.height, cut); z++)
             for (let y = y0; y < Math.min(y0 + CHUNK, store.depth); y++)
                 for (let x = x0; x < Math.min(x0 + CHUNK, store.width); x++) {
@@ -205,7 +205,7 @@ export class KitView {
         return out;
     }
 
-    emit(h, k, x, y, z, { store, get, wallLike, add, cut, intact, objectHidden }) {
+    emit(h, k, x, y, z, { store, get, wallLike, add, cut, hidden, intact, objectHidden }) {
         const mask = DIRS.map(([dx, dy]) => wallLike(x + dx, y + dy, z));
         const lineYaw = (same) => {
             const ex = same(x + 1, y) || same(x - 1, y), ey = same(x, y + 1) || same(x, y - 1);
@@ -245,7 +245,7 @@ export class KitView {
                 const family=square?'square_wall':{concrete_wall:'facade_concrete',siding:'facade_metal',stucco:'facade_stucco'}[k]||'joined_wall';
                 add(`${family}_${connections}`, x, y, z, 0, k);
                 const above = get(x, y, z + 1);
-                if (above === AIR || z + 1 >= cut) add(`${square?'square_cap':'joined_cap'}_${connections}`, x, y, z, 0, k);
+                if (above === AIR || z + 1 >= cut || hidden?.(x, y, z + 1)) add(`${square?'square_cap':'joined_cap'}_${connections}`, x, y, z, 0, k);
                 break;
             }
             case 'window': {
@@ -265,7 +265,7 @@ export class KitView {
                         if(keyOf(store.get(x,y,z+1))!=='glass')add('glaze_head',x,y,z,yaw,'glass');
                     }
                 }
-                if (z + 1 >= cut && store.get(x, y, z + 1) !== AIR) { add('cap_core', x, y, z, 0, wall); add('cap_arm', x, y, z, yaw, wall); add('cap_arm', x, y, z, yaw + Math.PI, wall); }
+                if ((z + 1 >= cut || hidden?.(x, y, z + 1)) && store.get(x, y, z + 1) !== AIR) { add('cap_core', x, y, z, 0, wall); add('cap_arm', x, y, z, yaw, wall); add('cap_arm', x, y, z, yaw + Math.PI, wall); }
                 break;
             }
             case 'door': {

@@ -294,8 +294,14 @@ export class DebugTools {
                 <h5>Weapons this battle</h5><table><tr><th>weapon</th><th>shots</th><th>hit</th><th>dmg</th><th>dmg/AP</th><th>kills</th></tr>${Object.entries(b.stats.weapons).map(([id, s]) => `<tr><td>${id}</td><td>${s.shots}</td><td>${s.projectiles ? pct(s.hits / s.projectiles) : '–'}</td><td>${s.damage}</td><td>${s.ap ? (s.damage / s.ap).toFixed(1) : '–'}</td><td>${s.kills}</td></tr>`).join('')}</table>
                 <p class="hint">hash ${b.hash().slice(0, 24)} · voxels destroyed ${b.stats.voxelsDestroyed} · fires ${b.stats.fires}</p>`;
         }
-        this.el.innerHTML = `<div class="dhead"><b>DEBUG</b>${b.debugEnabled ? '' : ' <span class="bad">(intents disabled online)</span>'}<button data-d="close">✕</button></div><div class="tabs">${tabs}</div><div class="dbody">${body}</div>
+        const html = `<div class="dhead"><b>DEBUG</b>${b.debugEnabled ? '' : ' <span class="bad">(intents disabled online)</span>'}<button data-d="close">✕</button></div><div class="tabs">${tabs}</div><div class="dbody">${body}</div>
             <div class="ops">${this.lastOps.map(o => `<span>${esc(o)}</span>`).join('')}</div>`;
+        if (this._html !== html) {
+            const top = this.el.scrollTop;
+            this._html = html;
+            this.el.innerHTML = html;
+            if (top) this.el.scrollTop = top;
+        }
         this.renderStats();
     }
     renderStats() {

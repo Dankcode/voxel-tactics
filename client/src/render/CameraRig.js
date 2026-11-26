@@ -69,8 +69,18 @@ export class CameraRig {
         const base = this.pitch() - this.pitchOffset;
         this.pitchOffset = clampN(this.pitchOffset + dyPx * 0.004, PITCH_MIN - base, PITCH_MAX - base);
     }
-    /** Smooth zoom: multiply the target distance (eased in update). */
-    zoom(f) { this.distanceTarget = clampN(this.distanceTarget * f, MIN_DIST, MAX_DIST); }
+    /** Smooth zoom: multiply the target distance (eased in update), pulling toward `anchor` on zoom-in. */
+    zoom(f, anchor = null) {
+        const prev = this.distanceTarget;
+        this.distanceTarget = clampN(prev * f, MIN_DIST, MAX_DIST);
+        if (anchor && this.distanceTarget < prev) {
+            const k = 1 - this.distanceTarget / prev;
+            this.glide = null;
+            this.target.x += (anchor.x - this.target.x) * k;
+            this.target.z += (anchor.z - this.target.z) * k;
+            this.clamp();
+        }
+    }
     /** Held-input panning (keys / screen edges), screen-relative; any input cancels the follow glide. */
     setPanIntent(right, forward) {
         this.panIntent.set(right, forward);

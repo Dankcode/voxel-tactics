@@ -5,6 +5,9 @@ import { BuildingView } from '../BuildingView.js';
 import { pickVisibleTile, pickReachableAlongRay } from '../TilePicking.js';
 import { buildRoofGeometry } from './RoofBuilder.js';
 import { InteriorVisibility } from '../InteriorVisibility.js';
+import { UnitView } from '../../units/UnitView.js';
+import { Hud } from '../../ui/Hud.js';
+import { MAT } from '../../../../shared/voxel/Materials.js';
 function house() {
     const store=new VoxelStore(16,16,12);store.fill(0,0,0,15,15,1,'concrete');
     for(let y=4;y<=10;y++)for(let x=4;x<=10;x++) {
@@ -95,4 +98,69 @@ test('move picking without an elevation cut: the ray goes through the roof to th
     assert.ok(side&&side.cell.z===1&&side.cell.x>=6,JSON.stringify(side));
     // Open ground in front of the house: the floor the ray touches first.
     assert.deepEqual(pickReachableAlongRay(store,{x:2.5,y:7.5,h:6},{x:2.5,y:7.5,h:.5},both).cell,{x:2,y:7,z:1});
+});
+
+test('max zoom shows 1st floor, full 1st-floor walls, and units across sunken, street, and hilltop buildings',()=>{
+    const store=new VoxelStore(28,16,16);
+    const buildings=[
+        {id:'basin',x0:2,y0:4,w:5,d:5,baseZ:2,storeys:2},
+        {id:'street',x0:10,y0:4,w:5,d:5,baseZ:4,storeys:2},
+        {id:'hill',x0:18,y0:4,w:5,d:5,baseZ:6,storeys:2}
+    ];
+    for(const b of buildings){
+        for(let y=b.y0;y<b.y0+b.d;y++)for(let x=b.x0;x<b.x0+b.w;x++){
+            store.setKey(x,y,b.baseZ,'oak_floor');
+            store.setKey(x,y,b.baseZ+3,'oak_floor');
+            store.setKey(x,y,b.baseZ+6,'roof');
+            if(x===b.x0||x===b.x0+b.w-1||y===b.y0||y===b.y0+b.d-1){
+                for(const dz of [1,2,4,5])store.setKey(x,y,b.baseZ+dz,'brick');
+            }
+        }
+    }
+    const bv=new BuildingView({store,buildings});
+    bv.update({mode:'auto',zoomFloor:1,cutZ:7,units:[{x:4,y:6,z:2}]});
+
+    for(const b of buildings){
+        const cx=b.x0+2,cy=b.y0+2;
+        assert.equal(bv.hiddenAt(b.x0,cy,b.baseZ),false,`${b.id}: 1st floor deck visible at max zoom`);
+        assert.equal(bv.hiddenAt(b.x0,cy,b.baseZ+1),false,`${b.id}: lower 1st-floor wall visible at max zoom`);
+        assert.equal(bv.hiddenAt(b.x0,cy,b.baseZ+2),false,`${b.id}: upper 1st-floor wall visible at max zoom`);
+        assert.equal(bv.hiddenAt(cx,cy,b.baseZ+3),true,`${b.id}: 2nd floor cut away at max zoom`);
+        assert.equal(bv.hiddenAt(b.x0,cy,b.baseZ+4),true,`${b.id}: 2nd floor wall cut away at max zoom`);
+
+        const uv1={visualZ:b.baseZ,pos:{x:cx+0.5,z:cy+0.5},scene:{cutLevel:Infinity,buildingView:bv}};
+        const uv2={visualZ:b.baseZ+3,pos:{x:cx+0.5,z:cy+0.5},scene:{cutLevel:Infinity,buildingView:bv}};
+        assert.equal(UnitView.prototype.inVisibleFloor.call(uv1),true,`${b.id}: unit on 1st floor stays visible even at baseZ=${b.baseZ}`);
+        assert.equal(UnitView.prototype.inVisibleFloor.call(uv2),false,`${b.id}: unit on 2nd floor is hidden`);
+    }
+    // KitView caps cut walls cleanly when upper voxels are hidden by BuildingView with cutZ = Infinity.
+    assert.equal(store.get(18,6,8),MAT.brick);
+    assert.equal(bv.hiddenAt(18,6,9),true);
+});
+
+test('Hud setHtml memoizes DOM updates and updateFloorLabel updates without redrawing controls',()=>{
+    const makeEl=(tag='div')=>{
+        let html='';const obj={writes:0,scrollTop:0,textContent:'',dataset:{},disabled:false,style:{},
+            _cls:new Set(),
+            classList:{toggle:(k,f)=>f?obj._cls.add(k):obj._cls.delete(k),add:k=>obj._cls.add(k),remove:k=>obj._cls.delete(k),contains:k=>obj._cls.has(k)},
+            closest:()=>null,blur(){},querySelectorAll:()=>[],
+            get innerHTML(){return html;},set innerHTML(v){obj.writes++;html=String(v);}
+        };
+        return obj;
+    };
+    const box=makeEl();
+    assert.equal(Hud.prototype.setHtml(box,'<div>ok</div>'),true);
+    assert.equal(Hud.prototype.setHtml(box,'<div>ok</div>'),false);
+    assert.equal(box.writes,1,'identical markup skips redundant innerHTML write');
+
+    const floorLabel=makeEl(),squad=makeEl(),slots=makeEl();
+    const hud={
+        root:{classList:{toggle(){},contains:()=>false},querySelectorAll:()=>[]},
+        el:sel=>({'.floor-label':floorLabel,'.squad':squad,'.slots':slots}[sel]||makeEl()),
+        game:{cutLevel:7,battle:{mission:{meta:{streetDatum:4},buildings:[{storeys:2}]}}}
+    };
+    Hud.prototype.updateFloorLabel.call(hud);
+    assert.equal(floorLabel.textContent,'Floor 1');
+    assert.equal(squad.writes,0,'updateFloorLabel does not touch squad or slot containers');
+    assert.equal(slots.writes,0);
 });

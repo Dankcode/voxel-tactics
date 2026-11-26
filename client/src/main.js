@@ -294,7 +294,7 @@ async function showMenu(opts = {}) {
           <p class="theater-brief">${esc(activeOp.briefing)}</p>`;
         const deployBtn = $('#m-deploy-op');
         if (deployBtn) deployBtn.textContent = `▶ Deploy ${activeOp.code}: ${activeOp.name}`;
-        thMeta.innerHTML = '<span>Rendering operation topography…</span>';
+        if (!thMeta.textContent.trim()) thMeta.innerHTML = '<span>Rendering operation topography…</span>';
         const myReq = ++theaterReq;
         requestAnimationFrame(() => setTimeout(() => {
             if (myReq !== theaterReq) return;

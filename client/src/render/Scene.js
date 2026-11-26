@@ -174,7 +174,7 @@ export class Scene {
     setCut(y) { this.cutPlane.constant = Number.isFinite(y) ? y + 0.04 : 1000; this.cutLevel = y; }
     rotate(steps) { this.rig.rotate(steps); }
     /** Smooth zoom: f > 1 zooms out (eased in updateCamera). */
-    zoom(f) { this.rig.zoom(f); }
+    zoom(f, anchor = null) { this.rig.zoom(f, anchor); }
     pan(dx, dz) { this.rig.pan(dx, dz); }
     focus(x, y, z) { this.rig.target.set(x, y, z); this.rig.clamp(); }
     /** Smoothly move the camera target (XCOM camera follow). */

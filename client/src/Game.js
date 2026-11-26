@@ -158,7 +158,7 @@ export class Game {
         this.visualRevealedRooms = new Set(this.battle.revealedRooms);
         this.discoveryVisible = new Set();
         this.visualInterior=new Set(this.battle.visibleInterior);
-        this.buildingView=new BuildingView(this.battle.mission);this.buildingViewKey=null;this.voxelView.buildingView=this.buildingView;
+        this.buildingView=new BuildingView(this.battle.mission);this.buildingViewKey=null;this.voxelView.buildingView=this.buildingView;this.scene.buildingView=this.buildingView;
         this.voxelView.interiorVisibility = new InteriorVisibility(this.battle.mission,this.visualRevealedRooms,()=>this.fog,this.visualInterior);
         this.overlays.visibleCell = c => !this.voxelView.interiorVisibility.hiddenAt(c.x,c.y,c.z+1)&&!this.buildingView.hiddenAt(c.x,c.y,c.z);
         const wear = wearTint(this.battle.mission);
@@ -170,10 +170,11 @@ export class Game {
         setGroundStore(store);
         this.voxelView.setVisual(this.battle.mission?.visual);
         this.cutLevel = this.options.buildingView === 'exterior' ? Infinity : zoomCutLevel(this.battle.mission, this.scene.rig.distanceTarget);
-        this.voxelView.cutZ = this.cutLevel; this.scene.setCut(this.cutLevel);
+        const rc = this.renderCut(this.cutLevel);
+        this.voxelView.cutZ = rc; this.scene.setCut(rc);
         this.refreshBuildingView({ rebuild: false });
         this.lanterns.scan(store, this.battle.mission?.visual?.decor);
-        this.roadMarks.setCut(this.cutLevel); this.roadMarks.build(store, this.battle.mission?.visual?.roadPaint);
+        this.roadMarks.setCut(rc); this.roadMarks.build(store, this.battle.mission?.visual?.roadPaint);
         this.cameraDirector.store = store;
         await progress?.('squad');
         await Promise.all(this.battle.units.map(u => this.addView(u)));
@@ -269,7 +270,7 @@ export class Game {
         this.overlays.pulse?.(this.time);
         this.fx.update(dt);
         this.library.update(dt);
-        this.lanterns.update(dt, this.scene.target, this.cutLevel);
+        this.lanterns.update(dt, this.scene.target, this.renderCut ? this.renderCut() : this.cutLevel);
         if (this.cameraDirector.active) {
             this.scene.updateCamera(dt);
             this.scene.renderer.render(this.scene.scene, this.cameraDirector.cam);
@@ -299,7 +300,7 @@ export class Game {
         if (this.voxelView.flush()) this.lanterns.scan(this.battle.store);
         this.fx.syncField(this.battle.field);
         this.updateEnemyVisibility();
-        this.overlays.showOverwatch(this.battle,this.battle.units.filter(u => alive(u) && (u.side === 'player' || this.isVisible(u))),{hidden:(x,y,z)=>this.voxelView.interiorVisibility.hiddenAt(x,y,z),cutZ:this.cutLevel});
+        this.overlays.showOverwatch(this.battle,this.battle.units.filter(u => alive(u) && (u.side === 'player' || this.isVisible(u))),{hidden:(x,y,z)=>this.voxelView.interiorVisibility.hiddenAt(x,y,z)||!!this.buildingView?.hiddenAt(x,y,z),cutZ:this.renderCut ? this.renderCut() : this.cutLevel});
         this.overlays.showObjective(this.battle);
         this.refreshRange();
         this.hud.refresh();
@@ -425,9 +426,18 @@ export class Game {
         this.zones = zones;
         this.overlays.showZones(this.search.nodes, zones);
     }
+    /** Global storey slice height: Infinity when per-building cutouts are active above the street datum so hills keep their 1st floor walls. */
+    renderCut(top = this.cutLevel) {
+        if (!Number.isFinite(top)) return Infinity;
+        const datum = this.battle?.mission?.meta?.streetDatum ?? 1;
+        if (top <= datum) return top;
+        if (this.buildingView?.buildings?.length) return Infinity;
+        return top;
+    }
     setLevel(top) {
-        const changed=top!==this.voxelView?.cutZ;
-        this.cutLevel=top;this.scene.setCut(top);this.cameraDirector.cutZ=top;this.roadMarks?.setCut(top);
+        const rc = this.renderCut ? this.renderCut(top) : top;
+        const changed=rc!==this.voxelView?.cutZ;
+        this.cutLevel=top;this.scene.setCut(rc);if(this.cameraDirector)this.cameraDirector.cutZ=rc;this.roadMarks?.setCut(rc);
         this.scene.rig.minLayerHeight=top===this.battle.mission.meta.streetDatum?2:(this.battle.mission.meta.streetDatum||1)+1;
         if(top===this.battle.mission.meta.streetDatum){
             const u=this.selectedUnit(),route=this.battle.mission.meta.underground?.route,p=u&&u.z<top?u:route?.[Math.floor(route.length/2)];
@@ -437,11 +447,12 @@ export class Game {
         const hasChunks = !!this.voxelView?.chunks?.size;
         this.refreshBuildingView({ rebuild: !changed && hasChunks });
         if (changed) {
-            if (hasChunks) this.voxelView?.setCut(top);
-            else if (this.voxelView) this.voxelView.cutZ = top;
+            if (hasChunks) this.voxelView?.setCut(rc);
+            else if (this.voxelView) this.voxelView.cutZ = rc;
             this.refreshRange();
         }
-        this.hud.refresh();
+        if (this.hud?.updateFloorLabel) this.hud.updateFloorLabel();
+        else this.hud?.refresh?.();
     }
     setBuildingView(mode) {
         if(!BUILDING_VIEWS.includes(mode))return;
@@ -453,8 +464,24 @@ export class Game {
     cycleBuildingView(){this.setBuildingView(this.options.buildingView==='exterior'?'auto':'exterior');}
     applyZoomCut() {
         if(!this.battle)return;
-        this.levelLocked=false;
-        this.setLevel(this.options.buildingView==='exterior'?Infinity:zoomCutLevel(this.battle.mission,this.scene.rig.distanceTarget));
+        this.levelLocked=false;this.levelSource=null;
+        const next=this.options.buildingView==='exterior'?Infinity:zoomCutLevel(this.battle.mission,this.scene.rig.distanceTarget);
+        this.setLevel(next);
+        const rig=this.scene?.rig,store=this.battle.store;
+        if(rig?.target&&!rig.glide){
+            const datum=this.battle.mission.meta?.streetDatum??1;
+            const tx=Math.floor(rig.target.x),ty=Math.floor(rig.target.z);
+            const surfZ=store?.inBounds?.(tx,ty,0)?(store.surfaces(tx,ty).filter(s=>s.z<next).at(-1)?.z??datum):datum;
+            rig.target.y=Math.max(rig.minLayerHeight??0,surfZ+1);
+        }
+    }
+    /** Mouse wheel zooming always takes charge of interior cutouts, disregarding floor buttons or unit locks. */
+    zoomMap(factor, anchor = null) {
+        this.scene.zoom(factor, anchor);
+        this.levelLocked = false;
+        this.levelSource = null;
+        if (this.options.buildingView === 'exterior') this.options.buildingView = 'auto';
+        this.applyZoomCut();
     }
     refreshBuildingView({rebuild=true}={}) {
         if(!this.battle||!this.buildingView||this.aiRunning)return;
@@ -894,15 +921,25 @@ export class Game {
             if (!['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target?.tagName)) e.preventDefault();
         });
         canvas.addEventListener('mousemove', e => this.onHover(e));
-        // Camera: right-drag grabs the ground and pans, middle-drag orbits (yaw + clamped tilt), wheel zooms (eased).
+        // Camera: left/right-drag pans, Shift+right-drag or middle-drag orbits, wheel zooms to cursor & cuts interiors.
         canvas.addEventListener('mousedown', e => {
             if (this.mode.kind === 'shoot') return;
-            if (e.button !== 2 && e.button !== 1) return;
+            this._suppressClickUntil = 0;
+            if (e.button === 0 && this.debug?.tool) return;
+            if (e.button !== 0 && e.button !== 1 && e.button !== 2) return;
             if (e.button === 1) e.preventDefault();                                  // no browser autoscroll
-            const grab = e.button === 2 ? this.scene.rig.groundPoint(this.scene.rayAt(e.clientX, e.clientY)) : null;
-            this.dragging = { button: e.button, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, grab };
+            const mode = (e.button === 1 || (e.button === 2 && e.shiftKey)) ? 'orbit' : 'pan';
+            const grab = mode === 'pan' ? this.scene.rig.groundPoint(this.scene.rayAt(e.clientX, e.clientY)) : null;
+            this.dragging = { button: e.button, mode, x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false, grab };
         });
         window.addEventListener('mouseup', e => {
+            if (e.button === 0) {
+                if (this.dragging?.button === 0) {
+                    if (this.dragging.moved) this._suppressClickUntil = performance.now() + 120;
+                    this.dragging = null;
+                }
+                return;
+            }
             if (e.button === 2) { if (this.mode.kind === 'shoot') this.cancel(); else if (this.dragging && !this.dragging.moved) this.cancel(); this.dragging = null; }
             if (e.button === 1) this.dragging = null;
         });
@@ -911,17 +948,34 @@ export class Game {
             e.preventDefault();
             const px = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
             if(this.mode.kind==='shoot'&&this.cameraDirector.phase==='prepare'){this.cameraDirector.zoomAim(Math.exp(Math.max(-1,Math.min(1,px*.0015))));return;}
-            this.scene.zoom(Math.exp(Math.max(-1, Math.min(1, px * 0.0015))));
-            // A unit-driven floor holds while zooming in; pulling out to the roof view hands the cut back to the zoom.
-            if(this.levelSource==='unit'&&this.scene.rig.distanceTarget>=36){this.levelSource=null;this.levelLocked=false;}
-            if(!this.levelLocked)this.applyZoomCut();
+            const factor = Math.exp(Math.max(-1, Math.min(1, px * 0.0015)));
+            const anchor = this.scene.rig.groundPoint(this.scene.rayAt(e.clientX, e.clientY));
+            this.zoomMap(factor, anchor);
         }, { passive: false });
         window.addEventListener('keydown', e => this.onKey(e));
         window.addEventListener('keyup', e => this.keys.delete(e.key.toLowerCase()));
-        // Screen-edge scrolling: remember where the pointer is (not over HUD controls) and whether it left the window.
-        window.addEventListener('mousemove', e => { this.edgePtr = { x: e.clientX, y: e.clientY, ui: !!e.target?.closest?.('button, input, select, textarea, .options, .panel, .target') }; });
+        // Screen-edge scrolling + active camera drag tracking across window bounds.
+        window.addEventListener('mousemove', e => {
+            this.edgePtr = { x: e.clientX, y: e.clientY, ui: !!e.target?.closest?.('button, input, select, textarea, .options, .panel, .target') };
+            if (this.dragging) this.updateDrag(e);
+        });
         document.addEventListener('mouseleave', () => { this.edgePtr = null; });
-        window.addEventListener('blur', () => { this.edgePtr = null;this.aimDrag=null;this.keys.clear();this.aimPointer.release(); });
+        window.addEventListener('blur', () => { this.edgePtr = null;this.aimDrag=null;this.dragging=null;this._suppressClickUntil=0;this.keys.clear();this.aimPointer.release(); });
+    }
+    updateDrag(e) {
+        const d = this.dragging;
+        if (!d) return;
+        const thresh = d.button === 0 ? 6 : 3;
+        if (!d.moved && Math.hypot(e.clientX - d.sx, e.clientY - d.sy) <= thresh) return;
+        d.moved = true;
+        const dx = e.clientX - d.x, dy = e.clientY - d.y;
+        d.x = e.clientX; d.y = e.clientY;
+        const rig = this.scene.rig;
+        if (d.mode === 'orbit') { rig.orbit(dx, dy); return; }
+        rig.glide = null;
+        const p = d.grab && rig.groundPoint(this.scene.rayAt(e.clientX, e.clientY), d.grab.y);
+        if (p) { rig.target.x += d.grab.x - p.x; rig.target.z += d.grab.z - p.z; rig.clamp(); rig.apply(); }
+        else rig.pan(-dx * 0.05, dy * 0.05);
     }
     cancel() {
         this.aimDrag=null;
@@ -1008,17 +1062,18 @@ export class Game {
     pick(px, py) {
         const ray = this.scene.rayAt(px, py);
         const store = this.battle.store, top = this.cutLevel;
+        const renderTop = this.renderCut ? this.renderCut(top) : top;
         // The camera usually sits outside the map (always in ortho) and castRay stops as soon as it leaves the grid,
         // so clip the ray to the map's box first and start the voxel walk just inside it (or at the lens if inside).
         const seg = clipToBox(ray.ray.origin, ray.ray.direction, store);
         if (!seg) return null;
         const { from, to } = seg;
         const freePick = this.mode?.kind !== 'move';
-        const hit=pickVisibleTile(store,from,to,{cutZ:top,buildingView:this.buildingView,preferredFloor:!freePick&&Number.isFinite(top)?top-3:null,reachable:freePick?null:this.search?.costs,origin:this.selectedUnit()});
+        const hit=pickVisibleTile(store,from,to,{cutZ:renderTop,buildingView:this.buildingView,preferredFloor:!freePick&&Number.isFinite(renderTop)?renderTop-3:null,reachable:freePick?null:this.search?.costs,origin:this.selectedUnit()});
         // Moving never needs the elevation cut: when the visible pick is not a destination (a roof, a wall face, an
         // upper floor), take the highest reachable floor along the same ray instead.
         if(this.mode.kind==='move'&&this.zones?.size&&!(hit?.cell&&this.zones.has(nodeKey(hit.cell)))){
-            const through=pickReachableAlongRay(store,from,to,this.zones,{cutZ:top});
+            const through=pickReachableAlongRay(store,from,to,this.zones,{cutZ:renderTop});
             if(through)return through;
         }
         return hit;
@@ -1035,7 +1090,7 @@ export class Game {
         const t = (y - ray.origin.y) / ray.direction.y; if (t <= 0) return null;
         const x = Math.floor(ray.origin.x + ray.direction.x * t), cy = Math.floor(ray.origin.z + ray.direction.z * t);
         if (!s.inBounds(x, cy, 0)) return null;
-        const cut = this.cutLevel, top = s.surfaces(x, cy).filter(q => q.z < cut - 1).at(-1)?.z ?? Math.max(0, s.topSolid(x, cy));
+        const cut = this.renderCut ? this.renderCut(this.cutLevel) : this.cutLevel, top = s.surfaces(x, cy).filter(q => q.z < cut - 1).at(-1)?.z ?? Math.max(0, s.topSolid(x, cy));
         return { x, y: cy, z: top };
     }
     throwCell(p, unit) {
@@ -1050,8 +1105,10 @@ export class Game {
     unitAt(px, py, pickHint = null) {
         const ray = this.scene?.rayAt?.(px, py);
         if (!ray) return null;
+        const renderTop = this.renderCut ? this.renderCut(this.cutLevel) : this.cutLevel;
         const visibleViews = [...this.views.values()].filter(v =>
-            v.group.visible && alive(v.unit) && v.unit.z < this.cutLevel
+            v.group.visible && alive(v.unit) && v.unit.z < renderTop
+            && !this.buildingView?.hiddenAt?.(v.unit.x, v.unit.y, v.unit.z)
             && (this.mode?.kind !== 'move' || !this.levelLocked || !Number.isFinite(this.cutLevel) || v.unit.z >= this.cutLevel - 3)
         );
         if (ray.ray && this.battle?.store) {
@@ -1081,20 +1138,7 @@ export class Game {
             }
             this.hud.cursorTip(null);return;
         }
-        if (this.dragging) {
-            const d = this.dragging, dx = e.clientX - d.x, dy = e.clientY - d.y;
-            if (!d.moved && Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) <= 3) return;
-            d.moved = true; d.x = e.clientX; d.y = e.clientY;
-            const rig = this.scene.rig;
-            if (d.button === 1) rig.orbit(dx, dy);
-            else {
-                rig.glide = null;
-                const p = d.grab && rig.groundPoint(this.scene.rayAt(e.clientX, e.clientY), d.grab.y);
-                if (p) { rig.target.x += d.grab.x - p.x; rig.target.z += d.grab.z - p.z; rig.clamp(); rig.apply(); }
-                else rig.pan(-dx * 0.05, dy * 0.05);
-            }
-            return;
-        }
+        if (this.dragging) return;
         if (!this.battle) return;
         this.mouse = { x: e.clientX, y: e.clientY };
         const p = this.pick(e.clientX, e.clientY);
@@ -1187,7 +1231,7 @@ export class Game {
             case 'overwatch': {
                 const sector = watchSector(u, this.hoverCell || p?.voxel, watchWeapon(u));
                 this.overlays.setHover(null);
-                this.overlays.showWatchPreview(this.battle,u,sector,{hidden:(x,y,z)=>this.voxelView.interiorVisibility.hiddenAt(x,y,z),cutZ:this.cutLevel});
+                this.overlays.showWatchPreview(this.battle,u,sector,{hidden:(x,y,z)=>this.voxelView.interiorVisibility.hiddenAt(x,y,z)||!!this.buildingView?.hiddenAt(x,y,z),cutZ:this.renderCut ? this.renderCut() : this.cutLevel});
                 this.hud.cursorTip(e.clientX, e.clientY, sector ? `Click to watch · ${Math.round(sector.halfAngle*360/Math.PI)}° wedge · ${sector.range} tiles<br><span style="color:#5ff2d6">Teal ≥65%</span> · <span style="color:#ffb347">Amber &lt;65%</span> · estimated standing-target hit<br>Filled surfaces show aim quality; cover still blocks shots` : 'Choose a direction away from this soldier');
                 break;
             }
@@ -1356,6 +1400,8 @@ export class Game {
     }
     captureAim(){if(this.mode.kind==='shoot'&&!this.hud.equipment.open)this.aimPointer.request();}
     onClick(e) {
+        if (this._suppressClickUntil && performance.now() < this._suppressClickUntil) { this._suppressClickUntil = 0; return; }
+        this._suppressClickUntil = 0;
         if (!this.battle || this.dragging?.moved || this.hud.equipment.open) return;
         if(this.mode.kind==='shoot'&&!this.debug.tool){
             if(!this.canAct()||!this.controllable(this.selectedUnit()))return;

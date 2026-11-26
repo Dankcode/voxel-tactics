@@ -193,8 +193,12 @@ export class UnitView {
     }
     /** Open the status card for a moment (selection, reload, gadget choice). */
     flashStatus(ms=1800){this.detailUntil=performance.now()+ms;this.drawBar();clearTimeout(this.detailTimer);this.detailTimer=setTimeout(()=>this.drawBar(),ms+30);}
+    inVisibleFloor() {
+        return unitBelowCut(this.visualZ, this.scene.cutLevel)
+            && !this.scene.buildingView?.hiddenAt(Math.floor(this.pos.x), Math.floor(this.pos.z), Math.floor(this.visualZ));
+    }
     update(dt, yaw, camera = this.scene.camera, playbackSpeed = 1) {
-        this.group.visible = this.visibilityRequested !== false && unitBelowCut(this.visualZ, this.scene.cutLevel);
+        this.group.visible = this.visibilityRequested !== false && this.inVisibleFloor();
         this.breathTime=(this.breathTime||0)+dt;
         // Screen-facing art retains its drawn proportions; the transparent foot baseline stays at local zero.
         // Only the sprite tilts. Ground rings, collision position and elevation cues stay on the world grid.
@@ -280,7 +284,7 @@ export class UnitView {
     setSelected(on) { this.selected = !!on; this.selRing.visible = on || !!this.hovered; this.beacon.visible = !!on && !this.unit.dead; this.drawBar(); }
     /** PLAN-15: hovering a squad portrait lights the soldier's ring in the world. */
     setHovered(on) { this.hovered = !!on; this.selRing.visible = this.selected || this.hovered; this.selRing.material.opacity = this.selected ? 0.95 : 0.6; }
-    setVisible(on) { this.visibilityRequested = on; this.group.visible = on && unitBelowCut(this.visualZ, this.scene.cutLevel); }
+    setVisible(on) { this.visibilityRequested = on; this.group.visible = on && this.inVisibleFloor(); }
     dispose() {
         this.model?.dispose();
         this.sprite?.geometry?.dispose?.();

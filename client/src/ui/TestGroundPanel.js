@@ -72,17 +72,49 @@ export class TestGroundPanel {
     get desc() { return setupToDesc(this.c); }
     total() { return ENEMY_TYPES.reduce((n, t) => n + (this.c.roster[t] || 0), 0); }
 
-    render() {
-        const c = this.c, maps = FIXTURES, total = this.total();
-        const op = c.scenario === OPERATION_ID,district=DISTRICT_MAP_IDS.includes(c.scenario),r=remixParameters(c.remix);
-        const choice=(label,field,items)=>`<label>${label}<select data-remix="${field}">${items.map(([value,text])=>`<option value="${value}" ${String(r[field])===String(value)?'selected':''}>${text}</option>`).join('')}</select></label>`;
+    squadMarkup() {
+        const c = this.c;
+        return `<h4>Squad <span>${c.squad.length} / ${MAX_SQUAD}</span></h4>
+            <div class="tg-squad">${c.squad.map((t, i) => `<div class="tg-slot"><span>${i + 1}</span><select data-tg-field="squad" data-arg="${i}" aria-label="Soldier ${i + 1} class">${Object.values(CLASSES).map(k => `<option value="${k.id}" ${k.id === t ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select><button data-tg="removeSoldier" data-arg="${i}" aria-label="Remove soldier ${i + 1}" ${c.squad.length > 1 ? '' : 'disabled'}>✕</button></div>`).join('')}</div>
+            <div class="tg-chips"><button data-tg="addSoldier" ${c.squad.length >= MAX_SQUAD ? 'disabled' : ''}>+ Soldier</button>${Object.keys(SQUADS).map(k => `<button data-tg="squadPreset" data-arg="${k}">${cap(k)} squad</button>`).join('')}</div>`;
+    }
+    hostilesMarkup() {
+        const c = this.c, total = this.total();
         const enemyRow = t => {
             const e = ENEMIES[t], n = c.roster[t] || 0, st = styleOf(t);
             return `<div class="tg-enemy ${n ? 'on' : ''}"><span class="tg-mark" style="background:${st.color}">${st.letter}</span>
               <div><b>${esc(e.name)}</b><small>${esc(e.weapons.map(w => WEAPONS[w]?.name || w).join(' + '))} · ${esc(e.armor)} armour · aim ${Math.round(e.accuracy * 100)}</small></div>
               <div class="tg-step" role="group" aria-label="${esc(e.name)} count"><button data-tg="dec" data-arg="${t}" aria-label="One fewer ${esc(e.name)}" ${n ? '' : 'disabled'}>−</button><output>${n}</output><button data-tg="inc" data-arg="${t}" aria-label="One more ${esc(e.name)}" ${n >= TEST_LIMITS.perType || total >= TEST_LIMITS.total ? 'disabled' : ''}>+</button></div></div>`;
         };
+        return `<h4>Hostiles <span>${c.useMapHostiles ? 'map pods' : `${total} / ${TEST_LIMITS.total}`}</span></h4>
+            <div class="tg-toggle" role="radiogroup" aria-label="Hostile roster">
+              <button data-tg="useMap" data-arg="0" class="${c.useMapHostiles ? '' : 'on'}" role="radio" aria-checked="${!c.useMapHostiles}">Custom roster</button>
+              <button data-tg="useMap" data-arg="1" class="${c.useMapHostiles ? 'on' : ''}" role="radio" aria-checked="${c.useMapHostiles}">Map's own pods</button></div>
+            ${c.useMapHostiles ? '<p class="small">The map keeps its authored or generated pods. Rules on the left still apply.</p>' : `
+            <div class="tg-roster">${ENEMY_TYPES.map(enemyRow).join('')}</div>
+            <div class="tg-chips">${Object.entries(TEST_PRESETS).map(([k, p]) => `<button data-tg="preset" data-arg="${k}">${esc(p.name)}</button>`).join('')}<button data-tg="clearRoster">Clear</button></div>
+            <div class="row"><label>Pod size <select data-tg-field="podSize">${[1, 2, 3, 4].map(n => `<option ${n === c.podSize ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div>
+            <p class="small">Pods mix the chosen types and take the map's pod positions first, then cover pockets, rooms and far ground — never within ${TEST_LIMITS.minSpawnDistance} tiles of the squad. The same seed always gives the same placement.</p>`}`;
+    }
+    listsMarkup() {
         const scenarios = loadScenarios(), reports = loadReports();
+        return `<details class="tg-list" ${scenarios.length ? 'open' : ''}><summary>Saved setups (${scenarios.length})</summary>${scenarios.length ? scenarios.map((s, i) => `<div class="tg-item"><div><b>${esc(s.name)}</b><small>${esc(this.summary(s.desc))}</small></div><button data-tg="load" data-arg="${i}">Load</button><button data-tg="delete" data-arg="${i}" aria-label="Delete ${esc(s.name)}">✕</button></div>`).join('') : '<p class="small">None yet.</p>'}</details>
+            <details class="tg-list" ${reports.length ? 'open' : ''}><summary>Recent reports (${reports.length})</summary>${reports.length ? reports.map((r, i) => `<div class="tg-item ${r.outcome.winner}"><div><b>${r.outcome.winner === 'player' ? 'Won' : r.outcome.winner === 'enemy' ? 'Lost' : 'Ended'} · ${esc(r.scenario.name)}</b><small>${esc(r.run.at ? new Date(r.run.at).toLocaleString() : '')} · ${esc(r.outcome.reason)} · round ${r.outcome.rounds} · squad ${r.totals.player.standing}/${r.totals.player.units} · hostiles down ${r.totals.enemy.losses}/${r.totals.enemy.units}${r.scenario.test ? ' · test' : ''}</small></div><button data-tg="view" data-arg="${i}">View</button><button data-tg="replayReport" data-arg="${i}">Replay</button></div>`).join('') + '<div class="tg-chips"><button data-tg="clearReports">Clear reports</button></div>' : '<p class="small">Reports appear here after each battle.</p>'}</details>`;
+    }
+    renderSquad() { const el = this.root.querySelector('.tg-squad-wrap'); if (el) el.innerHTML = this.squadMarkup(); else this.render(); }
+    renderHostiles() { const el = this.root.querySelector('.tg-hostiles-wrap'); if (el) el.innerHTML = this.hostilesMarkup(); else this.render(); }
+    renderLists() { const el = this.root.querySelector('.tg-lists-wrap'); if (el) el.innerHTML = this.listsMarkup(); else this.render(); }
+    renderModal() {
+        const el = this.root.querySelector('.tg-modal');
+        if (!el) return this.render();
+        el.hidden = !this.viewing;
+        el.innerHTML = this.viewing ? reportMarkup(this.viewing.report, { saved: true, canEdit: true, tab: this.viewing.tab }) : '';
+    }
+    render() {
+        const card = this.root.closest?.('.menu-card'), scroll = card?.scrollTop || 0;
+        const c = this.c, maps = FIXTURES;
+        const op = c.scenario === OPERATION_ID,district=DISTRICT_MAP_IDS.includes(c.scenario),r=remixParameters(c.remix);
+        const choice=(label,field,items)=>`<label>${label}<select data-remix="${field}">${items.map(([value,text])=>`<option value="${value}" ${String(r[field])===String(value)?'selected':''}>${text}</option>`).join('')}</select></label>`;
         this.root.innerHTML = `
         <div class="tg-head"><b>Test ground</b><span>Admin build. Pick any map, set the squad and the hostile roster, then launch. Every battle ends with an after-action report; the last ${20} are kept below.</span></div>
         <div class="tg-grid">
@@ -105,9 +137,7 @@ export class TestGroundPanel {
             <div class="row">${choice('Terrain','terrain',[['terraced','Theme terraces'],['flat','Flat collision floor']])}${choice('Traffic','traffic',[['none','None'],['light','Light'],['normal','Normal'],['heavy','Heavy']])}${choice('Pedestrian cover','pedestrian',[['none','None'],['light','Light service props'],['normal','More service props']])}</div>
             ${[['merges','Connect neighboring interiors'],['elevated','Covered market under a deck shop'],['skybridges','Skybridges over streets'],['furnish','Furnish interiors']].map(([f,label])=>`<label class="check"><input type="checkbox" data-remix="${f}" ${r[f]?'checked':''}>${label}</label>`).join('')}
             <p class="small">Blocks between the roads are solved as parcel mixes (shops with their lots, yards, warehouses, storage, parks); leftover land becomes alleys, verges and service yards. Vehicles only stand in slots, placed by the noise map. Preview shows land use, sockets and the district gates.</p></section>`:`<button data-tg="districtMix">Open map remix lab</button>`}
-            <h4>Squad <span>${c.squad.length} / ${MAX_SQUAD}</span></h4>
-            <div class="tg-squad">${c.squad.map((t, i) => `<div class="tg-slot"><span>${i + 1}</span><select data-tg-field="squad" data-arg="${i}" aria-label="Soldier ${i + 1} class">${Object.values(CLASSES).map(k => `<option value="${k.id}" ${k.id === t ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select><button data-tg="removeSoldier" data-arg="${i}" aria-label="Remove soldier ${i + 1}" ${c.squad.length > 1 ? '' : 'disabled'}>✕</button></div>`).join('')}</div>
-            <div class="tg-chips"><button data-tg="addSoldier" ${c.squad.length >= MAX_SQUAD ? 'disabled' : ''}>+ Soldier</button>${Object.keys(SQUADS).map(k => `<button data-tg="squadPreset" data-arg="${k}">${cap(k)} squad</button>`).join('')}</div>
+            <div class="tg-squad-wrap">${this.squadMarkup()}</div>
             <h4>Rules</h4>
             <label class="check"><input type="checkbox" data-tg-field="alerted" ${c.alerted ? 'checked' : ''}> Hostiles start alerted (no first-contact scatter)</label>
             <div class="row"><label>Objective <select data-tg-field="objective"><option value="map" ${c.objective === 'map' ? 'selected' : ''}>Map objective</option><option value="eliminate" ${c.objective === 'eliminate' ? 'selected' : ''}>Eliminate every hostile</option></select></label>
@@ -118,25 +148,15 @@ export class TestGroundPanel {
             <label class="check"><input type="checkbox" data-tg-field="intel" ${c.intel ? 'checked' : ''}> Intel co-op rules (experimental): sensing roles, drones, quiet cuts, precision shots, independent turns</label>
             ${c.intel ? `<div class="row"><label>Match support <select data-tg-field="support"><option value="carpet_bomb" ${c.support !== 'orbital_laser' ? 'selected' : ''}>Airstrike · three blasts in a square</option><option value="orbital_laser" ${c.support === 'orbital_laser' ? 'selected' : ''}>Orbital Laser · long line cut</option></select></label></div>` : ''}
           </div>
-          <div class="tg-col">
-            <h4>Hostiles <span>${c.useMapHostiles ? 'map pods' : `${total} / ${TEST_LIMITS.total}`}</span></h4>
-            <div class="tg-toggle" role="radiogroup" aria-label="Hostile roster">
-              <button data-tg="useMap" data-arg="0" class="${c.useMapHostiles ? '' : 'on'}" role="radio" aria-checked="${!c.useMapHostiles}">Custom roster</button>
-              <button data-tg="useMap" data-arg="1" class="${c.useMapHostiles ? 'on' : ''}" role="radio" aria-checked="${c.useMapHostiles}">Map's own pods</button></div>
-            ${c.useMapHostiles ? '<p class="small">The map keeps its authored or generated pods. Rules on the left still apply.</p>' : `
-            <div class="tg-roster">${ENEMY_TYPES.map(enemyRow).join('')}</div>
-            <div class="tg-chips">${Object.entries(TEST_PRESETS).map(([k, p]) => `<button data-tg="preset" data-arg="${k}">${esc(p.name)}</button>`).join('')}<button data-tg="clearRoster">Clear</button></div>
-            <div class="row"><label>Pod size <select data-tg-field="podSize">${[1, 2, 3, 4].map(n => `<option ${n === c.podSize ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div>
-            <p class="small">Pods mix the chosen types and take the map's pod positions first, then cover pockets, rooms and far ground — never within ${TEST_LIMITS.minSpawnDistance} tiles of the squad. The same seed always gives the same placement.</p>`}
-          </div>
+          <div class="tg-col tg-hostiles-wrap">${this.hostilesMarkup()}</div>
         </div>
         <div class="row buttons"><button data-tg="preview">Preview placements</button><button data-tg="launch" class="primary">Launch test</button>${SOLO_ONLY ? '' : '<button data-tg="host">Host online test</button>'}</div>
         <div class="tg-preview" ${this.previewHtml ? '' : 'hidden'}><canvas aria-label="Test map preview with spawns"></canvas><div class="tg-pinfo">${this.previewHtml || ''}</div></div>
         <div class="row tg-save"><label>Setup name <input data-tg-field="name" placeholder="e.g. Brute rush, night" value="${esc(this.name || '')}"></label><button data-tg="save">Save setup</button><button data-tg="link">Copy link</button></div>
-        <details class="tg-list" ${scenarios.length ? 'open' : ''}><summary>Saved setups (${scenarios.length})</summary>${scenarios.length ? scenarios.map((s, i) => `<div class="tg-item"><div><b>${esc(s.name)}</b><small>${esc(this.summary(s.desc))}</small></div><button data-tg="load" data-arg="${i}">Load</button><button data-tg="delete" data-arg="${i}" aria-label="Delete ${esc(s.name)}">✕</button></div>`).join('') : '<p class="small">None yet.</p>'}</details>
-        <details class="tg-list" ${reports.length ? 'open' : ''}><summary>Recent reports (${reports.length})</summary>${reports.length ? reports.map((r, i) => `<div class="tg-item ${r.outcome.winner}"><div><b>${r.outcome.winner === 'player' ? 'Won' : r.outcome.winner === 'enemy' ? 'Lost' : 'Ended'} · ${esc(r.scenario.name)}</b><small>${esc(r.run.at ? new Date(r.run.at).toLocaleString() : '')} · ${esc(r.outcome.reason)} · round ${r.outcome.rounds} · squad ${r.totals.player.standing}/${r.totals.player.units} · hostiles down ${r.totals.enemy.losses}/${r.totals.enemy.units}${r.scenario.test ? ' · test' : ''}</small></div><button data-tg="view" data-arg="${i}">View</button><button data-tg="replayReport" data-arg="${i}">Replay</button></div>`).join('') + '<div class="tg-chips"><button data-tg="clearReports">Clear reports</button></div>' : '<p class="small">Reports appear here after each battle.</p>'}</details>
+        <div class="tg-lists-wrap">${this.listsMarkup()}</div>
         <div class="tg-modal" ${this.viewing ? '' : 'hidden'}>${this.viewing ? reportMarkup(this.viewing.report, { saved: true, canEdit: true, tab: this.viewing.tab }) : ''}</div>`;
         if (this.preview){const panel=this.root.querySelector('.tg-preview');panel.classList.add('tg-preview-topology');panel.innerHTML='<div class="tg-topography"></div>';new TopographyPreview(panel.firstElementChild,this.preview.mission);}
+        if (card) card.scrollTop = scroll;
     }
     summary(desc) {
         const map = desc.scenario === OPERATION_ID ? `Generated ${desc.operation?.plot || ''}` : SCENARIOS.find(s => s.id === desc.scenario)?.name || desc.scenario;
@@ -171,15 +191,15 @@ export class TestGroundPanel {
             case 'collisionLab':c.roster={...TEST_PRESETS.solo.enemies};c.useMapHostiles=false;c.scenario='mall-district';c.shape='L';c.debug=true;c.remix=remixParameters({buildingCount:3,minStoreys:1,maxStoreys:1,glazing:'band',furnish:false,elevated:false,traffic:'none',pedestrian:'none',terrain:'flat'});this.clearPreview();this.render();return this.runPreview();
             case 'districtMix':c.scenario='park-district';c.shape='rectangle';c.remix=remixParameters();this.clearPreview();this.render();return this.runPreview();
             case 'remix':c.seed=1+Math.floor(Math.random()*99999);this.clearPreview();this.render();return this.runPreview();
-            case 'dice': c.seed = 1 + Math.floor(Math.random() * 99999); break;
-            case 'addSoldier': if (c.squad.length < MAX_SQUAD) c.squad.push('vanguard'); break;
-            case 'removeSoldier': if (c.squad.length > 1) c.squad.splice(+arg, 1); break;
-            case 'squadPreset': c.squad = [...SQUADS[arg]]; break;
-            case 'inc': if ((c.roster[arg] || 0) < TEST_LIMITS.perType && this.total() < TEST_LIMITS.total) c.roster[arg] = (c.roster[arg] || 0) + 1; break;
-            case 'dec': c.roster[arg] = Math.max(0, (c.roster[arg] || 0) - 1); break;
-            case 'preset': c.roster = { ...TEST_PRESETS[arg].enemies }; c.useMapHostiles = false; break;
-            case 'clearRoster': c.roster = {}; break;
-            case 'useMap': c.useMapHostiles = arg === '1'; break;
+            case 'dice': { c.seed = 1 + Math.floor(Math.random() * 99999); this.clearPreview(); const sEl = this.root.querySelector('[data-tg-field="seed"]'); if (sEl) sEl.value = c.seed; return; }
+            case 'addSoldier': if (c.squad.length < MAX_SQUAD) c.squad.push('vanguard'); this.clearPreview(); this.renderSquad(); return;
+            case 'removeSoldier': if (c.squad.length > 1) c.squad.splice(+arg, 1); this.clearPreview(); this.renderSquad(); return;
+            case 'squadPreset': c.squad = [...SQUADS[arg]]; this.clearPreview(); this.renderSquad(); return;
+            case 'inc': if ((c.roster[arg] || 0) < TEST_LIMITS.perType && this.total() < TEST_LIMITS.total) c.roster[arg] = (c.roster[arg] || 0) + 1; this.clearPreview(); this.renderHostiles(); return;
+            case 'dec': c.roster[arg] = Math.max(0, (c.roster[arg] || 0) - 1); this.clearPreview(); this.renderHostiles(); return;
+            case 'preset': c.roster = { ...TEST_PRESETS[arg].enemies }; c.useMapHostiles = false; this.clearPreview(); this.renderHostiles(); return;
+            case 'clearRoster': c.roster = {}; this.clearPreview(); this.renderHostiles(); return;
+            case 'useMap': c.useMapHostiles = arg === '1'; this.clearPreview(); this.renderHostiles(); return;
             case 'preview': return this.runPreview();
             case 'launch': { const d = this.validDesc(); if (d) this.hooks.launch(d, { autopilot: c.autopilot }, structuredClone(c)); return; }
             case 'host': { const d = this.validDesc(); if (d) this.hooks.host(d, { autopilot: c.autopilot }, structuredClone(c)); return; }
@@ -187,7 +207,7 @@ export class TestGroundPanel {
                 const d = this.validDesc(); if (!d) return;
                 const name = (this.name || '').trim() || this.summary(d).slice(0, 48);
                 this.hooks.status(saveScenario(name, d, { autopilot: c.autopilot }) ? `Saved “${name}”.` : 'Could not save: browser storage is unavailable.');
-                break;
+                this.renderLists(); return;
             }
             case 'link': {
                 const d = this.validDesc(); if (!d) return;
@@ -195,22 +215,20 @@ export class TestGroundPanel {
                 try { await navigator.clipboard.writeText(url); this.hooks.status('Link copied — it launches this exact setup.'); } catch { this.hooks.status(url); }
                 return;
             }
-            case 'load': { const s = loadScenarios()[+arg]; if (s) { this.c = descToSetup(s.desc, s.client); this.name = s.name; this.hooks.status(`Loaded “${s.name}”.`); } break; }
-            case 'delete': { const s = loadScenarios()[+arg]; if (s) deleteScenario(s.name); break; }
-            case 'view': { const r = loadReports()[+arg]; if (r) this.viewing = { report: r, tab: 'squad' }; break; }
+            case 'load': { const s = loadScenarios()[+arg]; if (s) { this.c = descToSetup(s.desc, s.client); this.name = s.name; this.hooks.status(`Loaded “${s.name}”.`); this.clearPreview(); this.render(); } return; }
+            case 'delete': { const s = loadScenarios()[+arg]; if (s) deleteScenario(s.name); this.renderLists(); return; }
+            case 'view': { const r = loadReports()[+arg]; if (r) this.viewing = { report: r, tab: 'squad' }; this.renderModal(); return; }
             case 'replayReport': { const r = loadReports()[+arg]; if (r) { const d = this.safe(reportToDesc(r)); if (d) this.hooks.launch(d, { autopilot: !!r.run.autopilot }, descToSetup(d, { autopilot: r.run.autopilot })); } return; }
-            case 'clearReports': clearReports(); break;
+            case 'clearReports': clearReports(); this.renderLists(); return;
             default: return;
         }
-        if (['dice', 'addSoldier', 'removeSoldier', 'squadPreset', 'inc', 'dec', 'preset', 'clearRoster', 'useMap', 'load'].includes(act)) this.clearPreview();
-        this.render();
     }
     safe(desc) { try { return sanitizeDesc(desc); } catch (err) { this.hooks.status(`Cannot replay: ${err.message}`); return null; } }
     onReportAction(act, arg) {
         const r = this.viewing?.report; if (!r) return;
         switch (act) {
-            case 'rtab': this.viewing.tab = arg; break;
-            case 'menu': this.viewing = null; break;
+            case 'rtab': this.viewing.tab = arg; this.renderModal(); return;
+            case 'menu': this.viewing = null; this.renderModal(); return;
             case 'restart': { const d = this.safe(reportToDesc(r)); if (d) this.hooks.launch(d, { autopilot: !!r.run.autopilot }, descToSetup(d, { autopilot: r.run.autopilot })); return; }
             case 'reportEdit': this.c = descToSetup(reportToDesc(r), { autopilot: r.run.autopilot }); this.viewing = null; this.clearPreview(); break;
             case 'reportCopy': navigator.clipboard?.writeText(reportText(r)).then(() => this.hooks.status('Report summary copied.'), () => this.hooks.status('Copy failed.')); return;

@@ -23,6 +23,14 @@ import { QUALITY, setQuality } from '../render/Quality.js';
 
 const pct = v => `${Math.round(v * 100)}%`;
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function setHtml(el, html, { preserveScroll = false } = {}) {
+    if (!el || el._html === html) return false;
+    const top = preserveScroll ? el.scrollTop : 0;
+    el._html = html;
+    el.innerHTML = html;
+    if (preserveScroll && top) el.scrollTop = top;
+    return true;
+}
 
 export class Hud {
     constructor(root, game) {
@@ -71,6 +79,21 @@ export class Hud {
         if(globalThis.MutationObserver)new MutationObserver(sync).observe(panel,{attributes:true,attributeFilter:['class']});
         root.addEventListener('change',e=>{const k=e.target.dataset.setting;if(!k)return;const v=e.target.dataset.type==='string'?e.target.value:Number(e.target.value);game.options[k]=v;if(k==='turnSpeed')game.player.speed=v;if(k==='soundVolume')game.audio.setVolume(v);localStorage.setItem('tactics-settings',JSON.stringify(game.options));});
     }
+    setHtml(el, html, opts) { return setHtml(el, html, opts); }
+    updateFloorLabel() {
+        const g = this.game, b = g?.battle;
+        const el = this.el?.('.floor-label');
+        if (!el || !b) return;
+        const label = navigationFloors(b.mission).find(f => f.cut === g.cutLevel)?.label || 'Roof';
+        if (el.textContent !== label) el.textContent = label;
+    }
+    updateSpeedButtons() {
+        const g = this.game, spd = g.player?.speed || g.options?.turnSpeed || 1;
+        for (const sb of this.root.querySelectorAll('[data-act="cycleSpeed"]')) {
+            sb.textContent = `${spd}×`;
+            sb.classList.toggle('fast', spd > 1);
+        }
+    }
     reset() { this.report = null; this.equipment.open=false;this.equipment.nested=null;this.equipment.selected=null;this.el('.outcome').classList.add('hidden'); this.hidePanel(); this.squadSpent(false); }
     onClick(e) {
         const b = e.target.closest('[data-act]');
@@ -79,50 +102,50 @@ export class Hud {
         if(b.closest('.camera-nav'))b.blur();
         e.stopPropagation();
         switch (act) {
-            case 'floorFollow': g.applyZoomCut();break;
-            case 'chooseFloor': g.chooseFloor(arg==='roof'?Infinity:Number(arg));break;
-            case 'inventory': this.equipment.toggle();break;
-            case 'mark': g.setMode({kind:'mark',color:arg});break;
+            case 'floorFollow': g.applyZoomCut();return;
+            case 'chooseFloor': g.chooseFloor(arg==='roof'?Infinity:Number(arg));return;
+            case 'inventory': this.equipment.toggle();return;
+            case 'mark': g.setMode({kind:'mark',color:arg});return;
             case 'aimTarget': g.aimAtTarget?.(arg); return;
             case 'aimPart': g.aimAtPart?.(arg); return;
             case 'aimMode': g.setAimFireMode?.(arg); return;
-            case 'fireMode': {const u=g.selectedUnit(),w=WEAPONS[u.weapon],modes=fireModes(w);g.intent({type:'setFireMode',mode:modes[(modes.indexOf(fireMode(u,w))+1)%modes.length]});break;}
-            case 'equipmentTab': this.equipmentTab=arg;break;
-            case 'view': g.cameraDirector.end();g.scene.rig.setPreset(arg); break;
-            case 'pan': g.scene.rig.glide=null;g.scene.rig.moveBy(...arg.split(',').map(Number));break;
-            case 'tilt': g.cameraDirector.end();g.scene.rig.orbit(0,Number(arg)*40);break;
-            case 'home': g.focusUnit(g.selectedUnit());break;
-            case 'weapon': this.chooseWeapon(arg);break;
-            case 'reloadWeapon': g.intent({type:'reload',weaponId:arg});break;
-            case 'item': this.hidePanel();g.setMode({kind:THROWABLES[arg].kind==='gadget'?'gadget':THROWABLES[arg].placed?'breach':'throw',itemId:arg});if(THROWABLES[arg].placed)this.showBreachPanel();break;
-            case 'equip': g.intent({type:'switchWeapon',weaponId:arg}); break;
-            case 'rotL': g.cameraDirector.end();g.scene.rotate(-1); break; case 'rotR': g.cameraDirector.end();g.scene.rotate(1); break;
-            case 'lvlUp': g.changeLevel(1); break; case 'lvlDown': g.changeLevel(-1); break;
-            case 'debug': g.debug.toggle(); break;
-            case 'options': this.toggleOptions(); break;
-            case 'cycleSpeed': g.cycleTurnSpeed?.(); break;
-            case 'opt': g.options[arg] = !g.options[arg];localStorage.setItem('tactics-settings',JSON.stringify(g.options)); this.renderOptions(); break;
-            case 'lighting': g.scene.setLighting(arg); g.options.lighting = arg; this.renderOptions(); break;
-            case 'ao': g.scene.setAO(!g.scene.ao); this.renderOptions(); break;
-            case 'proj': g.scene.toggleProjection(); this.renderOptions(); break;
-            case 'quality': if (arg !== QUALITY.name) setQuality(arg); break;
-            case 'cue': TERRAIN_CUES[arg].value = TERRAIN_CUES[arg].value ? 0 : 1; this.renderOptions(); break;
-            case 'menu': g.exitToMenu(); break;
-            case 'select': g.select(arg); break;
-            case 'nextReady': g.cycleUnit(1); break;
-            case 'cancelAutoEnd': g.cancelAutoEnd(); break;
+            case 'fireMode': {const u=g.selectedUnit(),w=WEAPONS[u.weapon],modes=fireModes(w);g.intent({type:'setFireMode',mode:modes[(modes.indexOf(fireMode(u,w))+1)%modes.length]});return;}
+            case 'equipmentTab': this.equipmentTab=arg;return;
+            case 'view': g.cameraDirector.end();g.scene.rig.setPreset(arg); return;
+            case 'pan': g.scene.rig.glide=null;g.scene.rig.moveBy(...arg.split(',').map(Number));return;
+            case 'tilt': g.cameraDirector.end();g.scene.rig.orbit(0,Number(arg)*40);return;
+            case 'home': g.focusUnit(g.selectedUnit());return;
+            case 'weapon': this.chooseWeapon(arg);return;
+            case 'reloadWeapon': g.intent({type:'reload',weaponId:arg});return;
+            case 'item': this.hidePanel();g.setMode({kind:THROWABLES[arg].kind==='gadget'?'gadget':THROWABLES[arg].placed?'breach':'throw',itemId:arg});if(THROWABLES[arg].placed)this.showBreachPanel();return;
+            case 'equip': g.intent({type:'switchWeapon',weaponId:arg}); return;
+            case 'rotL': g.cameraDirector.end();g.scene.rotate(-1); return; case 'rotR': g.cameraDirector.end();g.scene.rotate(1); return;
+            case 'lvlUp': g.changeLevel(1); return; case 'lvlDown': g.changeLevel(-1); return;
+            case 'debug': g.debug.toggle(); return;
+            case 'options': this.toggleOptions(); return;
+            case 'cycleSpeed': g.cycleTurnSpeed?.(); this.updateSpeedButtons(); return;
+            case 'opt': g.options[arg] = !g.options[arg];localStorage.setItem('tactics-settings',JSON.stringify(g.options)); this.renderOptions(); return;
+            case 'lighting': g.scene.setLighting(arg); g.options.lighting = arg; this.renderOptions(); return;
+            case 'ao': g.scene.setAO(!g.scene.ao); this.renderOptions(); return;
+            case 'proj': g.scene.toggleProjection(); this.renderOptions(); return;
+            case 'quality': if (arg !== QUALITY.name) setQuality(arg); return;
+            case 'cue': TERRAIN_CUES[arg].value = TERRAIN_CUES[arg].value ? 0 : 1; this.renderOptions(); return;
+            case 'menu': g.exitToMenu(); return;
+            case 'select': g.select(arg); return;
+            case 'nextReady': g.cycleUnit(1); return;
+            case 'cancelAutoEnd': g.cancelAutoEnd(); return;
             case 'peekHome': g.setPeek(null); break;
-            case 'slot': this.runSlot(+arg); break;
-            case 'fire': g.confirmFire(); break;
-            case 'captureAim': g.captureAim(); break;
-            case 'cancel': g.cancel(); break;
-            case 'formTpl': g.declareFormation(arg); this.hidePanel(); break;
-            case 'doBreach': { const [i, entry] = arg.split(':'); g.doBreach(+i, entry); this.hidePanel(); break; }
-            case 'buildingCycle': g.cycleBuildingView(); break;
-            case 'buildingView': g.setBuildingView(arg); break;
-            case 'endTurn': g.endTurn(); break;
-            case 'closePanel': this.hidePanel(); break;
-            case 'restart': g.restart(); break;
+            case 'slot': this.runSlot(+arg); return;
+            case 'fire': g.confirmFire(); return;
+            case 'captureAim': g.captureAim(); return;
+            case 'cancel': g.cancel(); return;
+            case 'formTpl': g.declareFormation(arg); this.hidePanel(); return;
+            case 'doBreach': { const [i, entry] = arg.split(':'); g.doBreach(+i, entry); this.hidePanel(); return; }
+            case 'buildingCycle': g.cycleBuildingView(); return;
+            case 'buildingView': g.setBuildingView(arg); return;
+            case 'endTurn': g.endTurn(); return;
+            case 'closePanel': this.hidePanel(); return;
+            case 'restart': g.restart(); return;
             case 'nextOp': g.deployNextOp(arg); return;
             case 'rtab': this.reportTab(arg); return;
             case 'reportCopy': this.copyReport(); return;
@@ -142,14 +165,15 @@ export class Hud {
         const g = this.game, o = g.options, el = this.el('.options');
         if (el.classList.contains('hidden')) return;
         const row = (k, label) => `<button data-act="opt" data-arg="${k}" class="${o[k] ? 'on' : ''}">${o[k] ? '☑' : '☐'} ${label}</button>`;
-        el.innerHTML = `<h3>Settings <button data-act="options">✕</button></h3><h4>Gameplay</h4><label>Turn / animation speed<select data-setting="turnSpeed">${[.5,1,1.5,2,3].map(n=>`<option value="${n}" ${Number(o.turnSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label><label>Camera rotation<select data-setting="rotateSpeed">${[.5,1,1.5,2].map(n=>`<option value="${n}" ${Number(o.rotateSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('confirmMoves','Confirm movement destinations')}${row('showEnemyBars','Show enemy health')}<label>Aim sensitivity<select data-setting="aimSensitivity">${[.25,.5,.75,1].map(n=>`<option value="${n}" ${Number(o.aimSensitivity??.5)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('aimSway','Reticle breathing')}<label>Soldier name and AP tags<select data-setting="unitTags" data-type="string">${[['selected','Selected soldier'],['always','Whole squad'],['flash','Only briefly']].map(([v,l])=>`<option value="${v}" ${(o.unitTags||'selected')===v?'selected':''}>${l}</option>`).join('')}</select></label><button data-act="debug">Test / debug tools (F1)</button><button data-act="inventory">Equipment and body status (I)</button><button data-act="menu">Return to menu</button>${row('autoEndTurn', 'Auto end turn when the squad is spent')}${row('autoNext', 'Auto-select the next ready soldier')}${row('followCamera', 'Camera follows actions')}
+        const html = `<h3>Settings <button data-act="options">✕</button></h3><h4>Gameplay</h4><label>Turn / animation speed<select data-setting="turnSpeed">${[.5,1,1.5,2,3].map(n=>`<option value="${n}" ${Number(o.turnSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label><label>Camera rotation<select data-setting="rotateSpeed">${[.5,1,1.5,2].map(n=>`<option value="${n}" ${Number(o.rotateSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('confirmMoves','Confirm movement destinations')}${row('showEnemyBars','Show enemy health')}<label>Aim sensitivity<select data-setting="aimSensitivity">${[.25,.5,.75,1].map(n=>`<option value="${n}" ${Number(o.aimSensitivity??.5)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('aimSway','Reticle breathing')}<label>Soldier name and AP tags<select data-setting="unitTags" data-type="string">${[['selected','Selected soldier'],['always','Whole squad'],['flash','Only briefly']].map(([v,l])=>`<option value="${v}" ${(o.unitTags||'selected')===v?'selected':''}>${l}</option>`).join('')}</select></label><button data-act="debug">Test / debug tools (F1)</button><button data-act="inventory">Equipment and body status (I)</button><button data-act="menu">Return to menu</button>${row('autoEndTurn', 'Auto end turn when the squad is spent')}${row('autoNext', 'Auto-select the next ready soldier')}${row('followCamera', 'Camera follows actions')}
             <h4>Audio</h4><label>Sound effects volume<input type="range" data-setting="soundVolume" min="0" max="1" step="0.05" value="${o.soundVolume ?? 0.65}" aria-label="Sound effects volume"></label>
             <h4>Camera</h4>${row('edgeScroll', 'Screen-edge scrolling')}<button data-act="proj" class="${g.scene.projection === 'ortho' ? 'on' : ''}">${g.scene.projection === 'ortho' ? '☑' : '☐'} Isometric (orthographic) view (V)</button>
-            <div class="camhint" style="font-size:11px;opacity:.7;line-height:1.5;margin:4px 0 2px">Z / X floor up / down · WASD, arrows, screen edge pan · right-drag grab · middle-drag orbit · wheel zoom · Q/E rotate · H / Home centre on soldier · V isometric · while aiming: click canvas to capture mouse (Esc releases) or drag/arrows/Q,E aim · wheel zoom · Tab next target · WASD lean out · click/Space fire · Esc back</div>
-            <h4>Buildings</h4><div class="row"><button data-act="buildingCycle" class="${o.buildingView==='exterior'?'on':''}" aria-pressed="${o.buildingView==='exterior'}">Show outside only</button></div><small>Wheel zoom: roof → upper floors → ground floor. Selected floors stay fixed while zooming. Auto floors restores zoom cutaways. Use the cube arrows for floor changes. I opens equipment.</small>
+            <div class="camhint" style="font-size:11px;opacity:.7;line-height:1.5;margin:4px 0 2px">Z / X floor up / down · WASD, arrows, screen edge pan · left or right-drag pan · middle-drag or Shift+right-drag orbit · wheel zoom-to-cursor cuts building interiors (max zoom shows 1st floor) · Q/E rotate · H / Home centre on soldier · V isometric · while aiming: click canvas to capture mouse (Esc releases) or drag/arrows/Q,E aim · wheel zoom · Tab next target · WASD lean out · click/Space fire · Esc back</div>
+            <h4>Buildings</h4><div class="row"><button data-act="buildingCycle" class="${o.buildingView==='exterior'?'on':''}" aria-pressed="${o.buildingView==='exterior'}">Show outside only</button></div><small>Wheel zoom: roof → upper floors → ground floor (disregards manual floor buttons; max zoom always keeps the 1st floor & walls visible). Use the cube arrows for manual floor steps. I opens equipment.</small>
             <h4>Graphics</h4><button data-act="quality" data-arg="mobile" class="${QUALITY.name === 'mobile' ? 'on' : ''}">${QUALITY.name === 'mobile' ? '◉' : '○'} Mobile (light textures, fast)</button><button data-act="quality" data-arg="high" class="${QUALITY.name === 'high' ? 'on' : ''}">${QUALITY.name === 'high' ? '◉' : '○'} High (full textures, AO) — reloads</button>
             <h4>Readability</h4><button data-act="cue" data-arg="uGrid" class="${TERRAIN_CUES.uGrid.value ? 'on' : ''}">${TERRAIN_CUES.uGrid.value ? '☑' : '☐'} Debug tile grid</button><button data-act="cue" data-arg="uRim" class="${TERRAIN_CUES.uRim.value ? 'on' : ''}">${TERRAIN_CUES.uRim.value ? '☑' : '☐'} Ledge rims (orange = 2+ drop)</button><button data-act="ao" class="${g.scene.ao ? 'on' : ''}">${g.scene.ao ? '☑' : '☐'} Ambient occlusion</button>
             <h4>Lighting</h4><div class="row">${['day', 'dawn', 'overcast', 'dusk', 'night', 'night-ops'].map(l => `<button data-act="lighting" data-arg="${l}" class="${g.scene.lightingName === l ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+        setHtml(el, html, { preserveScroll: true });
     }
     log(text, cls = '') {
         this.lines.push(`<div class="${cls}">${esc(text)}</div>`);
@@ -269,17 +293,19 @@ export class Hud {
         const stress = Math.round(u.stress || 0);
         const will = `${u.will ?? 0}/${u.maxWill ?? u.will ?? 0}`;
         const stressCls = stress >= 75 ? 'high' : stress >= 40 ? 'mid' : '';
-        el.innerHTML = `<img src="${portraitSrc(u)}" alt=""><div class="uc-main"><div class="uc-name"><b>${esc(u.name)}</b><span>${esc(displayName(u.type, b.intelMode))}</span>${state ? `<strong>${state}</strong>` : ''}</div>
+        const html = `<img src="${portraitSrc(u)}" alt=""><div class="uc-main"><div class="uc-name"><b>${esc(u.name)}</b><span>${esc(displayName(u.type, b.intelMode))}</span>${state ? `<strong>${state}</strong>` : ''}</div>
             <div class="uc-ap" title="Blue: AP that can still act · yellow: move only">${pipsHtml}<span>${u.ap}${u.moveOnlyAp ? `+${u.moveOnlyAp}` : ''} AP</span><span class="uc-wp" title="Will Points">${will} WP</span><span class="uc-stress ${stressCls}" title="Stress (${stress}%)">${stress}% STR</span></div>
             <div class="uc-hp ${hpCls}"><div class="segbar">${segs(u.hp, u.maxHp)}</div><span>${u.hp}/${u.maxHp} HP</span></div>
             <div class="uc-stressbar" title="Stress ${stress}%"><i style="width:${Math.min(100, stress)}%"></i></div>
             <div class="uc-kit">${w ? `<span class="uc-gun">${esc(w.name)} ${ammo}</span>` : ''}${gadgets}${statuses}</div></div>`;
+        setHtml(el, html);
     }
     tick() {}
     refresh() {
         const g = this.game, b = g.battle;
         if (!b) return;
-        this.el('.floor-label').textContent=navigationFloors(b.mission).find(f=>f.cut===g.cutLevel)?.label||'Roof';
+        if (this.updateFloorLabel) this.updateFloorLabel();
+        else Hud.prototype.updateFloorLabel.call(this);
         for(const button of this.root.querySelectorAll('[data-act="mark"]')){const active=g.mode.kind==='mark'&&g.mode.color===button.dataset.arg;button.classList.toggle('on',active);button.setAttribute('aria-pressed',String(active));}
         this.root.classList.toggle('enemy-phase', b.activeSide !== 'player');
         this.root.classList.toggle('intel-mode',b.intelMode);
@@ -294,24 +320,23 @@ export class Hud {
         phase.className = `phase ${b.activeSide}`;
         this.el('.enemyturn').classList.toggle('hidden', !(b.activeSide !== 'player' && !b.outcome && !g.debug.manualEnemy));
         this.setEnemyActivity?.(g.activeEnemyLabel || null);
-        const spd = g.player?.speed || g.options?.turnSpeed || 1;
-        for (const sb of this.root.querySelectorAll('[data-act="cycleSpeed"]')) {
-            sb.textContent = `${spd}×`;
-            sb.classList.toggle('fast', spd > 1);
-        }
+        if (this.updateSpeedButtons) this.updateSpeedButtons();
+        else Hud.prototype.updateSpeedButtons.call(this);
         // Squad column.
-        this.el('.squad').innerHTML = b.units.filter(u=>u.side==='player').map((u,i)=>`<button class="squad-head ${u.id===g.selected?'sel':''} ${u.dead?'dead':''} ${squadBadge(u).cls}" data-act="select" data-arg="${u.id}" aria-label="Select ${esc(u.name)}" title="${esc(u.name)} · ${u.hp}/${u.maxHp} HP · ${u.ap} AP"><img src="${portraitSrc(u)}" alt="${esc(u.name)}"><b>${u.hp}<small>/${u.maxHp}</small></b><span class="badge ${squadBadge(u).cls}">${squadBadge(u).text}</span><span class="pips">${Array.from({length:Math.max(u.maxAp??4,u.ap)},(_,i)=>`<i class="${i<u.ap?'on':''}"></i>`).join('')}</span>${!u.dead&&b.flankedBy(u).length?'<i class="flank-alert" title="Flanked by a visible enemy">!</i>':''}</button>`).join('')+(b.activeSide==='player'&&!b.outcome?`<button class="next-ready" data-act="nextReady" title="Next ready soldier (Tab)">NEXT ▸</button>`:'')+`<button class="inventory-toggle" data-act="inventory" aria-label="Open inventory">${ICONS.backpack}<kbd>I</kbd></button>`;
+        const squadHtml = b.units.filter(u=>u.side==='player').map((u,i)=>`<button class="squad-head ${u.id===g.selected?'sel':''} ${u.dead?'dead':''} ${squadBadge(u).cls}" data-act="select" data-arg="${u.id}" aria-label="Select ${esc(u.name)}" title="${esc(u.name)} · ${u.hp}/${u.maxHp} HP · ${u.ap} AP"><img src="${portraitSrc(u)}" alt="${esc(u.name)}"><b>${u.hp}<small>/${u.maxHp}</small></b><span class="badge ${squadBadge(u).cls}">${squadBadge(u).text}</span><span class="pips">${Array.from({length:Math.max(u.maxAp??4,u.ap)},(_,i)=>`<i class="${i<u.ap?'on':''}"></i>`).join('')}</span>${!u.dead&&b.flankedBy(u).length?'<i class="flank-alert" title="Flanked by a visible enemy">!</i>':''}</button>`).join('')+(b.activeSide==='player'&&!b.outcome?`<button class="next-ready" data-act="nextReady" title="Next ready soldier (Tab)">NEXT ▸</button>`:'')+`<button class="inventory-toggle" data-act="inventory" aria-label="Open inventory">${ICONS.backpack}<kbd>I</kbd></button>`;
+        setHtml(this.el('.squad'), squadHtml);
         const u=g.selectedUnit();this.equipment.render(u);
         // Ability bar.
         const canAct = u && g.controllable(u) && !b.outcome && !g.aiRunning;
         this.renderUnitCard(u, canAct);
         this.slots = canAct ? this.slotsFor(u) : [];
-        this.el('.slots').innerHTML = this.slots.map((s, i) => `<button class="slot ${s.on ? 'on' : ''} ${i>0&&s.group!==this.slots[i-1].group?'group-start':''}" aria-label="${esc(s.name)}" data-act="slot" data-arg="${i}" ${s.disabled ? 'disabled' : ''} data-tip="${esc(s.tip || s.name)}">
+        const modeSwitchHtml = u&&fireModes(WEAPONS[u.weapon]).length>1 ? `<button class="mode-switch" data-act="fireMode" aria-label="Change fire mode">${fireMode(u,WEAPONS[u.weapon]).toUpperCase()} ↻</button>` : '';
+        const slotsHtml = modeSwitchHtml + this.slots.map((s, i) => `<button class="slot ${s.on ? 'on' : ''} ${i>0&&s.group!==this.slots[i-1].group?'group-start':''}" aria-label="${esc(s.name)}" data-act="slot" data-arg="${i}" ${s.disabled ? 'disabled' : ''} data-tip="${esc(s.tip || s.name)}">
             <kbd>${i < 9 ? i + 1 : ''}</kbd>${s.icon}<span class="slot-label">${esc(s.name)}</span><span class="cost">${s.cost}</span>${s.sub ? `<span class="sub">${s.sub}</span>` : ''}</button>`).join('');
-        if(u&&fireModes(WEAPONS[u.weapon]).length>1)this.el('.slots').insertAdjacentHTML('afterbegin',`<button class="mode-switch" data-act="fireMode" aria-label="Change fire mode">${fireMode(u,WEAPONS[u.weapon]).toUpperCase()} ↻</button>`);
+        setHtml(this.el('.slots'), slotsHtml);
         const active = this.slots.find(s => s.on);
         this.activeSlotName = active ? active.tip : (u && canAct ? `<b>${esc(u.name)}</b> · ${modeText(g.mode)}` : (b.activeSide !== 'player' ? '' : 'Select a soldier'));
-        this.el('.slotname').innerHTML = this.activeSlotName;
+        setHtml(this.el('.slotname'), this.activeSlotName);
         this.el('.actionbar').classList.toggle('hidden', !(b.activeSide === 'player' || g.debug.manualEnemy) || !!b.outcome);
         this.renderTargets();
         this.renderTarget();
@@ -348,17 +373,18 @@ export class Hud {
     renderTargets() {
         const el = this.el('.targets'), g = this.game, b = g.battle, u = g.selectedUnit?.();
         if (!el) return;
-        if (!b || b.outcome || !u || (b.activeSide !== 'player' && !g.debug?.manualEnemy)) { el.innerHTML = ''; return; }
+        if (!b || b.outcome || !u || (b.activeSide !== 'player' && !g.debug?.manualEnemy)) { setHtml(el, ''); return; }
         const list = g.visibleTargets?.(u) || b.enemiesOf(u).filter(t => alive(t) && g.isVisible?.(t));
         const activeId = g.aimPick?.unitId || g.framedTargetId;
         const s = g.shooterOf?.(u) || u;
-        el.innerHTML = list.map((t, i) => {
+        const html = list.map((t, i) => {
             const cov = b.store ? coverAgainst(b.store, t.x, t.y, t.z, s.x, s.y, s.z) : COVER.HALF;
             const flk = cov === COVER.NONE;
             const on = t.id === activeId;
             return `<button class="tgt ${on ? 'on' : ''} ${flk ? 'flk' : ''}" data-act="aimTarget" data-arg="${t.id}" title="${esc(t.name)} · ${t.hp}/${t.maxHp} HP${flk ? ' · FLANKED' : ''} · Click to frame (${i + 1})">
                 <img src="${portraitSrc(t)}" alt="${esc(t.name)}"><span>${t.hp}<i>/${t.maxHp}</i></span>${flk ? '<em title="Flanked">!</em>' : ''}</button>`;
         }).join('');
+        setHtml(el, html);
     }
     /** Phoenix Point free-aim tactical readout + physical recoil/trajectory telemetry + 5-part hitbox strip. */
     renderTarget(){
@@ -426,7 +452,7 @@ export class Hud {
                 <div><b>+${rec.totalClimbDeg}°</b><small>CLIMB</small></div>
                 <div><b>${rec.dropMeters>0.02?`-${rec.dropMeters}m`:'FLAT'}</b><small>DROP</small></div>
                 <div><b>${vel?`${vel} m/s`:'—'}</b><small>VEL</small></div></div>`:'';
-        el.innerHTML=`<div class="aim-top"><button class="aim-back" data-act="cancel" aria-label="${locked?'Release aim':'Back to tactics'}">${locked?'Release aim':'Back'} <kbd>Esc</kbd></button>
+        const html=`<div class="aim-top"><button class="aim-back" data-act="cancel" aria-label="${locked?'Release aim':'Back to tactics'}">${locked?'Release aim':'Back'} <kbd>Esc</kbd></button>
                 ${peek?`<span class="peek-badge ${peek.peeking||peek.autoStep||peek.autoLean?'on':''}">${peek.autoStep?'STEP OUT':peek.autoLean?'LEAN':peek.peeking?'PEEKING':'HOME'}${peek.overwatch?` · ${peek.overwatch} OW`:''}</span>`:''}
                 ${peek?.peeking?'<button class="aim-peek-home" data-act="peekHome">Step back</button>':''}</div>
             <div class="shooter-status"><div class="shooter-meta"><span class="shooter-weapon">${esc(w.name)}</span><small>${caliberName?`${esc(caliberName)} · `:''}${cost} AP${fm&&modes.length>1?` · ${fm.toUpperCase()}`:''}</small></div>
@@ -439,16 +465,17 @@ export class Hud {
                 <div class="parts aim-parts">${partRows}</div>`:tel?`<div class="aim-free-read"><b>FREE AIM · ${tel.distance.toFixed(1)} m${freeDmg}</b><span>${tel.blocked?'Cover / wall in trajectory':'Clear ballistic trajectory'}</span></div>`:''}
             ${modTags?`<div class="mods aim-mods">${modTags}</div>`:''}
             <div class="tbtns">${!locked&&!g.aimPointer?.unavailable?'<button data-act="captureAim">Aim</button>':''}<span class="aim-hint">Tab: Target · Arrows/Q,E: Aim · Wheel: Zoom</span><button data-act="fire" class="fire firebtn" ${ammo<1||u.ap<cost||tel?.outOfRange?'disabled':''}>Fire <kbd>Click / Space</kbd></button></div>`;
+        setHtml(el, html, { preserveScroll: true });
     }
     showGearPanel(){
         const u=this.game.selectedUnit(),p=this.el('.panel');p.classList.remove('hidden');
         const tag=t=>t.heal?`Heal ${t.heal} HP`:t.smoke?'Smoke cover':t.element?`${t.damage||0} ${t.element}`:t.damage?`${t.damage} dmg`:'';
-        p.innerHTML=`<h3>Equipment <button data-act="closePanel">✕</button></h3><div class="gear-quick">${Object.entries(u.items).filter(([id,n])=>n>0&&THROWABLES[id]).map(([id,n],i)=>{const t=THROWABLES[id],sub=tag(t);return `<button data-act="item" data-arg="${id}" ${u.ap<t.ap?'disabled':''}><kbd>${i+1}</kbd>${ICONS.grenade}<b>${esc(t.name)}</b><small>${n} carried · ${t.ap} AP${sub?` · ${esc(sub)}`:''}</small></button>`;}).join('')}</div>`;
+        setHtml(p,`<h3>Equipment <button data-act="closePanel">✕</button></h3><div class="gear-quick">${Object.entries(u.items).filter(([id,n])=>n>0&&THROWABLES[id]).map(([id,n],i)=>{const t=THROWABLES[id],sub=tag(t);return `<button data-act="item" data-arg="${id}" ${u.ap<t.ap?'disabled':''}><kbd>${i+1}</kbd>${ICONS.grenade}<b>${esc(t.name)}</b><small>${n} carried · ${t.ap} AP${sub?` · ${esc(sub)}`:''}</small></button>`;}).join('')}</div>`,{preserveScroll:true});
     }
     showFormationPanel() {
         const p=this.el('.panel');p.classList.toggle('hidden');if(p.classList.contains('hidden'))return;
         const cur=this.game.battle?.formations.of(this.game.selectedUnit());
-        p.innerHTML=`<h3>Formation <button data-act="closePanel">✕</button></h3><p>${cur?`Switch the ${esc(FORMATIONS[cur.template].name)} to another shape (no AP, same members). Wide shapes cannot enter narrow spaces; switch to a file or break the formation there. Select a member and click a highlighted spot to trade places for free.`:'Choose a formation, then move at least one teammate onto a highlighted slot. Group movement uses the lowest remaining movement budget. Select a member and click a highlighted spot to trade places for free.'}</p>${Object.values(FORMATIONS).filter(f=>f.slots&&f.id!==cur?.template).map(f=>`<button data-act="formTpl" data-arg="${f.id}" class="wide"><b>${f.name}</b><small>${esc(f.text)}</small></button>`).join('')}`;
+        setHtml(p,`<h3>Formation <button data-act="closePanel">✕</button></h3><p>${cur?`Switch the ${esc(FORMATIONS[cur.template].name)} to another shape (no AP, same members). Wide shapes cannot enter narrow spaces; switch to a file or break the formation there. Select a member and click a highlighted spot to trade places for free.`:'Choose a formation, then move at least one teammate onto a highlighted slot. Group movement uses the lowest remaining movement budget. Select a member and click a highlighted spot to trade places for free.'}</p>${Object.values(FORMATIONS).filter(f=>f.slots&&f.id!==cur?.template).map(f=>`<button data-act="formTpl" data-arg="${f.id}" class="wide"><b>${f.name}</b><small>${esc(f.text)}</small></button>`).join('')}`,{preserveScroll:true});
     }
     showBreachPanel() {
         const g = this.game, u = g.selectedUnit(); if (!u) return;
@@ -456,9 +483,9 @@ export class Hud {
         const stack = g.breachStack(u, pts[0]);
         const p = this.el('.panel'); p.classList.remove('hidden');
         const charge = g.battle.unitsOf(u.side).some(o => stack.includes(o.id) && o.items.breach_charge > 0);
-        p.innerHTML = `<h3>Breach <button data-act="closePanel">✕</button></h3><p>Stack: ${stack.map(id => esc(g.battle.unit(id).name)).join(', ')} (1 AP each, one free shot each on entry; unalerted defenders are surprised).</p>` +
+        setHtml(p,`<h3>Breach <button data-act="closePanel">✕</button></h3><p>Stack: ${stack.map(id => esc(g.battle.unit(id).name)).join(', ')} (1 AP each, one free shot each on entry; unalerted defenders are surprised).</p>` +
             pts.map((pt, i) => `<div class="bp">${pt.entry==='floor'?'Floor slab':'Door'} at ${pt.x},${pt.y}${pt.roomId!=null?' → room '+pt.roomId:''}
-                ${pt.entry==='floor'?`<button data-act="doBreach" data-arg="${i}:floor">Floor charge · 2×2 hole</button>`:`<button data-act="doBreach" data-arg="${i}:door">Door entry</button>`}${pt.entry!=='floor'&&charge ? `<button data-act="doBreach" data-arg="${i}:charge">Breach charge</button>` : ''}</div>`).join('');
+                ${pt.entry==='floor'?`<button data-act="doBreach" data-arg="${i}:floor">Floor charge · 2×2 hole</button>`:`<button data-act="doBreach" data-arg="${i}:door">Door entry</button>`}${pt.entry!=='floor'&&charge ? `<button data-act="doBreach" data-arg="${i}:charge">Breach charge</button>` : ''}</div>`).join(''),{preserveScroll:true});
     }
     /** After-action report (every battle). The old outcome card is folded into its header. */
     showReport(report, { saved = true, canEdit = true, campaign = null } = {}) {
