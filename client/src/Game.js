@@ -441,6 +441,7 @@ export class Game {
         if (m.kind === 'shoot' && !wasShooting) {
             this.preAimFloor = { cutLevel: this.cutLevel, levelLocked: this.levelLocked, levelSource: this.levelSource };
         }
+        this.keys?.delete?.('a'); this.keys?.delete?.('d');
         this.mode = m;this.aimDrag=null;this.rawAim=null;this.framedAimPoint=null;this.aimPick=null;this.framedTargetId=null;this.aimTelemetryCache=null;this.peekVisible=null;
         if (['throw','gadget','breach'].includes(m.kind)) this.views.get(this.selected)?.flashStatus?.(); this.freeAim=null;this.freeAimManual=false;this.moveConfirmation=null;this.aim.clear();this.aimStance=null;
         this.aimPointer?.setEnabled?.(m.kind === 'shoot');
@@ -1118,8 +1119,12 @@ export class Game {
         let y = (k.has('w') || k.has('arrowup') ? 1 : 0) - (k.has('s') || k.has('arrowdown') ? 1 : 0);
         if(this.mode.kind==='shoot'){
             this.scene.rig.setPanIntent(0,0);
-            const ax=(k.has('arrowright')?1:0)-(k.has('arrowleft')?1:0),ay=(k.has('arrowup')?1:0)-(k.has('arrowdown')?1:0);
-            if((ax||ay)&&this.canAct()&&!this.hud.equipment.open)this.moveAim(ax*400*dt,-ay*400*dt);
+            if(this.canAct()&&!this.hud.equipment.open){
+                const rot=(k.has('d')?1:0)-(k.has('a')?1:0);
+                if(rot)this.turnAimCamera(rot*520*dt*(this.options.rotateSpeed??1),dt);
+                const ax=(k.has('arrowright')?1:0)-(k.has('arrowleft')?1:0),ay=(k.has('arrowup')?1:0)-(k.has('arrowdown')?1:0);
+                if(ax||ay)this.moveAim(ax*400*dt,-ay*400*dt);
+            }
             return;
         }
         const p = this.edgePtr, M = 12;
@@ -1147,7 +1152,13 @@ export class Game {
             return;
         }
         if (this.mode.kind === 'shoot') {
-            if (['w', 'a', 's', 'd'].includes(key)) {
+            if (key === 'a' || key === 'd') {
+                e.preventDefault();
+                this.keys?.add?.(key);
+                if (!e.repeat && this.canAct()) this.turnAimCamera(key === 'a' ? -45 : 45, 0.08);
+                return;
+            }
+            if (key === 'w' || key === 's') {
                 e.preventDefault();
                 const now = performance.now(); if (e.repeat && now - (this.lastPeekKey || 0) < 180) return; this.lastPeekKey = now;
                 if (this.canAct()) this.stepPeek(key);
@@ -1510,18 +1521,27 @@ export class Game {
             this.freeAimManual=true;
         }
     }
-    /** Explicit Q/E rotation during aiming turns both the shooter and the shoulder camera deliberately. */
-    turnAimCamera(dx){
+    /** Explicit A/D or Q/E rotation during aiming turns both the shooter and shoulder camera freely without auto-locking. */
+    turnAimCamera(dx, dt = 0.16){
         const u=this.selectedUnit();if(!u||!dx)return;
-        this.moveAim(dx,0,{clampToView:false});
-        if(!this.rawAim)return;
-        if(this.cameraDirector)this.cameraDirector.fixedDir=null;
-        this.framedAimPoint={...this.rawAim};
-        this.aim.snap(this.rawAim);
-        this.freeAim={...this.rawAim};
+        const focus=this.rawAim||this.aim.target||this.freeAim;if(!focus)return;
         const origin=this.aimOrigin(u);
-        this.views?.get?.(u.id)?.face(this.rawAim.x-origin.x,this.rawAim.y-origin.y);
-        this.cameraDirector?.track?.(new THREE.Vector3(this.rawAim.x,this.rawAim.h,this.rawAim.y),0.16);
+        const step=aimDelta(focus,origin,dx,0,{
+            fov:this.cameraDirector.cam.fov,
+            height:this.scene.renderer.domElement.clientHeight||innerHeight,
+            sensitivity:1
+        });
+        if(!step)return;
+        this.framedTargetId=null;
+        if(this.cameraDirector)this.cameraDirector.fixedDir=null;
+        this.rawAim=step;
+        this.framedAimPoint={...step};
+        this.aim.snap(step);
+        this.freeAim={...step};
+        this.freeAimManual=true;
+        this.updateAimPick(u,origin,step);
+        this.views?.get?.(u.id)?.face(step.x-origin.x,step.y-origin.y);
+        this.cameraDirector?.track?.(new THREE.Vector3(step.x,step.h,step.y),dt);
     }
     /** PLAN-15: lean to the neighbouring peek tile in the camera-relative WASD direction (or back toward home). */
     stepPeek(key){

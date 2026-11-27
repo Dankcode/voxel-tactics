@@ -62,14 +62,14 @@ export const WEAPONS = Object.freeze(Object.fromEntries(Object.entries({
 }).map(([id, w]) => [id, Object.freeze({ ...withCaliber({ id, ...w }), ...CONFIG[id] })])));
 
 export const THROWABLES = Object.freeze({
-    medkit: {id:'medkit',name:'Medical Kit',kind:'gadget',ap:1,range:1.5,heal:8},
-    fire_flask: { id: 'fire_flask', name: 'Incendiary Grenade', ap: 2, range: 12, radius: 2.2, damage: 6, power: 2, element: 'pyro', noise: 10, cutIn: 'throw' },
-    frost_flask: { id: 'frost_flask', name: 'Cryo Canister', ap: 2, range: 12, radius: 2.5, damage: 5, power: 1, element: 'cryo', noise: 8, cutIn: 'throw' },
-    water_flask: { id: 'water_flask', name: 'Extinguisher Grenade', ap: 1, range: 12, radius: 2.6, damage: 0, power: 0, element: 'hydro', noise: 4, cutIn: 'throw' },
-    gale_flask: { id: 'gale_flask', name: 'Concussion Grenade', ap: 2, range: 12, radius: 2.5, damage: 4, power: 2, element: 'anemo', knockback: 2, noise: 8, cutIn: 'throw' },
+    medkit: {id:'medkit',name:'Medkit',kind:'gadget',ap:1,range:1.5,heal:8},
+    fire_flask: { id: 'fire_flask', name: 'Fire Grenade', ap: 2, range: 12, radius: 2.2, damage: 6, power: 2, element: 'pyro', noise: 10, cutIn: 'throw' },
+    frost_flask: { id: 'frost_flask', name: 'Freeze Grenade', ap: 2, range: 12, radius: 2.5, damage: 5, power: 1, element: 'cryo', noise: 8, cutIn: 'throw' },
+    water_flask: { id: 'water_flask', name: 'Water Grenade', ap: 1, range: 12, radius: 2.6, damage: 0, power: 0, element: 'hydro', noise: 4, cutIn: 'throw' },
+    gale_flask: { id: 'gale_flask', name: 'Stun Grenade', ap: 2, range: 12, radius: 2.5, damage: 4, power: 2, element: 'anemo', knockback: 2, noise: 8, cutIn: 'throw' },
     powder_bomb: { id: 'powder_bomb', name: 'Frag Grenade', ap: 2, range: 11, radius: 2.6, damage: 14, power: 8, element: 'geo', shred: 1, noise: 18, cutIn: 'throw' },
     smoke_pot: { id: 'smoke_pot', name: 'Smoke Grenade', ap: 1, range: 12, radius: 3, damage: 0, power: 0, element: null, smoke: 3, noise: 4, cutIn: 'throw' },
-    breach_charge: { id: 'breach_charge', name: 'Breaching Charge', ap: 2, range: 1.6, radius: 1.7, damage: 8, power: 16, element: 'geo', placed: true, noise: 16, cutIn: 'breach' }
+    breach_charge: { id: 'breach_charge', name: 'Breach Charge', ap: 2, range: 1.6, radius: 1.7, damage: 8, power: 16, element: 'geo', placed: true, noise: 16, cutIn: 'breach' }
 });
 
 export const ARMOR = Object.freeze({

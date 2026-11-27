@@ -147,14 +147,14 @@ export class UnitView {
             const accent=(this.activeActor==='shoot'||this.activeActor==='attack')?'#ff6a5c':'#ffb347';
             c.fillStyle='rgba(22,10,12,0.86)';c.fillRect(bx-6,by-32,bw+12,26);
             c.strokeStyle=accent;c.lineWidth=2;c.strokeRect(bx-5,by-31,bw+10,24);
-            c.shadowColor='#000';c.shadowBlur=3;c.textAlign='center';c.font='700 13px sans-serif';c.fillStyle=accent;
+            c.shadowColor='#000';c.shadowBlur=3;c.textAlign='center';c.font='700 13px "Inter", "Segoe UI", system-ui, sans-serif';c.fillStyle=accent;
             c.fillText(label,W/2,by-14);
             c.shadowBlur=0;
         }
         if(tag||card){
             c.shadowColor='#000';c.shadowBlur=3;
             c.fillStyle='rgba(8,10,14,0.66)';c.fillRect(bx-3,by-30,bw+6,26);
-            c.textAlign='left';c.font='700 15px sans-serif';c.fillStyle=this.selected?'#5ff2d6':'#e5e5e9';c.fillText((u.name||'').toUpperCase().slice(0,14),bx+3,by-11);
+            c.textAlign='left';c.font='700 15px "Inter", "Segoe UI", system-ui, sans-serif';c.fillStyle=this.selected?'#5ff2d6':'#e5e5e9';c.fillText((u.name||'').toUpperCase().slice(0,14),bx+3,by-11);
             const max=Math.max(u.maxAp??4,u.ap+(u.moveOnlyAp||0),1);
             for(let i=0;i<max;i++){const x=bx+bw-10-(max-1-i)*15,y=by-17;c.beginPath();c.arc(x,y,5.5,0,Math.PI*2);
                 const on=i<u.ap,move=!on&&i<u.ap+(u.moveOnlyAp||0);c.fillStyle=on?'#4fd3ff':move?'#ffcf5a':'rgba(255,255,255,0.12)';c.fill();}
@@ -163,8 +163,8 @@ export class UnitView {
         if(card){
             const info=this.statusLines?.(u)||[];
             c.fillStyle='rgba(8,10,14,0.78)';c.fillRect(bx-3,by-88,bw+6,56);
-            c.shadowColor='#000';c.shadowBlur=3;c.textAlign='left';c.font='700 16px sans-serif';c.fillStyle=hpColor;c.fillText(`${u.hp}/${u.maxHp} HP`,bx+4,by-70);
-            c.font='600 13px sans-serif';c.fillStyle='#cfd6dc';
+            c.shadowColor='#000';c.shadowBlur=3;c.textAlign='left';c.font='700 16px "Inter", "Segoe UI", system-ui, sans-serif';c.fillStyle=hpColor;c.fillText(`${u.hp}/${u.maxHp} HP`,bx+4,by-70);
+            c.font='600 13px "Inter", "Segoe UI", system-ui, sans-serif';c.fillStyle='#cfd6dc';
             info.slice(0,2).forEach((line,i)=>c.fillText(line,bx+4,by-53+i*16));
             c.shadowBlur=0;
         }

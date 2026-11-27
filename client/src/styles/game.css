@@ -707,3 +707,29 @@ body.cutin-active #hud{visibility:hidden}
 .slots .slot:disabled{opacity:.42;cursor:default;pointer-events:auto}
 .slots .slot:disabled:hover{color:var(--cyan2);border-color:#ededf02e;box-shadow:none}
 .slots .slot .sub:empty{display:none}
+
+/* Crisp floating combat text */
+#float-layer{position:fixed;inset:0;pointer-events:none;z-index:38}
+.float{position:absolute;left:0;top:0;font-family:var(--font);font-weight:800;letter-spacing:.08em;line-height:1.15;text-transform:uppercase;font-variant-numeric:tabular-nums;white-space:nowrap;padding:2px 8px;border-radius:4px;background:rgba(7,11,16,.78);border:1px solid rgba(255,255,255,.16);text-shadow:0 1px 2px #000,0 0 6px rgba(0,0,0,.92);box-shadow:0 2px 8px rgba(0,0,0,.45)}
+
+/* Prominent topbar tools, inventory workspace, settings & action menus */
+.topbar .tools{display:flex;gap:6px;align-items:center}
+.topbar .tools .tool-btn{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;height:32px;background:rgba(10,18,28,.9);border:1px solid rgba(95,224,255,.36);border-radius:5px;font-size:11px;font-weight:600;letter-spacing:.06em;color:#e8f4fa;text-transform:uppercase}
+.topbar .tools .tool-btn svg{width:16px;height:16px}
+.topbar .tools .tool-btn:hover,.topbar .tools .tool-btn.on{background:rgba(24,58,80,.95);border-color:#5fe0ff;color:#fff}
+.squad .inventory-toggle{display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:5px 8px;background:rgba(10,18,28,.88);border:1px solid rgba(95,224,255,.36);border-radius:5px;font-size:10px;font-weight:700;letter-spacing:.06em;color:#e4f4fc}
+.squad .inventory-toggle:hover,.squad .inventory-toggle.on{background:rgba(24,58,80,.95);border-color:#5fe0ff;color:#fff}
+#hud.panel-open > .unitcard{opacity:0;pointer-events:none}
+.panel{bottom:148px;padding:14px;background:rgba(10,16,24,.96);border:1px solid rgba(95,224,255,.44);border-radius:8px;box-shadow:0 16px 48px rgba(0,0,0,.78);z-index:50}
+.panel button{background:rgba(20,34,48,.9);border:1px solid rgba(130,190,220,.32)}
+.panel button:hover:not(:disabled){background:rgba(32,62,84,.96);border-color:#5fe0ff}
+.panel p{font-size:12px;color:#c4d6e2}
+.gear-quick button{font-size:11.5px;padding:16px 8px 8px}
+.options{background:rgba(10,16,24,.97);border:1px solid rgba(95,224,255,.42);border-radius:8px;box-shadow:0 18px 54px rgba(0,0,0,.82);z-index:70}
+.options label,.options>button{font-size:12px}
+#hud>.equipment-overlay{background:rgba(4,7,11,.55)}
+.body-status,.equipment-workspace{background:rgba(10,16,24,.96);border:1px solid rgba(95,224,255,.32);border-radius:8px;box-shadow:0 18px 54px rgba(0,0,0,.8)}
+.vital-stats>span,.conditions p{font-size:11px}
+.worn-slot b,.equipped-weapons span,.cargo-section h3,.equipment-header h2,.body-status h3,.close-loadout{font-size:12px}
+.close-loadout{background:rgba(14,24,36,.95);border:1px solid rgba(95,224,255,.45);padding:8px 18px;border-radius:6px;color:#edf7fc}
+.close-loadout:hover{background:rgba(26,56,78,.98);border-color:#5fe0ff;color:#fff}

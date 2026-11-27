@@ -173,10 +173,16 @@ export class Fx {
         this.scene.shake = Math.max(this.scene.shake, 0.25 + radius * 0.08);
     }
     float(pos, text, color = '#fff', size = 18) {
+        const label = String(text ?? '').trim();
+        if (!label || !this.floatRoot) return;
+        const pxSize = Math.max(12, Math.min(22, Number(size) || 16));
+        const spawnPos = pos.clone().add(new THREE.Vector3(0, 2.2, 0));
+        const nearby = this.floats.filter(f => f.t < 0.55 && f.pos.distanceTo(spawnPos) < 1.5).length;
+        spawnPos.y += nearby * 0.46;
         const el = document.createElement('div');
-        el.className = 'float'; el.textContent = text; el.style.color = color; el.style.fontSize = `${size}px`;
+        el.className = 'float'; el.textContent = label; el.style.color = color; el.style.fontSize = `${pxSize}px`;
         this.floatRoot.appendChild(el);
-        this.floats.push({ el, pos: pos.clone().add(new THREE.Vector3(0, 2.2, 0)), t: 0 });
+        this.floats.push({ el, pos: spawnPos, t: 0 });
     }
     /** Mirror the element field: a flame per burning voxel, a puff per smoke cell (capped). */
     syncField(field) {

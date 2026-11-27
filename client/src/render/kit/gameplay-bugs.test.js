@@ -10,7 +10,7 @@ import { MAT, AIR } from '../../../../shared/voxel/Materials.js';
 import { destroyVoxel } from '../../../../shared/voxel/Destruction.js';
 import { MAPS } from '../../../../shared/mission/Maps.js';
 import { nodeKey } from '../../../../shared/world/PathSearch.js';
-import { WEAPONS } from '../../../../shared/content/weapons.js';
+import { WEAPONS, THROWABLES } from '../../../../shared/content/weapons.js';
 import { partCentre } from '../../../../shared/battle/Ballistics.js';
 import { Game } from '../../Game.js';
 import { EventPlayer } from '../../anim/EventPlayer.js';
@@ -20,6 +20,7 @@ import { buildAllPieces } from './KitPieces.js';
 import { BuildingView } from '../BuildingView.js';
 import { VoxelView } from '../VoxelView.js';
 import { Fx } from '../Fx.js';
+import { SightingMarks } from '../SightingMarks.js';
 import { LightField } from '../../../../shared/lighting/LightField.js';
 import { unitCutLevel } from '../FloorCutaway.js';
 
@@ -846,5 +847,46 @@ test('bottom action bar keeps a static slot list across item/door/breach/formati
         assert.equal(container.innerHTMLCalls, 0, 'container.innerHTML is never wiped on refresh');
     } finally {
         globalThis.document = prevDoc;
+    }
+});
+
+test('THROWABLES use simple names, Fx.float staggers overlapping labels, and SightingMarks uses noisy pixel outlines instead of solid red circles', () => {
+    assert.equal(THROWABLES.fire_flask.name, 'Fire Grenade');
+    assert.equal(THROWABLES.frost_flask.name, 'Freeze Grenade');
+    assert.equal(THROWABLES.water_flask.name, 'Water Grenade');
+    assert.equal(THROWABLES.gale_flask.name, 'Stun Grenade');
+    assert.equal(THROWABLES.powder_bomb.name, 'Frag Grenade');
+    assert.equal(THROWABLES.smoke_pot.name, 'Smoke Grenade');
+    assert.equal(THROWABLES.breach_charge.name, 'Breach Charge');
+    assert.equal(THROWABLES.medkit.name, 'Medkit');
+
+    const prevDoc = globalThis.document;
+    try {
+        const rootChildren = [];
+        globalThis.document = {
+            createElement: () => ({ className: '', textContent: '', style: {}, remove() {} })
+        };
+        const fx = new Fx({ scene: new THREE.Scene(), clipping: [], shake: 0 }, { appendChild: el => rootChildren.push(el) });
+        const at = new THREE.Vector3(5.5, 2, 5.5);
+        fx.float(at, '-4 TORSO', '#ff8a8a', 40);
+        fx.float(at, 'BURNING', '#ffe08a', 8);
+        assert.equal(fx.floats.length, 2);
+        assert.equal(fx.floats[0].el.style.fontSize, '22px', 'clamps large float font size');
+        assert.equal(fx.floats[1].el.style.fontSize, '12px', 'clamps small float font size');
+        assert.ok(fx.floats[1].pos.y > fx.floats[0].pos.y + 0.3, 'staggers overlapping floating labels vertically');
+    } finally {
+        globalThis.document = prevDoc;
+    }
+
+    const sm = new SightingMarks({ scene: new THREE.Scene() });
+    sm.showScan({ until: 5, contacts: [{ x: 8, y: 8, z: 1, r: 4, drone: false }] });
+    sm.flash({ x: 4, y: 4, z: 1 });
+    sm.ghost('e1', { x: 6, y: 6, z: 1, round: 1 }, 1);
+    const meshes = [];
+    sm.group.traverse(o => { if (o.isMesh) meshes.push(o); });
+    assert.ok(meshes.length >= 3, 'creates outline meshes for scan, flash, and ghost markers');
+    for (const m of meshes) {
+        assert.equal(m.geometry.type, 'PlaneGeometry', 'replaces CircleGeometry/RingGeometry circles with textured outline planes');
+        assert.equal(m.userData.noisyOutline, true);
     }
 });

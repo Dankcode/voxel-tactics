@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { EVENT_TO_CLIP, CLIP_HOLD } from './AnimationClips.js';
 import { WEAPONS, THROWABLES } from '../../../shared/content/weapons.js';
-import { ELEMENT_COLORS } from '../../../shared/elements/Elements.js';
+import { ELEMENT_COLORS, STATUS_DEFS } from '../../../shared/elements/Elements.js';
 import { ABILITIES } from '../../../shared/content/units.js';
 import { FORMATIONS } from '../../../shared/content/formations.js';
 import { materialById, MAT } from '../../../shared/voxel/Materials.js';
@@ -14,7 +14,7 @@ import { explosionSound, impactSound, weaponHandlingSound, weaponSound } from '.
 
 const wait = s => new Promise(r => setTimeout(r, s * 1000));
 const animateFrame = () => typeof requestAnimationFrame === 'function' ? new Promise(r => requestAnimationFrame(r)) : new Promise(r => setTimeout(r, 8));
-const PART_LABEL = { head: 'head', torso: 'torso', armL: 'L arm', armR: 'R arm', legs: 'legs' };
+const PART_LABEL = { head: 'HEAD', torso: 'TORSO', armL: 'L ARM', armR: 'R ARM', legs: 'LEGS' };
 
 export class EventPlayer {
     constructor(game) { this.game = game; this.queue = []; this.busy = false; this.speed = 1; this.deferSettle = false; this.idleWaiters = []; this.activeEnemyId = null; }
@@ -431,20 +431,21 @@ export class EventPlayer {
             case 'damage': {
                 const v = this.view(e.unitId); if (!v) break;
                 if (!g.isVisible(v.unit) && v.unit.side === 'enemy') break;
-                fx.float(v.worldPosition(), e.amount ? `-${e.amount} ${PART_LABEL[e.part] || ''}` : 'ARMOR', e.element ? ELEMENT_COLORS[e.element] : (e.amount ? '#ff8a8a' : '#cfd8dc'), e.amount ? 20 : 15);
+                const dmgLabel = e.amount ? (PART_LABEL[e.part] ? `-${e.amount} ${PART_LABEL[e.part]}` : `-${e.amount}`) : 'ARMOR';
+                fx.float(v.worldPosition(), dmgLabel, e.element ? ELEMENT_COLORS[e.element] : (e.amount ? '#ff8a8a' : '#cfd8dc'), e.amount ? 18 : 14);
                 v.drawBar();
                 if (e.amount) { v.animator?.play('hit', { restart: true }); v.pulseAction?.('hit'); }
                 break;
             }
-            case 'disabled': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition().add(new THREE.Vector3(0, 0.4, 0)), `${PART_LABEL[e.part]} disabled`.toUpperCase(), '#ffb74d', 15); break; }
-            case 'heal': { const v=this.view(e.unitId); if(hiddenEnemy(v)){v.drawBar();break;} if(v) {v.drawBar(); fx.float(v.worldPosition(),`+${e.amount} HP`,'#5ff2d6',22);if(v.unit.side==='player'||g.isVisible?.(v.unit))g.audio.play('heal',{volume:.4});} await this.d(0.2); break; }
-            case 'death': { const v = this.view(e.unitId); if(hiddenEnemy(v)){v.animator?.play('down');v.drawBar();break;} if (v) { const p=v.worldPosition();v.animator?.play('down'); v.drawBar(); fx.defeat(p,v.unit.drone);fx.float(p, v.unit.side === 'player' ? 'KIA' : v.unit.drone ? 'DRONE DOWN' : 'KILLED', '#ff5252', 22); } await this.d(CLIP_HOLD.down); break; }
-            case 'extract': { const v = this.view(e.unitId); if (v) { fx.float(v.worldPosition(), e.item ? 'EXTRACTED WITH THE PACKAGE' : 'EXTRACTED', '#5ff2d6', 20);g.audio.play('extract',{volume:.45}); await this.d(0.35); v.setVisible(false); } g.overlays.showObjective(g.battle); break; }
-            case 'recover': { const v = this.view(e.unitId); if (v) {fx.float(v.worldPosition(), `${(e.label || 'item').toUpperCase()} RECOVERED`, '#5ff2d6', 20);g.audio.play('recover',{volume:.45});} g.overlays.showObjective(g.battle); await this.d(0.3); break; }
-            case 'drop': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition(), `${(e.label || 'item').toUpperCase()} DROPPED`, '#ffc845', 18); if (e.collapse) g.hud.log(`${e.label || 'The package'} fell with the floor.`); g.overlays.showObjective(g.battle); break; }
+            case 'disabled': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition().add(new THREE.Vector3(0, 0.4, 0)), `${PART_LABEL[e.part] || e.part} DISABLED`, '#ffb74d', 14); break; }
+            case 'heal': { const v=this.view(e.unitId); if(hiddenEnemy(v)){v.drawBar();break;} if(v) {v.drawBar(); fx.float(v.worldPosition(),`+${e.amount} HP`,'#5ff2d6',20);if(v.unit.side==='player'||g.isVisible?.(v.unit))g.audio.play('heal',{volume:.4});} await this.d(0.2); break; }
+            case 'death': { const v = this.view(e.unitId); if(hiddenEnemy(v)){v.animator?.play('down');v.drawBar();break;} if (v) { const p=v.worldPosition();v.animator?.play('down'); v.drawBar(); fx.defeat(p,v.unit.drone);fx.float(p, v.unit.side === 'player' ? 'KIA' : v.unit.drone ? 'DRONE DOWN' : 'KILLED', '#ff5252', 20); } await this.d(CLIP_HOLD.down); break; }
+            case 'extract': { const v = this.view(e.unitId); if (v) { fx.float(v.worldPosition(), e.item ? 'PACKAGE EXTRACTED' : 'EXTRACTED', '#5ff2d6', 18);g.audio.play('extract',{volume:.45}); await this.d(0.35); v.setVisible(false); } g.overlays.showObjective(g.battle); break; }
+            case 'recover': { const v = this.view(e.unitId); if (v) {fx.float(v.worldPosition(), `${(e.label || 'ITEM').toUpperCase()} RECOVERED`, '#5ff2d6', 18);g.audio.play('recover',{volume:.45});} g.overlays.showObjective(g.battle); await this.d(0.3); break; }
+            case 'drop': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition(), `${(e.label || 'ITEM').toUpperCase()} DROPPED`, '#ffc845', 16); if (e.collapse) g.hud.log(`${e.label || 'The package'} fell with the floor.`); g.overlays.showObjective(g.battle); break; }
             case 'zone': g.overlays.showObjective(g.battle); g.hud.log('The objective zone collapsed to the floor below.'); break;
             case 'objective': if (e.kind === 'hold') g.hud.log(e.contested ? `Zone contested — held ${e.held}/${e.rounds}` : `Zone held ${e.held}/${e.rounds}`); break;
-            case 'status': { const v = this.view(e.unitId); if (v && (v.unit.side === 'player' || g.isVisible(v.unit))) fx.float(v.worldPosition().add(new THREE.Vector3(0, 0.3, 0)), e.statusId, '#ffe08a', 14); break; }
+            case 'status': { const v = this.view(e.unitId); if (v && (v.unit.side === 'player' || g.isVisible(v.unit))) fx.float(v.worldPosition().add(new THREE.Vector3(0, 0.3, 0)), (STATUS_DEFS[e.statusId]?.name || String(e.statusId || '').replace(/_/g, ' ')).toUpperCase(), '#ffe08a', 14); break; }
             case 'stress': { const v = this.view(e.unitId); if (v) { v.drawBar(); if (e.breakdown) { fx.float(v.worldPosition(), 'BREAKDOWN', '#c38bff', 22); await this.d(0.4); } } break; }
             case 'reaction': {
                 const v = this.view(e.watcherId); if (hiddenEnemy(v)) break;
@@ -483,7 +484,7 @@ export class EventPlayer {
                 g.refreshOverwatch?.();
                 break;
             }
-            case 'overwatchCancel': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition().add(new THREE.Vector3(0, 0.3, 0)), 'OVERWATCH CANCELLED', '#9fd8ff', 14); g.refreshOverwatch?.(); break; }
+            case 'overwatchCancel': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition().add(new THREE.Vector3(0, 0.3, 0)), 'WATCH BROKEN', '#9fd8ff', 14); g.refreshOverwatch?.(); break; }
             case 'ability': {
                 const v = this.view(e.unitId);
                 if (v) {
@@ -492,7 +493,7 @@ export class EventPlayer {
                         this.focusOverview(v.worldPosition?.() || new THREE.Vector3(v.unit.x + 0.5, v.unit.z + 1, v.unit.y + 0.5), 6.5);
                         v.pulseAction?.('throw');
                     }
-                    fx.float(v.worldPosition(), ABILITIES[e.abilityId]?.name || e.abilityId, '#7fdbff', 16);
+                    fx.float(v.worldPosition(), String(ABILITIES[e.abilityId]?.name || e.abilityId || '').toUpperCase(), '#7fdbff', 16);
                 }
                 break;
             }

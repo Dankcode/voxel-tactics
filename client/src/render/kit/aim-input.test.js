@@ -144,6 +144,42 @@ test('left and right peeks keep the reticle on the same target and use the autho
     }
 });
 
+test('A and D rotate the aiming camera cleanly without strafing or auto-locking onto targets', async () => {
+    const THREE = await import('three');
+    const { CameraDirector } = await import('../../anim/CameraDirector.js');
+    const store = new VoxelStore(28, 28, 10);
+    store.fill(0, 0, 0, 27, 27, 0, MAT.grass);
+    const battle = new Battle({
+        mission: { id: 'ad-rot', store, rooms: [], buildings: [], spawns: { player: [{ x: 10, y: 18, z: 1 }], enemy: [{ type: 'cultist', pos: { x: 10, y: 10, z: 1 }, group: 0 }] } },
+        squad: [{ type: 'grenadier' }], seed: 2
+    });
+    const g = aimingGame(), u = battle.unit('p0'), cam = new CameraDirector({ aspect: 16 / 9 });
+    cam.store = store;
+    let peeks = 0;
+    Object.assign(g, {
+        battle, selectedUnit: () => u, isVisible: () => true, peek: null, views: new Map(),
+        cameraDirector: cam, overlays: { showTrajectory() {} },
+        hud: { equipment: { open: false }, renderTarget() {}, renderTargets() {} },
+        scene: { renderer: { domElement: { clientHeight: 720 } }, rig: { setPanIntent() {} } },
+        debug: { onKey: () => false }, keys: new Set(), aimPointer: { release() {}, unavailable: true },
+        stepPeek: () => peeks++
+    });
+    const p = { x: 10.5, y: 10.5, h: 2.35 };
+    g.freeAim = { ...p }; g.rawAim = { ...p }; g.framedAimPoint = { ...p }; g.framedTargetId = 'e0';
+    g.aim.snap(p); g.frameAim(u, p);
+    const q0 = cam.cam.quaternion.clone();
+    const evD = { key: 'd', preventDefault() { this.p = true; }, target: { tagName: 'CANVAS' }, ctrlKey: false, metaKey: false, repeat: false };
+    g.onKey(evD);
+    assert.equal(evD.p, true);
+    assert.equal(peeks, 0, 'D rotates camera instead of calling stepPeek');
+    assert.equal(g.framedTargetId, null, 'rotating camera clears target auto-lock so players can aim anywhere');
+    assert.ok(cam.cam.quaternion.angleTo(q0) > 1e-4, 'D rotates the camera angle');
+    const qAfterD = cam.cam.quaternion.clone();
+    g.handleKeysHeld(0.1);
+    assert.ok(cam.cam.quaternion.angleTo(qAfterD) > 1e-4, 'holding D continues smooth camera rotation');
+    cam.end();
+});
+
 test('rapid clicks submit only one shot while the first action is pending',async()=>{
     const g=aimingGame(),unit=g.selectedUnit(),submissions=[];
     let resolveSubmit;

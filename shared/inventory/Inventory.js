@@ -2,7 +2,7 @@ import { THROWABLES } from '../content/weapons.js';
 import { CARGO_ITEMS } from '../content/gear.js';
 export const PACK={width:6,height:5};
 const sizes={fire_flask:[1,2],frost_flask:[1,3],water_flask:[1,1],gale_flask:[3,1],powder_bomb:[2,2],smoke_pot:[2,1],breach_charge:[3,2],medkit:[2,3]};
-export const INVENTORY_ITEMS=Object.freeze({...Object.fromEntries(Object.entries(THROWABLES).map(([id,item])=>[id,{...item,width:sizes[id][0],height:sizes[id][1],weight:id==='medkit'?0.6:0.4,short:({fire_flask:'INC',frost_flask:'CRYO',water_flask:'HYDRO',gale_flask:'FLASH',powder_bomb:'FRAG',smoke_pot:'SMOKE',breach_charge:'CHARGE',medkit:'MED'})[id],category:item.kind==='gadget'||item.placed?'Gadget':'Grenade'}])),...CARGO_ITEMS});
+export const INVENTORY_ITEMS=Object.freeze({...Object.fromEntries(Object.entries(THROWABLES).map(([id,item])=>[id,{...item,width:sizes[id][0],height:sizes[id][1],weight:id==='medkit'?0.6:0.4,short:({fire_flask:'FIRE',frost_flask:'FREEZE',water_flask:'WATER',gale_flask:'STUN',powder_bomb:'FRAG',smoke_pot:'SMOKE',breach_charge:'BREACH',medkit:'MED'})[id],category:item.kind==='gadget'||item.placed?'Gadget':'Grenade'}])),...CARGO_ITEMS});
 export function footprint(slot){const item=INVENTORY_ITEMS[slot.itemId];return slot.rotated?{w:item.height,h:item.width}:{w:item.width,h:item.height};}
 export function validateInventory(slots,capacity=PACK,depth=0,ids=new Set()){
     if(!Array.isArray(slots)||slots.length>96||depth>3)return 'Invalid inventory';

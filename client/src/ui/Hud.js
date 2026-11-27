@@ -39,7 +39,7 @@ export class Hud {
             <div class="topbar">
                 <div class="map-marks" aria-label="Map markers">${['red','blue','green'].map(c=>`<button data-act="mark" data-arg="${c}" aria-label="Mark ${c} block" title="Mark ${c} block · click again on the same block to clear" style="--mark:${c==='red'?'#ff4949':c==='blue'?'#4c9cff':'#56ef93'}">!</button>`).join('')}</div>
                 <div class="turnbox"><div class="round"></div><div class="phase"></div><div class="objstat hidden"></div><div class="ai-posture hidden"></div><button data-act="endTurn" class="endturn" title="End turn (Enter)">END TURN</button></div>
-                <div class="tools"><button class="speed-toggle" data-act="cycleSpeed" title="Turn & animation speed (Space during enemy turn)">1×</button><button data-act="options" title="Settings" aria-label="Settings">${ICONS.gear}</button></div>
+                <div class="tools"><button class="tool-btn" data-act="inventory" title="Open soldier inventory & body status (I)" aria-label="Inventory">${ICONS.backpack}<span>Inventory</span><kbd>I</kbd></button><button class="tool-btn speed-toggle" data-act="cycleSpeed" title="Turn & animation speed (Space during enemy turn)">1×</button><button class="tool-btn" data-act="options" title="Settings & controls" aria-label="Settings">${ICONS.gear}<span>Settings</span></button><button class="tool-btn" data-act="menu" title="Return to main menu" aria-label="Main Menu"><span>Menu</span></button></div>
             </div>
             <div class="camera-nav" aria-label="Camera controls">
                 <button data-act="lvlUp" class="nav-up" title="Upper floor · Z / Page Up" aria-label="Upper floor">${ICONS.up}</button>
@@ -179,7 +179,12 @@ export class Hud {
         if(g.selected===u.id&&g.canAct())g.setMode({kind:WEAPONS[id].kind==='melee'?'melee':'shoot',weaponId:id});
     }
     hidePanel() { this.openPanelKind = null; this.el('.panel').classList.add('hidden'); }
-    toggleOptions() { this.el('.options').classList.toggle('hidden'); this.renderOptions(); }
+    toggleOptions() {
+        const el = this.el('.options');
+        el.classList.toggle('hidden');
+        this.renderOptions();
+        this.root?.querySelector?.('[data-act="options"]')?.classList?.toggle?.('on', !el.classList.contains('hidden'));
+    }
     renderOptions() {
         const g = this.game, o = g.options, el = this.el('.options');
         if (el.classList.contains('hidden')) return;
@@ -187,7 +192,7 @@ export class Hud {
         const html = `<h3>Settings <button data-act="options">✕</button></h3><h4>Gameplay</h4><label>Turn / animation speed<select data-setting="turnSpeed">${[.5,1,1.5,2,3].map(n=>`<option value="${n}" ${Number(o.turnSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label><label>Camera rotation<select data-setting="rotateSpeed">${[.5,1,1.5,2].map(n=>`<option value="${n}" ${Number(o.rotateSpeed||1)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('confirmMoves','Confirm movement destinations')}${row('showEnemyBars','Show enemy health')}<label>Aim sensitivity<select data-setting="aimSensitivity">${[.25,.5,.75,1].map(n=>`<option value="${n}" ${Number(o.aimSensitivity??.5)===n?'selected':''}>${n}×</option>`).join('')}</select></label>${row('aimSway','Reticle breathing')}<label>Soldier name and AP tags<select data-setting="unitTags" data-type="string">${[['selected','Selected soldier'],['always','Whole squad'],['flash','Only briefly']].map(([v,l])=>`<option value="${v}" ${(o.unitTags||'selected')===v?'selected':''}>${l}</option>`).join('')}</select></label><button data-act="debug">Test / debug tools (F1)</button><button data-act="inventory">Equipment and body status (I)</button><button data-act="menu">Return to menu</button>${row('autoEndTurn', 'Auto end turn when the squad is spent')}${row('autoNext', 'Auto-select the next ready soldier')}${row('followCamera', 'Camera follows actions')}
             <h4>Audio</h4><label>Sound effects volume<input type="range" data-setting="soundVolume" min="0" max="1" step="0.05" value="${o.soundVolume ?? 0.65}" aria-label="Sound effects volume"></label>
             <h4>Camera</h4>${row('edgeScroll', 'Screen-edge scrolling')}<button data-act="proj" class="${g.scene.projection === 'ortho' ? 'on' : ''}">${g.scene.projection === 'ortho' ? '☑' : '☐'} Isometric (orthographic) view (V)</button>
-            <div class="camhint" style="font-size:11px;opacity:.7;line-height:1.5;margin:4px 0 2px">Z / X floor up / down · WASD, arrows, screen edge pan · left or right-drag pan · middle-drag or Shift+right-drag orbit · wheel zoom-to-cursor cuts building interiors (max zoom shows 1st floor) · Q/E rotate · H / Home centre on soldier · V isometric · while aiming: click canvas to capture mouse (Esc releases) or drag/arrows/Q,E aim · wheel zoom · Tab next target · WASD lean out · click/Space fire · Esc back</div>
+            <div class="camhint" style="font-size:11px;opacity:.7;line-height:1.5;margin:4px 0 2px">Z / X floor up / down · WASD, arrows, screen edge pan · left or right-drag pan · middle-drag or Shift+right-drag orbit · wheel zoom-to-cursor cuts building interiors (max zoom shows 1st floor) · Q/E rotate · H / Home centre on soldier · V isometric · while aiming: A/D or Q/E rotate camera · W/S step cover · click canvas or drag/arrows aim · wheel zoom · Tab next target · click/Space fire · Esc back</div>
             <h4>Buildings</h4><div class="row"><button data-act="buildingCycle" class="${o.buildingView==='exterior'?'on':''}" aria-pressed="${o.buildingView==='exterior'}">Show outside only</button></div><small>Wheel zoom: roof → upper floors → ground floor (disregards manual floor buttons; max zoom always keeps the 1st floor & walls visible). Use the cube arrows for manual floor steps. I opens equipment.</small>
             <h4>Graphics</h4><button data-act="quality" data-arg="mobile" class="${QUALITY.name === 'mobile' ? 'on' : ''}">${QUALITY.name === 'mobile' ? '◉' : '○'} Mobile (light textures, fast)</button><button data-act="quality" data-arg="high" class="${QUALITY.name === 'high' ? 'on' : ''}">${QUALITY.name === 'high' ? '◉' : '○'} High (full textures, AO) — reloads</button>
             <h4>Readability</h4><button data-act="cue" data-arg="uGrid" class="${TERRAIN_CUES.uGrid.value ? 'on' : ''}">${TERRAIN_CUES.uGrid.value ? '☑' : '☐'} Debug tile grid</button><button data-act="cue" data-arg="uRim" class="${TERRAIN_CUES.uRim.value ? 'on' : ''}">${TERRAIN_CUES.uRim.value ? '☑' : '☐'} Ledge rims (orange = 2+ drop)</button><button data-act="ao" class="${g.scene.ao ? 'on' : ''}">${g.scene.ao ? '☑' : '☐'} Ambient occlusion</button>
@@ -375,9 +380,11 @@ export class Hud {
         if (this.updateSpeedButtons) this.updateSpeedButtons();
         else Hud.prototype.updateSpeedButtons.call(this);
         // Squad column.
-        const squadHtml = b.units.filter(u=>u.side==='player').map((u,i)=>`<button class="squad-head ${u.id===g.selected?'sel':''} ${u.dead?'dead':''} ${squadBadge(u).cls}" data-act="select" data-arg="${u.id}" aria-label="Select ${esc(u.name)}" title="${esc(u.name)} · ${u.hp}/${u.maxHp} HP · ${u.ap} AP"><img src="${portraitSrc(u)}" alt="${esc(u.name)}"><b>${u.hp}<small>/${u.maxHp}</small></b><span class="badge ${squadBadge(u).cls}">${squadBadge(u).text}</span><span class="pips">${Array.from({length:Math.max(u.maxAp??4,u.ap)},(_,i)=>`<i class="${i<u.ap?'on':''}"></i>`).join('')}</span>${!u.dead&&b.flankedBy(u).length?'<i class="flank-alert" title="Flanked by a visible enemy">!</i>':''}</button>`).join('')+(b.activeSide==='player'&&!b.outcome?`<button class="next-ready" data-act="nextReady" title="Next ready soldier (Tab)">NEXT ▸</button>`:'')+`<button class="inventory-toggle" data-act="inventory" aria-label="Open inventory">${ICONS.backpack}<kbd>I</kbd></button>`;
+        const squadHtml = b.units.filter(u=>u.side==='player').map((u,i)=>`<button class="squad-head ${u.id===g.selected?'sel':''} ${u.dead?'dead':''} ${squadBadge(u).cls}" data-act="select" data-arg="${u.id}" aria-label="Select ${esc(u.name)}" title="${esc(u.name)} · ${u.hp}/${u.maxHp} HP · ${u.ap} AP"><img src="${portraitSrc(u)}" alt="${esc(u.name)}"><b>${u.hp}<small>/${u.maxHp}</small></b><span class="badge ${squadBadge(u).cls}">${squadBadge(u).text}</span><span class="pips">${Array.from({length:Math.max(u.maxAp??4,u.ap)},(_,i)=>`<i class="${i<u.ap?'on':''}"></i>`).join('')}</span>${!u.dead&&b.flankedBy(u).length?'<i class="flank-alert" title="Flanked by a visible enemy">!</i>':''}</button>`).join('')+(b.activeSide==='player'&&!b.outcome?`<button class="next-ready" data-act="nextReady" title="Next ready soldier (Tab)">NEXT ▸</button>`:'')+`<button class="inventory-toggle" data-act="inventory" aria-label="Open inventory">${ICONS.backpack}<span>INV</span><kbd>I</kbd></button>`;
         setHtml(this.el('.squad'), squadHtml);
         const u=g.selectedUnit();this.equipment.render(u);
+        this.root?.querySelector?.('[data-act="inventory"]')?.classList?.toggle?.('on', !!this.equipment?.open);
+        this.root?.querySelector?.('[data-act="options"]')?.classList?.toggle?.('on', !this.el('.options')?.classList?.contains?.('hidden'));
         // Ability bar: keep buttons static and patch DOM nodes in place so clicking/hovering never flashes.
         const showSlots = u && (u.side === 'player' || g.debug?.manualEnemy) && !b.outcome;
         const canAct = !!(showSlots && g.controllable(u) && !g.aiRunning);
@@ -569,7 +576,7 @@ export class Hud {
                 <div class="aim-nums"><div class="bigpct ${hitCls}">${hitPct}%<small>${hitSub}</small></div><div class="est-dmg">${dmgHtml}</div></div></div>
                 <div class="parts aim-parts">${partRows}</div>`:tel?`<div class="aim-free-read"><b>FREE AIM · ${tel.distance.toFixed(1)} m${freeDmg}</b><span>${tel.blocked?'Cover / wall in trajectory':'Clear ballistic trajectory'}</span></div>`:''}
             ${modTags?`<div class="mods aim-mods">${modTags}</div>`:''}
-            <div class="tbtns">${!locked&&!g.aimPointer?.unavailable?'<button data-act="captureAim">Aim</button>':''}<span class="aim-hint">Tab: Target · Arrows/Q,E: Aim · Wheel: Zoom</span><button data-act="fire" class="fire firebtn" ${ammo<1||u.ap<cost||tel?.outOfRange?'disabled':''}>Fire <kbd>Click / Space</kbd></button></div>`;
+            <div class="tbtns">${!locked&&!g.aimPointer?.unavailable?'<button data-act="captureAim">Aim</button>':''}<span class="aim-hint">A/D or Q/E: Rotate · Arrows: Reticle · Tab: Target · Wheel: Zoom</span><button data-act="fire" class="fire firebtn" ${ammo<1||u.ap<cost||tel?.outOfRange?'disabled':''}>Fire <kbd>Click / Space</kbd></button></div>`;
         setHtml(el, html, { preserveScroll: true });
     }
     showGearPanel(){
@@ -633,9 +640,9 @@ function segs(hp, max) {
 function pips(n, max, cls) { let s = ''; for (let i = 0; i < Math.max(max, n); i++) s += `<i class="${cls} ${i < n ? 'on' : ''}"></i>`; return `<span class="pipset">${s}</span>`; }
 function modeText(m) {
     switch (m.kind) {
-        case 'shoot': return `${WEAPONS[m.weaponId]?.name} — move the reticle, WASD leans out of cover, Space fires`;
+        case 'shoot': return `${WEAPONS[m.weaponId]?.name} — move the reticle, A/D rotates camera, W/S steps out, Space fires`;
         case 'melee': return 'melee — click an adjacent enemy · Right-click or Esc to cancel';
-        case 'gadget': return 'Medical kit — click an injured adjacent ally (or self) · Right-click or Esc to cancel';
+        case 'gadget': return 'Medkit — click an injured adjacent ally (or self) · Right-click or Esc to cancel';
         case 'throw': return `throw ${THROWABLES[m.itemId].name} — click a tile · Right-click or Esc to cancel`;
         case 'ability': return `${ABILITIES[m.abilityId]?.name} — click ${ABILITIES[m.abilityId]?.targeting === 'ally' ? 'an injured ally (self allowed)' : 'an empty visible tile'} · Right-click or Esc to cancel`;
         case 'overwatch': return 'overwatch — click the direction to watch · Right-click or Esc to cancel';
