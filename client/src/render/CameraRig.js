@@ -16,6 +16,7 @@ const VH_PER_DIST = 22 / 36;                        // ortho frustum height per 
 const STEP = Math.PI / 2, BASE = Math.PI / 4;
 const MARGIN = 2;                                             // how far the target may leave the map
 const ease = (rate, dt) => 1 - Math.exp(-rate * dt);
+export const wrapAngle = a => Math.atan2(Math.sin(a), Math.cos(a));
 
 export class CameraRig {
     constructor(aspect = 1) {
@@ -27,6 +28,8 @@ export class CameraRig {
         this.yaw = BASE; this.yawTarget = BASE;
         this.distance = DEFAULT_DIST; this.distanceTarget = DEFAULT_DIST;
         this.pitchOffset = 0;                                  // user tilt from middle-mouse orbit
+        this.pitchOffsetTarget = 0;
+        this.targetYTarget = null;
         this.panIntent = new THREE.Vector2();                  // x = right, y = forward, each -1..1 (keys + edges)
         this.panVel = new THREE.Vector3();
         this.glide = null;
@@ -49,37 +52,53 @@ export class CameraRig {
         return clampN((this.isOrtho ? ORTHO_PITCH : TACTICAL_PITCH) + this.pitchOffset, PITCH_MIN, PITCH_MAX);
     }
     setPreset(name) {
-        this.pitchOffset=(name==='plan'?85:45)*DEG-TACTICAL_PITCH;
+        this.pitchOffsetTarget=this.pitchOffset=(name==='plan'?85:45)*DEG-TACTICAL_PITCH;
+        this.targetYTarget=null;
         const yaw={N:0,E:90,S:180,W:270,iso:45}[name];if(yaw!==undefined)this.yawTarget=yaw*DEG;this.apply();
     }
     resetTactical() {
         this.mode='perspective';this.yaw=this.yawTarget=BASE;
-        this.distance=this.distanceTarget=DEFAULT_DIST;this.pitchOffset=0;
+        this.distance=this.distanceTarget=DEFAULT_DIST;this.pitchOffset=this.pitchOffsetTarget=0;
+        this.targetYTarget=null;
         this.panIntent.set(0,0);this.panVel.set(0,0,0);this.glide=null;this.shake=0;this.apply();
     }
-    /** Q/E: 90° steps on the 45° grid. After a free orbit the next press snaps to the next step that way. */
+    /** Q/E: 90° steps on the 45° grid. After a free orbit the next press eases to the next step that way. */
     rotate(steps) {
         const k = (this.yawTarget - BASE) / STEP, r = Math.round(k);
         if (Math.abs(k - r) > 0.02) this.yawTarget = BASE + (steps > 0 ? Math.ceil(k) : Math.floor(k)) * STEP;
         else this.yawTarget = BASE + (r + steps) * STEP;
     }
-    /** Middle-mouse orbit: free yaw and a clamped tilt (pixels in). */
-    orbit(dxPx, dyPx) {
-        this.yaw -= dxPx * 0.006; this.yawTarget = this.yaw;
-        const base = this.pitch() - this.pitchOffset;
-        this.pitchOffset = clampN(this.pitchOffset + dyPx * 0.004, PITCH_MIN - base, PITCH_MAX - base);
+    /** Align tactical yaw target along the shortest arc from a world look direction (e.g. exiting TPS aim). */
+    syncYawFromDirection(dx, dz) {
+        if (Math.hypot(dx, dz) < 1e-4) return;
+        const desired = Math.atan2(-dx, -dz);
+        this.yawTarget = this.yaw + wrapAngle(desired - this.yaw);
     }
-    /** Smooth zoom: multiply the target distance (eased in update), pulling toward `anchor` on zoom-in. */
+    /** Middle-mouse orbit: smoothed yaw and clamped tilt (pixels in). */
+    orbit(dxPx, dyPx) {
+        this.yawTarget -= dxPx * 0.006;
+        const base = this.isOrtho ? ORTHO_PITCH : TACTICAL_PITCH;
+        this.pitchOffsetTarget = clampN(this.pitchOffsetTarget + dyPx * 0.004, PITCH_MIN - base, PITCH_MAX - base);
+    }
+    /** Smooth zoom: multiply the target distance (eased in update), gliding smoothly toward `anchor` on zoom-in. */
     zoom(f, anchor = null) {
         const prev = this.distanceTarget;
         this.distanceTarget = clampN(prev * f, MIN_DIST, MAX_DIST);
         if (anchor && this.distanceTarget < prev) {
             const k = 1 - this.distanceTarget / prev;
-            this.glide = null;
-            this.target.x += (anchor.x - this.target.x) * k;
-            this.target.z += (anchor.z - this.target.z) * k;
-            this.clamp();
+            const dest = this.glide ? this.glide.to.clone() : this.target.clone();
+            dest.x += (anchor.x - dest.x) * k;
+            dest.z += (anchor.z - dest.z) * k;
+            if (this.bounds) {
+                dest.x = clampN(dest.x, -MARGIN, this.bounds.w + MARGIN);
+                dest.z = clampN(dest.z, -MARGIN, this.bounds.d + MARGIN);
+            }
+            this.glideTo(dest, 12);
         }
+    }
+    glideYTo(y) {
+        this.targetYTarget = Math.max(this.minLayerHeight ?? 0, y);
+        if (this.glide) this.glide.to.y = this.targetYTarget;
     }
     /** Held-input panning (keys / screen edges), screen-relative; any input cancels the follow glide. */
     setPanIntent(right, forward) {
@@ -115,10 +134,14 @@ export class CameraRig {
     }
     update(dt = 0) {
         if (!dt) {                                           // dt 0 = snap (resize, mission start)
-            this.yaw = this.yawTarget; this.distance = this.distanceTarget;
+            this.yaw = this.yawTarget; this.distance = this.distanceTarget; this.pitchOffset = this.pitchOffsetTarget;
+            if (this.targetYTarget != null) { this.target.y = this.targetYTarget; this.targetYTarget = null; this.clamp(); }
             return this.apply();
         }
-        this.yaw += Math.abs(this.yawTarget - this.yaw) > 1e-4 ? (this.yawTarget - this.yaw) * ease(9*(this.rotationSpeed||1), dt) : this.yawTarget - this.yaw;
+        const dyaw = wrapAngle(this.yawTarget - this.yaw);
+        this.yaw += Math.abs(dyaw) > 1e-4 ? dyaw * ease(9 * (this.rotationSpeed || 1), dt) : dyaw;
+        const dpitch = this.pitchOffsetTarget - this.pitchOffset;
+        this.pitchOffset += Math.abs(dpitch) > 1e-4 ? dpitch * ease(14, dt) : dpitch;
         this.distance += Math.abs(this.distanceTarget - this.distance) > 1e-3 ? (this.distanceTarget - this.distance) * ease(10, dt) : this.distanceTarget - this.distance;
         // Key / edge pan with a little momentum; speed scales with the zoom distance.
         const sy = Math.sin(this.yaw), cy = Math.cos(this.yaw), speed = this.distance * 0.65;
@@ -131,6 +154,12 @@ export class CameraRig {
             this.target.lerp(this.glide.to, ease(this.glide.speed, dt));
             this.clamp();
             if (this.target.distanceTo(this.glide.to) < 0.02) this.glide = null;
+        }
+        if (this.targetYTarget != null) {
+            const dy = this.targetYTarget - this.target.y;
+            this.target.y += Math.abs(dy) > 1e-3 ? dy * ease(10, dt) : dy;
+            this.clamp();
+            if (Math.abs(this.targetYTarget - this.target.y) < 1e-3) this.targetYTarget = null;
         }
         this.apply();
     }

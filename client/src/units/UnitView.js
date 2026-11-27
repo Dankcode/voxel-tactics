@@ -1,6 +1,7 @@
 import {installBillboardDepth,billboardDepthSlope} from './BillboardDepth.js';
 import { WalkerModel } from './WalkerModel.js';
 import { DroneModel, DRONE_HOVER } from './DroneModel.js';
+import { createCharacterModel } from './CharacterModel.js';
 import { WALKERS } from '../../../shared/battle/Walker.js';
 // A 2D character standing in the voxel world: a camera-facing quad (depth-tested against voxels),
 // a ground ring, an HP/AP bar, and a SpriteAnimator driving the illustrated, relightable atlas.
@@ -49,18 +50,29 @@ export async function loadCharacterArt(art) {
 }
 
 export class UnitView {
-    constructor(scene, unit, art, store) {
+    constructor(scene, unit, art, store, { characterMode = '3d', customModel = null } = {}) {
         this.scene = scene; this.unit = unit; this.id = unit.id; this.art = unit.art;
+        this.characterMode = characterMode;
         this.group = new THREE.Group();
-        const isModel = unit.drone || WALKERS[unit.type];
+        const isVehicle = unit.drone || WALKERS[unit.type];
+        const useHumanoid3D = !isVehicle && (characterMode === '3d' || !art);
         let h;
-        if (isModel) {
+        if (isVehicle) {
             this.model = unit.drone ? new DroneModel(unit, scene.clipping) : new WalkerModel(unit, store, scene.clipping);
             this.sprite = this.model.root;
+            this.is3D = true;
             h = unit.drone ? DRONE_HOVER + 0.15 : WALKERS[unit.type].height + 0.5;
             this.spriteHeight = h;
             this.group.add(this.sprite);
             this.animator = null;
+        } else if (useHumanoid3D) {
+            this.model = customModel || createCharacterModel(unit, scene.clipping);
+            this.sprite = this.model.root;
+            this.is3D = true;
+            h = 1.9;
+            this.spriteHeight = h;
+            this.group.add(this.sprite);
+            this.animator = this.model;
         } else {
             const m = art.field;
             h = m.worldHeight;
@@ -87,6 +99,7 @@ export class UnitView {
             };
             this.material.customProgramCacheKey = () => 'ranger-edge-lit-billboard-v3';
             this.sprite = new THREE.Mesh(geo, this.material);
+            this.is3D = false;
             this.spriteHeight = h; this.billboardUp = new THREE.Vector3();
             this.sprite.userData.unitId = unit.id;
             this.sprite.castShadow = true; this.sprite.receiveShadow = true;
@@ -200,19 +213,20 @@ export class UnitView {
     update(dt, yaw, camera = this.scene.camera, playbackSpeed = 1) {
         this.group.visible = this.visibilityRequested !== false && this.inVisibleFloor();
         this.breathTime=(this.breathTime||0)+dt;
-        // Screen-facing art retains its drawn proportions; the transparent foot baseline stays at local zero.
-        // Only the sprite tilts. Ground rings, collision position and elevation cues stay on the world grid.
-        if(this.model){this.model.update(this.pos,dt,this.facingVec);this.bar.position.set(0,this.spriteHeight+.47,0);}
-        else if(camera) {
+        // Screen-facing 2D art retains its drawn proportions; 3D models rotate cleanly on the world grid.
+        if (this.model) {
+            this.model.update(this.pos, dt, this.facingVec);
+            this.bar.position.set(0, this.spriteHeight + 0.47, 0);
+        } else if (camera) {
             this.sprite.quaternion.copy(camera.quaternion);
-            this.sprite.position.x=0;   // PLAN-11: no idle breathing sway on the field sprites (it read as jitter)
-            this.depthSlope.value=billboardDepthSlope(camera);
-            this.billboardUp.set(0,1,0).applyQuaternion(camera.quaternion);
-            this.bar.position.copy(this.billboardUp).multiplyScalar(this.spriteHeight+.4);
-        } else this.sprite.rotation.y=yaw;
+            this.sprite.position.x = 0;   // PLAN-11: no idle breathing sway on the field sprites (it read as jitter)
+            this.depthSlope.value = billboardDepthSlope(camera);
+            this.billboardUp.set(0, 1, 0).applyQuaternion(camera.quaternion);
+            this.bar.position.copy(this.billboardUp).multiplyScalar(this.spriteHeight + 0.4);
+        } else this.sprite.rotation.y = yaw;
         if (this.animator) {
-            this.animator.setScreenAngle(Math.atan2(this.facingVec[0], this.facingVec[1]) - yaw);
-            if (!this.striding()) this.animator.update(dt * playbackSpeed);
+            if (!this.model) this.animator.setScreenAngle(Math.atan2(this.facingVec[0], this.facingVec[1]) - yaw);
+            if (!this.model && !this.striding()) this.animator.update(dt * playbackSpeed);
             // Enemy atlases hold one drawing for short actions. Give that drawing a physical reaction.
             if (!this.model && this.unit.side === 'enemy') {
                 const side = Math.sin(Math.atan2(this.facingVec[0], this.facingVec[1]) - yaw);
@@ -277,10 +291,15 @@ export class UnitView {
         }
         this.drawBar();
     }
-    /** Trigger a smooth physical recoil / throw / hit sprite impulse. */
+    /** Trigger a smooth physical recoil / throw / hit impulse (3D clip or 2D sprite pulse). */
     pulseAction(kind) {
+        if (this.model?.play) this.model.play(kind, { restart: true });
         this.actionPulse = { kind, t: 0, dur: kind === 'fire' ? 0.24 : kind === 'hit' ? 0.22 : 0.26 };
     }
+    setAimTarget(pt) { this.model?.setAimTarget?.(pt); }
+    setCoverStance(level, leanSide, aiming) { this.model?.setCoverStance?.(level, leanSide, aiming); }
+    setOpacity(alpha) { this.model?.setOpacity?.(alpha); }
+    getMuzzleWorldPos() { return this.model?.getMuzzleWorldPos?.() || null; }
     setSelected(on) { this.selected = !!on; this.selRing.visible = on || !!this.hovered; this.beacon.visible = !!on && !this.unit.dead; this.drawBar(); }
     /** PLAN-15: hovering a squad portrait lights the soldier's ring in the world. */
     setHovered(on) { this.hovered = !!on; this.selRing.visible = this.selected || this.hovered; this.selRing.material.opacity = this.selected ? 0.95 : 0.6; }

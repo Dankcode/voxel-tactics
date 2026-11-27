@@ -71,8 +71,12 @@ test('peeking into a known overwatch draws its reaction fire on the peek tile; s
         assert.ok(r.ok, r.reason);
         return r.events;
     };
-    assert.ok(run({ x: 10, y: 19, z: 1 }).some(e => e.t === 'reaction'), 'leaning out past the wall is seen by the overwatch');
-    assert.ok(!run(null).some(e => e.t === 'reaction'), 'firing from home draws no reaction');
+    const autoEvents = run(null);
+    assert.ok(autoEvents.some(e => e.t === 'peek'), 'shooting past full cover steps out from cover');
+    assert.ok(autoEvents.some(e => e.t === 'reaction'), 'stepping out past cover exposes the shooter to overwatch');
+    assert.ok(autoEvents.some(e => e.t === 'peekBack'), 'shooter steps back into cover after firing');
+    assert.ok(run({ x: 10, y: 19, z: 1 }).some(e => e.t === 'reaction'), 'manual peek past the wall is seen by the overwatch');
+    assert.ok(!run({ x: 10, y: 20, z: 1 }).some(e => e.t === 'reaction'), 'firing explicitly from home draws no reaction');
 });
 
 test('peek exposure reports the peek tile cover against known hostiles', () => {

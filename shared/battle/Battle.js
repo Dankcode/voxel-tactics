@@ -812,13 +812,15 @@ export class Battle {
         this.emit({ t: 'reveal', roomId: id });
     }
 
-    /** Overwatch: enemies of the mover whose cone contains its new position and who can see it shoot. */
-    checkReactions(mover, walked, reacted = new Set()) {
+    /** Overwatch: enemies of the mover whose cone contains its new position and who can see it (or its lean-out muzzle) shoot. */
+    checkReactions(mover, walked, reacted = new Set(), { exposedPoint = null } = {}) {
         for (const w of this.enemiesOf(mover)) {
             if (!alive(mover)) return;
             if (!w.overwatch || (w.reactionsLeft ?? 0) <= 0 || hasStatus(w, 'surprised')) continue;
             const ow = w.overwatch;
-            if (!inWatchSector(w, ow, mover) || !this.sees(w, mover)) continue;
+            if (!inWatchSector(w, ow, mover)) continue;
+            const seesExposed = !!exposedPoint && (this.sightLine(this.eye(w), exposedPoint) || this.peekEyes(w, mover).some(e => this.sightLine(e, exposedPoint)));
+            if (!this.sees(w, mover) && !seesExposed) continue;
             const weapon = WEAPONS[ow.weaponId];
             if (!w.weapons.includes(ow.weaponId) || (w.ammo[ow.weaponId] ?? 0) < 1) { w.overwatch = null; continue; }
             if (reacted.has(w.id)) continue;
@@ -836,29 +838,54 @@ export class Battle {
         const w = WEAPONS[intent.weaponId || u.weapon];
         u.ap -= this.shotAp(u, w);
         u.buffs.quickAim = false;
-        // PLAN-15 peek: step out to the peek tile (exposed: known overwatch may fire at it), shoot from there, step back.
-        const home = { x: u.x, y: u.y, z: u.z }, from = intent.from && (intent.from.x !== u.x || intent.from.y !== u.y || intent.from.z !== u.z) ? { x: intent.from.x, y: intent.from.y, z: intent.from.z } : null;
+        // PLAN-15 peek & cover step-out: shoot from explicit peek tile or automatically step out of cover to shoot,
+        // exposing the character to known/enemy overwatch cones before returning to cover after the shot.
+        const home = { x: u.x, y: u.y, z: u.z };
+        const aimPoint = aimPointOf(this, intent.aim);
+        const explicitHome = !!intent.from && intent.from.x === home.x && intent.from.y === home.y && intent.from.z === home.z;
+        const autoMuzzle = !intent.from ? chooseMuzzle(this.store, u, aimPoint, { occupied: occupiedBy(this, u), allowStepOut: true }) : null;
+        const step = intent.from && !explicitHome ? intent.from : autoMuzzle?.step;
+        const from = step && (step.x !== home.x || step.y !== home.y || (step.z ?? home.z) !== home.z)
+            ? { x: step.x, y: step.y, z: step.z ?? home.z }
+            : null;
+        let stepFrom = null;
         if (from) {
+            stepFrom = from;
             this.emit({ t: 'peek', unitId: u.id, from: home, to: from });
             Object.assign(u, from);
+            u.facing = facingToward(aimPoint.x - u.x - 0.5, aimPoint.y - u.y - 0.5);
+            this.updateVisibility({ interior: false });
             this.checkReactions(u, [home, from]);
             if (!alive(u)) { this.checkOutcome(); return; }
+        } else if (!explicitHome && (autoMuzzle?.lean || coverAt(this.store, home).best !== COVER.NONE)) {
+            // Rising from or leaning out of cover exposes the firing stance to overwatch lines.
+            this.checkReactions(u, [home], new Set(), { exposedPoint: autoMuzzle });
+            if (!alive(u)) { this.checkOutcome(); return; }
         }
-        this.fireShot(u, w, intent, { allowStepOut: !from });
+        this.fireShot(u, w, intent, { allowStepOut: !from && !explicitHome, stepFrom, stepSide: autoMuzzle?.side || null });
         if (from && alive(u)) {
             const back = this.occupant(home.x, home.y, home.z);
-            if (!back || back === u) { Object.assign(u, home); this.emit({ t: 'peekBack', unitId: u.id, from, to: home }); }
+            if (!back || back === u) {
+                Object.assign(u, home);
+                this.emit({ t: 'peekBack', unitId: u.id, from, to: home });
+                this.updateVisibility({ interior: false });
+            }
         }
     }
-    fireShot(u, w, intent, { allowStepOut = true } = {}) {
+    fireShot(u, w, intent, { allowStepOut = true, stepFrom = null, stepSide = null } = {}) {
         const targetIds = intent.aim.unitId ? [intent.aim.unitId] : [];
-        { const aimPoint=aimPointOf(this,intent.aim); this.emit({ t: 'cutin', unitId: u.id, kind: w.cutIn || 'shot', weaponId: w.id, targetIds, aimPoint, muzzle:chooseMuzzle(this.store,u,aimPoint,{occupied:occupiedBy(this,u), allowStepOut}) }); }
-        this.fireWeapon(u, w, intent.aim, { fireMode: intent.fireMode, allowStepOut });
+        {
+            const aimPoint = aimPointOf(this, intent.aim);
+            const rawMuzzle = chooseMuzzle(this.store, u, aimPoint, { occupied: occupiedBy(this, u), allowStepOut });
+            const muzzle = stepFrom && !rawMuzzle.step ? { ...rawMuzzle, step: stepFrom, side: rawMuzzle.side || stepSide } : rawMuzzle;
+            this.emit({ t: 'cutin', unitId: u.id, kind: w.cutIn || 'shot', weaponId: w.id, targetIds, aimPoint, muzzle });
+        }
+        this.fireWeapon(u, w, intent.aim, { fireMode: intent.fireMode, allowStepOut, stepFrom, stepSide });
         u.buffs.deadeye = false;
     }
 
     /** Fire one shot of `w` at `aim`, resolving every projectile via physical recoil & ballistic trajectory. */
-    fireWeapon(u, w, aim, { reaction = false, breach = false, fireMode: requestedMode = null, allowStepOut = true, suppress = false } = {}) {
+    fireWeapon(u, w, aim, { reaction = false, breach = false, fireMode: requestedMode = null, allowStepOut = true, suppress = false, stepFrom = null, stepSide = null } = {}) {
         const fm = fireMode(u, w, requestedMode);
         const rounds=roundsFor(u,w,fm);if(!rounds)return;
         u.ammo[w.id]-=rounds;
@@ -868,7 +895,8 @@ export class Battle {
         const aimPoint = aimPointOf(this, aim);
         u.facing = facingToward(aimPoint.x - u.x - 0.5, aimPoint.y - u.y - 0.5);
         w=weaponBuild(u,w);
-        const muzzle = chooseMuzzle(this.store, u, aimPoint, { occupied: occupiedBy(this, u), allowStepOut });
+        const rawMuzzle = chooseMuzzle(this.store, u, aimPoint, { occupied: occupiedBy(this, u), allowStepOut });
+        const muzzle = stepFrom && !rawMuzzle.step ? { ...rawMuzzle, step: stepFrom, side: rawMuzzle.side || stepSide } : rawMuzzle;
         const center = aim.point ? traceCenterTrajectory(this, u, muzzle, aimPoint, w, { heat: u.recoilHeat || 0 }) : null;
         const spreadTarget = target || (center?.kind === 'unit' && center.unit.side !== u.side ? center.unit : (aim.point ? aimedUnit(this, u, aim.point) : null));
         const { spread } = this.spreadFor(u, w, aimPoint, { reaction, breach, fireMode: fm, suppress, target: spreadTarget });

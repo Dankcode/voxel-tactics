@@ -48,7 +48,7 @@ import { castRay } from '../../shared/voxel/Raycast.js';
 import { MAT, AIR, materialById } from '../../shared/voxel/Materials.js';
 import { nodeKey, pathTo } from '../../shared/world/PathSearch.js';
 import { estimateShotTelemetry, resolveAimPoint, rayUnit, partCentre, chooseMuzzle, occupiedBy, aimedUnit, traceProjectile, traceCenterTrajectory } from '../../shared/battle/Ballistics.js';
-import { coverAgainst, COVER } from '../../shared/voxel/Cover.js';
+import { coverAt, coverAgainst, COVER } from '../../shared/voxel/Cover.js';
 import { decide, formationIntents, aiOrder } from '../../shared/battle/Ai.js';
 import { podRole } from '../../shared/battle/EnemyAi.js';
 import { alive, FACING_VEC } from '../../shared/battle/Units.js';
@@ -81,7 +81,12 @@ export class Game {
     constructor({ canvas, hudRoot, cutinRoot, floatRoot, onExit, options = {} }) {
         let savedOptions={};try{savedOptions=JSON.parse(localStorage.getItem('tactics-settings')||'{}');}catch{}
         savedOptions=migrateSettings(savedOptions);
-        this.options = { soundVolume:0.65,turnSpeed:1,rotateSpeed:1,aimSensitivity:0.5,aimSway:false,unitTags:'selected',showEnemyBars:true,confirmMoves:false,autoEndTurn: true, autoNext: true, followCamera: true, edgeScroll: true, buildingView:'auto', ...savedOptions, ...options };
+        let urlChars = null;
+        try {
+            const c = new URLSearchParams(globalThis.location?.search || '').get('chars');
+            if (c === '2d' || c === '3d') urlChars = c;
+        } catch {}
+        this.options = { soundVolume:0.65,turnSpeed:1,rotateSpeed:1,aimSensitivity:0.5,aimSway:false,unitTags:'selected',showEnemyBars:true,confirmMoves:false,autoEndTurn: true, autoNext: true, followCamera: true, edgeScroll: true, buildingView:'auto', characterMode:'3d', ...savedOptions, ...options, ...(urlChars ? { characterMode: urlChars } : {}) };
         this.audio = new SoundPlayer({ volume: this.options.soundVolume });
         this.scene = new Scene(canvas);
         this.library = new MaterialLibrary(this.scene.renderer, this.scene.clipping);
@@ -210,11 +215,38 @@ export class Game {
     }
     async addView(u) {
         if (this.views.has(u.id)) return this.views.get(u.id);
-        const art = (u.drone || WALKERS[u.type]) ? null : await loadCharacterArt(u.art);
-        const v = new UnitView(this.scene, u, art, this.battle.store);
+        const characterMode = this.options.characterMode || '3d';
+        const isHumanoid = !u.drone && !WALKERS[u.type];
+        const art = (isHumanoid && characterMode === '2d') ? await loadCharacterArt(u.art) : null;
+        const v = new UnitView(this.scene, u, art, this.battle.store, { characterMode });
         v.statusLines = x => this.statusLines(x);
         this.views.set(u.id, v);
         return v;
+    }
+    async rebuildCharacterViews() {
+        if (!this.battle) return;
+        const mode = this.options.characterMode || '3d';
+        for (const u of this.battle.units) {
+            if (u.drone || WALKERS[u.type]) continue;
+            const prev = this.views.get(u.id);
+            if (!prev || (prev.is3D ? '3d' : '2d') === mode) continue;
+            const wasSelected = prev.selected;
+            const wasHovered = prev.hovered;
+            const wasActive = prev.activeActor;
+            prev.dispose?.();
+            this.views.delete(u.id);
+            const next = await this.addView(u);
+            next.setSelected?.(wasSelected);
+            next.setHovered?.(wasHovered);
+            next.activeActor = wasActive;
+            next.drawBar?.();
+            if (u.dead) next.animator?.play?.('down');
+            if (this.cameraDirector?.hidden?.has?.(u.id) && next.is3D) this.cameraDirector.hidden.delete(u.id);
+        }
+        if (this.mode?.kind === 'shoot' && this.freeAim) {
+            const u = this.selectedUnit();
+            if (u) this.frameAim(u, this.freeAim, undefined, { preserveDirection: true });
+        }
     }
     restart() { this.session.restart?.().then(s => this.start(s)).then(() => { if (this.autoPlayer) this.maybeRunAi(); }); }
     deployNextOp(opId) { this.pause(); this.aimPointer.setEnabled(false); this.audio.active = false; this.audio.stopAll(); this.onNextOp?.(opId); }
@@ -243,19 +275,42 @@ export class Game {
         const cine = this.cameraDirector.active;
         const aimWorld = this.mode.kind === 'shoot' && this.freeAim ? new THREE.Vector3(this.freeAim.x, this.freeAim.h, this.freeAim.y) : null;
         const sel = this.selectedUnit();
+        const camPos = this.cameraDirector.cam?.position;
         for (const v of this.views.values()) {
             v.swayEnabled=this.options.aimSway;
             if(v.tagMode!==this.options.unitTags){v.tagMode=this.options.unitTags;v.drawBar();}
+            const isAimingShooter = cine && this.mode.kind === 'shoot' && v.id === this.selected;
+            if (v.is3D) {
+                v.setAimTarget?.(isAimingShooter ? aimWorld : null);
+                if (this.battle?.store && !v.unit.dead) {
+                    const lean = isAimingShooter && this.aimStance?.unitId === v.id ? (this.aimStance.muzzle?.lean || null) : null;
+                    const ckey = `${v.unit.x},${v.unit.y},${v.unit.z}:${this.battle.seq}:${isAimingShooter ? 1 : 0}:${lean || ''}`;
+                    if (v._coverKey !== ckey) {
+                        v._coverKey = ckey;
+                        const cv = coverAt(this.battle.store, v.unit);
+                        const cover = isAimingShooter && !lean ? 0 : cv.best;
+                        v.setCoverStance?.(cover, lean, isAimingShooter);
+                    }
+                }
+            }
             v.update(dt, cine ? Math.atan2(this.cameraDirector.cam.position.x - v.pos.x, this.cameraDirector.cam.position.z - v.pos.z) : yaw, this.scene.camera, this.player.speed);
             v.bar.visible = (!cine || (this.mode.kind === 'shoot' && v.unit.side !== 'player') || !!v.activeActor) && !v.unit.dead && v.group.visible && (v.unit.side==='player'||this.options.showEnemyBars||!!v.activeActor);
-            const hideInAim = cine && (
-                this.cameraDirector.hidden?.has(v.id)
-                || (this.mode.kind === 'shoot' && v.id === this.selected)
-                || (sel && v.unit.side === sel.side && (
-                    this.cameraDirector.obstructsAim?.(v.pos, aimWorld, { height: v.spriteHeight || 2.4 })
-                    || this.cameraDirector.foregroundUnit?.(v.pos)
-                ))
+            const blocksAim = cine && sel && v.unit.side === sel.side && v.id !== this.selected && (
+                this.cameraDirector.obstructsAim?.(v.pos, aimWorld, { height: v.spriteHeight || 2.4 })
+                || this.cameraDirector.foregroundUnit?.(v.pos)
             );
+            const hideInAim = v.is3D
+                ? (cine && this.cameraDirector.hidden?.has(v.id))
+                : (cine && (this.cameraDirector.hidden?.has(v.id) || (this.mode.kind === 'shoot' && v.id === this.selected) || blocksAim));
+            if (v.is3D) {
+                let alpha = 1;
+                if (cine && camPos) {
+                    const dCam = camPos.distanceTo(v.pos);
+                    if (blocksAim) alpha = 0.25;
+                    else if (isAimingShooter && dCam < 1.15) alpha = Math.max(0.28, (dCam - 0.35) / 0.8);
+                }
+                v.setOpacity?.(alpha);
+            }
             v.sprite.visible = !hideInAim;
             if (v.beacon) v.beacon.visible = !cine && !v.unit.dead && (!!v.selected || !!v.activeActor);
             if (v.selRing) v.selRing.visible = !cine && (!!v.selected || !!v.hovered || (!!v.activeActor && !v.unit.dead));
@@ -294,13 +349,22 @@ export class Game {
             v.setVisible(!u.extracted && (u.side === 'player' || this.isVisible(u) || (u.dead && !this.fog)));
         }
     }
+    refreshOverwatch() {
+        if (!this.battle || !this.overlays?.showOverwatch) return;
+        this.overlays.showOverwatch(
+            this.battle,
+            this.battle.units.filter(u => alive(u) && (u.side === 'player' || this.isVisible(u))),
+            { hidden: (x, y, z) => this.voxelView.interiorVisibility.hiddenAt(x, y, z) || !!this.buildingView?.hiddenAt(x, y, z), cutZ: this.renderCut ? this.renderCut() : this.cutLevel }
+        );
+    }
     settleViews() {
         for (const v of this.views.values()) { v.snap(); v.drawBar(); if (v.unit.dead) v.animator?.play('down'); }
         this.battle.light.flush();
         if (this.voxelView.flush()) this.lanterns.scan(this.battle.store);
         this.fx.syncField(this.battle.field);
         this.updateEnemyVisibility();
-        this.overlays.showOverwatch(this.battle,this.battle.units.filter(u => alive(u) && (u.side === 'player' || this.isVisible(u))),{hidden:(x,y,z)=>this.voxelView.interiorVisibility.hiddenAt(x,y,z)||!!this.buildingView?.hiddenAt(x,y,z),cutZ:this.renderCut ? this.renderCut() : this.cutLevel});
+        if (this.refreshOverwatch) this.refreshOverwatch();
+        else this.overlays.showOverwatch(this.battle,this.battle.units.filter(u => alive(u) && (u.side === 'player' || this.isVisible(u))),{hidden:(x,y,z)=>this.voxelView.interiorVisibility.hiddenAt(x,y,z)||!!this.buildingView?.hiddenAt(x,y,z),cutZ:this.renderCut ? this.renderCut() : this.cutLevel});
         this.overlays.showObjective(this.battle);
         this.refreshRange();
         this.hud.refresh();
@@ -389,25 +453,47 @@ export class Game {
         this.overlays.clearPath();
         this.overlays.showCover(this.battle?.store, null);
         if (m.kind === 'shoot') this.enterTargeting();
-        else if (wasShooting) {
-            const saved = this.preAimFloor;
-            this.preAimFloor = null;
-            if (saved) {
-                this.levelLocked = saved.levelLocked;
-                this.levelSource = saved.levelSource;
-                if (saved.levelSource === 'manual') {
-                    if (saved.cutLevel !== this.cutLevel) this.setLevel(saved.cutLevel);
+        else {
+            if (m.kind === 'overwatch' && this.battle && this.overlays?.showWatchPreview) {
+                const u = this.selectedUnit();
+                if (u) {
+                    const hostiles = this.visibleTargets?.(u) || [];
+                    const [dx, dy] = FACING_VEC[u.facing] || [0, 1];
+                    const fallback = hostiles[0]
+                        ? { x: hostiles[0].x, y: hostiles[0].y, z: hostiles[0].z }
+                        : { x: u.x + Math.round(dx) * 6, y: u.y + Math.round(dy) * 6, z: u.z };
+                    const sector = watchSector(u, fallback, watchWeapon(u));
+                    this.overlays.showWatchPreview(this.battle, u, sector, {
+                        hidden: (x, y, z) => this.voxelView.interiorVisibility.hiddenAt(x, y, z) || !!this.buildingView?.hiddenAt(x, y, z),
+                        cutZ: this.renderCut ? this.renderCut() : this.cutLevel
+                    });
+                }
+            }
+            if (wasShooting) {
+                const saved = this.preAimFloor;
+                this.preAimFloor = null;
+                if (saved) {
+                    this.levelLocked = saved.levelLocked;
+                    this.levelSource = saved.levelSource;
+                    if (saved.levelSource === 'manual') {
+                        if (saved.cutLevel !== this.cutLevel) this.setLevel(saved.cutLevel);
+                    } else {
+                        this.focusFloor(this.selectedUnit());
+                        if (this.cutLevel === Infinity && Number.isFinite(saved.cutLevel) && this.options.buildingView !== 'exterior') {
+                            this.setLevel(saved.cutLevel);
+                        }
+                    }
                 } else {
                     this.focusFloor(this.selectedUnit());
-                    if (this.cutLevel === Infinity && Number.isFinite(saved.cutLevel) && this.options.buildingView !== 'exterior') {
-                        this.setLevel(saved.cutLevel);
-                    }
                 }
-            } else {
-                this.focusFloor(this.selectedUnit());
+                this.peekGlide = null;
+                const sv = this.views?.get?.(this.selected);
+                if (sv?.is3D) {
+                    sv.setAimTarget?.(null);
+                    sv.setOpacity?.(1);
+                }
+                sv?.snap?.();
             }
-            this.peekGlide = null;
-            this.views?.get?.(this.selected)?.snap?.();
         }
         this.refreshRange();
         this.hud.refresh();
@@ -453,6 +539,7 @@ export class Game {
         }
         if (this.hud?.updateFloorLabel) this.hud.updateFloorLabel();
         else this.hud?.refresh?.();
+        this.refreshOverwatch?.();
     }
     setBuildingView(mode) {
         if(!BUILDING_VIEWS.includes(mode))return;
@@ -472,7 +559,8 @@ export class Game {
             const datum=this.battle.mission.meta?.streetDatum??1;
             const tx=Math.floor(rig.target.x),ty=Math.floor(rig.target.z);
             const surfZ=store?.inBounds?.(tx,ty,0)?(store.surfaces(tx,ty).filter(s=>s.z<next).at(-1)?.z??datum):datum;
-            rig.target.y=Math.max(rig.minLayerHeight??0,surfZ+1);
+            const nextY=Math.max(rig.minLayerHeight??0,surfZ+1);
+            if(rig.glideYTo)rig.glideYTo(nextY);else rig.target.y=nextY;
         }
     }
     /** Mouse wheel zooming always takes charge of interior cutouts, disregarding floor buttons or unit locks. */
@@ -500,7 +588,7 @@ export class Game {
     chooseFloor(top) {
         this.levelLocked=true;this.levelSource='manual';
         if(this.options.buildingView==='exterior')this.options.buildingView='auto';
-        if(Number.isFinite(top)){this.scene.rig.glide=null;this.scene.rig.target.y=top-2;}
+        if(Number.isFinite(top)){const rig=this.scene.rig;rig.glide=null;if(rig.glideYTo)rig.glideYTo(top-2);else rig.target.y=top-2;}
         this.setLevel(top);this.hoverPick=null;this.hoverCell=null;
     }
 
@@ -1229,7 +1317,8 @@ export class Game {
                 break;
             }
             case 'overwatch': {
-                const sector = watchSector(u, this.hoverCell || p?.voxel, watchWeapon(u));
+                const toward = this.overwatchToward(u, e.clientX, e.clientY, p, unit);
+                const sector = watchSector(u, toward, watchWeapon(u));
                 this.overlays.setHover(null);
                 this.overlays.showWatchPreview(this.battle,u,sector,{hidden:(x,y,z)=>this.voxelView.interiorVisibility.hiddenAt(x,y,z)||!!this.buildingView?.hiddenAt(x,y,z),cutZ:this.renderCut ? this.renderCut() : this.cutLevel});
                 this.hud.cursorTip(e.clientX, e.clientY, sector ? `Click to watch · ${Math.round(sector.halfAngle*360/Math.PI)}° wedge · ${sector.range} tiles<br><span style="color:#5ff2d6">Teal ≥65%</span> · <span style="color:#ffb347">Amber &lt;65%</span> · estimated standing-target hit<br>Filled surfaces show aim quality; cover still blocks shots` : 'Choose a direction away from this soldier');
@@ -1325,23 +1414,41 @@ export class Game {
      * (and the reticle) look past the wall at the target, as in XCOM 2. The camera keeps the same shoulder and the
      * character stays on its occupied cell. Its world sprite flips toward the reticle.
      */
+    overwatchToward(u, px, py, p = null, unit = null) {
+        const direct = this.hoverCell || p?.cell || p?.voxel || (unit ? { x: unit.x, y: unit.y, z: unit.z } : null);
+        if (direct && (direct.x !== u.x || direct.y !== u.y)) return direct;
+        const sc = this.strikeCell?.(px, py);
+        if (sc && (sc.x !== u.x || sc.y !== u.y)) return sc;
+        const ray = this.scene?.rayAt?.(px, py)?.ray;
+        if (ray && Math.abs(ray.direction.y) > 1e-4) {
+            const t = (u.z + 1 - ray.origin.y) / ray.direction.y;
+            if (t > 0) {
+                const x = Math.floor(ray.origin.x + ray.direction.x * t);
+                const y = Math.floor(ray.origin.z + ray.direction.z * t);
+                if (x !== u.x || y !== u.y) return { x, y, z: u.z };
+            }
+        }
+        return null;
+    }
     frameAim(u,p,m=this.aimMuzzle(u,p),{preserveDirection=false}={}){
         const prevKey=this.aimStance?.unitId===u.id?this.aimStance.key:null;
         const wasFollowing=!!(this.cameraDirector?.active&&this.cameraDirector.phase==='prepare'&&this.cameraDirector.following);
+        const v=this.views?.get?.(u.id);
+        const tps3d=!!v?.is3D;
         const s=this.shooterOf(u),side=this.peekSide||m.side||'right',sz=m.step?.z??s.z;
         const o=m.step?new THREE.Vector3(m.step.x+.5,sz+1,m.step.y+.5):new THREE.Vector3(s.x+.5,s.z+1,s.y+.5);
         this.aimStance={unitId:u.id,key:aimStanceKey(m),side,muzzle:m,at:{...p},blocked:this.battle?.store?shotBlocked(this.battle.store,m,p):false};
         this.cutins?.beginAim?.(u,{shoulder:side,weaponId:this.mode.weaponId});
-        this.cameraDirector?.prepareAim?.(o,new THREE.Vector3(p.x,p.h,p.y),{side,preserveDirection});
-        if(wasFollowing&&prevKey!==this.aimStance.key)this.cameraDirector?.track?.(new THREE.Vector3(p.x,p.h,p.y),0);
+        this.cameraDirector?.prepareAim?.(o,new THREE.Vector3(p.x,p.h,p.y),{side,preserveDirection,tps3d});
+        if(wasFollowing&&prevKey!==this.aimStance.key&&(preserveDirection||!tps3d))this.cameraDirector?.track?.(new THREE.Vector3(p.x,p.h,p.y),0);
         if(!this.peek){
-            const v=this.views?.get?.(u.id);
             if(v?.pos&&typeof v.setWorld==='function'){
                 const to=new THREE.Vector3((m.step?m.step.x:u.x)+.5,(m.step?(m.step.z??u.z):u.z)+1,(m.step?m.step.y:u.y)+.5);
                 if(v.pos.distanceTo(to)>0.05)this.peekGlide={view:v,from:v.pos.clone(),to,t:0,dur:0.12};
             }
         }
-        if(this.cameraDirector){this.cameraDirector.hidden||=new Set();this.cameraDirector.hidden.add(u.id);}
+        if(this.cameraDirector&&!tps3d){this.cameraDirector.hidden||=new Set();this.cameraDirector.hidden.add(u.id);}
+        else if(this.cameraDirector?.hidden&&tps3d)this.cameraDirector.hidden.delete(u.id);
     }
     /** Pointer-lock deltas never stop at the browser edge or feed back through the moving camera. */
     moveAim(dx,dy){
@@ -1391,10 +1498,12 @@ export class Game {
     peekStatus(){
         const u=this.selectedUnit();if(!u||this.mode.kind!=='shoot')return null;
         const m=this.aimStance?.unitId===u.id?this.aimStance.muzzle:null;
-        const c=this.peek||{x:u.x,y:u.y,z:u.z},stance=this.aimStance?.unitId===u.id?`${this.aimStance.key}:${m?.lean||'base'}`:'none',key=`${u.id}:${c.x},${c.y},${c.z}:${stance}:${this.battle.seq}`;
+        const effectiveCell=this.peek||m?.step||{x:u.x,y:u.y,z:u.z};
+        const stance=this.aimStance?.unitId===u.id?`${this.aimStance.key}:${m?.lean||'base'}`:'none';
+        const key=`${u.id}:${effectiveCell.x},${effectiveCell.y},${effectiveCell.z}:${stance}:${this.battle.seq}`;
         if(this.peekInfo?.key!==key){
             const autoStep=!this.peek&&!!m?.step,autoLean=!this.peek&&!m?.step&&!!m?.lean;
-            this.peekInfo={key,peeking:!!this.peek,autoStep,autoLean,range:B.peekRange??1,...peekExposure(this.battle,u,c)};
+            this.peekInfo={key,peeking:!!this.peek,autoStep,autoLean,range:B.peekRange??1,...peekExposure(this.battle,u,effectiveCell,m)};
         }
         return this.peekInfo;
     }
@@ -1448,7 +1557,7 @@ export class Game {
             case 'throw': { const to = this.throwCell(p, unit); if (to) this.intent({ type: 'throw', itemId: this.mode.itemId, cargo: this.mode.cargo, to }); break; }
             case 'gadget': this.intent({type:'gadget',itemId:this.mode.itemId,cargo:this.mode.cargo,targetId:unit?.id});break;
             case 'ability': this.intent({type:'ability',abilityId:this.mode.abilityId,to:this.hoverCell,targetId:unit?.id}); break;
-            case 'overwatch': { const toward = p?.cell || p?.voxel; if(toward) this.intent({ type: 'overwatch', weaponId: watchWeapon(u), toward: {x:toward.x,y:toward.y} }); break; }
+            case 'overwatch': { const toward = this.overwatchToward(u, e.clientX, e.clientY, p, unit); if(toward) this.intent({ type: 'overwatch', weaponId: watchWeapon(u), toward: {x:toward.x,y:toward.y} }); break; }
         }
     }
 }

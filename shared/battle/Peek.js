@@ -52,9 +52,9 @@ export function atCell(u, cell) {
 
 /**
  * How exposed a peek tile is against what the unit's side knows: the worst cover against any known hostile
- * (COVER.NONE when one has it flanked) and whether a known overwatch covers the tile.
+ * (COVER.NONE when one has it flanked) and whether a known overwatch covers the tile or lean muzzle.
  */
-export function peekExposure(battle, u, cell) {
+export function peekExposure(battle, u, cell, stance = null) {
     const known = battle.visibleTo ? battle.visibleTo(u.side) : new Set();
     const hostiles = battle.enemiesOf(u).filter(e => alive(e) && known.has(e.id));
     let cover = hostiles.length ? COVER.FULL : null, flankedBy = 0;
@@ -63,8 +63,9 @@ export function peekExposure(battle, u, cell) {
         if (c === COVER.NONE) flankedBy++;
         cover = Math.min(cover, c);
     }
+    const probe = stance && stance.h != null ? stance : { x: cell.x + 0.5, y: cell.y + 0.5, h: cell.z + 2.05 };
     const overwatch = hostiles.some(w => w.overwatch && !hasStatus(w, 'surprised') && inWatchSector(w, w.overwatch, cell)
-        && battle.sightLine?.(battle.eye(w), { x: cell.x + 0.5, y: cell.y + 0.5, h: cell.z + 2.05 }));
+        && (battle.sees?.(w, atCell(u, cell)) || battle.sightLine?.(battle.eye(w), probe)));
     return { cover, flankedBy, overwatch, label: cover === null ? 'NO CONTACT' : cover === COVER.NONE ? 'EXPOSED' : cover === COVER.HALF ? 'HALF COVER' : 'FULL COVER' };
 }
 

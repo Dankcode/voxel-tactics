@@ -148,7 +148,11 @@ export class EventPlayer {
             }
             case 'peek': case 'peekBack': {
                 const v = this.view(e.unitId);
-                if (v && e.from && e.to) await this.slide(v, e.from, e.to, e.t === 'peek' ? 0.08 : 0.09);
+                if (v && e.from && e.to) {
+                    v.animator?.play?.('run');
+                    await this.slide(v, e.from, e.to, e.t === 'peek' ? 0.14 : 0.15);
+                    v.animator?.play?.(e.t === 'peek' ? 'aim' : (v.unit?.overwatch ? 'hunker' : 'idle'));
+                }
                 break;
             }
             case 'move': case 'knockback': {
@@ -439,6 +443,7 @@ export class EventPlayer {
                     fx.float(v.worldPosition(), 'OVERWATCH!', '#ff9f6b', 18);
                     if (v.unit.side === 'player' || g.isVisible?.(v.unit)) g.audio.play('overwatch', { volume: 0.35 });
                 }
+                g.refreshOverwatch?.();
                 await this.d(0.12);
                 break;
             }
@@ -460,9 +465,10 @@ export class EventPlayer {
                 }
                 v?.animator?.play('hunker');
                 if (v && (v.unit.side === 'player' || g.isVisible(v.unit))) g.audio.play('overwatch', { volume: 0.35 });
+                g.refreshOverwatch?.();
                 break;
             }
-            case 'overwatchCancel': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition().add(new THREE.Vector3(0, 0.3, 0)), 'OVERWATCH CANCELLED', '#9fd8ff', 14); break; }
+            case 'overwatchCancel': { const v = this.view(e.unitId); if (v) fx.float(v.worldPosition().add(new THREE.Vector3(0, 0.3, 0)), 'OVERWATCH CANCELLED', '#9fd8ff', 14); g.refreshOverwatch?.(); break; }
             case 'ability': {
                 const v = this.view(e.unitId);
                 if (v) {

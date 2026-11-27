@@ -313,33 +313,66 @@ export class Overlays {
         }
         const data=buildWatchPreview(battle,unit,sector,{hidden,cutZ,cache:this.watchCache});
         this.watchPreview=data;
-        for(const mesh of this.watchMeshes(data))this.aim.add(mesh);
+        for(const mesh of this.watchMeshes(data, 0.36, { side: unit.side, unit, sector }))this.aim.add(mesh);
         Overlays.flag(this.aim);
         return data;
     }
-    watchMeshes(data,opacity=.38) {
-        const meshes=[];
-        for(const band of ['high','low']) {
-            const material=new THREE.MeshBasicMaterial({color:WATCH_COLORS[band],transparent:true,opacity,depthWrite:false,side:THREE.DoubleSide,toneMapped:false,clippingPlanes:this.scene.clipping,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1});
-            const cells=data.tiles.filter(c=>c.band===band),faces=data.faces.filter(f=>f.band===band);
-            if(cells.length)meshes.push(tileMesh(cells,material));
-            if(faces.length)meshes.push(watchFaceMesh(faces,material));
-            if(!cells.length&&!faces.length)material.dispose();
+    watchMeshes(data, opacity = .38, { side = 'player', unit = null, sector = null } = {}) {
+        const meshes = [];
+        const palette = side === 'enemy'
+            ? { high: 0xff4a3d, low: 0xff8c38, line: 0xff5a4a }
+            : { high: WATCH_COLORS.high, low: WATCH_COLORS.low, line: 0x5ff2d6 };
+        for (const band of ['high', 'low']) {
+            const material = new THREE.MeshBasicMaterial({ color: palette[band], transparent: true, opacity, depthWrite: false, side: THREE.DoubleSide, toneMapped: false, clippingPlanes: this.scene.clipping, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+            const cells = data.tiles.filter(c => c.band === band), faces = data.faces.filter(f => f.band === band);
+            if (cells.length) meshes.push(tileMesh(cells, material));
+            if (faces.length) meshes.push(watchFaceMesh(faces, material));
+            if (!cells.length && !faces.length) material.dispose();
         }
-        for(const mesh of meshes)mesh.userData.watch=true;
+        // Perimeter boundary outline around watched tiles for clear tactical zone legibility across elevations.
+        if (data.tiles.length) {
+            const byKey = new Set(data.tiles.map(c => `${c.x},${c.y},${c.z}`));
+            const edges = [];
+            for (const c of data.tiles) {
+                for (const [dx, dy] of DIRS) {
+                    if (!byKey.has(`${c.x + dx},${c.y + dy},${c.z}`)) edges.push([c, dx, dy]);
+                }
+            }
+            if (edges.length) {
+                const lineMat = glowMaterial(palette.line, Math.min(0.95, opacity * 2.1), this.scene.clipping);
+                meshes.push(edgeMesh(edges, lineMat));
+            }
+        }
+        // Subtle cone boundary rays anchoring the zone back to the watcher's position.
+        if (unit && sector) {
+            const ox = unit.x + 0.5, oz = unit.y + 0.5, oy = unit.z + 1.06;
+            const ang = Math.atan2(sector.dy, sector.dx);
+            const r = Math.max(2, Math.min(sector.range || 16, 26));
+            const pts = [];
+            for (const sign of [-1, 1]) {
+                const a = ang + sign * sector.halfAngle;
+                pts.push(new THREE.Vector3(ox, oy, oz), new THREE.Vector3(ox + Math.cos(a) * r, oy, oz + Math.sin(a) * r));
+            }
+            const rayMat = new THREE.LineBasicMaterial({ color: palette.line, transparent: true, opacity: Math.min(0.75, opacity * 1.8), depthWrite: false, toneMapped: false, clippingPlanes: this.scene.clipping });
+            meshes.push(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), rayMat));
+        }
+        for (const mesh of meshes) mesh.userData.watch = true;
         return meshes;
     }
-    /** Committed watches keep the same filled accuracy field as selection. */
-    showOverwatch(battle,units,options={}) {
-        const materials=new Set();
-        for(const c of [...this.debug.children].filter(c=>c.userData.ow)) {
-            this.debug.remove(c);c.geometry.dispose();materials.add(c.material);
+    /** Committed watches keep the same filled accuracy field as selection with faction color coding. */
+    showOverwatch(battle, units, options = {}) {
+        const materials = new Set();
+        for (const c of [...this.debug.children].filter(c => c.userData.ow)) {
+            this.debug.remove(c); c.geometry.dispose(); materials.add(c.material);
         }
-        for(const material of materials)material.dispose();
-        for(const u of units) {
-            if(!u.overwatch)continue;
-            const data=buildWatchPreview(battle,u,u.overwatch,options);
-            for(const mesh of this.watchMeshes(data,.24)) {mesh.userData.ow=true;this.debug.add(mesh);}
+        for (const material of materials) material.dispose();
+        for (const u of units) {
+            if (!u.overwatch) continue;
+            const data = buildWatchPreview(battle, u, u.overwatch, options);
+            for (const mesh of this.watchMeshes(data, 0.24, { side: u.side, unit: u, sector: u.overwatch })) {
+                mesh.userData.ow = true;
+                this.debug.add(mesh);
+            }
         }
         Overlays.flag(this.debug);
     }
