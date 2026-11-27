@@ -695,3 +695,15 @@ body.cutin-active #hud{visibility:hidden}
 #menu details.toggles-details summary{cursor:pointer;font-size:12px;font-weight:600;color:#9eb6c4;letter-spacing:.04em;user-select:none}
 #menu details.toggles-details .toggles-box{margin-top:8px;padding:8px 0 2px;background:none;border:none}
 .rcard .rcampaign{margin:6px 0 0;padding:4px 9px;border-radius:4px;background:rgba(28,84,64,.55);border:1px solid rgba(95,242,192,.38);color:#b7ffe2;font-size:12px;display:inline-block}
+
+/* Static, flicker-free bottom action bar */
+.actionbar .slotname{height:22px;line-height:22px;margin:0 auto 4px}
+.actionbar .bar-controls{height:22px;display:flex;align-items:center;margin-bottom:4px}
+.actionbar .bar-controls .mode-switch{position:static;top:auto;left:auto}
+.actionbar .bar-controls .mode-switch.hidden{visibility:hidden;pointer-events:none}
+.slots{padding-top:0}
+.slots .slot{transition:none}
+.slots .slot .slot-icon{display:inline-flex;align-items:center;justify-content:center}
+.slots .slot:disabled{opacity:.42;cursor:default;pointer-events:auto}
+.slots .slot:disabled:hover{color:var(--cyan2);border-color:#ededf02e;box-shadow:none}
+.slots .slot .sub:empty{display:none}

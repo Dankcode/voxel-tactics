@@ -267,6 +267,8 @@ export class Game {
         this.sightings.update(this,this.time,dt);
         if(this.battle)updateReticle(this);
         const cine = this.cameraDirector.active;
+        const charPoint = this.framedAimPoint || this.freeAim;
+        const charAim = this.mode.kind === 'shoot' && charPoint ? new THREE.Vector3(charPoint.x, charPoint.h, charPoint.y) : null;
         const aimWorld = this.mode.kind === 'shoot' && this.freeAim ? new THREE.Vector3(this.freeAim.x, this.freeAim.h, this.freeAim.y) : null;
         const sel = this.selectedUnit();
         const camPos = this.cameraDirector.cam?.position;
@@ -275,7 +277,7 @@ export class Game {
             if(v.tagMode!==this.options.unitTags){v.tagMode=this.options.unitTags;v.drawBar();}
             const isAimingShooter = cine && this.mode.kind === 'shoot' && v.id === this.selected;
             if (v.is3D) {
-                v.setAimTarget?.(isAimingShooter ? aimWorld : null);
+                v.setAimTarget?.(isAimingShooter ? charAim : null);
                 if (this.battle?.store && !v.unit.dead) {
                     const lean = isAimingShooter && this.aimStance?.unitId === v.id ? (this.aimStance.muzzle?.lean || null) : null;
                     const ckey = `${v.unit.x},${v.unit.y},${v.unit.z}:${this.battle.seq}:${isAimingShooter ? 1 : 0}:${lean || ''}`;
@@ -439,7 +441,7 @@ export class Game {
         if (m.kind === 'shoot' && !wasShooting) {
             this.preAimFloor = { cutLevel: this.cutLevel, levelLocked: this.levelLocked, levelSource: this.levelSource };
         }
-        this.mode = m;this.aimDrag=null;this.rawAim=null;this.aimPick=null;this.framedTargetId=null;this.aimTelemetryCache=null;this.peekVisible=null;
+        this.mode = m;this.aimDrag=null;this.rawAim=null;this.framedAimPoint=null;this.aimPick=null;this.framedTargetId=null;this.aimTelemetryCache=null;this.peekVisible=null;
         if (['throw','gadget','breach'].includes(m.kind)) this.views.get(this.selected)?.flashStatus?.(); this.freeAim=null;this.freeAimManual=false;this.moveConfirmation=null;this.aim.clear();this.aimStance=null;
         this.aimPointer?.setEnabled?.(m.kind === 'shoot');
         this.scene?.renderer?.domElement?.classList?.toggle('aiming',m.kind==='shoot');
@@ -639,6 +641,7 @@ export class Game {
         }
         this.freeAim = { ...p };
         this.rawAim = { ...p };
+        this.framedAimPoint = { ...p };
         this.aim.snap(this.freeAim);
         this.setLevel(Infinity);
         const m = this.aimMuzzle(u, this.freeAim);
@@ -663,6 +666,8 @@ export class Game {
         this.framedTargetId = t.id;
         this.freeAim = { ...p };
         this.rawAim = { ...p };
+        this.framedAimPoint = { ...p };
+        this.framedAimPoint = { ...p };
         this.aim.snap(p);
         if (this.cameraDirector) this.cameraDirector.fixedDir = null;
         this.frameAim(u, p, this.aimMuzzle(u, p));
@@ -683,12 +688,12 @@ export class Game {
         this.framedTargetId = t.id;
         this.freeAim = { ...p };
         this.rawAim = { ...p };
+        if (!this.framedAimPoint) this.framedAimPoint = { ...p };
         this.aim.snap(p);
         this.frameAim(u, p, this.aimMuzzle(u, p), { preserveDirection: true });
         const origin = this.aimOrigin(u);
         this.updateAimPick(u, origin, p);
         if (!this.aimPick) this.aimPick = { unitId: t.id, part };
-        this.views.get(u.id)?.face(p.x - origin.x, p.y - origin.y);
         this.cameraDirector?.track?.(new THREE.Vector3(p.x, p.h, p.y), 0);
         this.hud.renderTargets();
         this.hud.renderTarget();
@@ -1149,7 +1154,7 @@ export class Game {
                 return;
             }
             if (['z', 'x', 'pageup', 'pagedown', 'v'].includes(key)) { e.preventDefault(); return; }
-            if (key === 'q' || key === 'e') { e.preventDefault(); if (this.canAct()) this.moveAim(key === 'q' ? -90 : 90, 0); return; }
+            if (key === 'q' || key === 'e') { e.preventDefault(); if (this.canAct()) this.turnAimCamera(key === 'q' ? -90 : 90); return; }
             if (key === 'tab') { e.preventDefault(); this.cycleTarget(e.shiftKey ? -1 : 1); return; }
         }
         if ((key === 'z' || key === 'x') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); if (!e.repeat) this.changeLevel(key === 'z' ? 1 : -1); return; }
@@ -1367,21 +1372,19 @@ export class Game {
     stepAim(dt){
         const u=this.selectedUnit();
         if(!u||this.mode.kind!=='shoot'||!this.aim.current||this.player?.busy)return;
-        const w=WEAPONS[this.mode.weaponId];let origin=this.aimOrigin(u);
-        const p=this.aim.step(dt,{tau:aimTau(u,w),sway:this.options.aimSway?swayDegrees(u):0,origin,inertia:false});
+        let origin=this.aimOrigin(u);
+        const p=this.aim.step(dt,{tau:aimTau(u,WEAPONS[this.mode.weaponId]),sway:this.options.aimSway?swayDegrees(u):0,origin,inertia:false});
         if(!p)return;
         this.freeAim=p;
-        // Blocked angles: the shot steps out to a side tile (shared chooseMuzzle); the shoulder camera and the reticle
-        // follow it, so the view is from where the soldier will actually fire and not into the wall.
+        // Keep shoulder stance, character facing, and camera angle locked while moving the reticle.
         const st=this.aimStance;
-        if(!st||st.unitId!==u.id||(p.x!==st.at.x || p.y!==st.at.y || p.h!==st.at.h)){
+        if(!st||st.unitId!==u.id){
             const m=this.aimMuzzle(u,p);
-            if(!st||st.unitId!==u.id||aimStanceKey(m)!==st.key)this.frameAim(u,p,m);
-            else Object.assign(st,{at:{...p},muzzle:m,blocked:this.battle?.store?shotBlocked(this.battle.store,m,p):false});
+            this.frameAim(u,p,m);
+        }else if(p.x!==st.at.x||p.y!==st.at.y||p.h!==st.at.h){
+            Object.assign(st,{at:{...p},blocked:this.battle?.store?shotBlocked(this.battle.store,st.muzzle,p):false});
         }
         origin=this.aimOrigin(u);this.updateAimPick(u,origin,p);
-        this.views?.get?.(u.id)?.face(p.x-origin.x,p.y-origin.y);
-        if(this.cameraDirector?.phase==='prepare')this.cameraDirector.track(new THREE.Vector3(p.x,p.h,p.y),dt);
     }
     /** Cached Phoenix Point telemetry for the current aim point and fire mode. */
     aimTelemetry() {
@@ -1476,24 +1479,49 @@ export class Game {
         if(!this.peek){
             if(v?.pos&&typeof v.setWorld==='function'){
                 const to=new THREE.Vector3((m.step?m.step.x:u.x)+.5,(m.step?(m.step.z??u.z):u.z)+1,(m.step?m.step.y:u.y)+.5);
-                if(v.pos.distanceTo(to)>0.05)this.peekGlide={view:v,from:v.pos.clone(),to,t:0,dur:0.12};
+                if(v.pos.distanceTo(to)>0.05)this.peekGlide={view:v,from:v.pos.clone(),to,t:0,dur:0.22};
             }
         }
         if(this.cameraDirector&&!tps3d){this.cameraDirector.hidden||=new Set();this.cameraDirector.hidden.add(u.id);}
         else if(this.cameraDirector?.hidden&&tps3d)this.cameraDirector.hidden.delete(u.id);
     }
-    /** Pointer-lock deltas never stop at the browser edge or feed back through the moving camera. */
-    moveAim(dx,dy){
+    /** Pointer-lock deltas steer the reticle inside the fixed camera frame without turning the camera or shooter. */
+    moveAim(dx,dy,{clampToView=true}={}){
         const u=this.selectedUnit();if(!u||(!dx&&!dy))return;
         const focus=this.rawAim||this.aim.target||this.freeAim;if(!focus)return;
         const origin=this.aimOrigin(u);
-        const step=aimDelta(focus,origin,dx,dy,{fov:this.cameraDirector.cam.fov,height:this.scene.renderer.domElement.clientHeight||innerHeight,sensitivity:this.options.aimSensitivity??.5});
+        let step=aimDelta(focus,origin,dx,dy,{fov:this.cameraDirector.cam.fov,height:this.scene.renderer.domElement.clientHeight||innerHeight,sensitivity:this.options.aimSensitivity??.5});
+        if(step&&clampToView&&this.cameraDirector?.active&&this.cameraDirector.phase==='prepare'&&this.cameraDirector.cam?.isPerspectiveCamera){
+            const cam=this.cameraDirector.cam;
+            cam.updateMatrixWorld();
+            const v=new THREE.Vector3(step.x,step.h,step.y);
+            const ndc=v.clone().project(cam);
+            if(ndc.z<-1||ndc.z>1||Math.abs(ndc.x)>0.90||Math.abs(ndc.y)>0.84){
+                const cx=THREE.MathUtils.clamp(ndc.x,-0.90,0.90),cy=THREE.MathUtils.clamp(ndc.y,-0.84,0.84);
+                const camPos=cam.position,camDist=Math.max(2,camPos.distanceTo(new THREE.Vector3(focus.x,focus.h,focus.y)));
+                const dir=new THREE.Vector3(cx,cy,0.5).unproject(cam).sub(camPos).normalize();
+                const clamped=camPos.clone().addScaledVector(dir,camDist);
+                step={x:clamped.x,y:clamped.z,h:clamped.y};
+            }
+        }
         if(step){
-            this.cameraDirector.fixedDir=null;
             this.rawAim=step;this.updateAimPick(u,origin,step);
             this.aim.setTarget(step);
             this.freeAimManual=true;
         }
+    }
+    /** Explicit Q/E rotation during aiming turns both the shooter and the shoulder camera deliberately. */
+    turnAimCamera(dx){
+        const u=this.selectedUnit();if(!u||!dx)return;
+        this.moveAim(dx,0,{clampToView:false});
+        if(!this.rawAim)return;
+        if(this.cameraDirector)this.cameraDirector.fixedDir=null;
+        this.framedAimPoint={...this.rawAim};
+        this.aim.snap(this.rawAim);
+        this.freeAim={...this.rawAim};
+        const origin=this.aimOrigin(u);
+        this.views?.get?.(u.id)?.face(this.rawAim.x-origin.x,this.rawAim.y-origin.y);
+        this.cameraDirector?.track?.(new THREE.Vector3(this.rawAim.x,this.rawAim.h,this.rawAim.y),0.16);
     }
     /** PLAN-15: lean to the neighbouring peek tile in the camera-relative WASD direction (or back toward home). */
     stepPeek(key){
@@ -1520,7 +1548,7 @@ export class Game {
             this.peekSide=null;
             if(cell){const f=new THREE.Vector3();this.cameraDirector.cam.getWorldDirection(f);const rx=-f.z,ry=f.x,d=(cell.x-u.x)*rx+(cell.y-u.y)*ry;this.peekSide=d<-0.2?'left':d>0.2?'right':null;}
             const v=this.views.get(u.id),to=cell||u;
-            if(v){const from=v.pos.clone();this.peekGlide={view:v,from,to:new THREE.Vector3(to.x+.5,to.z+1,to.y+.5),t:0,dur:0.14};}
+            if(v){const from=v.pos.clone();this.peekGlide={view:v,from,to:new THREE.Vector3(to.x+.5,to.z+1,to.y+.5),t:0,dur:0.22};}
             if(aiming){this.aimStance=null;this.frameAim(u,this.freeAim,this.aimMuzzle(u,this.freeAim),{preserveDirection:true});this.cameraDirector?.track?.(new THREE.Vector3(this.freeAim.x,this.freeAim.h,this.freeAim.y),0);this.updateAimPick(u,this.aimOrigin(u),this.freeAim);}
         }
         this.hud.renderTargets?.();

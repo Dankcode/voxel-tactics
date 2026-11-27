@@ -136,8 +136,11 @@ test('left and right peeks keep the reticle on the same target and use the autho
         g.setPeek(null);g.stepAim(0);
         assert.deepEqual(g.freeAim,p,'returning home keeps the same target');
         assert.ok(camera.cam.quaternion.angleTo(quaternion)<1e-9,'returning home also preserves the viewing direction');
-        g.moveAim(30,0);g.stepAim(1/60);
-        assert.ok(camera.cam.quaternion.angleTo(quaternion)>1e-4,'the next mouse movement resumes normal camera turning');
+        g.moveAim(30, 0); g.stepAim(1 / 60);
+        assert.ok(camera.cam.quaternion.angleTo(quaternion) < 1e-6, 'moving the reticle does not change camera angle');
+        assert.notDeepEqual(g.freeAim, p, 'moving the reticle steers freeAim inside the steady view');
+        g.turnAimCamera(90);
+        assert.ok(camera.cam.quaternion.angleTo(quaternion) > 1e-4, 'explicit Q/E rotation turns the aiming camera');
     }
 });
 
@@ -218,6 +221,7 @@ test('aimMuzzle respects manual peek vs auto step-out, aimAtPart updates origin 
 });
 
 test('TPS moveAim + stepAim track smoothly round a corner while interior x-ray clears shoulder blockers', async () => {
+    const THREE = await import('three');
     const { CameraDirector } = await import('../../anim/CameraDirector.js');
     const store = new VoxelStore(32, 32, 10);
     store.fill(0, 0, 0, 31, 31, 0, 'grass');
@@ -241,12 +245,18 @@ test('TPS moveAim + stepAim track smoothly round a corner while interior x-ray c
     assert.ok(camera.xrayCells?.has('12,22,2') || camera.xrayCells?.has('11,22,2'), 'shoulder blocker wall is cut away via interior x-ray');
     assert.ok(!camera.xrayCells?.has('7,15,1'), 'target half-cover remains intact');
 
-    const camBefore = camera.cam.position.clone(), qBefore = camera.cam.quaternion.clone();
+    const camBefore = camera.cam.position.clone(), qBefore = camera.cam.quaternion.clone(), aimBefore = { ...g.freeAim };
     g.moveAim(35, -12);
     g.stepAim(1 / 60);
-    assert.ok(camera.cam.quaternion.angleTo(qBefore) > 1e-4, 'TPS moveAim + stepAim turns the shoulder camera smoothly');
-    assert.ok(camera.cam.position.distanceTo(camBefore) > 1e-4, 'shoulder orbits cleanly around shooter pivot');
+    assert.ok(camera.cam.quaternion.angleTo(qBefore) < 1e-6, 'moving the reticle keeps camera angle locked');
+    assert.ok(camera.cam.position.distanceTo(camBefore) < 1e-6, 'moving the reticle keeps camera position steady');
+    assert.equal(g.peekGlide, undefined, 'moving the reticle does not trigger sudden character stance slides');
+    assert.notDeepEqual(g.freeAim, aimBefore, 'reticle moves smoothly within the locked viewport');
     assert.ok(camera.xrayCells?.has('12,22,2') || camera.xrayCells?.has('11,22,2'), 'hysteresis retains shoulder x-ray clearance across aim motion');
+    g.moveAim(4000, -4000);
+    g.stepAim(1 / 60);
+    const ndcClamped = new THREE.Vector3(g.freeAim.x, g.freeAim.h, g.freeAim.y).project(camera.cam);
+    assert.ok(Math.abs(ndcClamped.x) <= 0.91 && Math.abs(ndcClamped.y) <= 0.85, `reticle stays clamped within viewport (${ndcClamped.x.toFixed(2)}, ${ndcClamped.y.toFixed(2)})`);
     camera.end();
     assert.equal(camera.xrayCells, null, 'exiting aim clears x-ray cells');
 });

@@ -360,7 +360,8 @@ export class HumanoidModel {
                 this.yawInitialized = true;
             } else {
                 const dyaw = wrap(targetYaw - this.yaw);
-                this.yaw = wrap(this.yaw + dyaw * (1 - Math.exp(-16 * dt)));
+                const yawRate = this.aimingActive ? 8 : 16;
+                this.yaw = wrap(this.yaw + dyaw * (1 - Math.exp(-yawRate * dt)));
             }
         }
         this.root.rotation.y = this.yaw;
@@ -387,7 +388,7 @@ export class HumanoidModel {
             const flatDist = Math.max(0.25, Math.hypot(this.aimWorld.x - pos.x, this.aimWorld.y - pos.z));
             targetPitch = THREE.MathUtils.clamp(Math.atan2(aimY - shoulderY, flatDist), -0.95, 0.95);
         }
-        if (dt > 0) this.aimPitch += (targetPitch - this.aimPitch) * (1 - Math.exp(-18 * dt));
+        if (dt > 0) this.aimPitch += (targetPitch - this.aimPitch) * (1 - Math.exp(-10 * dt));
         else this.aimPitch = targetPitch;
 
         // Cover crouch vs rising up to aim/shoot + directional lean

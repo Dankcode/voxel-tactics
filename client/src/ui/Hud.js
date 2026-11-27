@@ -55,7 +55,7 @@ export class Hud {
             <button class="autoend hidden" data-act="cancelAutoEnd" title="Cancel (Esc)"><b>ALL AP SPENT — ENDING TURN</b><i></i><small>click or Esc to stay</small></button>
             <div class="unitpanel hidden"></div><div class="equipment-overlay hidden"></div><div class="aim-reticle hidden" aria-label="Weapon accuracy reticle"><i class="reticle-ring outer"><em class="rt n"></em><em class="rt e"></em><em class="rt s"></em><em class="rt w"></em></i><i class="reticle-ring inner"></i><i class="reticle-core"></i><i class="recoil-climb"></i><span class="read"></span></div><div class="aim-cover-mark hidden" aria-hidden="true">✕</div>
             <div class="targets"></div>
-            <div class="actionbar"><div class="slotname"></div><div class="slots"></div></div>
+            <div class="actionbar"><div class="slotname"></div><div class="bar-controls"><button class="mode-switch hidden" data-act="fireMode" aria-label="Change fire mode"></button></div><div class="slots"></div></div>
             <div class="target hidden"></div>
             <div class="panel hidden"></div>
             <div class="options hidden"></div>
@@ -69,10 +69,28 @@ export class Hud {
         this.el = sel => root.querySelector(sel);
 
         root.addEventListener('click', e => this.onClick(e));
-        root.addEventListener('mouseover', e => { const b = e.target.closest('.slot'); if (b) this.el('.slotname').innerHTML = b.dataset.tip || ''; const h = e.target.closest('.squad-head'); if (h) game.views.get(h.dataset.arg)?.setHovered?.(true); });
-        root.addEventListener('mouseout', e => { if (e.target.closest('.slot')) this.el('.slotname').innerHTML = this.activeSlotName || ''; const h = e.target.closest('.squad-head'); if (h) game.views.get(h.dataset.arg)?.setHovered?.(false); });
+        root.addEventListener('mouseover', e => {
+            const b = e.target.closest('.slot');
+            if (b && this._hoveredSlotIdx !== b.dataset.arg) {
+                this._hoveredSlotIdx = b.dataset.arg;
+                setHtml(this.el('.slotname'), b.dataset.tip || '');
+            }
+            const h = e.target.closest('.squad-head');
+            if (h) game.views.get(h.dataset.arg)?.setHovered?.(true);
+        });
+        root.addEventListener('mouseout', e => {
+            const b = e.target.closest('.slot');
+            if (b && !b.contains(e.relatedTarget) && !e.relatedTarget?.closest?.('.slot')) {
+                this._hoveredSlotIdx = null;
+                setHtml(this.el('.slotname'), this.activeSlotName || '');
+            }
+            const h = e.target.closest('.squad-head');
+            if (h) game.views.get(h.dataset.arg)?.setHovered?.(false);
+        });
         this.lines = [];
         this.slots = [];
+        this.openPanelKind = null;
+        this._hoveredSlotIdx = null;
         this.equipment=new EquipmentPanel(this.el('.equipment-overlay'),game);
         // PLAN-15: one thing at a time — the soldier card steps aside while an action panel (gear, formation, breach) is open.
         const panel=this.el('.panel'),sync=()=>root.classList.toggle('panel-open',!panel.classList.contains('hidden'));
@@ -94,7 +112,7 @@ export class Hud {
             sb.classList.toggle('fast', spd > 1);
         }
     }
-    reset() { this.report = null; this.equipment.open=false;this.equipment.nested=null;this.equipment.selected=null;this.el('.outcome').classList.add('hidden'); this.hidePanel(); this.squadSpent(false); }
+    reset() { this.report = null; this.equipment.open=false;this.equipment.nested=null;this.equipment.selected=null;this.openPanelKind=null;this._hoveredSlotIdx=null;this.el('.outcome').classList.add('hidden'); this.hidePanel(); this.squadSpent(false); }
     onClick(e) {
         const b = e.target.closest('[data-act]');
         if (!b || b.disabled) return;
@@ -140,6 +158,7 @@ export class Hud {
             case 'captureAim': g.captureAim(); return;
             case 'cancel': g.cancel(); return;
             case 'formTpl': g.declareFormation(arg); this.hidePanel(); return;
+            case 'formBreak': g.intent({ type: 'formation_break', formationId: arg }); this.hidePanel(); return;
             case 'doBreach': { const [i, entry] = arg.split(':'); g.doBreach(+i, entry); this.hidePanel(); return; }
             case 'buildingCycle': g.cycleBuildingView(); return;
             case 'buildingView': g.setBuildingView(arg); return;
@@ -159,7 +178,7 @@ export class Hud {
         if(u.weapon!==id){const result=await g.intent({type:'switchWeapon',weaponId:id});if(!result.ok)return;}
         if(g.selected===u.id&&g.canAct())g.setMode({kind:WEAPONS[id].kind==='melee'?'melee':'shoot',weaponId:id});
     }
-    hidePanel() { this.el('.panel').classList.add('hidden'); }
+    hidePanel() { this.openPanelKind = null; this.el('.panel').classList.add('hidden'); }
     toggleOptions() { this.el('.options').classList.toggle('hidden'); this.renderOptions(); }
     renderOptions() {
         const g = this.game, o = g.options, el = this.el('.options');
@@ -205,43 +224,76 @@ export class Hud {
         const top=Math.max(8,Math.min(y+14,bounds.height-el.offsetHeight-8));
         el.style.transform = `translate(${left}px, ${top}px)`;
     }
-    /** Build the ability slots for a unit (also used by number keys). */
+    /** Build the ability slots for a unit (static fixed slots; unavailable actions stay visible and disabled). */
     slotsFor(u) {
         const b = this.game.battle, mode = this.game.mode, s = [];
-        const ap = u.ap,w=WEAPONS[u.weapon];
+        const ap = u.ap, w = WEAPONS[u.weapon];
         const armsOut = !!u.parts?.armL?.disabled && !!u.parts?.armR?.disabled && w.ap > 1 && w.id !== 'handcannon';
-        s.push({act:w.kind==='melee'?'melee':'weapon',arg:w.id,group:'weapon',icon:weaponIcon(w),name:w.kind==='melee'?'Melee':'Shoot',cost:String(b.shotAp(u,w)),sub:w.ammo?`${u.ammo[w.id]||0} − ${reserveAmmo(u,w)} · ${fireMode(u,w).toUpperCase()}`:'',on:mode.kind==='shoot',disabled:armsOut||ap<b.shotAp(u,w)||(w.ammo&&u.ammo[w.id]<1),tip:armsOut?'Both arms disabled — switch to sidearm':`${w.name} · put the reticle on an enemy's body part · Space fires`});
-        const ow = WEAPONS[watchWeapon(u)];
-        if (ow) s.push({ group:'weapon',act: 'overwatch', icon: ICONS.overwatch, name: 'Overwatch', cost: 'all', disabled: ap < ow.ap || (u.ammo[ow.id] ?? 0) < (ow.perShot || 1), on: mode.kind === 'overwatch', tip: '<b>Overwatch</b> · choose direction · all AP · <span style="color:#5ff2d6">Teal ≥65%</span> / <span style="color:#ffb347">Amber &lt;65%</span> estimated hit' });
-        s.push({act:'reload',icon:ICONS.reload,name:'Reload',group:'weapon',cost:'1',disabled:w.boltAction||!w.ammo||ap<w.reloadAp||u.ammo[w.id]>=w.ammo||reserveAmmo(u,w)<1,tip:w.boltAction?'Bolt cycles loose rounds automatically':'Reload from carried loose rounds'});
-        if(Object.values(u.items).some(n=>n>0))s.push({act:'grenades',group:'equipment',icon:ICONS.grenade,name:'Gear',cost:'',tip:'Grenades and medical equipment'});
-        for (const a of [...u.abilities.filter(id=>!ABILITIES[id].intel||b.intelMode), ...(b.intelMode?[b.supportChoices[u.owner]||'carpet_bomb']:[])]) { const ab = ABILITIES[a]; s.push({group:ab.support||a==='rally'?'commander':['brace','demolish','suppress'].includes(a)?'equipment':'augmentation', act: 'ability', arg: a, icon: ICONS[a] || ICONS.ability, name: ab.name, on: mode.abilityId === a || (a === 'suppress' && !!mode.suppress), cost: `${ab.ap || 0}`, sub: `${ab.wp} WP`, disabled: (ab.support && (b.personalTurns[u.owner]||0)<(b.supportReady[u.owner]||0)) || u.will < ab.wp || ap < (ab.ap || 0) || u.statuses.some(s => s.id === 'panicked') || (a === 'suppress' && (u.ammo.repeater ?? 0) < (WEAPONS.repeater.perShot || 1)), tip: `<b>${ab.name}</b> · ${ab.wp} Will${ab.ap ? ` · ${ab.ap} AP` : ''}<br>${esc(ab.text)}` }); }
+        s.push({ key: `weapon:${w.id}`, act: w.kind === 'melee' ? 'melee' : 'weapon', arg: w.id, group: 'weapon', icon: weaponIcon(w), name: w.kind === 'melee' ? 'Melee' : 'Shoot', cost: String(b.shotAp(u, w)), sub: w.ammo ? `${u.ammo[w.id] || 0} − ${reserveAmmo(u, w)} · ${fireMode(u, w).toUpperCase()}` : '', on: mode.kind === 'shoot' || mode.kind === 'melee', disabled: armsOut || ap < b.shotAp(u, w) || (w.ammo && u.ammo[w.id] < 1), tip: armsOut ? 'Both arms disabled — switch to sidearm' : `${w.name} · put the reticle on an enemy's body part · Space fires` });
+        const owId = watchWeapon(u), ow = WEAPONS[owId];
+        s.push({ key: 'overwatch:', group: 'weapon', act: 'overwatch', icon: ICONS.overwatch, name: 'Overwatch', cost: 'all', disabled: !ow || ap < ow.ap || (u.ammo[ow.id] ?? 0) < (ow.perShot || 1), on: mode.kind === 'overwatch', tip: ow ? '<b>Overwatch</b> · choose direction · all AP · <span style="color:#5ff2d6">Teal ≥65%</span> / <span style="color:#ffb347">Amber &lt;65%</span> estimated hit' : 'Overwatch · requires a ranged weapon' });
+        s.push({ key: 'reload:', act: 'reload', icon: ICONS.reload, name: 'Reload', group: 'weapon', cost: String(w.reloadAp ?? 1), disabled: w.boltAction || !w.ammo || ap < w.reloadAp || u.ammo[w.id] >= w.ammo || reserveAmmo(u, w) < 1, tip: w.boltAction ? 'Bolt cycles loose rounds automatically' : 'Reload from carried loose rounds' });
+
+        const itemCount = Object.values(u.items || {}).reduce((sum, n) => sum + (n > 0 ? n : 0), 0);
+        const hasItems = itemCount > 0;
+        s.push({ key: 'grenades:', act: 'grenades', group: 'equipment', icon: ICONS.grenade, name: 'Gear', cost: hasItems ? String(itemCount) : '0', on: this.openPanelKind === 'gear' || ['throw', 'gadget', 'breach'].includes(mode.kind), disabled: !hasItems, tip: hasItems ? 'Grenades and medical equipment' : 'No grenades or medical equipment remaining' });
+
+        for (const a of [...(u.abilities || []).filter(id => !ABILITIES[id].intel || b.intelMode), ...(b.intelMode ? [b.supportChoices?.[u.owner] || 'carpet_bomb'] : [])]) {
+            const ab = ABILITIES[a];
+            s.push({ key: `ability:${a}`, group: ab.support || a === 'rally' ? 'commander' : ['brace', 'demolish', 'suppress'].includes(a) ? 'equipment' : 'augmentation', act: 'ability', arg: a, icon: ICONS[a] || ICONS.ability, name: ab.name, on: mode.abilityId === a || (a === 'suppress' && !!mode.suppress), cost: `${ab.ap || 0}`, sub: `${ab.wp} WP`, disabled: (ab.support && (b.personalTurns?.[u.owner] || 0) < (b.supportReady?.[u.owner] || 0)) || u.will < ab.wp || ap < (ab.ap || 0) || u.statuses?.some(st => st.id === 'panicked') || (a === 'suppress' && (u.ammo?.repeater ?? 0) < (WEAPONS.repeater.perShot || 1)), tip: `<b>${ab.name}</b> · ${ab.wp} Will${ab.ap ? ` · ${ab.ap} AP` : ''}<br>${esc(ab.text)}` });
+        }
         // PLAN-14: Recon Scan — any soldier, one squad cooldown.
-        if(u.side==='player'){const sc=ABILITIES.recon_scan,wait=Math.max(0,(b.scanReadyAt??1)-b.round);s.push({act:'ability',arg:'recon_scan',group:'commander',icon:ICONS.recon_scan||ICONS.overwatch,name:sc.name,cost:wait?`IN ${wait}`:`${sc.ap}`,sub:`${sc.wp} WP`,disabled:wait>0||u.will<sc.wp||ap<sc.ap,tip:`<b>${sc.name}</b> · ${sc.wp} Will · ${sc.ap} AP${wait?` · ready in ${wait} round${wait>1?'s':''}`:''}<br>${esc(sc.text)}`});}
-        if(!b.intelMode){const wait=Math.max(0,(b.strikeReadyAt??1)-b.round);s.push({act:'ability',arg:'killstreak_strike',group:'commander',icon:ICONS.ability,name:'Strike',cost:wait?`IN ${wait}`:'READY',disabled:wait>0,tip:wait?`Commander strike · recharging, ready in ${wait} round${wait>1?'s':''}`:'Commander strike · any area on the map · press R to rotate · recharges 10 rounds after use'});}
-        const f = b.formations.of(u);
-        if (f) s.push({ group:'commander',act: 'formBreak', arg: f.id, icon: ICONS.formation, name: `Break ${FORMATIONS[f.template].name}`, cost: '0', tip: 'Dissolve the formation' });
-        s.push(f && f.template !== 'crossfire'
-            ? { group:'commander',act: 'formation', icon: ICONS.formation, name: 'Switch', cost: '0', tip: '<b>Switch formation</b> (F) · same members, new shape (no AP). Click a highlighted spot to trade places for free.' }
-            : !f ? { group:'commander',act: 'formation', icon: ICONS.formation, name: 'Formation', cost: '0', tip: '<b>Formation</b> (F) · plan slots, then assemble your squad' } : null);
-        if (!s.at(-1)) s.pop();
-        if (b.breachPoints(u).length) s.push({ group: 'tactical', act: 'breach', icon: ICONS.breach, name: 'Breach', cost: '1', tip: '<b>Breach</b> (B) · stack up and storm the room; one free shot each' });
+        if (u.side === 'player') {
+            const sc = ABILITIES.recon_scan, wait = Math.max(0, (b.scanReadyAt ?? 1) - b.round);
+            s.push({ key: 'ability:recon_scan', act: 'ability', arg: 'recon_scan', group: 'commander', icon: ICONS.recon_scan || ICONS.overwatch, name: sc.name, on: mode.abilityId === 'recon_scan', cost: wait ? `IN ${wait}` : `${sc.ap}`, sub: `${sc.wp} WP`, disabled: wait > 0 || u.will < sc.wp || ap < sc.ap, tip: `<b>${sc.name}</b> · ${sc.wp} Will · ${sc.ap} AP${wait ? ` · ready in ${wait} round${wait > 1 ? 's' : ''}` : ''}<br>${esc(sc.text)}` });
+        }
+        if (!b.intelMode) {
+            const wait = Math.max(0, (b.strikeReadyAt ?? 1) - b.round);
+            s.push({ key: 'ability:killstreak_strike', act: 'ability', arg: 'killstreak_strike', group: 'commander', icon: ICONS.ability, name: 'Strike', on: mode.abilityId === 'killstreak_strike', cost: wait ? `IN ${wait}` : 'READY', disabled: wait > 0, tip: wait ? `Commander strike · recharging, ready in ${wait} round${wait > 1 ? 's' : ''}` : 'Commander strike · any area on the map · press R to rotate · recharges 10 rounds after use' });
+        }
+        const f = b.formations?.of?.(u);
+        s.push({
+            key: 'formation:', group: 'commander', act: 'formation', icon: ICONS.formation,
+            name: 'Formation', cost: '0', sub: f ? FORMATIONS[f.template].name : '',
+            on: this.openPanelKind === 'formation',
+            tip: f
+                ? `<b>${esc(FORMATIONS[f.template].name)} formation</b> (F) · click to switch shape or break formation`
+                : '<b>Formation</b> (F) · plan slots, then assemble your squad'
+        });
+
+        const door = this.game.nearestDoor?.(u);
+        const closed = door ? b.store.get(door.x, door.y, door.z + 1) === MAT.door : false;
+        s.push({
+            key: 'door:', group: 'tactical', act: 'door', icon: ICONS.door,
+            name: door ? (closed ? 'Kick door' : 'Close door') : 'Door',
+            cost: '1', disabled: !door || ap < 1,
+            tip: !door ? 'Move adjacent to a door to open or close it' : closed ? 'Kick open the adjacent door · 1 AP · reveal the room' : 'Close the adjacent door · 1 AP'
+        });
+        const canBreach = (b.breachPoints?.(u)?.length || 0) > 0;
+        s.push({
+            key: 'breach:', group: 'tactical', act: 'breach', icon: ICONS.breach,
+            name: 'Breach', cost: '1', on: this.openPanelKind === 'breach', disabled: !canBreach || ap < 1,
+            tip: canBreach ? '<b>Breach</b> (B) · stack up and storm the room; one free shot each' : 'Move adjacent to a door or breachable floor to breach'
+        });
         const o = b.objective;
-        if (o?.kind === 'recover' && !o.item.carrier && !o.item.secured && Math.max(Math.abs(o.item.x - u.x), Math.abs(o.item.y - u.y)) <= 1 && Math.abs(o.item.z - u.z) <= 1)
-            s.push({ group: 'tactical', act: 'recover', icon: ICONS.ability, name: `Take ${o.item.label}`, cost: '1', disabled: ap < 1, tip: `<b>Recover</b> · 1 AP · pick up the ${esc(o.item.label.toLowerCase())}${o.zone ? ' — then get it to the extraction zone' : ''}` });
-        if (o && extractionOpen(o) && inZone(o.zone, u))
-            s.push({ group: 'tactical', act: 'extract', icon: ICONS.ability, name: 'Extract', cost: '1', disabled: ap < 1, tip: '<b>Extract</b> · 1 AP · leave the map from the extraction zone' });
-        const door=this.game.nearestDoor(u);
-        if(door) { const closed=b.store.get(door.x,door.y,door.z+1)===MAT.door; s.push({ group: 'tactical', act:'door',icon:ICONS.door,name:closed?'Kick door':'Close door',cost:'1',disabled:ap<1,tip:closed?'Kick open the adjacent door · 1 AP · reveal the room':'Close the adjacent door · 1 AP'}); }
-        s.push({ group: 'end', act:'wait',icon:ICONS.overwatch,name:'Finish soldier',cost:'all',disabled:ap+u.moveOnlyAp<=0,tip:'Spend remaining AP and select the next ready soldier. End Turn starts the enemy phase.'});
-        const groups=['weapon','equipment','tactical','augmentation','commander','end'];
-        return s.sort((a,b)=>groups.indexOf(a.group||'equipment')-groups.indexOf(b.group||'equipment'));
+        if (o?.kind === 'recover' && !o.item.secured) {
+            const nearItem = !o.item.carrier && Math.max(Math.abs(o.item.x - u.x), Math.abs(o.item.y - u.y)) <= 1 && Math.abs(o.item.z - u.z) <= 1;
+            s.push({ key: 'recover:', group: 'tactical', act: 'recover', icon: ICONS.ability, name: `Take ${o.item.label}`, cost: '1', disabled: !nearItem || ap < 1, tip: `<b>Recover</b> · 1 AP · pick up the ${esc(o.item.label.toLowerCase())}${o.zone ? ' — then get it to the extraction zone' : ''}` });
+        }
+        if (o?.zone) {
+            const canExtract = extractionOpen(o) && inZone(o.zone, u);
+            s.push({ key: 'extract:', group: 'tactical', act: 'extract', icon: ICONS.ability, name: 'Extract', cost: '1', disabled: !canExtract || ap < 1, tip: '<b>Extract</b> · 1 AP · leave the map from the extraction zone' });
+        }
+
+        s.push({ key: 'wait:', group: 'end', act: 'wait', icon: ICONS.overwatch, name: 'Finish soldier', cost: 'all', disabled: ap + u.moveOnlyAp <= 0, tip: 'Spend remaining AP and select the next ready soldier. End Turn starts the enemy phase.' });
+        const groups = ['weapon', 'equipment', 'tactical', 'augmentation', 'commander', 'end'];
+        return s.sort((a, b) => groups.indexOf(a.group || 'equipment') - groups.indexOf(b.group || 'equipment'));
     }
     runSlot(i) {
         const s = this.slots[i], g = this.game; if (!s || s.disabled || !g.canAct()) return;
         const u = g.selectedUnit(); if (!u) return;
         switch (s.act) {
-            case 'grenades': if (g.mode.kind !== 'move') g.setMode({ kind: 'move' }); this.showGearPanel(); break;   // PLAN-15: never aim and gear at once
+            case 'grenades': if (g.mode.kind === 'shoot') g.setMode({ kind: 'move' }); this.showGearPanel(); break;   // PLAN-15: never aim and gear at once
             case 'weapon': g.setMode(g.mode.kind === 'shoot' && g.mode.weaponId === s.arg ? { kind: 'move' } : { kind: 'shoot', weaponId: s.arg }); break;
             case 'melee': g.setMode({ kind: 'melee', weaponId: s.arg }); break;
             case 'throw': g.setMode({ kind: 'throw', itemId: s.arg }); break;
@@ -326,20 +378,73 @@ export class Hud {
         const squadHtml = b.units.filter(u=>u.side==='player').map((u,i)=>`<button class="squad-head ${u.id===g.selected?'sel':''} ${u.dead?'dead':''} ${squadBadge(u).cls}" data-act="select" data-arg="${u.id}" aria-label="Select ${esc(u.name)}" title="${esc(u.name)} · ${u.hp}/${u.maxHp} HP · ${u.ap} AP"><img src="${portraitSrc(u)}" alt="${esc(u.name)}"><b>${u.hp}<small>/${u.maxHp}</small></b><span class="badge ${squadBadge(u).cls}">${squadBadge(u).text}</span><span class="pips">${Array.from({length:Math.max(u.maxAp??4,u.ap)},(_,i)=>`<i class="${i<u.ap?'on':''}"></i>`).join('')}</span>${!u.dead&&b.flankedBy(u).length?'<i class="flank-alert" title="Flanked by a visible enemy">!</i>':''}</button>`).join('')+(b.activeSide==='player'&&!b.outcome?`<button class="next-ready" data-act="nextReady" title="Next ready soldier (Tab)">NEXT ▸</button>`:'')+`<button class="inventory-toggle" data-act="inventory" aria-label="Open inventory">${ICONS.backpack}<kbd>I</kbd></button>`;
         setHtml(this.el('.squad'), squadHtml);
         const u=g.selectedUnit();this.equipment.render(u);
-        // Ability bar.
-        const canAct = u && g.controllable(u) && !b.outcome && !g.aiRunning;
+        // Ability bar: keep buttons static and patch DOM nodes in place so clicking/hovering never flashes.
+        const showSlots = u && (u.side === 'player' || g.debug?.manualEnemy) && !b.outcome;
+        const canAct = !!(showSlots && g.controllable(u) && !g.aiRunning);
         this.renderUnitCard(u, canAct);
-        this.slots = canAct ? this.slotsFor(u) : [];
-        const modeSwitchHtml = u&&fireModes(WEAPONS[u.weapon]).length>1 ? `<button class="mode-switch" data-act="fireMode" aria-label="Change fire mode">${fireMode(u,WEAPONS[u.weapon]).toUpperCase()} ↻</button>` : '';
-        const slotsHtml = modeSwitchHtml + this.slots.map((s, i) => `<button class="slot ${s.on ? 'on' : ''} ${i>0&&s.group!==this.slots[i-1].group?'group-start':''}" aria-label="${esc(s.name)}" data-act="slot" data-arg="${i}" ${s.disabled ? 'disabled' : ''} data-tip="${esc(s.tip || s.name)}">
-            <kbd>${i < 9 ? i + 1 : ''}</kbd>${s.icon}<span class="slot-label">${esc(s.name)}</span><span class="cost">${s.cost}</span>${s.sub ? `<span class="sub">${s.sub}</span>` : ''}</button>`).join('');
-        setHtml(this.el('.slots'), slotsHtml);
+        const rawSlots = showSlots ? this.slotsFor(u) : [];
+        this.slots = canAct ? rawSlots : rawSlots.map(s => ({ ...s, disabled: true }));
+        const ms = this.el('.mode-switch');
+        const modes = u ? fireModes(WEAPONS[u.weapon]) : [];
+        const hasModes = !!(u && modes.length > 1 && showSlots);
+        if (ms && ms.classList) {
+            ms.classList.toggle('hidden', !hasModes);
+            if (hasModes) {
+                const label = `${fireMode(u, WEAPONS[u.weapon]).toUpperCase()} ↻`;
+                if (ms.textContent !== label) ms.textContent = label;
+                ms.disabled = !canAct;
+            }
+        }
+        this.renderSlots(this.el('.slots'), this.slots);
         const active = this.slots.find(s => s.on);
         this.activeSlotName = active ? active.tip : (u && canAct ? `<b>${esc(u.name)}</b> · ${modeText(g.mode)}` : (b.activeSide !== 'player' ? '' : 'Select a soldier'));
-        setHtml(this.el('.slotname'), this.activeSlotName);
+        const hoveredSlot = this._hoveredSlotIdx != null ? this.slots[+this._hoveredSlotIdx] : null;
+        setHtml(this.el('.slotname'), hoveredSlot ? (hoveredSlot.tip || '') : this.activeSlotName);
         this.el('.actionbar').classList.toggle('hidden', !(b.activeSide === 'player' || g.debug.manualEnemy) || !!b.outcome);
         this.renderTargets();
         this.renderTarget();
+    }
+    renderSlots(container, slots) {
+        if (!container) return;
+        if (typeof document === 'undefined' || !container.appendChild) {
+            const html = slots.map((s, i) => `<button class="slot ${s.on ? 'on' : ''} ${i > 0 && s.group !== slots[i - 1].group ? 'group-start' : ''}" aria-label="${esc(s.name)}" data-act="slot" data-arg="${i}" ${s.disabled ? 'disabled' : ''} data-tip="${esc(s.tip || s.name)}">
+                <kbd>${i < 9 ? i + 1 : ''}</kbd><span class="slot-icon">${s.icon}</span><span class="slot-label">${esc(s.name)}</span><span class="cost">${s.cost}</span>${s.sub ? `<span class="sub">${s.sub}</span>` : ''}</button>`).join('');
+            setHtml(container, html);
+            return;
+        }
+        while (container.children.length > slots.length) container.lastElementChild?.remove?.() ?? container.removeChild?.(container.lastChild);
+        while (container.children.length < slots.length) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.dataset.act = 'slot';
+            const kbd = document.createElement('kbd');
+            const icon = document.createElement('span'); icon.className = 'slot-icon';
+            const label = document.createElement('span'); label.className = 'slot-label';
+            const cost = document.createElement('span'); cost.className = 'cost';
+            const sub = document.createElement('span'); sub.className = 'sub';
+            btn.append(kbd, icon, label, cost, sub);
+            btn._parts = { kbd, icon, label, cost, sub };
+            btn._state = {};
+            container.appendChild(btn);
+        }
+        for (let i = 0; i < slots.length; i++) {
+            const s = slots[i], btn = container.children[i], st = btn._state || (btn._state = {}), p = btn._parts;
+            const cls = `slot${s.on ? ' on' : ''}${i > 0 && s.group !== slots[i - 1].group ? ' group-start' : ''}`;
+            const tip = s.tip || s.name || '';
+            const argStr = String(i);
+            const kbdStr = i < 9 ? String(i + 1) : '';
+            const subStr = s.sub || '';
+            const dis = !!s.disabled;
+            if (st.cls !== cls) { btn.className = cls; st.cls = cls; }
+            if (st.dis !== dis) { btn.disabled = dis; st.dis = dis; }
+            if (st.arg !== argStr) { btn.dataset.arg = argStr; st.arg = argStr; }
+            if (st.name !== s.name) { btn.setAttribute?.('aria-label', s.name); p.label.textContent = s.name; st.name = s.name; }
+            if (st.tip !== tip) { btn.dataset.tip = tip; st.tip = tip; }
+            if (st.kbd !== kbdStr) { p.kbd.textContent = kbdStr; st.kbd = kbdStr; }
+            if (st.icon !== s.icon) { p.icon.innerHTML = s.icon || ''; st.icon = s.icon; }
+            if (st.cost !== s.cost) { p.cost.textContent = s.cost ?? ''; st.cost = s.cost; }
+            if (st.sub !== subStr) { p.sub.textContent = subStr; st.sub = subStr; }
+        }
     }
     setEnemyActivity(text = null) {
         const span = this.el('.enemyturn span');
@@ -468,20 +573,30 @@ export class Hud {
         setHtml(el, html, { preserveScroll: true });
     }
     showGearPanel(){
-        const u=this.game.selectedUnit(),p=this.el('.panel');p.classList.remove('hidden');
+        const p=this.el('.panel');
+        if(this.openPanelKind==='gear'&&!p.classList.contains('hidden')){this.hidePanel();return;}
+        this.openPanelKind='gear';
+        const u=this.game.selectedUnit();p.classList.remove('hidden');
         const tag=t=>t.heal?`Heal ${t.heal} HP`:t.smoke?'Smoke cover':t.element?`${t.damage||0} ${t.element}`:t.damage?`${t.damage} dmg`:'';
         setHtml(p,`<h3>Equipment <button data-act="closePanel">✕</button></h3><div class="gear-quick">${Object.entries(u.items).filter(([id,n])=>n>0&&THROWABLES[id]).map(([id,n],i)=>{const t=THROWABLES[id],sub=tag(t);return `<button data-act="item" data-arg="${id}" ${u.ap<t.ap?'disabled':''}><kbd>${i+1}</kbd>${ICONS.grenade}<b>${esc(t.name)}</b><small>${n} carried · ${t.ap} AP${sub?` · ${esc(sub)}`:''}</small></button>`;}).join('')}</div>`,{preserveScroll:true});
     }
     showFormationPanel() {
-        const p=this.el('.panel');p.classList.toggle('hidden');if(p.classList.contains('hidden'))return;
+        const p=this.el('.panel');
+        if(this.openPanelKind==='formation'&&!p.classList.contains('hidden')){this.hidePanel();return;}
+        this.openPanelKind='formation';
+        p.classList.remove('hidden');
         const cur=this.game.battle?.formations.of(this.game.selectedUnit());
-        setHtml(p,`<h3>Formation <button data-act="closePanel">✕</button></h3><p>${cur?`Switch the ${esc(FORMATIONS[cur.template].name)} to another shape (no AP, same members). Wide shapes cannot enter narrow spaces; switch to a file or break the formation there. Select a member and click a highlighted spot to trade places for free.`:'Choose a formation, then move at least one teammate onto a highlighted slot. Group movement uses the lowest remaining movement budget. Select a member and click a highlighted spot to trade places for free.'}</p>${Object.values(FORMATIONS).filter(f=>f.slots&&f.id!==cur?.template).map(f=>`<button data-act="formTpl" data-arg="${f.id}" class="wide"><b>${f.name}</b><small>${esc(f.text)}</small></button>`).join('')}`,{preserveScroll:true});
+        const breakBtn = cur ? `<button data-act="formBreak" data-arg="${cur.id}" class="wide"><b>Break ${esc(FORMATIONS[cur.template].name)}</b><small>Dissolve the formation (free)</small></button>` : '';
+        setHtml(p,`<h3>Formation <button data-act="closePanel">✕</button></h3><p>${cur?`Switch the ${esc(FORMATIONS[cur.template].name)} to another shape (no AP, same members). Wide shapes cannot enter narrow spaces; switch to a file or break the formation there. Select a member and click a highlighted spot to trade places for free.`:'Choose a formation, then move at least one teammate onto a highlighted slot. Group movement uses the lowest remaining movement budget. Select a member and click a highlighted spot to trade places for free.'}</p>${breakBtn}${Object.values(FORMATIONS).filter(f=>f.slots&&f.id!==cur?.template).map(f=>`<button data-act="formTpl" data-arg="${f.id}" class="wide"><b>${f.name}</b><small>${esc(f.text)}</small></button>`).join('')}`,{preserveScroll:true});
     }
     showBreachPanel() {
         const g = this.game, u = g.selectedUnit(); if (!u) return;
+        const p = this.el('.panel');
+        if (this.openPanelKind === 'breach' && !p.classList.contains('hidden')) { this.hidePanel(); return; }
+        this.openPanelKind = 'breach';
         const pts = g.battle.breachPoints(u);
         const stack = g.breachStack(u, pts[0]);
-        const p = this.el('.panel'); p.classList.remove('hidden');
+        p.classList.remove('hidden');
         const charge = g.battle.unitsOf(u.side).some(o => stack.includes(o.id) && o.items.breach_charge > 0);
         setHtml(p,`<h3>Breach <button data-act="closePanel">✕</button></h3><p>Stack: ${stack.map(id => esc(g.battle.unit(id).name)).join(', ')} (1 AP each, one free shot each on entry; unalerted defenders are surprised).</p>` +
             pts.map((pt, i) => `<div class="bp">${pt.entry==='floor'?'Floor slab':'Door'} at ${pt.x},${pt.y}${pt.roomId!=null?' → room '+pt.roomId:''}

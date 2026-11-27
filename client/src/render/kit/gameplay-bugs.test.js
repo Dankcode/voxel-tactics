@@ -763,3 +763,88 @@ test('R rotates strike orientation through 4 directions, EventPlayer never plays
     vv.tick(10);
     assert.equal(vv.pendingChunks.size, 0, 'tick finishes queued pendingChunks across frames');
 });
+
+test('bottom action bar keeps a static slot list across item/door/breach/formation changes and patches DOM nodes in place without flashing', () => {
+    let curFormation = null, doorCell = null, breaches = [];
+    const store = new VoxelStore(8, 8, 6);
+    const unit = {
+        id: 'p0', side: 'player', type: 'grenadier', owner: 'p1', name: 'Ash',
+        x: 2, y: 2, z: 1, ap: 4, moveOnlyAp: 0, will: 4, weapon: 'repeater',
+        weapons: ['repeater'], ammo: { repeater: 12 }, rigInventory: [],
+        items: { powder_bomb: 1 }, abilities: ['brace'], statuses: [], parts: {}
+    };
+    const battle = {
+        round: 2, intelMode: false, strikeReadyAt: 1, scanReadyAt: 1,
+        shotAp: () => 2,
+        breachPoints: () => breaches,
+        formations: { of: () => curFormation },
+        objective: null,
+        store
+    };
+    const fakeHud = { openPanelKind: null, game: { battle, mode: { kind: 'move' }, nearestDoor: () => doorCell } };
+
+    const baseSlots = Hud.prototype.slotsFor.call(fakeHud, unit);
+    const keys0 = baseSlots.map(s => s.key);
+    assert.equal(baseSlots.at(-1).act, 'wait');
+    assert.ok(keys0.includes('grenades:') && keys0.includes('door:') && keys0.includes('breach:') && keys0.includes('formation:'));
+
+    // Emptying items, approaching a closed door + breach point, and joining a formation must NOT add/remove slots
+    unit.items = {};
+    doorCell = { x: 2, y: 3, z: 1 };
+    breaches = [{ entry: 'door', x: 2, y: 3, z: 1 }];
+    curFormation = { id: 'f1', template: 'wedge' };
+    const changedSlots = Hud.prototype.slotsFor.call(fakeHud, unit);
+    assert.deepEqual(changedSlots.map(s => s.key), keys0, 'slot keys stay identical without adding or removing buttons');
+    assert.equal(changedSlots.find(s => s.key === 'grenades:').disabled, true, 'empty gear stays visible and disabled');
+    assert.equal(changedSlots.find(s => s.key === 'door:').disabled, false, 'door slot enables cleanly in place');
+    assert.equal(changedSlots.find(s => s.key === 'breach:').disabled, false, 'breach slot enables cleanly in place');
+    assert.equal(changedSlots.find(s => s.key === 'formation:').sub, 'Wedge', 'formation slot updates label in place');
+
+    // renderSlots patches existing button elements instead of recreating them or clearing container.innerHTML
+    const prevDoc = globalThis.document;
+    try {
+        const makeNode = tag => {
+            const node = {
+                tagName: tag.toUpperCase(),
+                children: [],
+                dataset: {},
+                className: '',
+                disabled: false,
+                attrs: {},
+                _html: '',
+                _text: '',
+                append(...kids) { for (const k of kids) this.children.push(k); },
+                appendChild(k) { this.children.push(k); return k; },
+                removeChild(k) { const idx = this.children.indexOf(k); if (idx >= 0) this.children.splice(idx, 1); },
+                setAttribute(k, v) { this.attrs[k] = String(v); },
+                get innerHTML() { return this._html; },
+                set innerHTML(v) { this._html = String(v); },
+                get textContent() { return this._text; },
+                set textContent(v) { this._text = String(v); }
+            };
+            Object.defineProperty(node, 'lastChild', { get: () => node.children[node.children.length - 1] || null });
+            Object.defineProperty(node, 'lastElementChild', { get: () => node.lastChild });
+            return node;
+        };
+        globalThis.document = { createElement: makeNode };
+        const container = makeNode('div');
+        container.innerHTMLCalls = 0;
+        Object.defineProperty(container, 'innerHTML', {
+            get: () => '',
+            set: () => { container.innerHTMLCalls++; }
+        });
+        Hud.prototype.renderSlots(container, baseSlots);
+        const firstBtns = [...container.children];
+        assert.equal(firstBtns.length, baseSlots.length);
+        assert.equal(container.innerHTMLCalls, 0);
+
+        Hud.prototype.renderSlots(container, changedSlots);
+        assert.equal(container.children.length, changedSlots.length);
+        for (let i = 0; i < firstBtns.length; i++) {
+            assert.equal(container.children[i], firstBtns[i], `slot button ${i} DOM element reused without flicker`);
+        }
+        assert.equal(container.innerHTMLCalls, 0, 'container.innerHTML is never wiped on refresh');
+    } finally {
+        globalThis.document = prevDoc;
+    }
+});
