@@ -52,10 +52,9 @@ export async function loadCharacterArt(art) {
 export class UnitView {
     constructor(scene, unit, art, store, { characterMode = '3d', customModel = null } = {}) {
         this.scene = scene; this.unit = unit; this.id = unit.id; this.art = unit.art;
-        this.characterMode = characterMode;
+        this.characterMode = '3d';
         this.group = new THREE.Group();
         const isVehicle = unit.drone || WALKERS[unit.type];
-        const useHumanoid3D = !isVehicle && (characterMode === '3d' || !art);
         let h;
         if (isVehicle) {
             this.model = unit.drone ? new DroneModel(unit, scene.clipping) : new WalkerModel(unit, store, scene.clipping);
@@ -65,7 +64,7 @@ export class UnitView {
             this.spriteHeight = h;
             this.group.add(this.sprite);
             this.animator = null;
-        } else if (useHumanoid3D) {
+        } else {
             this.model = customModel || createCharacterModel(unit, scene.clipping);
             this.sprite = this.model.root;
             this.is3D = true;
@@ -73,39 +72,6 @@ export class UnitView {
             this.spriteHeight = h;
             this.group.add(this.sprite);
             this.animator = this.model;
-        } else {
-            const m = art.field;
-            h = m.worldHeight;
-            const w = h * m.frameWidth / m.frameHeight;
-            const geo = new THREE.PlaneGeometry(w, h);
-            geo.translate(0, h / 2 - m.anchor[1] * h, 0);
-            this.texture = art.image.clone();
-            this.normal = art.normal.clone();
-            this.lighting = art.lighting.clone();
-            this.material = unitSpriteMaterial(this.texture, this.normal);
-            const visTint = unit.side === 'enemy' && ENEMIES[unit.type]?.visual?.tint;
-            if (visTint) this.material.color.setHex(visTint);
-            this.depthSlope = installBillboardDepth(this.material);
-            const depthCompile = this.material.onBeforeCompile;
-            this.material.onBeforeCompile = shader => {
-                depthCompile(shader);
-                shader.uniforms.spriteResponse = { value: this.lighting };
-                shader.fragmentShader = 'uniform sampler2D spriteResponse;\n' + shader.fragmentShader;
-                shader.fragmentShader = shader.fragmentShader.replace('vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;', `
-                    vec3 response = texture2D(spriteResponse, vMapUv).rgb;
-                    vec3 outgoingLight = (reflectedLight.directDiffuse + reflectedLight.directSpecular) * response.r
-                        + (reflectedLight.indirectDiffuse + reflectedLight.indirectSpecular) * response.b
-                        + totalEmissiveRadiance + diffuseColor.rgb * response.g;`);
-            };
-            this.material.customProgramCacheKey = () => 'ranger-edge-lit-billboard-v3';
-            this.sprite = new THREE.Mesh(geo, this.material);
-            this.is3D = false;
-            this.spriteHeight = h; this.billboardUp = new THREE.Vector3();
-            this.sprite.userData.unitId = unit.id;
-            this.sprite.castShadow = true; this.sprite.receiveShadow = true;
-            this.sprite.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: this.texture, alphaTest: 0.5, side: THREE.DoubleSide });
-            this.group.add(this.sprite);
-            this.animator = new SpriteAnimator(m, this.texture, this);
         }
         this.blob = new THREE.Mesh(new THREE.CircleGeometry(0.42, 24), new THREE.MeshBasicMaterial({ map: blobTexture(), transparent: true, depthWrite: false, opacity: 0.55, clippingPlanes: scene.clipping }));
         this.blob.rotation.x = -Math.PI / 2; this.blob.position.y = 0.02;

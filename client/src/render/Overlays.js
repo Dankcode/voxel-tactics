@@ -279,11 +279,44 @@ export class Overlays {
      * PLAN-12 strike area: one flat rectangle at the height being viewed (`y`, the visible floor or the surface under the
      * cursor), with corner posts, instead of a tile-by-tile drape over roofs and floors.
      */
-    showStrikeArea(cells, valid, y) {
+    showStrikeArea(cells, valid, y, meta = null) {
         this.clearAim();
         if (!cells.length) return;
-        const x0 = Math.min(...cells.map(c => c.x)), x1 = Math.max(...cells.map(c => c.x)) + 1, z0 = Math.min(...cells.map(c => c.y)), z1 = Math.max(...cells.map(c => c.y)) + 1;
         const col = valid ? ZONE.teal : ZONE.red;
+        if (meta?.to && meta?.axis && meta?.strike) {
+            const cx = meta.to.x + 0.5, cz = meta.to.y + 0.5;
+            const { ax, ay } = meta.axis, px = -ay, py = ax;
+            const hl = meta.strike.halfLength + 0.5, hw = meta.strike.halfWidth + 0.5;
+            const corners = [
+                [cx - ax * hl - px * hw, cz - ay * hl - py * hw],
+                [cx + ax * hl - px * hw, cz + ay * hl - py * hw],
+                [cx + ax * hl + px * hw, cz + ay * hl + py * hw],
+                [cx - ax * hl + px * hw, cz - ay * hl + py * hw]
+            ];
+            const fillGeo = new THREE.BufferGeometry();
+            fillGeo.setAttribute('position', new THREE.Float32BufferAttribute(corners.flatMap(([a, b]) => [a, y + 0.04, b]), 3));
+            fillGeo.setIndex([0, 2, 1, 0, 3, 2]);
+            const fill = new THREE.Mesh(fillGeo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.18, depthTest: false, depthWrite: false, toneMapped: false, side: THREE.DoubleSide }));
+            fill.renderOrder = 18; fill.userData.ownedMaterial = true;
+            const pts = [...corners, corners[0]].map(([a, b]) => new THREE.Vector3(a, y + 0.06, b));
+            const edge = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.95, depthTest: false, toneMapped: false }));
+            edge.renderOrder = 19; edge.userData.ownedMaterial = true;
+            const posts = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(corners.flatMap(([a, b]) => [new THREE.Vector3(a, y, b), new THREE.Vector3(a, y + 2.5, b)])),
+                new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.5, depthTest: false, toneMapped: false }));
+            posts.renderOrder = 19; posts.userData.ownedMaterial = true;
+            const arrowPts = [
+                new THREE.Vector3(cx - ax * (hl * 0.6), y + 0.08, cz - ay * (hl * 0.6)),
+                new THREE.Vector3(cx + ax * (hl * 0.6), y + 0.08, cz + ay * (hl * 0.6)),
+                new THREE.Vector3(cx + ax * (hl * 0.42) - px * 0.9, y + 0.08, cz + ay * (hl * 0.42) - py * 0.9),
+                new THREE.Vector3(cx + ax * (hl * 0.6), y + 0.08, cz + ay * (hl * 0.6)),
+                new THREE.Vector3(cx + ax * (hl * 0.42) + px * 0.9, y + 0.08, cz + ay * (hl * 0.42) + py * 0.9)
+            ];
+            const dirLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(arrowPts), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.75, depthTest: false, toneMapped: false }));
+            dirLine.renderOrder = 19; dirLine.userData.ownedMaterial = true;
+            this.aim.add(fill, edge, posts, dirLine);
+            return;
+        }
+        const x0 = Math.min(...cells.map(c => c.x)), x1 = Math.max(...cells.map(c => c.x)) + 1, z0 = Math.min(...cells.map(c => c.y)), z1 = Math.max(...cells.map(c => c.y)) + 1;
         const fill = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.18, depthTest: false, depthWrite: false, toneMapped: false, side: THREE.DoubleSide }));
         fill.position.set((x0 + x1) / 2, y + 0.04, (z0 + z1) / 2); fill.renderOrder = 18; fill.userData.ownedMaterial = true;
         const pts = [[x0, z0], [x1, z0], [x1, z1], [x0, z1], [x0, z0]].map(([a, b]) => new THREE.Vector3(a, y + 0.06, b));

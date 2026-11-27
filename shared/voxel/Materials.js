@@ -20,15 +20,17 @@ const M = [];
 export const RESISTANCE = Object.freeze({
     fence: 1, crate: 1, pallet: 1, shelving: 1, furniture: 1, sofa: 1, bed: 1, desk: 1, bin: 1, stall: 1, hay: 1, ash: 1,
     lantern: 1, emergency_light: 1, barrel_powder: 1,
-    door: 2, timber: 2, roof: 2, privacy_fence: 2, car_cabin: 2, appliance: 2, siding: 2, roof_metal: 2, shelf: 2,
+    door: 2, timber: 2, privacy_fence: 2, car_cabin: 2, appliance: 2, shelf: 2,
     cabinet: 2, bench: 2, cart: 2, barrel_water: 2, ice: 2, deep_ice: 2,
-    stucco: 3, plaster: 3, crystal: 3, pump: 3,
+    crystal: 3, pump: 3,
     dumpster: 4, container: 4, trunk: 4, rubble: 4,
     car_body: 6,
-    brick: 6, sandbag: 6, stone: 7, drystone: 7,
-    concrete_wall: 9, planter: 9,
-    jersey: 14, city_wall: 14
+    sandbag: 6,
+    planter: 9,
+    jersey: 14
 });
+export const SOLID_WALL_KEYS = new Set(['stone', 'plaster', 'timber', 'stucco', 'brick', 'concrete_wall', 'siding', 'city_wall', 'roof', 'roof_metal']);
+export const isSolidWallMaterial = key => SOLID_WALL_KEYS.has(key);
 function def(key, o) {
     const id = M.length;
     const m = Object.freeze({

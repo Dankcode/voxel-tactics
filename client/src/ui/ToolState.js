@@ -53,8 +53,10 @@ export function peekStep(battle, u, current, key, forward) {
 /** Migrate old defaults once and remove the retired aim-assist preference. */
 export function migrateSettings(o, store = globalThis.localStorage){
     if(!o||typeof o!=='object')return{};
+    const had2d = o.characterMode === '2d';
     const version=o.settingsVersion||0,next={...o,...(version<15?{autoEndTurn:true}:{}),settingsVersion:16};
     delete next.aimAssist;
-    if(version!==16||'aimAssist' in o)try{store?.setItem('tactics-settings',JSON.stringify(next));}catch{}
+    if ('characterMode' in next) delete next.characterMode;
+    if(version!==16||'aimAssist' in o||had2d)try{store?.setItem('tactics-settings',JSON.stringify(next));}catch{}
     return next;
 }

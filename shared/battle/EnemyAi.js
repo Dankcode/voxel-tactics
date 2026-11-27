@@ -160,7 +160,7 @@ function decideEnemyCore(battle, u, policy) {
     }
     if (shot && (flush ? shot.directHitRate >= FLUSH.hitBelow : shot.effectiveHitRate >= 0.22)) return why(shot.intent, `shot ${Math.round(shot.hitRate * 100)}% after moving`);
     // Moved, still no shot and AP left: keep closing instead of parking on overwatch out of range or out of sight.
-    if (!hide && target && u.movedThisTurn && u.ap + u.moveOnlyAp >= 1 && (dist2(u, target) > ranged.range || !shot)) {
+    if (!hide && target && u.movedThisTurn && u.ap + u.moveOnlyAp >= 1 && (dist2(u, target) > ranged.range || (!shot && !flush))) {
         const keep = ammoOk && u.ap - shotAp >= 0 && u.ap + u.moveOnlyAp - shotAp >= 1 ? shotAp : 0;
         const step = enemyTile(battle, u, ranged, threats, Math.max(1, u.ap + u.moveOnlyAp - keep), { role, hide: false, T, ammoOk, pursue: target, detail: true });
         if (step && !same(step.n, u) && dist2(step.n, target) < dist2(u, target) - 1) return why(moveIntent(battle, u, step.n), 'pursue: still no shot');

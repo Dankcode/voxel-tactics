@@ -85,148 +85,15 @@ export class CutInDirector {
         this.root.addEventListener('click', () => this.skip());
     }
     newTurn() { this.shownThisTurn.clear(); }
-    /** Live 3D shoulder aiming uses the battlefield character sprite directly; do not mount pinned 2D .static-aimshot overlays. */
-    async beginAim(unit, { shoulder = 'right', weaponId = unit.weapon } = {}) {
-        const cur=this.aiming;
-        if(cur?.unitId===unit.id&&cur.weaponId===weaponId){cur.shoulder=shoulder;return;}
-        this.endAim();
-        const view=this.unitView?.(unit.id);
-        if(!view||view.model)return;
-        const token=this.aiming={unitId:unit.id,weaponId,shoulder,view};
-        const loaded = await loadCharacterCutin(unit.art);
-        if(this.aiming!==token)return;
-        if(loaded.cutin?.staticPose||!loaded.cutin?.worldAim)return;
-        token.world=new WorldAimSprite(view,loaded.cutin.worldAim,weaponId,loaded.base);
-    }
-    tracerOrigin(fallback, target) {
-        const a=this.aiming,uv=a?.figure&&a.weapon?.targets?.muzzle;
-        if(!uv||!target)return fallback;
-        const view=viewport(),placement=backshotPlacement(a.art,null,view,{bars:0}),camera=this.cameraDirector.scene.camera;
-        const x=placement.left+uv[0]*placement.width,y=placement.top+uv[1]*placement.height;
-        const ray=new THREE.Vector3(x/view.width*2-1,1-y/view.height*2,.5).unproject(camera).sub(camera.position).normalize();
-        const muzzle=new THREE.Vector3(fallback.x,fallback.h,fallback.y),forward=camera.getWorldDirection(new THREE.Vector3());
-        const depth=Math.max(.1,muzzle.clone().sub(camera.position).dot(forward)),point=camera.position.clone().addScaledVector(ray,depth/ray.dot(forward));
-        return {x:point.x,y:point.z,h:point.y};
-    }
-    placeAim(target) {
-        const a=this.aiming;
-        if(a?.figure){
-            const view=viewport(),p=backshotPlacement(a.art,null,view,{bars:0});
-            Object.assign(a.figure.style,{left:p.left+'px',top:p.top+'px',width:p.width+'px',height:p.height+'px'});
-            const aim=target?projectToScreen(this.cameraDirector.scene.camera,target,view):{x:view.width/2,y:view.height/2};
-            a.weapon.update({aimUV:[(aim.x-p.left)/p.width,(aim.y-p.top)/p.height],aimDistance:target?this.cameraDirector.cam.position.distanceTo(target):20});
-            this.cameraDirector.hidden=new Set([a.unitId]);return;
-        }
-        if(!a?.world?.ready)return;
-        const camera=this.cameraDirector.scene.camera;
-        a.worldSide=worldAimSide(camera,a.view.pos,target,a.worldSide||a.shoulder);
-        a.world.update(camera,a.worldSide);
-        this.cameraDirector.hidden=new Set([a.unitId]);
-    }
+    /** 3D-only animations: 2D cut-in sprite overlays are disabled. */
+    async beginAim() { this.endAim(); }
+    tracerOrigin(fallback) { return fallback; }
+    placeAim() {}
     endAim() {
-        this.aiming?.world?.dispose();this.aiming?.weapon?.dispose();this.aiming?.figure?.remove();this.aiming=null;
+        this.aiming?.world?.dispose?.();this.aiming?.weapon?.dispose?.();this.aiming?.figure?.remove?.();this.aiming=null;
         if(!this.current)this.cameraDirector.hidden=new Set();
     }
     skip() { if (this.current) this.current.t = this.current.timeline.duration; }
-    /**
-     * @param {{ units: {art, name}[], kind, title, subtitle, shooterPos, targetPos, side }} o
-     * Returns a promise that resolves when the cut-in finishes (or immediately when disabled).
-     */
-    async play(o) {
-        const shoulder = o.shoulder === 'left' ? 'left' : 'right';
-        const shooterHud = o.side === 'player' && !!o.weaponId && ['shot','burst','heavy'].includes(o.kind);
-        const continuousAim = shooterHud && o.units.length === 1 && this.cameraDirector.commitAim(o.units[0].id);
-        if (!continuousAim) {
-            this.endAim();
-            if (o.shooterPos && o.targetPos) this.cameraDirector.begin(o.shooterPos, o.targetPos);
-        } else if(this.aiming) {
-            this.aiming.suspended=true;
-            if(this.aiming.figure)this.aiming.figure.style.visibility='hidden';
-            if(this.aiming.world?.mesh)this.aiming.world.mesh.visible=false;
-        }
-        // Every camera switch uses the back shot (no first-only / off modes any more).
-        const key = o.units.map(u => u.id).join(',');
-        this.shownThisTurn.add(key);
-        // The look point of the action camera is the aim point (targetPos + 1.1 up); the barrel goes there.
-        const aimWorld = o.targetPos ? o.targetPos.clone().add(new THREE.Vector3(0, 1.1, 0)) : null;
-        const timeline = (PRESETS[o.kind] || PRESETS.shot)(o.side === 'enemy' ? 0.95 : undefined);
-        const arts = (await Promise.all(o.units.map(u => loadCharacterCutin(u.art)))).map(a => ({ ...a, cutin: sideCutin(a.cutin, shoulder) }));
-        const el = document.createElement('div');
-        el.className = `cutin cutin-${o.kind} side-${o.side}${shooterHud?' shooter-shot':''}`;
-        el.innerHTML = `<div class="bar top"></div><div class="bar bottom"></div><div class="flash"></div>
-            <div class="figures"></div><i class="cutin-crosshair"><span class="read"></span></i><div class="caption"><div class="title"></div><div class="sub"></div></div>`;
-        el.querySelector('.title').textContent = o.title || '';
-        el.querySelector('.sub').textContent = o.subtitle || '';
-        const figures = el.querySelector('.figures');
-        const layerEls = [], weapons = [];
-        const aligned = arts.length === 1 && !!aimWorld && this.cameraDirector.active;
-        if (aligned) figures.classList.add('aligned');
-        arts.forEach((art, i) => {
-            const fig = document.createElement('div');
-            fig.className = 'figure';
-            if (aligned) fig.dataset.aligned = '1';
-            fig.style.setProperty('--i', i);
-            fig.style.height = `${Math.round((art.cutin.screenHeight || 0.6) * 100 * (o.units.length > 1 ? 0.8 : 1))}vh`;
-            fig.style.aspectRatio = `${art.cutin.width} / ${art.cutin.height}`;
-            const content = paintFigure(fig, art);
-            const weapon = art.cutin.bakedWeapon ? null : new SpriteWeapon(content, art.cutin, o.units[i], o.weaponId || o.units[i].weapon, this.cameraDirector.scene, art.base);
-            weapons.push(weapon);
-            // Animate the complete rig together so gloves never drift off the gun.
-            const presentation = document.createElement('div'); presentation.className = 'sprite-presentation';
-            fig.appendChild(presentation); presentation.appendChild(content);
-            layerEls.push({ img: presentation, parallax: 1, i });
-            figures.appendChild(fig);
-        });
-        this.root.appendChild(el);
-        this.cameraDirector.hidden = new Set(o.units.map(u => u.id));
-        document.body.classList.add('cutin-active');
-        const cur = { timeline, t: 0, el };
-        const place = () => {
-            if (!aligned) return;
-            const view = viewport(), aim = projectToScreen(this.cameraDirector.cam, aimWorld, view);
-            const cutin = arts[0].cutin, liveMuzzle = weapons[0]?.targets?.muzzle;
-            const muzzle = liveMuzzle ? [cutin.mirror ? 1 - liveMuzzle[0] : liveMuzzle[0], liveMuzzle[1]] : cutin.muzzle;
-            const pl = backshotPlacement({ ...cutin, muzzle }, aim, view, {bars:shooterHud?0:BAR_SHARE}), fig = figures.firstChild;
-            if(cutin.staticPose)weapons[0]?.update({aimUV:[(aim.x-pl.left)/pl.width,(aim.y-pl.top)/pl.height],aimDistance:this.cameraDirector.cam.position.distanceTo(aimWorld)});
-            const pivot = cutin.crosshair ? [cutin.mirror ? 1 - cutin.crosshair[0] : cutin.crosshair[0], cutin.crosshair[1]] : muzzle;
-            layerEls[0].img.style.transformOrigin = `${pivot[0]*100}% ${pivot[1]*100}%`;
-            Object.assign(fig.style, { left: `${pl.left}px`, top: `${pl.top}px`, width: `${pl.width}px`, height: `${pl.height}px` });
-            const ch = el.querySelector('.cutin-crosshair'); ch.style.left = `${aim.x}px`; ch.style.top = `${aim.y}px`; ch.style.display = aim.behind ? 'none' : 'block';
-            if(shooterHud){
-                const distance=o.aimDistance??o.shooterPos.clone().add(new THREE.Vector3(0,1.55,0)).distanceTo(aimWorld);
-                ch.style.setProperty('--aim-radius',`${projectedSpreadRadius(this.cameraDirector.cam,view.height,o.spread??1,distance)}px`);
-                ch.querySelector('.read').textContent=`${distance.toFixed(1)} m`;
-            }
-        };
-        this.current = cur;
-        await new Promise(resolve => {
-            let last = performance.now();
-            const step = now => {
-                const dt = Math.min(0.05, (now - last) / 1000); last = now;
-                cur.t += dt;
-                const s = timeline.sample(Math.min(cur.t, timeline.duration));
-                el.style.setProperty('--bars', s.bars ?? 1);
-                el.querySelector('.flash').style.opacity = s.flash ?? 0;
-                el.querySelector('.caption').style.opacity = s.text ?? 1;
-                for (const l of layerEls) {
-                    const x = (1 - (s.slide ?? 1)) * -110 * l.parallax;
-                    const scale = 1 + ((s.push ?? 1) - 1) * l.parallax;
-                    l.img.style.transform = shooterHud?'none':`translateX(${x}%) scale(${scale})`;
-                }
-                if (this.cameraDirector.active) this.cameraDirector.apply(shooterHud?0:(s.dolly ?? 0));
-                for (const weapon of weapons) weapon?.update({ recoil: (s.flash || 0) * .012 });
-                place();
-                if (cur.t >= timeline.duration) { resolve(); return; }
-                requestAnimationFrame(step);
-            };
-            requestAnimationFrame(step);
-        });
-        // Keep the action camera through tracer playback; continuous aim then resumes the same shoulder scene.
-        this.cameraDirector.hidden = continuousAim ? new Set(o.units.map(u => u.id)) : new Set();
-        document.body.classList.remove('cutin-active');
-        weapons.forEach(w => w?.dispose());
-        el.remove();
-        if (this.current === cur) this.current = null;
-        if(continuousAim&&this.aiming){this.aiming.suspended=false;if(this.aiming.figure)this.aiming.figure.style.visibility='';this.placeAim(aimWorld);}
-    }
+    /** 3D-only animations: never mount 2D sprite cut-in overlays. */
+    async play() {}
 }

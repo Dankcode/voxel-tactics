@@ -27,14 +27,15 @@ test('crosshair crossing the character changes facing, with a stable centre dead
  assert.equal(worldAimSide(camera,pos,new THREE.Vector3(2,1.4,0)),'right');
  assert.equal(worldAimSide(camera,pos,new THREE.Vector3(0,1.4,0),'left'),'left');
 });
-test('world aiming renders a static grip pose and never uses reticle lag or screen-edge positioning',()=>{
+test('world aiming helper updates orientation cleanly while CutInDirector no longer renders 2D world aim sprites',()=>{
  const camera=new THREE.PerspectiveCamera();camera.updateMatrixWorld();let calls=[];
  const world={art:{...art},mesh:new THREE.Mesh(),depthSlope:{value:0},texture:{},weapon:{update:(...a)=>calls.push(a)},ready:true};
  WorldAimSprite.prototype.update.call(world,camera,'left');
  assert.equal(world.mesh.scale.x,-1);assert.equal(world.texture.needsUpdate,true);assert.deepEqual(calls,[[]]);
  const view={pos:new THREE.Vector3()},updates=[],director={cameraDirector:{scene:{camera}},aiming:{view,unitId:'u',shoulder:'right',world:{ready:true,update:(...a)=>updates.push(a)}}};
  CutInDirector.prototype.placeAim.call(director,new THREE.Vector3(2,1,-5),{yaw:1,pitch:1});
- assert.equal(updates.length,1);assert.equal(updates[0].length,2);assert.deepEqual([...director.cameraDirector.hidden],['u']);
+ assert.equal(updates.length,0,'2D world aim sprite updates are disabled');
+ assert.equal(director.cameraDirector.hidden,undefined,'CutInDirector.placeAim does not hide the 3D character');
 });
 test('all gun families remain inside the world card and both glove wrists meet their sleeves',()=>{
  const guns=JSON.parse(readFileSync(new URL('../../../public/assets/weapons/ranger-preview/gun-kit.json',import.meta.url)));

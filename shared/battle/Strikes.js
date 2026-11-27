@@ -22,8 +22,22 @@ export const STRIKES = Object.freeze({
 const STOREY = 3;                        // shared/mission/BuildingBuilder.js STOREY
 const STRUCTURE_DEPTH = 2 * STOREY;      // two storeys from the top of a building
 
-/** Flight axis for a strike cast by `from` at `to`: along whichever axis the caster mostly faces. */
-export function strikeAxis(to, from = null) {
+export const STRIKE_DIRS = Object.freeze([
+    { ax: 1, ay: 0 },
+    { ax: Math.SQRT1_2, ay: Math.SQRT1_2 },
+    { ax: 0, ay: 1 },
+    { ax: -Math.SQRT1_2, ay: Math.SQRT1_2 }
+]);
+
+/** Convert a strike axis into the nearest 45°-step direction index (0..3). */
+export function strikeDirFromAxis(axis) {
+    if (!axis) return 0;
+    return Math.abs(axis.ax) >= Math.abs(axis.ay) ? 0 : 2;
+}
+
+/** Flight axis for a strike cast by `from` at `to`, or explicit 45°-step `dir` (0..3). */
+export function strikeAxis(to, from = null, dir = null) {
+    if (dir != null && Number.isInteger(dir)) return STRIKE_DIRS[((dir % 4) + 4) % 4];
     if (!from) return { ax: 1, ay: 0 };
     const dx = to.x - from.x, dy = to.y - from.y;
     return Math.abs(dx) >= Math.abs(dy) ? { ax: 1, ay: 0 } : { ax: 0, ay: 1 };
@@ -32,13 +46,24 @@ export function strikeAxis(to, from = null) {
 const topOf = (store, x, y, fallback) => { const t = store.topSolid(x, y); return t >= 0 ? t : fallback; };
 
 /** Every tile the strike can affect, as highlight cells { x, y, z } (z = the column's top surface). */
-export function footprint(b, id, to, from = null) {
+export function footprint(b, id, to, from = null, dir = null) {
     const s = STRIKES[id], cells = [], st = b.store;
     if (!s || !to) return cells;
-    const { ax, ay } = strikeAxis(to, from);
-    for (let along = -s.halfLength; along <= s.halfLength; along++) for (let side = -s.halfWidth; side <= s.halfWidth; side++) {
-        const x = to.x + ax * along + ay * side, y = to.y + ay * along + ax * side;
-        if (st.inBounds(x, y, 0)) cells.push({ x, y, z: topOf(st, x, y, to.z) });
+    const { ax, ay } = strikeAxis(to, from, dir);
+    if (ax === 0 || ay === 0) {
+        for (let along = -s.halfLength; along <= s.halfLength; along++) for (let side = -s.halfWidth; side <= s.halfWidth; side++) {
+            const x = to.x + ax * along + ay * side, y = to.y + ay * along + ax * side;
+            if (st.inBounds(x, y, 0)) cells.push({ x, y, z: topOf(st, x, y, to.z ?? 0) });
+        }
+        return cells;
+    }
+    const px = -ay, py = ax, R = Math.ceil(Math.hypot(s.halfLength, s.halfWidth)) + 1;
+    for (let y = to.y - R; y <= to.y + R; y++) for (let x = to.x - R; x <= to.x + R; x++) {
+        if (!st.inBounds(x, y, 0)) continue;
+        const dx = x - to.x, dy = y - to.y;
+        if (Math.abs(dx * ax + dy * ay) <= s.halfLength + 0.01 && Math.abs(dx * px + dy * py) <= s.halfWidth + 0.01) {
+            cells.push({ x, y, z: topOf(st, x, y, to.z ?? 0) });
+        }
     }
     return cells;
 }
@@ -47,10 +72,12 @@ export function footprint(b, id, to, from = null) {
  * Bomb centres for an airstrike: `bombs` seeded points inside the square (inset by the blast radius so every blast
  * stays inside the highlight), at least `minSeparation` apart. Bounded rejection sampling, then a fixed triangle.
  */
-export function airstrikeBombs(b, to, from = null, id = 'carpet_bomb') {
-    const s = STRIKES[id], { ax, ay } = strikeAxis(to, from), out = [];
+export function airstrikeBombs(b, to, from = null, id = 'carpet_bomb', dir = null) {
+    const s = STRIKES[id], { ax, ay } = strikeAxis(to, from, dir), px = -ay, py = ax, out = [];
     const inset = s.inset ? Math.floor(s.bombRadius) : 0, rl = Math.max(0, s.halfLength - inset), rw = Math.max(0, s.halfWidth - inset);
-    const at = (along, side) => ({ x: to.x + ax * along + ay * side, y: to.y + ay * along + ax * side });
+    const at = (along, side) => (ax === 0 || ay === 0)
+        ? { x: to.x + ax * along + ay * side, y: to.y + ay * along + ax * side }
+        : { x: Math.round(to.x + ax * along + px * side), y: Math.round(to.y + ay * along + py * side) };
     const pick = () => at(Math.round((b.rng.next() * 2 - 1) * rl), Math.round((b.rng.next() * 2 - 1) * rw));
     // Fallback: spread along the long axis, alternating sides.
     const fallback = [[-1, -1], [0, 1], [1, -1]].map(([fa, fs]) => at(Math.round(fa * rl), Math.round(fs * rw)));
@@ -102,22 +129,22 @@ function carveColumn(b, x, y, { structure = STRUCTURE_DEPTH, crater = 1 } = {}) 
 }
 
 /** Run an Airstrike or Orbital Laser for `u` at `to`. Emits explosions and voxel changes, damages units. */
-export function executeStrike(b, u, id, to) {
-    const s = STRIKES[id], cells = footprint(b, id, to, u), hit = new Map();
+export function executeStrike(b, u, id, to, dir = null) {
+    const s = STRIKES[id], cells = footprint(b, id, to, u, dir), hit = new Map();
     const hurt = (e, dmg) => hit.set(e.id, Math.max(hit.get(e.id) || 0, dmg));
     const inside = (e, test) => occupiedCells(e).some(p => test(p.x, p.y));
     const changes = b.store.record(() => {
         if (s.bombs) {
-            const bombs = airstrikeBombs(b, to, u, id), r2 = s.bombRadius ** 2;
+            const bombs = airstrikeBombs(b, to, u, id, dir), r2 = s.bombRadius ** 2;
             // The salvo falls first (the client drops the bombs from the sky), then all of them burst at once.
-            b.emit({ t: 'strike', unitId: u.id, abilityId: id, to, bombs: bombs.map(p => ({ x: p.x + 0.5, y: p.y + 0.5, h: topOf(b.store, p.x, p.y, to.z) + 1.2 })), radius: s.bombRadius, cells: cells.length });
+            b.emit({ t: 'strike', unitId: u.id, abilityId: id, to, dir, bombs: bombs.map(p => ({ x: p.x + 0.5, y: p.y + 0.5, h: topOf(b.store, p.x, p.y, to.z ?? 0) + 1.2 })), radius: s.bombRadius, cells: cells.length });
             for (const c of cells) {
                 const d2 = Math.min(...bombs.map(p => (c.x - p.x) ** 2 + (c.y - p.y) ** 2));
                 if (d2 <= r2) carveColumn(b, c.x, c.y, { crater: d2 <= (s.bombRadius - 1.2) ** 2 ? 1 : 0 });
             }
             // All three bombs land together: one salvo, played at once by the client.
             bombs.forEach((p, i) => {
-                const h = topOf(b.store, p.x, p.y, to.z) + 1.2;
+                const h = topOf(b.store, p.x, p.y, to.z ?? 0) + 1.2;
                 scorchBlast(b.store, { x: p.x + 0.5, y: p.y + 0.5, h, radius: s.bombRadius });
                 b.emit({ t: 'explosion', x: p.x + 0.5, y: p.y + 0.5, h, radius: s.bombRadius, element: 'geo', source: id, salvo: i, of: bombs.length });
             });
@@ -127,15 +154,15 @@ export function executeStrike(b, u, id, to) {
                 else if (s.edgeDamage && inside(e, inRect)) hurt(e, s.edgeDamage);
             }
         } else {
-            const { ax, ay } = strikeAxis(to, u);
+            const { ax, ay } = strikeAxis(to, u, dir);
             for (const c of cells) {
-                const side = Math.abs(ax ? c.y - to.y : c.x - to.x);
+                const side = Math.abs((c.x - to.x) * (-ay) + (c.y - to.y) * ax);
                 carveColumn(b, c.x, c.y, { structure: Infinity, crater: side <= s.coreWidth ? 1 : 0 });
             }
             for (let along = -s.halfLength; along <= s.halfLength; along += 4) {
-                const x = to.x + ax * along, y = to.y + ay * along;
+                const x = Math.round(to.x + ax * along), y = Math.round(to.y + ay * along);
                 if (!b.store.inBounds(x, y, 0)) continue;
-                const h = topOf(b.store, x, y, to.z) + 1;
+                const h = topOf(b.store, x, y, to.z ?? 0) + 1;
                 b.emit({ t: 'explosion', x: x + 0.5, y: y + 0.5, h, radius: s.halfWidth + 0.5, element: 'pyro', source: id });
             }
             for (const e of b.units.filter(alive)) if (inside(e, (x, y) => cells.some(c => c.x === x && c.y === y))) hurt(e, s.damage);
@@ -148,4 +175,4 @@ export function executeStrike(b, u, id, to) {
 }
 
 /** Commander Strike (classic rules, PLAN-12): the same three-bomb airstrike over a rectangle, with lighter bombs. */
-export function commanderStrike(b, u, to) { return executeStrike(b, u, 'killstreak_strike', to); }
+export function commanderStrike(b, u, to, dir = null) { return executeStrike(b, u, 'killstreak_strike', to, dir); }

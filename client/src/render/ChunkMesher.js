@@ -59,7 +59,33 @@ export function meshChunk(store, cx, cy, cz, options = {}) {
     // PLAN-14: a slab broken by damage keeps a straight section with the building's finish (and its damage decals)
     // instead of turning into filleted "pillow" tiles: rounding is for authored edges, never for blast holes.
     const scars = store.scars;
-    const brokenNear = (x, y, z) => scars?.size > 0 && [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]].some(([dx, dy]) => scars.has(`${x + dx},${y + dy},${z}`) || scars.has(`${x + dx},${y + dy},${z + 1}`));
+    let scarNear = null;
+    if (scars?.size > 0) {
+        const S = CHUNK, S2 = S * S;
+        const zHi = Math.min(z0 + S, store.height, cut);
+        for (const k of scars) {
+            const p1 = k.indexOf(','), p2 = k.indexOf(',', p1 + 1);
+            const sx = +k.slice(0, p1), sy = +k.slice(p1 + 1, p2), sz = +k.slice(p2 + 1);
+            if (sx < x0 - 1 || sx > x0 + S || sy < y0 - 1 || sy > y0 + S || sz < z0 || sz > zHi) continue;
+            scarNear ||= new Uint8Array(S * S * S);
+            for (const dz of [0, -1]) {
+                const lz = sz + dz - z0;
+                if (lz < 0 || lz >= S) continue;
+                for (let dy = -1; dy <= 1; dy++) {
+                    const ly = sy + dy - y0;
+                    if (ly < 0 || ly >= S) continue;
+                    for (let dx = -1; dx <= 1; dx++) {
+                        if (!dx && !dy) continue;
+                        const lx = sx + dx - x0;
+                        if (lx >= 0 && lx < S) scarNear[lz * S2 + ly * S + lx] = 1;
+                    }
+                }
+            }
+        }
+    }
+    const brokenNear = scarNear
+        ? (x, y, z) => scarNear[(z - z0) * CHUNK * CHUNK + (y - y0) * CHUNK + (x - x0)] === 1
+        : () => false;
     const W = store.width, D = store.depth;
     const inMap = (x, y) => x >= 0 && y >= 0 && x < W && y < D;
     const aoCorner = (f, x, y, z, dx, dy, dz) => {

@@ -16,8 +16,8 @@ test('a tracer streak travels from the muzzle to the impact and is removed after
     fx.update(0.01);
     assert.ok(it.obj.position.x > p1, 'the streak moves');
     assert.ok(TRACER_LENGTH >= 5 && it.obj.children[0].scale.y <= TRACER_LENGTH + 1e-9, 'a long, single travelling beam');
-    assert.equal(it.obj.children.filter(c => c.isPointLight).length, 1);
-    assert.equal(it.obj.children.find(c => c.isPointLight).castShadow, false);
+    assert.ok(it.lightSlot?.light?.isPointLight);
+    assert.equal(it.lightSlot.light.castShadow, false);
     assert.equal(arrived, 0);
     fx.update(18 / TRACER_SPEED);
     assert.equal(arrived, 1, 'impact fires once on arrival');
@@ -60,19 +60,17 @@ test('burst rounds leave the muzzle one after another; impacts leave no spherica
     assert.ok(added.every(x => x.kind === 'spark' && x.obj.geometry.type !== 'SphereGeometry'));
 });
 
-test('the rendered barrel supplies the tracer and flash origin without moving the authoritative impact', async () => {
-    const camera=new THREE.PerspectiveCamera(38,16/9,.08,300);camera.position.set(0,3,8);camera.lookAt(0,2,0);camera.updateMatrixWorld(true);
-    const director=Object.create(CutInDirector.prototype),muzzle={x:0,y:0,h:2},impact={x:0,y:-10,h:2};
-    Object.assign(director,{cameraDirector:{scene:{camera}},aiming:{figure:{},art:{staticPose:true,width:1000,height:1000,screenHeight:1},weapon:{targets:{muzzle:[.4,.53]}}}});
-    const origin=director.tracerOrigin(muzzle,impact),ndc=new THREE.Vector3(origin.x,origin.h,origin.y).project(camera);
-    assert.ok(Math.abs((ndc.x+1)/2-.225)<1e-9&&Math.abs((1-ndc.y)/2-.53)<1e-9,'the tracer starts exactly at the rendered barrel tip');
-    const fx=fxOf();let flash;fx.flash=at=>{flash=at;};
-    const player=new EventPlayer({fx,voxelView:{flush(){}},hud:{refresh(){}},battle:null,views:new Map(),cutins:{tracerOrigin:(m,t)=>director.tracerOrigin(m,t)}});
-    player.speed=1000;
-    await player.play({t:'shot',unitId:'x',weaponId:'repeater',muzzle,aim:impact,rounds:1,reaction:false,projectiles:[{to:impact,kind:'none'}]});
-    const tracer=fx.items.find(x=>x.kind==='tracer');
-    assert.deepEqual(tracer.a,new THREE.Vector3(origin.x,origin.h,origin.y));assert.deepEqual(tracer.b,new THREE.Vector3(impact.x,impact.h,impact.y));
-    assert.deepEqual(flash,origin);
+test('tracers originate at the 3D muzzle without any 2D sprite barrel override', async () => {
+    const director = Object.create(CutInDirector.prototype), muzzle = { x: 0, y: 0, h: 2 }, impact = { x: 0, y: -10, h: 2 };
+    const origin = director.tracerOrigin(muzzle, impact);
+    assert.deepEqual(origin, muzzle, 'tracerOrigin passes the authoritative 3D muzzle straight through');
+    const fx = fxOf(); let flash; fx.flash = at => { flash = at; };
+    const player = new EventPlayer({ fx, voxelView: { flush() {} }, hud: { refresh() {} }, battle: null, views: new Map(), cutins: { tracerOrigin: (m, t) => director.tracerOrigin(m, t) } });
+    player.speed = 1000;
+    await player.play({ t: 'shot', unitId: 'x', weaponId: 'repeater', muzzle, aim: impact, rounds: 1, reaction: false, projectiles: [{ to: impact, kind: 'none' }] });
+    const tracer = fx.items.find(x => x.kind === 'tracer');
+    assert.deepEqual(tracer.a, new THREE.Vector3(muzzle.x, muzzle.h, muzzle.y)); assert.deepEqual(tracer.b, new THREE.Vector3(impact.x, impact.h, impact.y));
+    assert.deepEqual(flash, muzzle);
 });
 
 test('overview calloutRing and shotLine animate and dispose cleanly without leaking scene objects', () => {

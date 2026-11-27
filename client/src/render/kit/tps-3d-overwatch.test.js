@@ -136,7 +136,7 @@ describe('CameraDirector TPS 3D FOV & spring-arm continuity', () => {
 describe('3D character models, 2D switch, and glTF registry', () => {
     afterEach(() => registerCharacterModel('__custom_test', null));
 
-    test('UnitView defaults to articulated 3D HumanoidModel and transfers cleanly to 2D', () => {
+    test('UnitView always uses articulated 3D HumanoidModel even when legacy 2D flags or sprite art are passed', () => {
         withDomStub(() => {
             const scene = { scene: { add() {}, remove() {} }, clipping: null };
             const { store } = flatMission();
@@ -160,10 +160,10 @@ describe('3D character models, 2D switch, and glTF registry', () => {
                 normal: Object.assign(new THREE.Texture(), { clone: () => new THREE.Texture() }),
                 lighting: Object.assign(new THREE.Texture(), { clone: () => new THREE.Texture() })
             };
-            const v2d = new UnitView(scene, unit, fakeArt, store, { characterMode: '2d' });
-            assert.equal(v2d.is3D, false);
-            assert.equal(v2d.model, undefined);
-            v2d.dispose();
+            const vForced3d = new UnitView(scene, unit, fakeArt, store, { characterMode: '2d' });
+            assert.equal(vForced3d.is3D, true);
+            assert.ok(vForced3d.model instanceof HumanoidModel);
+            vForced3d.dispose();
         });
     });
 

@@ -6,7 +6,8 @@ import { WEAPONS, THROWABLES } from '../../../shared/content/weapons.js';
 import { ELEMENT_COLORS } from '../../../shared/elements/Elements.js';
 import { ABILITIES } from '../../../shared/content/units.js';
 import { FORMATIONS } from '../../../shared/content/formations.js';
-import { materialById } from '../../../shared/voxel/Materials.js';
+import { materialById, MAT } from '../../../shared/voxel/Materials.js';
+import { CHUNK } from '../../../shared/voxel/VoxelStore.js';
 import { aimedUnit } from '../../../shared/battle/Ballistics.js';
 import { TRACER_SPEED, BURST_GAP } from '../render/Fx.js';
 import { explosionSound, impactSound, weaponHandlingSound, weaponSound } from '../audio/SoundPlayer.js';
@@ -130,20 +131,15 @@ export class EventPlayer {
                     if (u.side === 'player' && g.cameraDirector?.phase === 'prepare') g.cameraDirector.commitAim(u.id);
                     break;
                 }
-                const title = e.kind === 'breach' ? 'BREACH' : (WEAPONS[e.weaponId]?.name || THROWABLES[e.itemId]?.name || ABILITIES[e.abilityId]?.name || e.kind).toUpperCase();
-                const sub = target ? `→ ${target.name}` : '';
                 const sv = this.view(e.unitId), tv = target ? this.view(target.id) : null;
-                // A shot from a blocked angle is framed from the side tile the soldier steps out to.
-                const step = e.muzzle?.step, shooterPos = step && sv ? new THREE.Vector3(step.x + 0.5, step.z != null ? step.z + 1 : sv.worldPosition().y, step.y + 0.5) : sv?.worldPosition();
-                const next = this.queue[0];
-                const aimImpact = u.side === 'player' && !target && next?.t === 'shot' && next.unitId === u.id
-                    ? next.projectiles[0]?.to : null;
-                const shotPoint=e.aimPoint||(target?{x:target.x+.5,y:target.y+.5,h:target.z+1.55}:null);
-                const spreadTarget=target||(e.aimPoint?aimedUnit(g.battle,u,shotPoint):null);
-                const spread=e.weaponId&&shotPoint?g.battle.spreadFor(u,WEAPONS[e.weaponId],shotPoint,{target:spreadTarget}).spread:1;
-                const aimDistance=e.muzzle&&shotPoint?Math.hypot(shotPoint.x-e.muzzle.x,shotPoint.y-e.muzzle.y,shotPoint.h-e.muzzle.h):undefined;
-                await g.cutins.play({ units: group, weaponId: e.weaponId, kind: e.kind, title, subtitle: sub, side: u.side, shoulder: e.muzzle?.side,spread,aimDistance,
-                    shooterPos, targetPos: aimImpact ? new THREE.Vector3(aimImpact.x,aimImpact.h-1.1,aimImpact.y) : e.aimPoint?new THREE.Vector3(e.aimPoint.x,e.aimPoint.h-1.1,e.aimPoint.y):tv ? tv.worldPosition() : sv?.worldPosition().clone().add(new THREE.Vector3(...faceVec(u)).multiplyScalar(4)) });
+                if (e.aimPoint && sv) sv.face?.(e.aimPoint.x - (u.x + 0.5), e.aimPoint.y - (u.y + 0.5));
+                else if (target && sv) sv.face?.(target.x - u.x, target.y - u.y);
+                const actionClip = e.kind === 'melee' ? 'fire' : e.kind === 'breach' ? 'stacked' : 'throw';
+                sv?.animator?.play?.(actionClip, { restart: true });
+                const focusPos = tv?.worldPosition?.() && sv?.worldPosition?.()
+                    ? sv.worldPosition().clone().lerp(tv.worldPosition(), 0.35)
+                    : sv?.worldPosition?.();
+                if (focusPos && g.options?.followCamera && !g.cameraDirector?.active) this.focusOverview(focusPos, 6.5);
                 break;
             }
             case 'peek': case 'peekBack': {
@@ -399,18 +395,37 @@ export class EventPlayer {
                 await Promise.all(e.bombs.map((b, i) => fx.bomb(b, { fall: 0.65 / this.speed, delay: i * 0.08 / this.speed })));
                 break;
             }
-            case 'explosion': g.audio?.play(explosionSound(e, g.scene.target), { volume: e.of > 1 ? 0.7 / Math.sqrt(e.of) : 0.7 }); fx.explosion(e, e.radius, e.element); g.voxelView?.flush(); if (!(e.of > 1) || e.salvo === e.of - 1) await this.d(0.15); break;   // an airstrike salvo goes off at once
-            case 'smoke': fx.syncField(g.battle.field); break;
-            case 'voxels': {
-                const destroyed=(e.changes||[]).map(c=>({x:c[0]??c.x,y:c[1]??c.y,z:c[2]??c.z,before:c[3]??c.before,after:c[4]??c.after}))
-                    .filter(c=>c.before!==0&&c.after===0&&materialById(c.before).render!=='none');
-                const stride=Math.max(1,Math.ceil(destroyed.length/24));
-                for(let i=0;i<destroyed.length;i+=stride){const c=destroyed[i];fx.debris({x:c.x+.5,y:c.y+.5,h:c.z+.5},materialById(c.before));}
-                g.voxelView.flush();
-                if (g.roadMarks && g.battle && (g.battle.mission?.visual?.roadPaint || e.changes?.some(c => (c[2] ?? c.z) <= (g.battle.mission?.meta?.streetDatum ?? 1) + 1))) g.roadMarks.build(g.battle.store, g.battle.mission?.visual?.roadPaint);
+            case 'explosion': {
+                g.audio?.play(explosionSound(e, g.scene.target), { volume: e.of > 1 ? 0.7 / Math.sqrt(e.of) : 0.7 });
+                fx.explosion(e, e.radius, e.element);
+                const nextT = this.queue[0]?.t;
+                const deferFlush = (e.of > 1 && e.salvo < e.of - 1) || nextT === 'explosion' || nextT === 'voxels' || nextT === 'collapse';
+                if (!deferFlush) g.voxelView?.flush?.({ maxMs: 16 });
+                if (!(e.of > 1) || e.salvo === e.of - 1) await this.d(0.15);
                 break;
             }
-            case 'collapse': g.audio.play('collapse',{volume:.65});g.voxelView.flush(); fx.float(new THREE.Vector3(e.fallen?.[0]?.x ?? 0, e.fallen?.[0]?.to ?? 1, e.fallen?.[0]?.y ?? 0), 'COLLAPSE', '#ffcc66', 22); g.scene.shake = 0.6; await this.d(0.25); break;
+            case 'smoke': fx.syncField(g.battle.field); break;
+            case 'voxels': {
+                const destroyed = [], priority = new Set();
+                let roadTouched = false;
+                const roadZMax = (g.battle?.mission?.meta?.streetDatum ?? 1) + 1;
+                for (const raw of e.changes || []) {
+                    const x = raw[0] ?? raw.x, y = raw[1] ?? raw.y, z = raw[2] ?? raw.z;
+                    const before = raw[3] ?? raw.before, after = raw[4] ?? raw.after;
+                    priority.add(`${Math.floor(x / CHUNK)},${Math.floor(y / CHUNK)},${Math.floor(z / CHUNK)}`);
+                    if (before !== 0 && after === 0 && materialById(before).render !== 'none') destroyed.push({ x, y, z, before });
+                    if (z <= roadZMax && (before === MAT.asphalt || before === MAT.road_mark || after === MAT.asphalt || after === MAT.road_mark)) roadTouched = true;
+                }
+                const stride = Math.max(1, Math.ceil(destroyed.length / 12));
+                for (let i = 0; i < destroyed.length; i += stride) {
+                    const c = destroyed[i];
+                    fx.debris({ x: c.x + 0.5, y: c.y + 0.5, h: c.z + 0.5 }, materialById(c.before));
+                }
+                g.voxelView?.flush?.({ maxMs: 16, priority });
+                if (roadTouched && g.roadMarks && g.battle) g.roadMarks.build(g.battle.store, g.battle.mission?.visual?.roadPaint);
+                break;
+            }
+            case 'collapse': g.audio.play('collapse',{volume:.65}); if (this.queue[0]?.t !== 'voxels') g.voxelView?.flush?.({ maxMs: 16 }); fx.float(new THREE.Vector3(e.fallen?.[0]?.x ?? 0, e.fallen?.[0]?.to ?? 1, e.fallen?.[0]?.y ?? 0), 'COLLAPSE', '#ffcc66', 22); g.scene.shake = 0.6; await this.d(0.25); break;
             case 'elements': g.voxelView.flush(); fx.syncField(g.battle.field); if(e.element)g.audio.play(explosionSound({...e,x:e.changes?.[0]?.x||0,y:e.changes?.[0]?.y||0},g.scene.target),{volume:.35}); break;
             case 'door': { const v=this.view(e.unitId);if(v&&(v.unit.side==='player'||g.isVisible(v.unit)))g.audio.play(e.kicked?'doorKick':'doorOpen',{volume:.5}); if(e.kicked){v?.animator?.play('vault',{restart:true});fx.float(v?.worldPosition()||new THREE.Vector3(),'KICK!','#ffd54f',22);g.scene.shake=.18;await this.d(.3);} g.voxelView.flush(); break; }
             case 'damage': {

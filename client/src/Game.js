@@ -9,6 +9,7 @@ import { floorCutLevels, zoomCutLevel, unitCutLevel } from './render/FloorCutawa
 import { BuildingView, BUILDING_VIEWS } from './render/BuildingView.js';
 import { pickVisibleTile, pickReachableAlongRay } from './render/TilePicking.js';
 import { footprint } from '../../shared/battle/IntelOps.js';
+import { strikeAxis, strikeDirFromAxis, STRIKES } from '../../shared/battle/Strikes.js';
 import { InteriorVisibility } from './render/InteriorVisibility.js';
 import { battleReport } from '../../shared/session/BattleReport.js';
 import { saveReport } from './ui/TestGroundStore.js';
@@ -36,7 +37,7 @@ import { KitLibrary } from './render/kit/KitLibrary.js';
 import { Overlays } from './render/Overlays.js';
 import { LanternLights } from './render/LanternLights.js';
 import { Fx } from './render/Fx.js';
-import { UnitView, loadCharacterArt } from './units/UnitView.js';
+import { UnitView } from './units/UnitView.js';
 import { SoundPlayer } from './audio/SoundPlayer.js';
 import { EventPlayer } from './anim/EventPlayer.js';
 import { CutInDirector, CUTIN_MODES } from './anim/CutInDirector.js';
@@ -81,12 +82,7 @@ export class Game {
     constructor({ canvas, hudRoot, cutinRoot, floatRoot, onExit, options = {} }) {
         let savedOptions={};try{savedOptions=JSON.parse(localStorage.getItem('tactics-settings')||'{}');}catch{}
         savedOptions=migrateSettings(savedOptions);
-        let urlChars = null;
-        try {
-            const c = new URLSearchParams(globalThis.location?.search || '').get('chars');
-            if (c === '2d' || c === '3d') urlChars = c;
-        } catch {}
-        this.options = { soundVolume:0.65,turnSpeed:1,rotateSpeed:1,aimSensitivity:0.5,aimSway:false,unitTags:'selected',showEnemyBars:true,confirmMoves:false,autoEndTurn: true, autoNext: true, followCamera: true, edgeScroll: true, buildingView:'auto', characterMode:'3d', ...savedOptions, ...options, ...(urlChars ? { characterMode: urlChars } : {}) };
+        this.options = { soundVolume:0.65,turnSpeed:1,rotateSpeed:1,aimSensitivity:0.5,aimSway:false,unitTags:'selected',showEnemyBars:true,confirmMoves:false,autoEndTurn: true, autoNext: true, followCamera: true, edgeScroll: true, buildingView:'auto', ...savedOptions, ...options, characterMode:'3d' };
         this.audio = new SoundPlayer({ volume: this.options.soundVolume });
         this.scene = new Scene(canvas);
         this.library = new MaterialLibrary(this.scene.renderer, this.scene.clipping);
@@ -160,6 +156,7 @@ export class Game {
         this.scene.rig.resetTactical();this.scene.syncPassCamera();
         this.scene.setMission(this.battle.mission);
         this.voxelView = new VoxelView(this.scene, store, this.library, this.options.kit === false ? null : this.kit);
+        this.voxelView.onBeforeFlush = () => this.battle?.light?.flush();
         this.visualRevealedRooms = new Set(this.battle.revealedRooms);
         this.discoveryVisible = new Set();
         this.visualInterior=new Set(this.battle.visibleInterior);
@@ -168,9 +165,9 @@ export class Game {
         this.overlays.visibleCell = c => !this.voxelView.interiorVisibility.hiddenAt(c.x,c.y,c.z+1)&&!this.buildingView.hiddenAt(c.x,c.y,c.z);
         const wear = wearTint(this.battle.mission);
         this.voxelView.tint = (x, y, z) => {
-            let light=this.battle.light.tint(x,y,z);
-            const w = wear?.(x, y, z); if (w) light = light.map((c, i) => c * w[i]);
-            return this.voxelView.interiorVisibility.hiddenAt(x,y,z) ? light.map((c,i)=>c*[0.18,0.22,0.3][i]) : light;
+            let light = this.battle.light.tint(x, y, z);
+            const w = wear?.(x, y, z);
+            return w ? light.map((c, i) => c * w[i]) : light;
         };
         setGroundStore(store);
         this.voxelView.setVisual(this.battle.mission?.visual);
@@ -215,10 +212,7 @@ export class Game {
     }
     async addView(u) {
         if (this.views.has(u.id)) return this.views.get(u.id);
-        const characterMode = this.options.characterMode || '3d';
-        const isHumanoid = !u.drone && !WALKERS[u.type];
-        const art = (isHumanoid && characterMode === '2d') ? await loadCharacterArt(u.art) : null;
-        const v = new UnitView(this.scene, u, art, this.battle.store, { characterMode });
+        const v = new UnitView(this.scene, u, null, this.battle.store, { characterMode: '3d' });
         v.statusLines = x => this.statusLines(x);
         this.views.set(u.id, v);
         return v;
@@ -324,6 +318,7 @@ export class Game {
         if (mk.visible) { const s = 1 + Math.sin(this.time * 5) * 0.08; mk.userData.ring.scale.set(s, 1, s); }
         this.overlays.pulse?.(this.time);
         this.fx.update(dt);
+        this.voxelView?.tick?.(6);
         this.library.update(dt);
         this.lanterns.update(dt, this.scene.target, this.renderCut ? this.renderCut() : this.cutLevel);
         if (this.cameraDirector.active) {
@@ -807,6 +802,42 @@ export class Game {
             if (this.options.autoEndTurn && autoEndReady(this.battle, u => this.controllable(u))) this.startAutoEnd();
         }
     }
+    isStrikeMode() {
+        const a = this.mode?.kind === 'ability' ? ABILITIES[this.mode.abilityId] : null;
+        return !!(a && (a.support || a.commander));
+    }
+    refreshStrikePreview() {
+        if (!this.isStrikeMode() || !this.battle) return;
+        const u = this.selectedUnit(), a = ABILITIES[this.mode.abilityId];
+        if (!u || !a) return;
+        const to = this.hoverCell;
+        if (!to) { this.overlays?.clearAim?.(); return; }
+        const dir = this.mode.strikeDir ?? null;
+        const reason = this.battle.validate({ type: 'ability', unitId: u.id, abilityId: a.id, to, dir, by: '*' });
+        this.overlays?.showStrikeArea?.(
+            footprint(this.battle, a.id, to, u, dir),
+            !reason,
+            this.strikePlaneY(),
+            { to, axis: strikeAxis(to, u, dir), strike: STRIKES[a.id] }
+        );
+        if (this.mouse) {
+            this.hud?.cursorTip?.(
+                this.mouse.x,
+                this.mouse.y,
+                reason ? `${a.name} · ${reasonText(reason)}` : `${a.name} · R to rotate · click to cast · ${a.ap} AP / ${a.wp} WP`
+            );
+        }
+    }
+    rotateStrike(step = 1) {
+        if (!this.isStrikeMode()) return;
+        const u = this.selectedUnit();
+        const cur = Number.isInteger(this.mode.strikeDir)
+            ? this.mode.strikeDir
+            : strikeDirFromAxis(strikeAxis(this.hoverCell || (u ? { x: u.x + 1, y: u.y, z: u.z } : { x: 1, y: 0, z: 0 }), u));
+        this.mode.strikeDir = ((cur + step) % 4 + 4) % 4;
+        this.audio?.play?.('uiSelect', { volume: 0.2 });
+        this.refreshStrikePreview();
+    }
     useAbility(id) {
         const a = ABILITIES[id];
         if (a.targeting) { this.setMode({ kind: 'ability', abilityId: id }); return; }
@@ -939,18 +970,17 @@ export class Game {
 
     // ------------------------------------------------------------------ battle event hooks (from EventPlayer)
     onVision(cells) {
-        const next=new Set(cells),changed=[...this.visualInterior].filter(k=>!next.has(k)).concat(cells.filter(k=>!this.visualInterior.has(k)));
-        this.visualInterior.clear();for(const k of cells)this.visualInterior.add(k);
-        for(const k of changed){const [x,y,z]=k.split(',').map(Number);for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)for(let h=0;h<4;h++)this.battle.store.markDirty(x+dx,y+dy,z+h);}
-        this.voxelView.flush();this.updateEnemyVisibility();
+        this.visualInterior.clear();
+        for (const k of cells) this.visualInterior.add(k);
+        this.voxelView?.refreshConcealment?.();
+        this.updateEnemyVisibility();
     }
     onReveal(roomId) {
-        const room = this.battle.mission.rooms.find(r=>r.id===roomId); if (!room) return;
+        const room = this.battle.mission.rooms.find(r => r.id === roomId); if (!room) return;
         this.visualRevealedRooms.add(roomId);
-        for (const [x, y] of room.cells) for (let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++) for (let h = 0; h <= 3; h++) this.battle.store.markDirty(x+dx, y+dy, room.floorZ + h);
-        this.battle.light.flush();this.voxelView.flush();
-        if(!this.levelLocked)this.applyZoomCut();
-        this.updateEnemyVisibility();this.overlays.showObjective(this.battle);
+        this.voxelView?.refreshConcealment?.();
+        if (!this.levelLocked) this.applyZoomCut();
+        this.updateEnemyVisibility(); this.overlays.showObjective(this.battle);
     }
     onTurn(e) {
         this.player?.setActiveEnemy?.(null);
@@ -1137,7 +1167,7 @@ export class Game {
             case 'i': this.aimPointer.release();this.hud.equipment.toggle(); break;
             case 'v': this.scene.toggleProjection(); this.hud.toast(this.scene.projection === 'ortho' ? 'Camera: isometric' : 'Camera: perspective'); break;
             case 'o': this.setMode({ kind: 'overwatch' }); break;
-            case 'r': if(this.hud.equipment.open&&this.hud.equipment.selected){this.hud.equipment.rotate();}else this.intent({ type: 'reload' }); break;
+            case 'r': if(this.hud.equipment.open&&this.hud.equipment.selected){this.hud.equipment.rotate();}else if(this.isStrikeMode()){e.preventDefault();this.rotateStrike(1);}else this.intent({ type: 'reload' }); break;
             case 't': if (u) { const id = Object.keys(u.items).find(k => u.items[k] > 0); if (id&& !THROWABLES[id].placed) this.setMode({ kind: THROWABLES[id].kind==='gadget'?'gadget':'throw', itemId: id }); } break;
             case 'f': this.hud.showFormationPanel(); break;
             case 'b': if (u && this.battle.breachPoints(u).length) this.hud.showBreachPanel(); break;
@@ -1309,11 +1339,14 @@ export class Game {
             case 'gadget': {const reason=this.battle.validate({type:'gadget',unitId:u.id,itemId:this.mode.itemId,cargo:this.mode.cargo,targetId:unit?.id,by:'*'});this.overlays.showAbilityTile(unit,!reason);this.hud.cursorTip(e.clientX,e.clientY,reason?`Medical kit · ${reasonText(reason)}`:'Click ally · heal 8 HP · 1 AP');break;}
             case 'ability': {
                 const a = ABILITIES[this.mode.abilityId];
-                const intent = {type:'ability', unitId:u.id, abilityId:a.id, to:this.hoverCell, targetId:unit?.id, by:'*'};
-                const reason = this.battle.validate(intent);
-                if((a.support||a.commander) && this.hoverCell)this.overlays.showStrikeArea(footprint(this.battle,a.id,this.hoverCell,u),!reason,this.strikePlaneY());   // PLAN-12: one flat rectangle at the viewed level
-                else this.overlays.showAbilityTile(a.targeting === 'ally' ? unit : this.hoverCell, !reason);
-                this.hud.cursorTip(e.clientX,e.clientY, reason ? `${a.name} · ${reasonText(reason)}` : `${a.name} · click to cast · ${a.ap} AP / ${a.wp} WP`);
+                if (a.support || a.commander) {
+                    this.refreshStrikePreview();
+                } else {
+                    const intent = { type: 'ability', unitId: u.id, abilityId: a.id, to: this.hoverCell, targetId: unit?.id, by: '*' };
+                    const reason = this.battle.validate(intent);
+                    this.overlays.showAbilityTile(a.targeting === 'ally' ? unit : this.hoverCell, !reason);
+                    this.hud.cursorTip(e.clientX, e.clientY, reason ? `${a.name} · ${reasonText(reason)}` : `${a.name} · click to cast · ${a.ap} AP / ${a.wp} WP`);
+                }
                 break;
             }
             case 'overwatch': {
@@ -1438,7 +1471,6 @@ export class Game {
         const s=this.shooterOf(u),side=this.peekSide||m.side||'right',sz=m.step?.z??s.z;
         const o=m.step?new THREE.Vector3(m.step.x+.5,sz+1,m.step.y+.5):new THREE.Vector3(s.x+.5,s.z+1,s.y+.5);
         this.aimStance={unitId:u.id,key:aimStanceKey(m),side,muzzle:m,at:{...p},blocked:this.battle?.store?shotBlocked(this.battle.store,m,p):false};
-        this.cutins?.beginAim?.(u,{shoulder:side,weaponId:this.mode.weaponId});
         this.cameraDirector?.prepareAim?.(o,new THREE.Vector3(p.x,p.h,p.y),{side,preserveDirection,tps3d});
         if(wasFollowing&&prevKey!==this.aimStance.key&&(preserveDirection||!tps3d))this.cameraDirector?.track?.(new THREE.Vector3(p.x,p.h,p.y),0);
         if(!this.peek){
@@ -1556,7 +1588,7 @@ export class Game {
             case 'melee': if (unit && unit.side !== u.side) this.intent({ type: 'melee', weaponId: this.mode.weaponId, targetId: unit.id, part: 'torso' }); break;
             case 'throw': { const to = this.throwCell(p, unit); if (to) this.intent({ type: 'throw', itemId: this.mode.itemId, cargo: this.mode.cargo, to }); break; }
             case 'gadget': this.intent({type:'gadget',itemId:this.mode.itemId,cargo:this.mode.cargo,targetId:unit?.id});break;
-            case 'ability': this.intent({type:'ability',abilityId:this.mode.abilityId,to:this.hoverCell,targetId:unit?.id}); break;
+            case 'ability': this.intent({type:'ability',abilityId:this.mode.abilityId,to:this.hoverCell,targetId:unit?.id,...(Number.isInteger(this.mode.strikeDir)?{dir:this.mode.strikeDir}:{})}); break;
             case 'overwatch': { const toward = this.overwatchToward(u, e.clientX, e.clientY, p, unit); if(toward) this.intent({ type: 'overwatch', weaponId: watchWeapon(u), toward: {x:toward.x,y:toward.y} }); break; }
         }
     }

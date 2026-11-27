@@ -19,6 +19,8 @@ import { KitView } from './KitView.js';
 import { buildAllPieces } from './KitPieces.js';
 import { BuildingView } from '../BuildingView.js';
 import { VoxelView } from '../VoxelView.js';
+import { Fx } from '../Fx.js';
+import { LightField } from '../../../../shared/lighting/LightField.js';
 import { unitCutLevel } from '../FloorCutaway.js';
 
 function droneArena() {
@@ -688,4 +690,76 @@ test('visible enemy shot highlights shooter with callout ring and shotLine, then
     assert.equal(actorCalls.at(-1)[0], null, 'pump() clears active enemy highlight when queue finishes');
     assert.equal(g.activeEnemyLabel, null);
     assert.equal(g.hudText, null);
+});
+
+test('R rotates strike orientation through 4 directions, EventPlayer never plays 2D player cut-ins, and Fx/LightField/VoxelView stay fast & pooled', async () => {
+    // 1) R rotates strike dir 0..3 when in strike mode
+    let shownArgs = null, refreshed = 0;
+    const g = Object.create(Game.prototype);
+    const u = { id: 'p0', side: 'player', x: 10, y: 10, z: 1 };
+    Object.assign(g, {
+        battle: { round: 2, unit: id => (id === 'p0' ? u : null), store: new VoxelStore(24, 24, 8), mission: { meta: { streetDatum: 1 } }, validate: () => null },
+        mode: { kind: 'ability', abilityId: 'carpet_bomb', strikeDir: 0 },
+        hoverCell: { x: 18, y: 18, z: 1 },
+        cutLevel: Infinity,
+        selectedUnit: () => u,
+        overlays: { showStrikeArea: (cells, valid, y, meta) => { shownArgs = { cells, valid, y, meta }; } },
+        hud: { equipment: { open: false }, refresh() { refreshed++; }, pickPanelItem() { return false; }, triggerSlot() {} },
+        debug: { onKey: () => false },
+        aimPointer: { release() {} }
+    });
+    assert.equal(g.isStrikeMode(), true);
+    const ePrev = { key: 'r', preventDefault() { this.prevented = true; }, target: { tagName: 'CANVAS' }, ctrlKey: false, metaKey: false };
+    g.onKey(ePrev);
+    assert.equal(g.mode.strikeDir, 1);
+    assert.ok(ePrev.prevented && Math.abs((shownArgs?.meta?.axis?.ax ?? 0) - Math.SQRT1_2) < 1e-6);
+    g.onKey({ ...ePrev }); g.onKey({ ...ePrev }); g.onKey({ ...ePrev });
+    assert.equal(g.mode.strikeDir, 0, 'cycles 0 -> 1 -> 2 -> 3 -> 0');
+
+    // 2) EventPlayer never invokes 2D cutins.play on player actions and uses 3D clips
+    let cutinCalls = 0;
+    const clips = [];
+    const pView = { unit: u, animator: { play: c => clips.push(c) }, face() {}, worldPosition: () => new THREE.Vector3(10.5, 2, 10.5) };
+    const player = new EventPlayer({
+        battle: { unit: id => (id === 'p0' ? u : null) },
+        views: new Map([['p0', pView]]),
+        cutins: { play() { cutinCalls++; } },
+        fx: { calloutRing() {}, shotLine() {} },
+        scene: { glideTo() {} },
+        options: { followCamera: false },
+        hud: { log() {}, refresh() {} },
+        focusFloor() {},
+        settleViews() {}
+    });
+    player.speed = 100;
+    await player.play({ t: 'cutin', unitId: 'p0', kind: 'throw', itemId: 'powder_bomb' });
+    assert.equal(cutinCalls, 0, 'no 2D sprite cut-ins for player actions');
+    assert.ok(clips.includes('throw'), 'plays 3D throw clip on HumanoidModel animator');
+
+    // 3) Fx keeps constant PointLight pool in scene and VoxelView time-slices pending rebuilds + LightField incremental flush
+    const sceneObj = new THREE.Scene();
+    const fx = new Fx({ scene: sceneObj, clipping: [], shake: 0 }, null);
+    const lightsBefore = sceneObj.children.filter(c => c.isPointLight).length;
+    fx.explosion({ x: 5, y: 5, h: 2 }, 3, 'fire');
+    fx.explosion({ x: 7, y: 7, h: 2 }, 3, 'fire');
+    fx.explosion({ x: 9, y: 9, h: 2 }, 3, 'fire');
+    fx.explosion({ x: 11, y: 11, h: 2 }, 3, 'fire');
+    assert.equal(sceneObj.children.filter(c => c.isPointLight).length, lightsBefore, 'explosion lights reuse fixed pool');
+
+    const store = new VoxelStore(24, 24, 8);
+    store.fill(0, 0, 0, 23, 23, 1, 'concrete');
+    store.set(5, 5, 2, MAT.lantern);
+    const lf = new LightField(store);
+    lf.flush();
+    assert.ok(lf.at(5, 5, 2) > 0, 'LightField computes lantern emissive propagation');
+
+    const vv = new VoxelView({ scene: new THREE.Scene(), clipping: [] }, store, null);
+    vv.pendingChunks.add('0,0,0'); vv.pendingChunks.add('1,0,0');
+    const order = [];
+    vv.rebuild = k => { order.push(k); const t = performance.now(); while (performance.now() - t < 1.5) {} };
+    vv.flush({ maxMs: 0.2, priority: ['1,0,0'] });
+    assert.equal(order.length, 1, 'maxMs budget stops flush after at least 1 prioritized chunk');
+    assert.equal(order[0], '1,0,0', 'rebuilds chunk closest to priority first');
+    vv.tick(10);
+    assert.equal(vv.pendingChunks.size, 0, 'tick finishes queued pendingChunks across frames');
 });

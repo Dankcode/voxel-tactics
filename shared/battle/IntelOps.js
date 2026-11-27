@@ -7,18 +7,21 @@ import { AIR } from '../voxel/Materials.js';
 import { alive, hasStatus } from './Units.js';
 
 export const SUPPORT_IDS = ['carpet_bomb', 'orbital_laser'];
-export { footprint } from './Strikes.js';
+export { footprint, strikeAxis, strikeDirFromAxis, STRIKES } from './Strikes.js';
 export function validateIntel(b,u,intent) {
     const a=ABILITIES[intent.abilityId],t=intent.to;
     if(!b.intelMode||u.side!=='player')return 'bad_intent';
+    if(SUPPORT_IDS.includes(a.id)) {
+        if(!t||!Number.isInteger(t.x)||!Number.isInteger(t.y)||(t.z!=null&&!Number.isInteger(t.z))||!b.store.inBounds(t.x,t.y,0))return 'bad_intent';
+        if(intent.dir!=null&&!Number.isInteger(intent.dir))return 'bad_intent';
+        if(b.supportChoices[u.owner]!==a.id)return 'bad_intent';
+        if((b.personalTurns[u.owner]||0)<(b.supportReady[u.owner]||0))return 'support_cooldown';
+        return null;
+    }
     if(a.targeting==='tile' && (!t || ![t.x,t.y,t.z].every(Number.isInteger)||!b.store.inBounds(t.x,t.y,t.z)))return 'bad_intent';
     if(a.range && b.distance(u,t)>a.range)return 'out_of_range';
     if(a.id==='quiet_cut') {
         if(![1,2].some(h=>{const m=b.store.material(t.x,t.y,t.z+h);return m.solid&&Number.isFinite(m.hp);}))return 'no_target';
-    }
-    if(SUPPORT_IDS.includes(a.id)) {
-        if(b.supportChoices[u.owner]!==a.id)return 'bad_intent';
-        if((b.personalTurns[u.owner]||0)<(b.supportReady[u.owner]||0))return 'support_cooldown';
     }
     return null;
 }
@@ -52,9 +55,9 @@ export function executeIntel(b,u,intent) {
         b.checkFalls();
     } else {
         // Airstrike / Orbital Laser: shared/battle/Strikes.js (highlight = footprint; crater depth rules there).
-        executeStrike(b,u,id,t);
+        executeStrike(b,u,id,t,intent.dir??null);
         b.supportReady[u.owner]=(b.personalTurns[u.owner]||0)+10;
-        b.noise(t.x,t.y,t.z,30,u);
+        b.noise(t.x,t.y,t.z??0,30,u);
         b.checkFalls();
     }
 }

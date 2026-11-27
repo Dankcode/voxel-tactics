@@ -21,6 +21,8 @@ export class VoxelView {
         this.cutZ = Infinity;
         this.stats = { lastRebuildMs: 0, chunks: 0, meshes: 0 };
         this.deps = new Map();
+        this.onBeforeFlush = null;
+        this.pendingChunks = new Set();
     }
     /** Mission render hints + decor (mission.visual): furniture orientation, whole cars / trees, visual dressing. */
     setVisual(visual) {
@@ -35,16 +37,35 @@ export class VoxelView {
                 for (let cx = 0; cx < Math.ceil(s.width / CHUNK); cx++) this.rebuild(`${cx},${cy},${cz}`);
         s.dirtyChunks.clear(); this.refreshConcealment();
     }
-    /** Rebuild every chunk the store has marked dirty since the last call. */
-    flush() {
-        const keys = this.store.takeDirtyChunks();
+    /** Rebuild every chunk the store has marked dirty since the last call, optionally time-sliced. */
+    flush({ maxMs = Infinity, priority = null } = {}) {
+        this.onBeforeFlush?.();
+        const fresh = this.store.takeDirtyChunks();
         // A damaged car / container / tree is redrawn by the chunk that holds its anchor too.
-        for (const k of [...keys]) for (const a of this.deps.get(k) || []) if (!keys.includes(a)) keys.push(a);
+        for (const k of fresh) {
+            this.pendingChunks.add(k);
+            for (const a of this.deps.get(k) || []) this.pendingChunks.add(a);
+        }
+        if (!this.pendingChunks.size) { this.refreshConcealment(); return 0; }
+        const prioSet = priority ? new Set(priority) : null;
+        const ordered = prioSet
+            ? [...this.pendingChunks].sort((a, b) => (prioSet.has(b) ? 1 : 0) - (prioSet.has(a) ? 1 : 0))
+            : [...this.pendingChunks];
         const t = performance.now();
-        for (const k of keys) this.rebuild(k);
-        if (keys.length) this.stats.lastRebuildMs = performance.now() - t;
+        let rebuilt = 0;
+        for (const k of ordered) {
+            this.pendingChunks.delete(k);
+            this.rebuild(k);
+            rebuilt++;
+            if (Number.isFinite(maxMs) && performance.now() - t >= maxMs) break;
+        }
+        this.stats.lastRebuildMs = performance.now() - t;
         this.refreshConcealment();
-        return keys.length;
+        return rebuilt;
+    }
+    /** Drain any remaining deferred lighting/neighbor chunks across frames. */
+    tick(maxMs = 6) {
+        if (this.pendingChunks.size) this.flush({ maxMs });
     }
     /** Rebuild only chunks overlapping the given boxes ({ x0, y0, w, d }), leaving unrelated map chunks intact. */
     rebuildBoxes(boxes = []) {
@@ -100,18 +121,87 @@ export class VoxelView {
         this.stats.chunks = this.chunks.size;
         this.stats.meshes = this.group.children.length;
     }
+    disposeConcealment() {
+        if (!this.concealment) return;
+        this.group.remove(this.concealment);
+        this.concealment.traverse(o => {
+            o.geometry?.dispose?.();
+            o.material?.map?.dispose?.();
+            o.material?.dispose?.();
+        });
+        this.concealment = null;
+    }
     refreshConcealment() {
-        const rooms=this.interiorVisibility?.concealedRooms()||[];
-        const key=rooms.map(r=>r.id).join(',')+':'+this.cutZ+':'+[...(this.buildingView?.active||[])].map(([b,z])=>`${b.id}:${z}`).join(',')+':'+[...(this.interiorVisibility?.seen||[])].sort().join(';');
-        if(key===this.concealmentKey)return;
-        this.concealmentKey=key;
-        if(this.concealment){this.group.remove(this.concealment);this.concealment.geometry.dispose();this.concealment.material.dispose();}
-        const cells=rooms.flatMap(r=>r.cells.map(([x,y])=>({x,y,z:r.floorZ+1.02,floor:r.floorZ}))).filter(c=>c.z<this.cutZ&&!this.buildingView?.hiddenAt(c.x,c.y,c.floor)&&this.interiorVisibility.hiddenAt(c.x,c.y,c.floor));
-        if(!cells.length){this.concealment=null;return;}
-        const mesh=new THREE.InstancedMesh(new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0x091118,transparent:true,opacity:.65,depthWrite:false,clippingPlanes:this.scene.clipping}),cells.length);
-        const matrix=new THREE.Matrix4();
-        cells.forEach((c,i)=>{matrix.identity();matrix.setPosition(c.x+.5,c.z,c.y+.5);mesh.setMatrixAt(i,matrix);});
-        mesh.instanceMatrix.needsUpdate=true;mesh.userData.noAO=true;this.concealment=mesh;this.group.add(mesh);
+        const rooms = this.interiorVisibility?.concealedRooms() || [];
+        const key = rooms.map(r => r.id).join(',') + ':' + this.cutZ + ':' + [...(this.buildingView?.active || [])].map(([b, z]) => `${b.id}:${z}`).join(',') + ':' + [...(this.interiorVisibility?.seen || [])].sort().join(';');
+        if (key === this.concealmentKey) return;
+        this.concealmentKey = key;
+        this.disposeConcealment();
+        const byFloor = new Map();
+        for (const r of rooms) {
+            for (const [x, y] of r.cells) {
+                if (r.floorZ >= this.cutZ || this.buildingView?.hiddenAt(x, y, r.floorZ) || !this.interiorVisibility.hiddenAt(x, y, r.floorZ)) continue;
+                let list = byFloor.get(r.floorZ);
+                if (!list) byFloor.set(r.floorZ, list = []);
+                list.push({ x, y });
+            }
+        }
+        if (!byFloor.size) return;
+        const group = new THREE.Group();
+        group.userData.noAO = true;
+        for (const [floorZ, cells] of byFloor) {
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            for (const c of cells) {
+                if (c.x < minX) minX = c.x;
+                if (c.x > maxX) maxX = c.x;
+                if (c.y < minY) minY = c.y;
+                if (c.y > maxY) maxY = c.y;
+            }
+            minX -= 1; maxX += 2; minY -= 1; maxY += 2;
+            const bw = maxX - minX, bd = maxY - minY;
+            let tex;
+            if (typeof document !== 'undefined') {
+                const SCALE = 8, cw = Math.max(8, bw * SCALE), ch = Math.max(8, bd * SCALE);
+                const mask = document.createElement('canvas'); mask.width = cw; mask.height = ch;
+                const mctx = mask.getContext('2d');
+                mctx.fillStyle = '#ffffff';
+                for (const c of cells) mctx.fillRect((c.x - minX) * SCALE, (c.y - minY) * SCALE, SCALE, SCALE);
+                const out = document.createElement('canvas'); out.width = cw; out.height = ch;
+                const ctx = out.getContext('2d');
+                ctx.save();
+                ctx.filter = 'blur(4px)';
+                ctx.drawImage(mask, 0, 0);
+                ctx.restore();
+                ctx.globalCompositeOperation = 'source-in';
+                ctx.fillStyle = 'rgba(14, 20, 32, 0.58)';
+                ctx.fillRect(0, 0, cw, ch);
+                ctx.globalCompositeOperation = 'source-atop';
+                ctx.strokeStyle = 'rgba(26, 36, 56, 0.22)';
+                ctx.lineWidth = 2;
+                for (let d = -ch; d < cw + ch; d += 12) {
+                    ctx.beginPath(); ctx.moveTo(d, 0); ctx.lineTo(d - ch, ch); ctx.stroke();
+                }
+                tex = new THREE.CanvasTexture(out);
+                tex.colorSpace = THREE.SRGBColorSpace;
+                tex.minFilter = THREE.LinearFilter;
+                tex.magFilter = THREE.LinearFilter;
+            } else {
+                tex = new THREE.DataTexture(new Uint8Array([14, 20, 32, 148]), 1, 1, THREE.RGBAFormat);
+                tex.needsUpdate = true;
+            }
+            const geo = new THREE.PlaneGeometry(bw, bd).rotateX(-Math.PI / 2);
+            const mat = new THREE.MeshBasicMaterial({
+                map: tex, transparent: true, depthWrite: false, depthTest: true,
+                clippingPlanes: this.scene.clipping, side: THREE.DoubleSide
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(minX + bw / 2, Math.min(floorZ + 2.92, this.cutZ - 0.06), minY + bd / 2);
+            mesh.renderOrder = 8;
+            mesh.userData.noAO = true;
+            group.add(mesh);
+        }
+        this.concealment = group;
+        this.group.add(group);
     }
     /** Hard tactical boundary: off-map scenery is a screen-space image. */
     buildApron() { /* The tactical map ends at its bounds; a 2D background replaces off-map geometry. */ }
@@ -139,7 +229,7 @@ export class VoxelView {
         this.cutZ = z; this.rebuildAll();
     }
     dispose() {
-        if(this.concealment){this.concealment.geometry.dispose();this.concealment.material.dispose();}
+        this.disposeConcealment();
         for (const ms of this.chunks.values()) for (const m of ms) { if (m.isInstancedMesh) m.dispose(); else m.geometry.dispose(); }
         this.scene.scene.remove(this.group);
         this.decals.dispose();

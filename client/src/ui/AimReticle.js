@@ -93,5 +93,4 @@ export function updateReticle(g) {
         ? ` · ${(g.aimPick?.part || tel.targetPart || 'torso').toUpperCase()}` : '';
     const readDist = tel?.focusUnit && (tel.hit ?? 0) > 0 ? tel.distance : dist;
     el.querySelector('span.read').textContent = `${prefix}${readDist.toFixed(1)} m${partTag}${heatTag}`;
-    g.cutins?.placeAim?.(point);
 }

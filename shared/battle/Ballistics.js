@@ -8,7 +8,7 @@ import { intersectCellShape } from '../voxel/ConnectedShapes.js';
 // in the way stops the rays that hit it, and the voxel takes the damage. The hit estimate the HUD shows
 // is a deterministic Monte-Carlo of the same trace, so preview and resolution agree.
 import { castRay } from '../voxel/Raycast.js';
-import { materialById } from '../voxel/Materials.js';
+import { materialById, MAT } from '../voxel/Materials.js';
 import { coverAgainst, COVER } from '../voxel/Cover.js';
 import { createRng, hashString } from '../util/Rng.js';
 import { FACING_VEC, alive, hasStatus, partArmor, SHOULDER } from './Units.js';
@@ -153,14 +153,41 @@ export function chooseMuzzle(store, u, aimPoint, { occupied = null, allowStepOut
         return true;
     };
 
-    let bestFallback = null;
-    const evalCand = (anchor, c, tier) => {
+    const hasLocalClearance = (c, rayLen, lateral = true) => {
+        const probeDist = Math.min(rayLen - 0.35, 2.2);
+        if (probeDist <= 0.25) return true;
+        const cdx = (aimPoint.x - c.x) / rayLen, cdy = (aimPoint.y - c.y) / rayLen, cdh = (aimPoint.h - c.h) / rayLen;
+        let lpx = -cdy, lpy = cdx;
+        const lpl = Math.hypot(lpx, lpy);
+        if (lpl > 1e-6) { lpx /= lpl; lpy /= lpl; } else { lpx = 1; lpy = 0; }
+        const probes = [
+            { x: c.x, y: c.y, h: c.h - 0.12 },
+            { x: c.x, y: c.y, h: c.h + 0.08 }
+        ];
+        if (lateral) {
+            probes.push(
+                { x: c.x + lpx * 0.10, y: c.y + lpy * 0.10, h: c.h },
+                { x: c.x - lpx * 0.10, y: c.y - lpy * 0.10, h: c.h }
+            );
+        }
+        for (const p of probes) {
+            if (materialById(store.get(Math.floor(p.x), Math.floor(p.y), Math.floor(p.h))).solid) return false;
+            const pr = castRay(store, p, { x: p.x + cdx * probeDist, y: p.y + cdy * probeDist, h: p.h + cdh * probeDist }, { blocks, shapedVehicles: true });
+            if (pr.hit) return false;
+        }
+        return true;
+    };
+
+    let bestFallback = null, firstCenterClear = null;
+    const evalCand = (anchor, c, tier, lateral = true) => {
         if (!validPos(anchor, c)) return null;
         const r = castRay(store, c, aimPoint, { blocks, shapedVehicles: true });
         const hitT = r.hit ? r.t : r.length;
         const rem = Math.max(0, r.length - hitT);
-        const clear = !r.hit || rem <= 0.18;
-        const ev = { c, clear, hitT, rem, tier };
+        const centerClear = !r.hit || rem <= 0.18;
+        const clear = centerClear && hasLocalClearance(c, r.length, lateral);
+        if (centerClear && !firstCenterClear) firstCenterClear = c;
+        const ev = { c, clear, centerClear, hitT, rem, tier };
         if (!bestFallback || rem < bestFallback.rem - 1e-4 || (Math.abs(rem - bestFallback.rem) <= 1e-4 && tier < bestFallback.tier)) {
             bestFallback = ev;
         }
@@ -183,11 +210,44 @@ export function chooseMuzzle(store, u, aimPoint, { occupied = null, allowStepOut
     }
     for (const c of tier1) if (evalCand(base, c, 1)?.clear) return c;
 
-    // Tier 2: lateral leans from shooter's tile (shoulder height, then elevated).
+    // Tier 1.5: leaning into adjacent window openings or half-cover gaps (supports angled & downward shots cleanly).
+    const cardinals = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (const [dx, dy] of cardinals) {
+        if (dx * fx + dy * fy <= 0.15) continue;
+        const nx = u.x + dx, ny = u.y + dy;
+        if (materialById(store.get(nx, ny, u.z + 2)).solid) continue;
+        const isWin = materialById(store.get(nx, ny, u.z + 1)).solid
+            || store.get(nx, ny, u.z + 2) === MAT.glass
+            || !!store.windowOpenings?.has(`${nx},${ny},${u.z}`);
+        if (!isWin || occupied?.(nx, ny, u.z)) continue;
+        const side = (dx * rx + dy * ry) < -0.1 ? 'left' : 'right';
+        const px = -dy, py = dx;
+        for (const h of [u.z + 1 + 1.52, u.z + 1 + 1.62, base.h]) {
+            for (const fwd of [0.65, 0.92, 1.18, 1.32]) {
+                const c = { x: u.x + 0.5 + dx * fwd, y: u.y + 0.5 + dy * fwd, h, lean: 'over', side };
+                if (evalCand(base, c, 1.5)?.clear) return c;
+            }
+            for (const lat of [0.28, -0.28]) {
+                for (const fwd of [0.92, 1.18]) {
+                    const c = { x: u.x + 0.5 + dx * fwd + px * lat, y: u.y + 0.5 + dy * fwd + py * lat, h, lean: 'over', side };
+                    if (evalCand(base, c, 1.5)?.clear) return c;
+                }
+            }
+        }
+    }
+
+    // Tier 2: in-tile and lateral leans from shooter's tile (shoulder height, then elevated).
     for (const h of [base.h, highH]) {
-        for (const s of [0.55, -0.55]) {
+        for (const s of [0.35, -0.35, 0.55, -0.55]) {
             const side = s > 0 ? 'right' : 'left';
-            const c = { x: base.x + rx * s, y: base.y + ry * s, h, lean: side, side };
+            const c = Math.abs(s) <= 0.4
+                ? { x: clampTile(base.x + rx * s, u.x), y: clampTile(base.y + ry * s, u.y), h, lean: side, side }
+                : { x: base.x + rx * s, y: base.y + ry * s, h, lean: side, side };
+            if (evalCand(base, c, 2)?.clear) return c;
+        }
+        for (const s of [0.34, -0.34]) {
+            const side = s > 0 ? 'right' : 'left';
+            const c = { x: clampTile(base.x + fx * 0.28 + rx * s, u.x), y: clampTile(base.y + fy * 0.28 + ry * s, u.y), h, lean: side, side };
             if (evalCand(base, c, 2)?.clear) return c;
         }
     }
@@ -198,9 +258,9 @@ export function chooseMuzzle(store, u, aimPoint, { occupied = null, allowStepOut
             const step = t.via ? { x: t.x, y: t.y, z: t.z, via: t.via } : { x: t.x, y: t.y, z: t.z };
             const shH = t.z + 1 + SHOULDER, hiH = t.z + 1 + 1.58;
             const center = { x: t.x + 0.5, y: t.y + 0.5, h: shH, lean: `step-${t.side}`, side: t.side, step };
-            if (evalCand(center, center, 3)?.clear) return center;
+            if (evalCand(center, center, 3, false)?.clear) return center;
             const hiCenter = { ...center, h: hiH };
-            if (evalCand(center, hiCenter, 3.1)?.clear) return hiCenter;
+            if (evalCand(center, hiCenter, 3.1, false)?.clear) return hiCenter;
             const sign = t.side === 'right' ? 1 : -1;
             const mkEdge = (ox, oy, h) => ({
                 x: clampTile(t.x + 0.5 + ox, t.x),
@@ -218,7 +278,8 @@ export function chooseMuzzle(store, u, aimPoint, { occupied = null, allowStepOut
         }
     }
 
-    // Tier 4: best-clearance fallback when stepping out clears local cover to engage a partially covered target.
+    // Tier 4: center-clear candidate if no margin-clear candidate existed, else best-clearance fallback.
+    if (firstCenterClear) return firstCenterClear;
     if (bestFallback && bestFallback.rem < baseRem - 0.75) return bestFallback.c;
     return base;
 }
@@ -360,6 +421,10 @@ export function traceProjectile(battle, o, d, maxDist, { ignore = null, energy =
         let start = 0, e = startE, stop = null;
         for (let seg = 0; seg <= MAX_PIERCE; seg++) {
             const from = at(start);
+            if (seg === 0) {
+                const sx = Math.floor(from.x), sy = Math.floor(from.y), sz = Math.floor(from.h);
+                if (materialById(store.get(sx, sy, sz)).shatters) glass.push([sx, sy, sz, tOffset]);
+            }
             const r = castRay(store, from, end, {
                 skipStart: skipFirst && seg === 0,
                 blocks: (s, x, y, z) => materialById(s.get(x, y, z)).projectile === 'block',

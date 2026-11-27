@@ -31,13 +31,16 @@ test('ballistic evaluation: cover, flanking, high ground stability and overwatch
     assert.ok(bare.flanked, 'no cover: flanked');
     const half = arena({ players: [{ x: 10, y: 14, z: 1 }], build: st => wall(st, 9, 13, 12, 13, 1, MAT.concrete) });
     const full = arena({ players: [{ x: 10, y: 14, z: 1 }], build: st => wall(st, 9, 13, 12, 13, 3, MAT.concrete) });
+    const crate = arena({ players: [{ x: 10, y: 14, z: 1 }], build: st => wall(st, 9, 13, 12, 13, 3, MAT.crate) });
     const brick = arena({ players: [{ x: 10, y: 14, z: 1 }], build: st => wall(st, 9, 13, 12, 13, 3, MAT.brick) });
     const h = evaluateBallisticShot(half, half.unit('e0'), half.unit('p0'), w, { samples: 64 });
     const f = evaluateBallisticShot(full, full.unit('e0'), full.unit('p0'), w, { samples: 64 });
+    const cr = evaluateBallisticShot(crate, crate.unit('e0'), crate.unit('p0'), w, { samples: 64 });
     const br = evaluateBallisticShot(brick, brick.unit('e0'), brick.unit('p0'), w, { samples: 64 });
     assert.ok(h.hitRate < bare.hitRate && f.hitRate < h.hitRate, `concrete cover blocks: ${bare.hitRate} > ${h.hitRate} > ${f.hitRate}`);
-    assert.ok(br.throughCover > 0 && br.directHitRate < bare.directHitRate && br.effectiveHitRate < bare.effectiveHitRate, 'brick weakens piercing shots');
-    assert.ok(!h.flanked && !f.flanked && !br.flanked);
+    assert.ok(cr.throughCover > 0 && cr.directHitRate < bare.directHitRate && cr.effectiveHitRate < bare.effectiveHitRate, 'crate weakens piercing shots');
+    assert.equal(br.throughCover, 0, 'solid brick walls stop bullets directly');
+    assert.ok(!h.flanked && !f.flanked && !cr.flanked && !br.flanked);
     const ow = evaluateBallisticShot(open, s, t, w, { reaction: true, samples: 64 });
     assert.ok(ow.spread > bare.spread, `overwatch widens spread (${ow.spread} > ${bare.spread})`);
     const up = evaluateBallisticShot(open, s, t, w, { from: { x: s.x, y: s.y, z: s.z + 3 }, samples: 64 });

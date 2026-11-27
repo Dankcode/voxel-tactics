@@ -291,7 +291,7 @@ export class HumanoidModel {
         if (clip && (clip !== this.clip || restart)) {
             this.clip = clip;
             this.clipTime = 0;
-            this.animDur = clip === 'fire' ? 0.28 : clip === 'hit' ? 0.26 : clip === 'throw' ? 0.34 : 0;
+            this.animDur = clip === 'fire' ? 0.28 : clip === 'hit' ? 0.26 : clip === 'throw' ? 0.36 : clip === 'vault' ? 0.34 : 0;
             if (clip === 'fire') this.recoilKick = 1;
         }
     }
@@ -392,6 +392,7 @@ export class HumanoidModel {
 
         // Cover crouch vs rising up to aim/shoot + directional lean
         const targetCrouch = this.clip === 'hunker' ? 0.26
+            : this.clip === 'stacked' ? 0.14
             : (this.aimingActive ? 0.03 : (this.coverLevel >= 2 ? 0.22 : this.coverLevel >= 1 ? 0.16 : 0));
         const targetLean = this.aimingActive
             ? (this.leanSide === 'left' ? 0.16 : this.leanSide === 'right' ? -0.16 : -0.05)
@@ -404,22 +405,30 @@ export class HumanoidModel {
         if (dt > 0) this.recoilKick = Math.max(0, this.recoilKick - dt * 5.2);
         const kick = this.recoilKick;
 
-        // Stride & idle pose
+        // Stride, vault, climb, throw & idle pose
         const moving = this.clip === 'run' || dist > 0.002;
-        const swing = moving ? Math.sin(this.stridePhase) * 0.58 : 0;
+        const climbing = this.clip === 'climb';
+        const vaulting = this.clip === 'vault' && this.animDur > 0;
+        const throwing = this.clip === 'throw' && this.animDur > 0;
+        const vaultK = vaulting ? Math.sin(Math.min(1, this.clipTime / this.animDur) * Math.PI) : 0;
+        const throwP = throwing ? Math.min(1, this.clipTime / this.animDur) : 0;
+        const swing = climbing ? Math.sin(this.clipTime * 9) * 0.65 : moving ? Math.sin(this.stridePhase) * 0.58 : 0;
         const crouchBend = this.crouchAmt * 1.4;
-        this.pelvis.position.y = this.pelvisBaseY - this.crouchAmt + (moving ? Math.abs(Math.cos(this.stridePhase)) * 0.04 : Math.sin(this.clipTime * 2.2) * 0.012);
-        this.legL.rotation.x = moving ? swing : -crouchBend * 0.35;
-        this.legR.rotation.x = moving ? -swing : crouchBend * 0.35;
+        this.pelvis.position.y = this.pelvisBaseY - this.crouchAmt + vaultK * 0.14 + (moving ? Math.abs(Math.cos(this.stridePhase)) * 0.04 : Math.sin(this.clipTime * 2.2) * 0.012);
+        this.legL.rotation.x = (moving || climbing) ? swing : vaulting ? -vaultK * 0.75 : -crouchBend * 0.35;
+        this.legR.rotation.x = (moving || climbing) ? -swing : vaulting ? vaultK * 0.45 : crouchBend * 0.35;
 
         const hitPunch = this.clip === 'hit' && this.clipTime < this.animDur ? Math.sin((this.clipTime / this.animDur) * Math.PI) * 0.28 : 0;
-        this.torsoGroup.rotation.x = crouchBend * 0.55 - hitPunch;
+        this.torsoGroup.rotation.x = crouchBend * 0.55 - hitPunch + vaultK * 0.32 + (throwing ? Math.sin(throwP * Math.PI) * 0.22 : 0);
+        this.torsoGroup.rotation.y = throwing ? Math.sin((throwP - 0.35) * Math.PI) * 0.32 : 0;
         this.torsoGroup.rotation.z = this.leanAmt;
         this.headGroup.rotation.x = -this.torsoGroup.rotation.x * 0.6 - this.aimPitch * 0.35;
 
-        // Raise weapon smoothly to shoulder when aiming/firing/overwatch
+        // Raise weapon smoothly to shoulder when aiming/firing/overwatch; animate arms during throw/climb
         const readyRaise = (this.aimingActive || this.unit.overwatch || kick > 0.05) ? -0.18 : 0.12;
         this.upperRig.rotation.x = -this.aimPitch + readyRaise - kick * 0.14;
+        this.armR.rotation.x = climbing ? -0.8 - Math.sin(this.clipTime * 9) * 0.5 : throwing ? (-1.1 + throwP * 1.9) : 0;
+        this.armL.rotation.x = climbing ? -0.8 + Math.sin(this.clipTime * 9) * 0.5 : 0;
         this.weaponGroup.position.z = -kick * 0.08;
         this.weaponGroup.rotation.x = -kick * 0.18;
 

@@ -21,7 +21,7 @@ import { LightField } from '../lighting/LightField.js';
 import { createRng, hashString } from '../util/Rng.js';
 import { reachable, pathTo, nodeKey, stepKind, isWindowVault } from '../world/PathSearch.js';
 import { AGENT_PROFILES } from '../world/TraversalRules.js';
-import { MAT, AIR, materialById } from '../voxel/Materials.js';
+import { MAT, AIR, materialById, isSolidWallMaterial } from '../voxel/Materials.js';
 import { castRay, fitArc, blocksSight } from '../voxel/Raycast.js';
 import { damageVoxel, explodeVoxels, settleUnsupported, groundFloorLevels, scorchBlast } from '../voxel/Destruction.js';
 import { coverAgainst, coverAt, COVER } from '../voxel/Cover.js';
@@ -403,7 +403,7 @@ export class Battle {
                 if (u.will < a.wp) return 'no_will';
                 if (u.ap < a.ap) return 'no_ap';
                 if (hasStatus(u, 'panicked')) return 'no_will';
-                if(a.commander){const t=intent.to;if(!t||![t.x,t.y,t.z].every(Number.isInteger)||!this.store.inBounds(t.x,t.y,t.z)||this.distance(u,t)>a.range)return 'out_of_range';if(this.round<this.strikeReadyAt)return 'support_cooldown';if(!this.debugEnabled&&!this.unitsOf(u.side).some(ally=>this.sightLine(this.eye(ally),{x:t.x+0.5,y:t.y+0.5,h:t.z+1.5})))return 'no_target';}
+                if(a.commander){const t=intent.to;if(!t||!Number.isInteger(t.x)||!Number.isInteger(t.y)||(t.z!=null&&!Number.isInteger(t.z))||!this.store.inBounds(t.x,t.y,0))return 'bad_intent';if(intent.dir!=null&&!Number.isInteger(intent.dir))return 'bad_intent';if(this.round<this.strikeReadyAt)return 'support_cooldown';}
                 if (a.id === 'dash' && u.parts.legs.disabled) return 'legs_disabled';
                 if(a.intel)return validateIntel(this,u,intent);
                 if (a.id === 'earth_cover') {
@@ -862,7 +862,7 @@ export class Battle {
             this.checkReactions(u, [home], new Set(), { exposedPoint: autoMuzzle });
             if (!alive(u)) { this.checkOutcome(); return; }
         }
-        this.fireShot(u, w, intent, { allowStepOut: !from && !explicitHome, stepFrom, stepSide: autoMuzzle?.side || null });
+        this.fireShot(u, w, intent, { allowStepOut: !from && !explicitHome, stepFrom, stepSide: autoMuzzle?.side || null, resolvedMuzzle: autoMuzzle });
         if (from && alive(u)) {
             const back = this.occupant(home.x, home.y, home.z);
             if (!back || back === u) {
@@ -872,20 +872,20 @@ export class Battle {
             }
         }
     }
-    fireShot(u, w, intent, { allowStepOut = true, stepFrom = null, stepSide = null } = {}) {
+    fireShot(u, w, intent, { allowStepOut = true, stepFrom = null, stepSide = null, resolvedMuzzle = null } = {}) {
         const targetIds = intent.aim.unitId ? [intent.aim.unitId] : [];
         {
             const aimPoint = aimPointOf(this, intent.aim);
-            const rawMuzzle = chooseMuzzle(this.store, u, aimPoint, { occupied: occupiedBy(this, u), allowStepOut });
+            const rawMuzzle = resolvedMuzzle || chooseMuzzle(this.store, u, aimPoint, { occupied: occupiedBy(this, u), allowStepOut });
             const muzzle = stepFrom && !rawMuzzle.step ? { ...rawMuzzle, step: stepFrom, side: rawMuzzle.side || stepSide } : rawMuzzle;
             this.emit({ t: 'cutin', unitId: u.id, kind: w.cutIn || 'shot', weaponId: w.id, targetIds, aimPoint, muzzle });
         }
-        this.fireWeapon(u, w, intent.aim, { fireMode: intent.fireMode, allowStepOut, stepFrom, stepSide });
+        this.fireWeapon(u, w, intent.aim, { fireMode: intent.fireMode, allowStepOut, stepFrom, stepSide, resolvedMuzzle });
         u.buffs.deadeye = false;
     }
 
     /** Fire one shot of `w` at `aim`, resolving every projectile via physical recoil & ballistic trajectory. */
-    fireWeapon(u, w, aim, { reaction = false, breach = false, fireMode: requestedMode = null, allowStepOut = true, suppress = false, stepFrom = null, stepSide = null } = {}) {
+    fireWeapon(u, w, aim, { reaction = false, breach = false, fireMode: requestedMode = null, allowStepOut = true, suppress = false, stepFrom = null, stepSide = null, resolvedMuzzle = null } = {}) {
         const fm = fireMode(u, w, requestedMode);
         const rounds=roundsFor(u,w,fm);if(!rounds)return;
         u.ammo[w.id]-=rounds;
@@ -895,7 +895,7 @@ export class Battle {
         const aimPoint = aimPointOf(this, aim);
         u.facing = facingToward(aimPoint.x - u.x - 0.5, aimPoint.y - u.y - 0.5);
         w=weaponBuild(u,w);
-        const rawMuzzle = chooseMuzzle(this.store, u, aimPoint, { occupied: occupiedBy(this, u), allowStepOut });
+        const rawMuzzle = resolvedMuzzle || chooseMuzzle(this.store, u, aimPoint, { occupied: occupiedBy(this, u), allowStepOut });
         const muzzle = stepFrom && !rawMuzzle.step ? { ...rawMuzzle, step: stepFrom, side: rawMuzzle.side || stepSide } : rawMuzzle;
         const center = aim.point ? traceCenterTrajectory(this, u, muzzle, aimPoint, w, { heat: u.recoilHeat || 0 }) : null;
         const spreadTarget = target || (center?.kind === 'unit' && center.unit.side !== u.side ? center.unit : (aim.point ? aimedUnit(this, u, aim.point) : null));
@@ -938,7 +938,8 @@ export class Battle {
                     p.pierced = res.pierced.map(q => ({ x: q.x, y: q.y, z: q.z, t: q.t }));
                     ws.pierced = (ws.pierced || 0) + 1;
                     for (const q of res.pierced) {
-                        if (this.store.get(q.x, q.y, q.z) === AIR) continue;
+                        const mat = materialById(this.store.get(q.x, q.y, q.z));
+                        if (mat.id === AIR || (!w.blast && isSolidWallMaterial(mat.key))) continue;
                         const r = damageVoxel(this.store, q.x, q.y, q.z, (w.voxel || 0) * mult, { element: w.element });
                         if (r.destroyed) { this.stats.voxelsDestroyed++; ws.voxels = (ws.voxels || 0) + 1; }
                         if (r.explosion) this.explode({ ...r.explosion, by: u.id });
@@ -965,9 +966,12 @@ export class Battle {
                 } else if (res.kind === 'voxel') {
                     const v = res.voxel;
                     p.voxel = v; p.material = this.store.get(v.x, v.y, v.z);
-                    const r = damageVoxel(this.store, v.x, v.y, v.z, (w.voxel || 0) * mult, { element: w.element });
-                    if (r.destroyed) { this.stats.voxelsDestroyed++; ws.voxels = (ws.voxels || 0) + 1; p.destroyed = true; }
-                    if (r.explosion) this.explode({ ...r.explosion, by: u.id });
+                    const hitMat = materialById(p.material);
+                    if (w.blast || !isSolidWallMaterial(hitMat.key)) {
+                        const r = damageVoxel(this.store, v.x, v.y, v.z, (w.voxel || 0) * mult, { element: w.element });
+                        if (r.destroyed) { this.stats.voxelsDestroyed++; ws.voxels = (ws.voxels || 0) + 1; p.destroyed = true; }
+                        if (r.explosion) this.explode({ ...r.explosion, by: u.id });
+                    }
                     if (w.element) this.elementImpact(w.element, res.point, 0.8);
                 }
                 if (w.blast && (res.kind === 'unit' || res.kind === 'voxel')) {
@@ -1279,7 +1283,7 @@ export class Battle {
         this.emit({ t: 'ability', unitId: u.id, abilityId: a.id });
         if(a.intel){executeIntel(this,u,intent);return;}
         switch (a.id) {
-            case 'killstreak_strike':this.supportUsed++;this.strikeReadyAt=this.round+10;commanderStrike(this,u,intent.to);break;
+            case 'killstreak_strike':this.supportUsed++;this.strikeReadyAt=this.round+10;commanderStrike(this,u,intent.to,intent.dir??null);break;
             case 'recon_scan': this.reconScan(u, a); break;
             case 'launch_drone': this.launchDrone(u, a); break;
             case 'earth_cover': {

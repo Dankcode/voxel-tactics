@@ -57,13 +57,13 @@ const shootThrough = (keys, energy) => {
     return traceProjectile(b, { x: 12.5, y: 21.5, h: 2.5 }, [0, -1, 0], 15, { energy });
 };
 
-test('penetration: 5.56 goes through a crate but stops in brick; 7.62×39 gets through one brick; .338 through concrete', () => {
+test('penetration: 5.56 goes through a crate but stops in solid walls (brick/concrete/stucco); .338 also stops in solid concrete', () => {
     const ar = shootThrough(['crate', 'brick'], CALIBERS['5.56'].energy);
     assert.equal(ar.kind, 'voxel'); assert.equal(ar.pierced.length, 1); assert.equal(ar.voxel.y, 16, 'stopped in the brick');
-    const ak = shootThrough(['brick', 'brick'], CALIBERS['7.62x39'].energy);
-    assert.equal(ak.pierced.length, 1); assert.equal(ak.voxel.y, 16);
+    const wallBrick = shootThrough(['brick'], CALIBERS['7.62x39'].energy);
+    assert.equal(wallBrick.pierced.length, 0); assert.equal(wallBrick.kind, 'voxel');
     const sniper = shootThrough(['concrete_wall'], CALIBERS['338'].energy);
-    assert.equal(sniper.pierced.length, 1); assert.notEqual(sniper.kind, 'voxel');
+    assert.equal(sniper.pierced.length, 0); assert.equal(sniper.kind, 'voxel');
     const pistol = shootThrough(['stucco'], CALIBERS['9mm'].energy);
     assert.equal(pistol.pierced.length, 0, 'a pistol round stops in a stucco wall');
     // Ground and steel always stop a round.
@@ -81,6 +81,44 @@ test('a unit behind thin cover is hit with reduced damage; behind brick an AR ro
     for (let h = 2; h <= 3; h++) b.store.set(12, 17, h, MAT.brick);
     const s = traceProjectile(b, { x: 12.5, y: 21.5, h: 2.5 }, [0, -1, 0], 15, { energy: CALIBERS['5.56'].energy });
     assert.equal(s.kind, 'voxel');
+});
+
+test('window shooting: firing behind a glazed half-window shatters ONLY glass and leaves walls intact; bullets never destroy solid walls', () => {
+    // Shooter behind a window wall along y=20 (sill z=2, glass at z=3 at x=12, jambs z=2..4 at x=11,13)
+    const b = arena(['grenadier'], { enemy: [{ x: 12, y: 14 }, { x: 16, y: 14 }] }), u = b.unit('p0'), e = b.unit('e0');
+    u.x = 12; u.y = 21; u.z = 1;
+    for (let x = 10; x <= 14; x++) {
+        b.store.set(x, 20, 2, MAT.stucco);
+        b.store.set(x, 20, 3, x === 12 ? MAT.glass : MAT.stucco);
+        b.store.set(x, 20, 4, MAT.stucco);
+    }
+    b.startSide('player');
+    // Straight shot through the glass window
+    const straight = b.apply({ type: 'shoot', unitId: u.id, fireMode: 'burst', aim: { unitId: e.id, part: 'torso' } });
+    assert.ok(straight.ok, JSON.stringify(straight));
+    assert.equal(b.store.get(12, 20, 3), 0, 'window glass shattered cleanly');
+    assert.equal(b.store.get(12, 20, 2), MAT.stucco, 'window sill remains intact');
+    assert.equal(b.store.get(11, 20, 3), MAT.stucco, 'left jamb remains intact');
+    assert.equal(b.store.get(13, 20, 3), MAT.stucco, 'right jamb remains intact');
+    assert.equal(b.store.get(12, 20, 4), MAT.stucco, 'header remains intact');
+
+    // Diagonal shot through another intact window from behind cover
+    b.store.set(14, 20, 3, MAT.glass);
+    u.ap = 6;
+    const diag = b.apply({ type: 'shoot', unitId: u.id, fireMode: 'single', aim: { unitId: 'e1', part: 'torso' } });
+    assert.ok(diag.ok, JSON.stringify(diag));
+    assert.equal(b.store.get(13, 20, 3), MAT.stucco, 'adjacent wall jamb is not blown out on diagonal shot');
+
+    // Firing directly into a solid concrete/brick/stucco wall never destroys the wall
+    const wallTest = arena(['grenadier'], { enemy: [{ x: 12, y: 14 }] }), pu = wallTest.unit('p0');
+    pu.x = 12; pu.y = 21; pu.z = 1;
+    for (let x = 10; x <= 14; x++) for (let h = 2; h <= 4; h++) wallTest.store.set(x, 18, h, x === 12 ? MAT.brick : MAT.concrete_wall);
+    wallTest.startSide('player');
+    const hpBefore = wallTest.store.hpAt(12, 18, 2);
+    const hitWall = wallTest.apply({ type: 'shoot', unitId: pu.id, fireMode: 'auto', aim: { point: { x: 12.5, y: 18.5, h: 2.5 } } });
+    assert.ok(hitWall.ok, JSON.stringify(hitWall));
+    assert.equal(wallTest.store.get(12, 18, 2), MAT.brick, 'solid brick wall is not destroyed by bullets');
+    assert.equal(wallTest.store.hpAt(12, 18, 2), hpBefore, 'solid brick HP does not drop from ballistic gunfire');
 });
 
 test('cover breaks: one AR burst opens a car-cabin cell, and pierced voxels take damage too', () => {

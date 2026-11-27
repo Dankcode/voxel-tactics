@@ -137,3 +137,33 @@ test('PLAN-12: the classic killstreak is the same three-bomb airstrike over a re
     assert.ok(!ev.some(e => e.t === 'cutin'), 'strikes come from the sky');
     for (let y = 10; y <= 30; y++) for (let x = 10; x <= 30; x++) assert.notEqual(b.store.get(x, y, 1), AIR);
 });
+
+test('strikes ignore range/LOS restrictions and support 4-direction R rotation with diagonal axes', () => {
+    const b = arena({
+        intel: true,
+        build: st => { for (let x = 2; x <= 14; x++) for (let z = 2; z <= 6; z++) st.set(x, 12, z, MAT.concrete_wall); }
+    }), u = b.unit('p0'), to = { x: 30, y: 30, z: 2 };
+    b.round = 2;
+    assert.equal(b.validate({ type: 'ability', unitId: u.id, abilityId: 'killstreak_strike', to, dir: 1 }), null);
+    b.supportChoices[u.owner] = 'orbital_laser';
+    assert.equal(b.validate({ type: 'ability', unitId: u.id, abilityId: 'orbital_laser', to, dir: 2 }), null);
+    b.supportChoices[u.owner] = 'carpet_bomb';
+    assert.equal(b.validate({ type: 'ability', unitId: u.id, abilityId: 'carpet_bomb', to, dir: 3 }), null);
+
+    // 4 orientations produce distinct footprints and bombs remain inside the rotated footprint
+    const fp0 = footprint(b, 'carpet_bomb', to, u, 0).map(c => `${c.x},${c.y}`);
+    const fp1 = footprint(b, 'carpet_bomb', to, u, 1).map(c => `${c.x},${c.y}`);
+    const fp2 = footprint(b, 'carpet_bomb', to, u, 2).map(c => `${c.x},${c.y}`);
+    const fp3 = footprint(b, 'carpet_bomb', to, u, 3).map(c => `${c.x},${c.y}`);
+    assert.notDeepEqual(fp0, fp1);
+    assert.notDeepEqual(fp0, fp2);
+    assert.notDeepEqual(fp1, fp3);
+
+    const before = b.log.length;
+    const res = b.apply({ type: 'ability', unitId: u.id, abilityId: 'carpet_bomb', to, dir: 1 });
+    assert.ok(res.ok, res.reason);
+    const cells1 = new Set(fp1);
+    const blasts = b.log.slice(before).filter(e => e.t === 'explosion');
+    assert.equal(blasts.length, 3);
+    for (const e of blasts) assert.ok(cells1.has(`${Math.floor(e.x)},${Math.floor(e.y)}`), 'diagonal bomb center lies inside rotated footprint');
+});

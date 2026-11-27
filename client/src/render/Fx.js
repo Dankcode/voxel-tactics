@@ -20,7 +20,45 @@ export class Fx {
         this.debrisGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
         this.dustGeo = new THREE.SphereGeometry(0.32, 8, 6);
         this.smokeGeo = new THREE.SphereGeometry(0.55, 8, 6);
+        this.explosionCoreGeo = new THREE.SphereGeometry(1, 10, 8);
+        this.explosionRingGeo = new THREE.RingGeometry(0.78, 1, 28);
+        this.flashGeo = new THREE.SphereGeometry(1, 8, 6);
+        this.calloutRingGeo = new THREE.RingGeometry(0.42, 0.56, 24);
+        this.defeatRingGeo = new THREE.RingGeometry(0.32, 0.43, 24);
+        this.bombBodyGeo = new THREE.CylinderGeometry(0.16, 0.12, 0.9, 8);
+        this.bombNoseGeo = new THREE.ConeGeometry(0.16, 0.3, 8);
+        this.bombFinGeo = new THREE.BoxGeometry(0.5, 0.18, 0.04);
+        this.sharedGeos = new Set([
+            this.fireGeo, this.tracerGeo, this.sparkGeo, this.debrisGeo, this.dustGeo, this.smokeGeo,
+            this.explosionCoreGeo, this.explosionRingGeo, this.flashGeo, this.calloutRingGeo, this.defeatRingGeo,
+            this.bombBodyGeo, this.bombNoseGeo, this.bombFinGeo
+        ]);
+        // Fixed PointLight pool: attach directly to scene.scene so NUM_POINT_LIGHTS stays constant while fx.group stays clean.
+        const lightParent = scene?.scene || this.group;
+        this.lightPool = Array.from({ length: 3 }, () => {
+            const l = new THREE.PointLight(0xffffff, 0, 1, 2);
+            l.castShadow = false;
+            lightParent.add(l);
+            return { light: l, busy: false, seq: 0 };
+        });
+        this._lightSeq = 0;
         this.floats = [];
+    }
+    acquireLight(color, intensity, distance, pos) {
+        let slot = this.lightPool.find(s => !s.busy);
+        if (!slot) slot = this.lightPool.reduce((a, b) => (a.seq < b.seq ? a : b));
+        slot.busy = true;
+        slot.seq = ++this._lightSeq;
+        slot.light.color.set(color);
+        slot.light.intensity = intensity;
+        slot.light.distance = distance;
+        if (pos) slot.light.position.copy(pos);
+        return slot;
+    }
+    releaseLight(slot) {
+        if (!slot) return;
+        slot.busy = false;
+        slot.light.intensity = 0;
     }
     /**
      * PLAN-07 tracer: a glowing streak (bright core + soft halo, additive) that travels from the muzzle at `speed`
@@ -38,11 +76,11 @@ export class Fx {
         const halo = new THREE.Mesh(this.tracerGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
         core.scale.set(0.018, 1, 0.018); halo.scale.set(0.055, 1, 0.055);
         obj.add(halo, core);
-        if (light) { const lamp = new THREE.PointLight(color, 3.2, 4.5, 2); lamp.castShadow = false; obj.add(lamp); }
+        const lightSlot = light ? this.acquireLight(color, 3.2, 4.5, a) : null;
         obj.visible = false;
         obj.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), pts[1].clone().sub(pts[0]).normalize());
         this.group.add(obj);
-        const it = { obj, kind: 'tracer', a, b, pts, cum, dist, speed, length, wait: delay, head: 0, onArrive, arrived: false, life: 1, max: 1 };
+        const it = { obj, kind: 'tracer', a, b, pts, cum, dist, speed, length, wait: delay, head: 0, onArrive, arrived: false, life: 1, max: 1, lightSlot };
         this.items.push(it);
         return it;
     }
@@ -60,22 +98,31 @@ export class Fx {
         }
     }
     debris(at, material) {
-        const p = w2t(at), color = new THREE.Color(material.color);
-        for (let i = 0; i < 5; i++) {
-            const a = i * 2.4 + (at.x + at.y) * 0.37;
-            const v = new THREE.Vector3(Math.cos(a) * (1.4 + i * 0.12), 1.8 + (i % 3) * 0.45, Math.sin(a) * (1.4 + i * 0.12));
-            const chip = new THREE.Mesh(this.debrisGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, clippingPlanes: this.scene.clipping }));
-            chip.scale.setScalar(0.65 + (i % 3) * 0.22); chip.position.copy(p); this.group.add(chip);
-            this.items.push({ obj: chip, life: 0.65 + i * 0.025, max: 0.65 + i * 0.025, kind: 'debris', v });
+        let activeDebris = 0, activeDust = 0;
+        for (const it of this.items) {
+            if (it.kind === 'debris') activeDebris++;
+            else if (it.kind === 'dust') activeDust++;
         }
-        const dustColor = color.clone().lerp(new THREE.Color(0xd8d2c4), 0.45);
-        const dust = new THREE.Mesh(this.dustGeo, new THREE.MeshBasicMaterial({ color: dustColor, transparent: true, opacity: 0.38, depthWrite: false, clippingPlanes: this.scene.clipping }));
-        dust.position.copy(p); dust.scale.setScalar(0.3); this.group.add(dust);
-        this.items.push({ obj: dust, life: 0.75, max: 0.75, kind: 'dust', grow: 1.8 });
+        const p = w2t(at), color = new THREE.Color(material.color);
+        if (activeDebris < 48) {
+            for (let i = 0; i < 5; i++) {
+                const a = i * 2.4 + (at.x + at.y) * 0.37;
+                const v = new THREE.Vector3(Math.cos(a) * (1.4 + i * 0.12), 1.8 + (i % 3) * 0.45, Math.sin(a) * (1.4 + i * 0.12));
+                const chip = new THREE.Mesh(this.debrisGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, clippingPlanes: this.scene.clipping }));
+                chip.scale.setScalar(0.65 + (i % 3) * 0.22); chip.position.copy(p); this.group.add(chip);
+                this.items.push({ obj: chip, life: 0.65 + i * 0.025, max: 0.65 + i * 0.025, kind: 'debris', v });
+            }
+        }
+        if (activeDust < 14) {
+            const dustColor = color.clone().lerp(new THREE.Color(0xd8d2c4), 0.45);
+            const dust = new THREE.Mesh(this.dustGeo, new THREE.MeshBasicMaterial({ color: dustColor, transparent: true, opacity: 0.38, depthWrite: false, clippingPlanes: this.scene.clipping }));
+            dust.position.copy(p); dust.scale.setScalar(0.3); this.group.add(dust);
+            this.items.push({ obj: dust, life: 0.75, max: 0.75, kind: 'dust', grow: 1.8 });
+        }
     }
     defeat(at, drone = false) {
         const color = drone ? 0x80d8ff : 0xff6b5f;
-        const ring = new THREE.Mesh(new THREE.RingGeometry(0.32, 0.43, 24), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
+        const ring = new THREE.Mesh(this.defeatRingGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
         ring.rotation.x = -Math.PI / 2; ring.position.copy(at).add(new THREE.Vector3(0, 0.08, 0)); this.group.add(ring);
         this.items.push({ obj: ring, life: 0.5, max: 0.5, kind: 'fade', grow: 2.2 });
         const p = at.clone().add(new THREE.Vector3(0, 0.9, 0));
@@ -88,7 +135,7 @@ export class Fx {
     }
     calloutRing(at, color = 0xff5a4a, life = 0.42) {
         const ring = new THREE.Mesh(
-            new THREE.RingGeometry(0.42, 0.56, 28),
+            this.calloutRingGeo,
             new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthTest: false, depthWrite: false, side: THREE.DoubleSide, toneMapped: false })
         );
         ring.rotation.x = -Math.PI / 2;
@@ -109,18 +156,20 @@ export class Fx {
         return line;
     }
     flash(at, color = 0xffe08a, size = 0.35, life = 0.12) {
-        const m = new THREE.Mesh(new THREE.SphereGeometry(size, 8, 6), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false }));
+        const m = new THREE.Mesh(this.flashGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false }));
+        m.scale.setScalar(size);
         m.position.copy(w2t(at)); this.group.add(m);
         this.items.push({ obj: m, life, max: life, kind: 'fade', grow: 0 });
     }
     explosion(at, radius, element) {
         const color = new THREE.Color(ELEMENT_COLORS[element] || '#ffb347'), obj = new THREE.Group();
-        const core = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffd18a, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
-        const shockwave = new THREE.Mesh(new THREE.RingGeometry(0.78, 1, 32), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.65, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
+        const core = new THREE.Mesh(this.explosionCoreGeo, new THREE.MeshBasicMaterial({ color: 0xffd18a, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+        const shockwave = new THREE.Mesh(this.explosionRingGeo, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.65, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
         shockwave.rotation.x = -Math.PI / 2;
-        const light = new THREE.PointLight(color, 18 + radius * 3, radius * 4, 2); light.castShadow = false;
-        obj.add(core, shockwave, light); obj.position.copy(w2t(at)); this.group.add(obj);
-        this.items.push({ obj, core, shockwave, light, life: 0.55, max: 0.55, kind: 'explosion', radius, intensity: light.intensity });
+        obj.add(core, shockwave); obj.position.copy(w2t(at)); this.group.add(obj);
+        const intensity = 18 + radius * 3;
+        const lightSlot = this.acquireLight(color, intensity, radius * 4, obj.position);
+        this.items.push({ obj, core, shockwave, light: lightSlot.light, lightSlot, life: 0.55, max: 0.55, kind: 'explosion', radius, intensity });
         this.scene.shake = Math.max(this.scene.shake, 0.25 + radius * 0.08);
     }
     float(pos, text, color = '#fff', size = 18) {
@@ -156,9 +205,10 @@ export class Fx {
      */
     bomb(at, { fall = 0.6, delay = 0, height = 26 } = {}) {
         const obj = new THREE.Group();
-        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.12, 0.9, 8), new THREE.MeshBasicMaterial({ color: 0x22262a }));
-        const nose = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.3, 8), body.material); nose.position.y = -0.6; nose.rotation.x = Math.PI;
-        const fins = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.18, 0.04), body.material); fins.position.y = 0.42;
+        const bodyMat = new THREE.MeshBasicMaterial({ color: 0x22262a });
+        const body = new THREE.Mesh(this.bombBodyGeo, bodyMat);
+        const nose = new THREE.Mesh(this.bombNoseGeo, bodyMat); nose.position.y = -0.6; nose.rotation.x = Math.PI;
+        const fins = new THREE.Mesh(this.bombFinGeo, bodyMat); fins.position.y = 0.42;
         const fins2 = fins.clone(); fins2.rotation.y = Math.PI / 2;
         const trail = new THREE.Mesh(this.tracerGeo, new THREE.MeshBasicMaterial({ color: 0xffb35a, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
         trail.scale.set(0.1, 5, 0.1); trail.position.y = 3;
@@ -171,7 +221,16 @@ export class Fx {
         it.obj.visible = true; it.t += dt;
         const k = Math.min(1, it.t / it.fall);
         it.obj.position.copy(it.at).add(new THREE.Vector3(0, it.height * (1 - k * k), 0));
-        if (k >= 1) { this.group.remove(it.obj); it.obj.traverse(o => { if (o.geometry && o.geometry !== this.tracerGeo) o.geometry.dispose(); }); it.resolve(); return false; }
+        if (k >= 1) {
+            this.group.remove(it.obj);
+            const mats = new Set();
+            it.obj.traverse(o => {
+                if (o.geometry && !this.sharedGeos.has(o.geometry)) o.geometry.dispose();
+                if (o.material) mats.add(o.material);
+            });
+            for (const m of mats) m.dispose();
+            it.resolve(); return false;
+        }
         return true;
     }
     stepTracer(it, dt) {
@@ -180,7 +239,7 @@ export class Fx {
         it.head += it.speed * dt;
         if (!it.arrived && it.head >= it.dist) { it.arrived = true; it.head = it.dist; it.onArrive?.(); }
         const tail = Math.max(0, it.head - it.length), head = Math.min(it.head, it.dist);
-        if (tail >= it.dist) { this.group.remove(it.obj); for (const c of it.obj.children) c.material?.dispose(); return false; }
+        if (tail >= it.dist) { this.group.remove(it.obj); this.releaseLight(it.lightSlot); for (const c of it.obj.children) c.material?.dispose(); return false; }
         const len = Math.max(0.01, head - tail), mid = (head + tail) / 2;
         if (it.pts && it.cum && it.pts.length > 2) {
             let si = 1;
@@ -192,6 +251,7 @@ export class Fx {
         } else {
             it.obj.position.copy(it.a).lerp(it.b, mid / Math.max(it.dist, 1e-6));
         }
+        if (it.lightSlot) it.lightSlot.light.position.copy(it.obj.position);
         for (const c of it.obj.children) if (c.isMesh) c.scale.y = len;
         return true;
     }
@@ -210,8 +270,8 @@ export class Fx {
                 it.core.material.opacity = k * k * 0.95;
                 it.shockwave.scale.setScalar(0.4 + it.radius * 1.4 * age);
                 it.shockwave.material.opacity = k * 0.65;
-                it.light.intensity = it.intensity * k * k;
-                if (it.life <= 0) { this.group.remove(it.obj); it.obj.traverse(o => { o.geometry?.dispose(); o.material?.dispose(); }); return false; }
+                if (it.lightSlot) it.lightSlot.light.intensity = it.intensity * k * k;
+                if (it.life <= 0) { this.group.remove(it.obj); this.releaseLight(it.lightSlot); it.obj.traverse(o => { if (o.geometry && !this.sharedGeos.has(o.geometry)) o.geometry.dispose(); o.material?.dispose(); }); return false; }
                 return true;
             }
             if (it.kind === 'spark' || it.kind === 'debris') {
@@ -228,7 +288,7 @@ export class Fx {
                 const baseOp = it.baseOpacity ?? (it.kind === 'dust' ? 0.38 : 1);
                 it.obj.material.opacity = baseOp * Math.min(1, k * 1.4);
             }
-            if (it.life <= 0) { this.group.remove(it.obj); if (![this.sparkGeo, this.debrisGeo, this.dustGeo].includes(it.obj.geometry)) it.obj.geometry?.dispose(); it.obj.material?.dispose(); return false; }
+            if (it.life <= 0) { this.group.remove(it.obj); if (it.obj.geometry && !this.sharedGeos.has(it.obj.geometry)) it.obj.geometry.dispose(); it.obj.material?.dispose(); return false; }
             return true;
         });
         this.items.push(...survivors);
